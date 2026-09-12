@@ -88,6 +88,7 @@ The service topology should be described once in `compose.yaml` and be usable wi
 
 - `db`: PostgreSQL with a named persistent volume and a health check.
 - `pgbouncer`: PgBouncer between the API and PostgreSQL, with pool size and pool mode configured explicitly.
+- `s3`: local S3-compatible object storage service, such as MinIO, backed by a named Podman volume.
 - `api`: FeathersJS API, dependent on database readiness rather than merely container startup.
 - `web`: production frontend image containing static assets.
 - `nginx`: local/test reverse proxy, static asset server, API router, and WebSocket endpoint.
@@ -100,6 +101,12 @@ Use separate profiles or Compose files for development and production where thei
 PgBouncer is a connection pooler, not a replacement for PostgreSQL. The API should use a pooler connection string and a pool mode appropriate to the application. Transaction pooling is the default candidate for stateless Feathers requests, but it must be checked against session-specific features such as prepared statements, advisory locks, and session variables. PostgreSQL migrations should use a direct administrative connection or a separately configured session-pooling path when required.
 
 The pooler must have its own health check and the API must fail clearly when the pooler is unavailable. PostgreSQL remains private to the Compose network; application containers should not need a direct database route.
+
+### Local S3-compatible storage
+
+The local Compose profile should provide an S3-compatible object storage service using a rootless Podman container and a named local volume. MinIO is the initial candidate because it provides the S3 API needed by backup and application tests without requiring a cloud account. The API and backup jobs should use the internal service name and port; the storage console and S3 port should be bound to localhost only when interactive inspection is needed.
+
+Local object storage is disposable development infrastructure. It must not be treated as a backup of itself: production backups must be copied to independent off-host S3-compatible storage. The S3 bucket names, endpoint, region, and path-style setting should be configurable through environment variables so tests can switch between local storage and production storage.
 
 ### Production orchestration
 
@@ -184,6 +191,7 @@ These policies define what must be decided before production, rather than prescr
 - The initial target is an RPO of 24 hours and an RTO of 4 hours. RPO is the maximum acceptable data loss; RTO is the maximum acceptable time to restore service.
 - The application team owns the backup jobs, encrypted off-host storage, retention, restore procedure, and restore drills.
 - Use scheduled `pg_dump` backups, encrypt and deduplicate them with restic, and store them in S3-compatible off-host storage. Retain daily PostgreSQL backups for 30 days.
+- In local development and CI, point restic and object-storage integration tests at the local `s3` service. In production, use independent off-host S3-compatible storage.
 - Add continuous write-ahead-log archiving or point-in-time recovery when the 24-hour RPO becomes insufficient.
 - Restrict who can read or delete backups, and keep backup credentials separate from application credentials.
 - Test a restore on a scheduled basis. A backup is not considered valid until a restore produces a usable database and the result is recorded.
@@ -218,6 +226,9 @@ These policies define what must be decided before production, rather than prescr
 ## Configuration and Security
 
 - Commit example configuration only, such as `.env.example`; do not commit credentials.
+- For local development, generate random S3 and database credentials into an ignored `.env.local` file with mode `0600`, or create them as rootless Podman secrets. `.env.local` is a convenience for a single developer, not a committed or shared secret store.
+- For the one-host production setup, keep credentials in rootless Podman secrets or protected systemd/Quadlet environment files owned by the deployment user. Limit file permissions, rotate credentials deliberately, and provide separate credentials for the API, backup jobs, monitoring, and local S3 administration.
+- Do not add a dedicated secrets platform yet. Introduce one when multiple hosts, multiple operators, automated rotation, or compliance requirements make host-managed secrets insufficient.
 - Validate required environment variables at application startup.
 - Use least-privilege database credentials for the API.
 - Configure CORS and allowed WebSocket origins explicitly.
@@ -237,7 +248,6 @@ For an ADR, include `Status`, `Context`, `Decision`, and `Consequences`. Keep th
 
 ## Open Decisions
 
-- Exact retention periods for PostgreSQL backups and observability data.
 - The exact S3-compatible backup destination and credential rotation procedure.
 - The concrete resource limits and disk sizing for the Grafana, Prometheus, and Loki containers.
 - Revisit the single-host design after a host-level outage or when sustained CPU, memory, database connection, or request-latency pressure reaches the capacity threshold agreed by the team.
