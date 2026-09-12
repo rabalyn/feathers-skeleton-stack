@@ -20,8 +20,10 @@ This document records the initial technical direction for this repository. It is
 ### Backend
 
 - Node.js with FeathersJS v5.
+- Use Node.js 22 LTS for local development, CI, and production images. Pin pnpm 10 through the root `package.json` `packageManager` field so the workspace uses one package-manager version everywhere.
 - TypeScript for application code, configuration, and shared contracts.
 - PostgreSQL.
+- Valkey for shared authentication rate-limit state from the initial deployment; it is not a source of business data.
 - PgBouncer in front of PostgreSQL for connection pooling.
 - Feathers local authentication with email/password (`@feathersjs/authentication-local`), with password hashes stored by the local strategy and never returned by services.
 - Feathers database services using the Knex adapter (`@feathersjs/knex`) unless a later decision requires another adapter.
@@ -29,16 +31,17 @@ This document records the initial technical direction for this repository. It is
 - TypeBox for request, response, query, and data schemas, with generated TypeScript types where practical.
 - API validation and authorization at the service boundary; database constraints remain the final integrity boundary.
 - Pin PostgreSQL 17 for local, CI, and production images. Apply minor updates regularly and treat major-version upgrades as the documented dump-and-restore operation.
+- Use TypeScript strict mode with `noImplicitAny` and `noUncheckedIndexedAccess` enabled.
 
-Authentication uses a hybrid Feathers JWT model. The frontend keeps a 5-minute access JWT in memory and supplies it for REST and WebSocket authentication. A 30-day refresh credential is stored in an `HttpOnly; Secure; SameSite=Strict; Path=/authentication/refresh` cookie and is used only by the `/authentication/refresh` endpoint. The refresh handler validates the `Origin` header against the configured frontend origin. The frontend must refresh proactively before access-token expiry and re-authenticate the Feathers WebSocket connection after refresh or reconnect. The API must verify account validity on requests and define explicit logout, refresh-token revocation, and token-family invalidation behavior.
+Authentication uses a hybrid Feathers JWT model. The frontend keeps a 5-minute access JWT in memory and supplies it for REST and WebSocket authentication. It refreshes the access token 60 seconds before expiry. A 30-day refresh credential is stored in an `HttpOnly; Secure; SameSite=Strict; Path=/authentication/refresh` cookie and is used only by the `/authentication/refresh` endpoint. The refresh handler validates the `Origin` header against the configured frontend origin. The frontend must re-authenticate the Feathers WebSocket connection after refresh or reconnect. Normal logout revokes only the current refresh session; a separate logout-all operation revokes all sessions for the user. If refresh fails, clear authentication state, close the WebSocket, and redirect to login. The API must verify account validity on requests and define explicit refresh-token revocation and token-family invalidation behavior.
 
 Refresh sessions are stored in a PostgreSQL `auth_sessions` table. Store only a hash of each refresh token, together with the user ID, token family, expiry, rotation and revocation timestamps, last-used timestamp, and limited user-agent/IP metadata. Add indexes for token lookup, user/session statistics, and expiry cleanup. Rotate the refresh token on every refresh; reuse of an old token revokes the entire token family. Coordinate browser refreshes across tabs with a client-side lock or `BroadcastChannel` so ordinary races do not look like token theft; server-side reuse detection remains authoritative. Allow unlimited sessions per user initially, run a daily cleanup for expired/revoked rows, and revoke all sessions when a password changes or an account is disabled. An active session is a non-revoked, unexpired `auth_sessions` row. This definition is also used by the application statistics endpoint and Prometheus business metrics.
 
-Application activity is recorded as explicit, successful audit events for meaningful domain operations such as login, upload, create/update/delete, and export. Token refreshes and ordinary read/poll requests are not activity events. Active users are users with at least one successful authenticated activity event in the selected period. Activity metrics use only a fixed allowlist of action and service labels; they never include user IDs, email addresses, object keys, or arbitrary label values.
+Application activity is recorded as explicit, successful audit events for meaningful domain operations such as login, upload, create/update/delete, and export. Token refreshes and ordinary read/poll requests are not activity events. Retain audit events for 90 days and clean them up with the daily maintenance job. Store only minimal metadata such as user ID, action, service/resource type, success, timestamp, request ID, and coarse result metadata; never persist request bodies, object contents, tokens, or other sensitive values. Active users are users with at least one successful authenticated activity event in the selected period. Activity metrics use only a fixed allowlist of action and service labels; they never include user IDs, email addresses, object keys, or arbitrary label values.
 
 Because the access token is JavaScript-readable while it lives in memory, the frontend must still apply a strict Content Security Policy, avoid unsafe HTML rendering, keep dependencies updated, and never place secrets in the token payload. Cookie-based refresh requests require CSRF protection and explicit origin checks.
 
-Initial abuse controls include login and password-reset rate limits by IP and account identifier, generic authentication failure messages, and structured security-event logging without passwords or tokens. Password reset and email verification may use development-only tokens during scaffolding; production release requires a real email delivery integration with expiring, single-use tokens.
+Initial abuse controls use Valkey-backed login and password-reset rate limits by IP and account identifier, generic authentication failure messages, and structured security-event logging without passwords or tokens. If Valkey is unavailable, reject affected authentication and password-reset attempts rather than fail open. Password reset and email verification may use development-only tokens during scaffolding; production release requires a real email delivery integration with expiring, single-use tokens.
 
 ### Frontend
 
@@ -92,7 +95,7 @@ Production Nginx, certificates, DNS, and public routing are managed in a separat
 
 The production host firewall exposes HTTPS publicly, optionally HTTP for redirects or certificate issuance, and restricts SSH to an approved management source. API, web, Loki, Dozzle, S3, PostgreSQL, PgBouncer, Prometheus, and Grafana ports remain loopback-only or private-network-only.
 
-PostgreSQL and PgBouncer are operated as part of this deployment in production. PostgreSQL data uses dedicated persistent storage, while the API receives its connection details through environment variables or a secret mechanism, never from committed files. A separate PostgreSQL node and a Valkey node are future scaling options, not part of the initial deployment. Valkey should only be introduced when a concrete need such as shared caching, rate-limit coordination, background jobs, or multi-instance real-time coordination is identified.
+PostgreSQL, PgBouncer, and Valkey are operated as part of this deployment in production. PostgreSQL data uses dedicated persistent storage, while the API receives its connection details through environment variables or a secret mechanism, never from committed files. Valkey runs on the same host initially and is used for shared authentication rate-limit state; it does not store business data and does not require persistence for this initial use. A separate PostgreSQL node and a Valkey node are future scaling options.
 
 ## Container Strategy
 
@@ -104,6 +107,7 @@ Rootless Podman is the target container runtime for local development, CI, and d
 
 - `db`: PostgreSQL with a named persistent volume and a health check.
 - `pgbouncer`: PgBouncer between the API and PostgreSQL, with pool size and pool mode configured explicitly.
+- `valkey`: Valkey for shared authentication rate-limit state, with ephemeral storage in local/CI and production profiles.
 - `s3`: S3-compatible object storage service, such as MinIO, backed by a persistent named Podman volume in local/CI; production uses its dedicated Quadlet volume.
 - `api`: FeathersJS API, dependent on database readiness rather than merely container startup.
 - `web`: production frontend image containing static assets.
@@ -136,7 +140,7 @@ It is not intended for users, sessions, activity records, relational business da
 
 The browser accesses object data through authorized Feathers API operations. The API validates ownership and permissions, then streams objects to or from S3. The S3 API and console are private and are not exposed through public Nginx routes. Presigned URLs can be introduced later if large-file bandwidth makes API-mediated transfers impractical.
 
-The initial API upload limit is 50 MiB per object. Accept only an explicit allowlist of MIME types and extensions, validate detected content type where practical, stream transfers without buffering entire objects in API memory, and reject unknown or oversized objects. Use separate S3 buckets for application uploads, generated exports, and backup staging so permissions and retention can differ.
+The initial API upload limit is 50 MiB per object. Accept only an explicit allowlist of MIME types and extensions, validate detected content type where practical, stream transfers without buffering entire objects in API memory, and reject unknown or oversized objects. Use separate S3 buckets for application uploads and generated exports in production. A backup-staging bucket exists only in local/CI profiles; production exports objects directly to the dated NFS staging tree.
 
 In development and CI, the object-storage volume is disposable. In production, it is persistent application infrastructure and must have a volume backup or replication plan. The production S3 service is not a third-party dependency; it is deployed and operated with the rest of this stack. The S3 bucket names, endpoint, region, and path-style setting should be configurable through environment variables so tests can switch between local, CI, and production storage. Use an API-level object export or supported bucket listing/download to create an immutable dated staging tree containing production object bytes, metadata, and checksums, then snapshot that tree with restic. Never copy a live MinIO data directory as if it were a consistent object backup.
 
@@ -148,9 +152,11 @@ Configure the NFS source as a private DNS hostname and export path supplied by d
 
 The initial production target is one Linux host using rootless Podman and systemd Quadlet. Run the user-level units under a dedicated deployment user with configured subuid/subgid ranges and systemd lingering enabled so services survive logout and reboot. Quadlet unit files provide service ordering, restart behavior, environment-file integration, and startup after host reboots without requiring a full orchestration platform. External Nginx routes traffic to the API and web loopback upstreams on that host; it does not expose S3 or observability services. Production Quadlet/host services are PostgreSQL, PgBouncer, S3-compatible storage, API, web, backup, Grafana, Prometheus, Loki, and Dozzle, plus host-installed Alloy for journald collection. Loki publishes only `127.0.0.1:3100:3100` for Alloy. PostgreSQL, PgBouncer, S3-compatible storage, and the observability stack are all operated by this deployment.
 
-Production uses separate private networks: `backend` contains API, PgBouncer, and PostgreSQL; `object` contains API, S3, and the backup container; and `monitoring` contains API, Prometheus, Grafana, and Loki. The backup container joins only `backend` and `object`. Nginx reaches API and web through host loopback ports, while host Alloy reaches Loki through its loopback port. No private service network is publicly exposed.
+Production uses separate private networks: `backend` contains API, PgBouncer, PostgreSQL, and Valkey; `object` contains API, S3, and the backup container; and `monitoring` contains API, Prometheus, Grafana, and Loki. The backup container joins only `backend` and `object`. Nginx reaches API and web through host loopback ports, while host Alloy reaches Loki through its loopback port. No private service network is publicly exposed.
 
 The deployment should use immutable image tags, a controlled update procedure, health checks, and a documented rollback to the previous image tag. Move to multiple application hosts or a managed container platform when availability requirements exceed a single-host design.
+
+Initially, CI does not publish images to a registry. The production host builds the API, web, and production service images from a versioned release source using the pinned lockfile and Containerfiles. Each release has a versioned GitHub release manifest recording the source commit, dependency lockfile checksum, build inputs, and resulting local image digests. The host retains the previous image set for rollback. Revisit a registry when build time, host access, or multi-host deployment makes local production builds impractical.
 
 ### Nginx and local TLS
 
@@ -182,6 +188,7 @@ This gives deployment a reproducible artifact and makes the build environment co
 - Use the Nginx profile for browser and WebSocket integration testing; use `mkcert` certificates when HTTPS behavior matters.
 - Use a non-production database and credentials.
 - Keep migrations and seed data repeatable.
+- Provide an explicit deterministic local/CI seed command such as `pnpm db:seed`; do not seed automatically on every development startup.
 
 ### CI
 
@@ -197,9 +204,8 @@ CI should build the API, web, and Nginx images and run checks against an ephemer
 The CI build should use the same API and frontend Containerfiles used for deployment, while the test-only Nginx image uses its repository-owned test Containerfile and configuration. This catches missing files, incorrect runtime configuration, and frontend routing issues before release.
 
 ### Production
- Create production initial data with a manual, authenticated one-time bootstrap command after migrations. Never auto-create demo users, default passwords, or administrator credentials during API startup.
 - Use externally managed Nginx, TLS certificates, DNS, and public routing. This deployment operates PostgreSQL, PostgreSQL storage, PgBouncer, S3-compatible storage, Grafana, Prometheus, Loki, and their persistent volumes.
- Provide an explicit deterministic local/CI seed command such as `pnpm db:seed`; do not seed automatically on every development startup.
+- Create production initial data with a manual, authenticated one-time bootstrap command after migrations. Never auto-create demo users, default passwords, or administrator credentials during API startup.
 - Apply migrations as a controlled release step before enabling code that depends on them.
 - Pass configuration through environment variables or a secret store.
 - Add health and readiness endpoints, structured logs, and basic metrics before the first production release.
