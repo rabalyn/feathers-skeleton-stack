@@ -29,6 +29,12 @@ This document records the initial technical direction for this repository. It is
 - TypeBox for request, response, query, and data schemas, with generated TypeScript types where practical.
 - API validation and authorization at the service boundary; database constraints remain the final integrity boundary.
 
+Authentication uses a hybrid Feathers JWT model. The frontend keeps a short-lived access JWT in memory and supplies it for REST and WebSocket authentication. A longer-lived refresh credential is stored in an `HttpOnly`, `Secure`, `SameSite` cookie and is used only by a refresh endpoint. The frontend must refresh before expiry and re-authenticate the Feathers WebSocket connection after refresh or reconnect. The API must verify account validity on requests and define explicit logout, refresh-token revocation, and token-family invalidation behavior.
+
+Because the access token is JavaScript-readable while it lives in memory, the frontend must still apply a strict Content Security Policy, avoid unsafe HTML rendering, keep dependencies updated, and never place secrets in the token payload. Cookie-based refresh requests require CSRF protection and explicit origin checks.
+
+Initial abuse controls include login and password-reset rate limits by IP and account identifier, generic authentication failure messages, and structured security-event logging without passwords or tokens. Password reset and email verification may use development-only tokens during scaffolding; production release requires a real email delivery integration with expiring, single-use tokens.
+
 ### Frontend
 
 - Vue 3.
@@ -59,6 +65,8 @@ The implementation should grow toward this structure:
 ├── compose.yaml             # Local/test service topology
 ├── Containerfile.api       # Backend image
 ├── Containerfile.web       # Frontend build/serve image
+├── Containerfile.nginx     # Test-only reverse proxy image
+├── nginx/                   # Test-only Nginx configuration
 └── README.md               # Project entry point and quick start
 ```
 
@@ -71,13 +79,12 @@ In production, the intended topology is:
 ```text
 Browser --HTTPS--> externally managed Nginx -> frontend assets
                                       \\-> Feathers API --pool--> PgBouncer -> PostgreSQL
-                                      \\-> S3-compatible object storage
                                       \\-> WebSocket upgrade
 ```
 
-Production Nginx, certificates, DNS, and public routing are managed outside this repository. This repository produces the frontend assets/image, the Feathers API image, and the S3-compatible object-storage service configuration for the production platform to deploy. The API connects to PgBouncer, not directly to PostgreSQL; PgBouncer owns the database connection pool and forwards pooled connections to PostgreSQL.
+Production Nginx, certificates, DNS, and public routing are managed outside this repository. External Nginx proxies frontend requests to the versioned web container and API/WebSocket requests to the Feathers container. S3 remains private and is reachable only by the API and backup jobs. This repository produces the frontend image, the Feathers API image, and the S3-compatible object-storage service configuration for the production platform to deploy. The API connects to PgBouncer, not directly to PostgreSQL; PgBouncer owns the database connection pool and forwards pooled connections to PostgreSQL.
 
-PostgreSQL and its production storage are infrastructure concerns. The API should receive its connection details through environment variables or a secret mechanism, never from committed files.
+PostgreSQL and PgBouncer are operated as part of this deployment in production. PostgreSQL data uses dedicated persistent storage, while the API receives its connection details through environment variables or a secret mechanism, never from committed files.
 
 ## Container Strategy
 
@@ -94,12 +101,14 @@ The service topology should be described once in `compose.yaml` and be usable wi
 - `web`: production frontend image containing static assets.
 - `nginx`: local/test reverse proxy, static asset server, API router, and WebSocket endpoint.
 - `logs`: Dozzle, connected to the rootless Podman API socket read-only.
+- `alloy`: production-profile Grafana Alloy collector, reading Quadlet service logs from journald and forwarding them to Loki.
+- `backup`: production-profile rootless backup container running `pg_dump` and restic, with `/srv/backups` mounted read-write and credential files mounted read-only.
 
 Use separate profiles or Compose files for development and production where their needs differ. Production configuration must not rely on source-code bind mounts or development servers.
 
 ### PgBouncer
 
-PgBouncer is a connection pooler, not a replacement for PostgreSQL. The API should use a pooler connection string and a pool mode appropriate to the application. Transaction pooling is the default candidate for stateless Feathers requests, but it must be checked against session-specific features such as prepared statements, advisory locks, and session variables. PostgreSQL migrations should use a direct administrative connection or a separately configured session-pooling path when required.
+PgBouncer is a connection pooler, not a replacement for PostgreSQL. The API should use a pooler connection string with session pooling. This preserves compatibility with Knex prepared statements, session variables, advisory locks, and other session-dependent features, at the cost of more active PostgreSQL connections. Configure and monitor explicit application, PgBouncer, and PostgreSQL connection limits so session pooling cannot exhaust the database. PostgreSQL migrations and administrative tasks should use a separate direct administrative connection rather than the application pool.
 
 The pooler must have its own health check and the API must fail clearly when the pooler is unavailable. PostgreSQL remains private to the Compose network; application containers should not need a direct database route.
 
@@ -115,27 +124,29 @@ The S3 service is intended for:
 
 It is not intended for users, sessions, activity records, relational business data, PostgreSQL's primary storage, Prometheus metrics, Loki logs, or Grafana's system data. Those belong in PostgreSQL or their dedicated services. In the initial application scaffold, the S3 bucket and object schema should only be added when an upload/export feature actually needs them.
 
-In development and CI, the object-storage volume is disposable. In production, it is persistent application infrastructure and must have a volume backup or replication plan. The production S3 service is not a third-party dependency; it is deployed and operated with the rest of this stack. The S3 bucket names, endpoint, region, and path-style setting should be configurable through environment variables so tests can switch between local, CI, and production storage.
+The browser accesses object data through authorized Feathers API operations. The API validates ownership and permissions, then streams objects to or from S3. The S3 API and console are private and are not exposed through public Nginx routes. Presigned URLs can be introduced later if large-file bandwidth makes API-mediated transfers impractical.
 
-Production database backups are stored on an NFS-mounted path accessible from the production host, not in the production S3 bucket. Backups stored on NFS protect against some logical or service-level failures, but not necessarily host, NFS server, disk, or site loss. The NFS service must provide its own snapshots or replication before the backup policy claims host-disaster protection. Use a dedicated NFS backup export mounted at a fixed path such as `/srv/backups` rather than sharing a general-purpose export.
+In development and CI, the object-storage volume is disposable. In production, it is persistent application infrastructure and must have a volume backup or replication plan. The production S3 service is not a third-party dependency; it is deployed and operated with the rest of this stack. The S3 bucket names, endpoint, region, and path-style setting should be configurable through environment variables so tests can switch between local, CI, and production storage. Use an API-level object export or supported bucket sync to copy production objects to the NFS backup location; never copy a live MinIO data directory as if it were a consistent object backup.
 
-Configure the NFS source as a private DNS hostname and export path supplied by deployment configuration, for example `backup-nfs.internal:/exports/app-backups`; do not commit a real hostname or IP address. The systemd mount unit must be required by the backup timer, verify that `/srv/backups` is actually mounted before writing, and fail the backup clearly when NFS is unavailable. It must never fall back to an ordinary local directory.
+Production database backups are stored on an NFS-mounted path accessible from the production host, not in the production S3 bucket. The NFS provider supplies snapshots for logical recovery, but this initial setup does not protect against NFS server, disk, or site loss. Use a dedicated NFS backup export mounted at a fixed path such as `/srv/backups` rather than sharing a general-purpose export. Replication or a second off-site copy is required before claiming host-disaster protection.
+
+Configure the NFS source as a private DNS hostname and export path supplied by deployment configuration, for example `backup-nfs.internal:/exports/app-backups`; do not commit a real hostname or IP address. The systemd mount unit must be required by the backup timer, verify that `/srv/backups` is actually mounted before writing, and fail the backup clearly when NFS is unavailable. It must never fall back to an ordinary local directory. The backup container uses a dedicated numeric UID/GID that is authorized by the NFS export, rather than the deployment user's identity.
 
 ### Production orchestration
 
-The initial production target is one Linux host using rootless Podman and systemd Quadlet. Quadlet unit files provide service ordering, restart behavior, environment-file integration, and startup after host reboots without requiring a full orchestration platform. External Nginx routes traffic to the API, frontend, and private S3 service on that host.
+The initial production target is one Linux host using rootless Podman and systemd Quadlet. Quadlet unit files provide service ordering, restart behavior, environment-file integration, and startup after host reboots without requiring a full orchestration platform. External Nginx routes traffic to the API and frontend containers on that host; it does not expose S3. PostgreSQL, PgBouncer, S3-compatible storage, and the observability stack are all operated by this deployment.
 
 The deployment should use immutable image tags, a controlled update procedure, health checks, and a documented rollback to the previous image tag. Move to multiple application hosts or a managed container platform when availability requirements exceed a single-host design.
 
 ### Nginx and local TLS
 
-Nginx should be used in integration and end-to-end testing so browser routing, API proxying, WebSocket upgrades, and production-like headers are exercised. Nginx configuration and certificates are not production deliverables of this repository. Local development can still use direct Vite/Quasar hot reload for speed, but the containerized test profile should run the built web image behind a test Nginx container.
+Nginx should be used in integration and end-to-end testing so browser routing, API proxying, WebSocket upgrades, and production-like headers are exercised. The repository owns a test-only Nginx configuration and image; production Nginx configuration and certificates remain external deliverables. Local development can still use direct Vite/Quasar hot reload for speed, but the containerized test profile should run the built web image behind the repository's test Nginx container.
 
 For local HTTPS, use a locally trusted development CA such as `mkcert` and mount the generated certificate and key into the test Nginx container. This avoids browser warnings and keeps certificates out of version control. A simpler self-signed certificate is acceptable for non-browser smoke checks, but it requires explicit trust configuration in browser and test runners. Production certificates are provisioned externally and are never generated or stored by this repository.
 
 ### Stack log viewer
 
-Application containers should write structured logs to standard output and standard error. Dozzle is the selected lightweight local/test log viewer. In rootless Podman, expose the user-level Podman API socket to Dozzle as a read-only mount, and protect the viewer behind Nginx or local-only port binding. Do not mount the host filesystem or a privileged system-wide socket merely to display logs. Production log collection remains an infrastructure responsibility.
+Application containers should write structured logs to standard output and standard error. Dozzle is the selected lightweight local/test log viewer. In rootless Podman, expose the user-level Podman API socket to Dozzle as a read-only mount, and protect the viewer behind Nginx or local-only port binding. Do not mount the host filesystem or a privileged system-wide socket merely to display logs. In production, Grafana Alloy reads Quadlet service output from journald and forwards it to the self-hosted Loki container; production log collection is therefore part of this deployment.
 
 ### Frontend Containerization Recommendation
 
@@ -174,7 +185,7 @@ The CI image build should be the same Containerfile path used for deployment. Th
 ### Production
 
 - Deploy immutable versioned images for the API and frontend assets, plus the persistent S3-compatible storage service, through the production host's Quadlet setup.
-- Use externally managed Nginx, TLS certificates, DNS, PostgreSQL, PostgreSQL storage, PgBouncer, and production log collection.
+- Use externally managed Nginx, TLS certificates, DNS, and public routing. This deployment operates PostgreSQL, PostgreSQL storage, PgBouncer, S3-compatible storage, Grafana, Prometheus, Loki, and their persistent volumes.
 - Apply migrations as a controlled release step before enabling code that depends on them.
 - Pass configuration through environment variables or a secret store.
 - Add health and readiness endpoints, structured logs, and basic metrics before the first production release.
@@ -201,16 +212,17 @@ These policies define what must be decided before production, rather than prescr
 
 ### Backup policy
 
-- The initial target is an RPO of 24 hours and an RTO of 4 hours. RPO is the maximum acceptable data loss; RTO is the maximum acceptable time to restore service.
+- The initial target is a best-effort RPO of 48 hours and an RTO of 4 hours. RPO is the maximum acceptable data loss; RTO is the maximum acceptable time to restore service. The 48-hour figure reflects daily dumps, missed-run risk, and the absence of WAL archiving.
 - The application team owns the backup jobs, encrypted storage, retention, restore procedure, and restore drills.
-- Use scheduled `pg_dump` backups, encrypt and deduplicate them with restic, and store the resulting repository on the production NFS mount. Retain daily PostgreSQL backups for 30 days.
+- Run one scheduled `pg_dump` backup each day, encrypt and deduplicate it with restic, and store the resulting repository on the production NFS mount. Retain daily PostgreSQL backups for 30 days.
+- Run a separate scheduled S3 object backup or synchronization to the NFS location, with a documented restore procedure and verification of object counts and representative downloads.
 - In local development and CI, point restic and object-storage integration tests at the local `s3` service. Production backup jobs must verify that the NFS mount is present and writable before creating or pruning backups.
 - Treat an unavailable NFS mount as a backup failure, alert on it, and do not silently write to a local fallback path that could fill the production host.
 - Document the NFS export, mount point, ownership, permissions, encryption key handling, and the NFS provider's snapshot or replication policy.
-- Run the unattended backup job with a dedicated service account. Use a fixed `/srv/backups` mount and store one restic repository password in a protected key file readable only by that account or its rootless Podman secret. The single operator owns this password and must keep a separate offline recovery copy; losing it makes the encrypted backup repository unrecoverable. Test restore access whenever the host or backup configuration changes.
-- Add continuous write-ahead-log archiving or point-in-time recovery when the 24-hour RPO becomes insufficient.
+- Run the unattended rootless `backup` container with a dedicated numeric UID/GID. Use a fixed `/srv/backups` mount and store one restic repository password in a protected key file or rootless Podman secret mounted read-only. The single operator owns this password and must keep a separate offline recovery copy; losing it makes the encrypted backup repository unrecoverable. Test restore access whenever the host or backup configuration changes.
+- Add continuous write-ahead-log archiving or point-in-time recovery when a 48-hour best-effort RPO becomes insufficient.
 - Restrict who can read or delete backups, and keep backup credentials separate from application credentials.
-- Test a restore on a scheduled basis. A backup is not considered valid until a restore produces a usable database and the result is recorded.
+- Test a full restore monthly. A backup is not considered valid until a restore produces a usable database and the result is recorded.
 - Document who can start a restore, where the restored database is created, how application access is paused, and how the restored version is verified.
 
 ### Migration and rollback policy
@@ -229,10 +241,12 @@ These policies define what must be decided before production, rather than prescr
 - Provide separate health endpoints: `GET /health/live` only confirms that the API process is running, while `GET /health/ready` verifies required dependencies such as PgBouncer are reachable. Readiness may return dependency details to internal callers, but public failure responses should not disclose connection information.
 - Expose `GET /metrics` in Prometheus text format. This endpoint is for the Prometheus scraper, should be reachable only from the internal monitoring network or with dedicated scrape credentials, and must not contain passwords, tokens, email addresses, user IDs, or other high-cardinality personal data.
 - Expose an authenticated `GET /stats` resource for application dashboards. It should return aggregate values such as total users, active users, session counts, activity counts, request/error totals, and time-bucketed trends. Protect it with a dedicated admin/observability permission and apply pagination or bounded time windows where details are requested.
-- Keep `/metrics` and `/stats` separate: Prometheus metrics are machine-readable time series for alerting, while `/stats` is an application API for dashboard cards and business aggregates. Do not make Grafana query the primary application database directly.
+- Keep `/metrics` and `/stats` separate: Prometheus metrics are machine-readable time series for alerting, while `/stats` is an authenticated application API for non-Grafana consumers. Grafana uses only Prometheus data and never connects directly to the application or database.
+- Expose bounded business aggregates such as user, session, and activity counts as Prometheus metrics so Grafana can dashboard them through the Prometheus datasource.
+- Business metrics may use live aggregate queries initially, but queries must have bounded time windows, database statement timeouts, and a strict query budget. Scrape business metrics at a slower interval such as 60 seconds rather than on the high-frequency application scrape. Move to cached or summary-table aggregates when query cost becomes material.
 - Track baseline metrics: request count, error count, latency, active connections, pool saturation, migration status, and process health.
 - Use stable metric names and low-cardinality labels such as `service`, `route`, `method`, `status_code`, and `environment`. Never label metrics by user, email, session, request ID, or unrestricted URL values.
-- Start with Grafana, Prometheus, and Loki as separate rootless containers on the same production Linux host. Grafana provides dashboards and alert views, Prometheus stores and evaluates metrics, and Loki stores searchable logs. Reserve approximately 1 CPU and 1.5-2 GiB RAM and 10 GiB total disk for the small initial monitoring stack, with an alert at 80% disk usage and explicit per-container CPU, memory, and disk-retention limits so monitoring cannot consume all application capacity.
+- Start with Grafana, Prometheus, Loki, and Grafana Alloy as separate rootless services on the same production Linux host. Grafana provides dashboards and alert views, Prometheus stores and evaluates metrics, Loki stores searchable logs, and Alloy forwards journald logs. Reserve approximately 1 CPU and 1.5-2 GiB RAM and 10 GiB total disk for the small initial monitoring stack, with an alert at 80% disk usage and explicit per-container CPU, memory, and disk-retention limits so monitoring cannot consume all application capacity.
 - Retain observability data for 14 days initially. Back up Grafana dashboards, alert rules, and configuration even when short-lived Prometheus and Loki data is not retained long term.
 - Add OpenTelemetry and Grafana Tempo tracing when cross-service debugging becomes necessary; tracing is intentionally deferred from the first implementation.
 - Define alerts for sustained API 5xx errors, high latency, failed readiness, PgBouncer pool exhaustion, PostgreSQL storage or connection pressure, backup failures, and certificate expiry in the external platform.
