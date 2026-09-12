@@ -117,7 +117,9 @@ It is not intended for users, sessions, activity records, relational business da
 
 In development and CI, the object-storage volume is disposable. In production, it is persistent application infrastructure and must have a volume backup or replication plan. The production S3 service is not a third-party dependency; it is deployed and operated with the rest of this stack. The S3 bucket names, endpoint, region, and path-style setting should be configurable through environment variables so tests can switch between local, CI, and production storage.
 
-Production database backups are stored on an NFS-mounted path accessible from the production host, not in the production S3 bucket. Backups stored on NFS protect against some logical or service-level failures, but not necessarily host, NFS server, disk, or site loss. The NFS service must provide its own snapshots or replication before the backup policy claims host-disaster protection.
+Production database backups are stored on an NFS-mounted path accessible from the production host, not in the production S3 bucket. Backups stored on NFS protect against some logical or service-level failures, but not necessarily host, NFS server, disk, or site loss. The NFS service must provide its own snapshots or replication before the backup policy claims host-disaster protection. Use a dedicated NFS backup export mounted at a fixed path such as `/srv/backups` rather than sharing a general-purpose export.
+
+Configure the NFS source as a private DNS hostname and export path supplied by deployment configuration, for example `backup-nfs.internal:/exports/app-backups`; do not commit a real hostname or IP address. The systemd mount unit must be required by the backup timer, verify that `/srv/backups` is actually mounted before writing, and fail the backup clearly when NFS is unavailable. It must never fall back to an ordinary local directory.
 
 ### Production orchestration
 
@@ -205,6 +207,7 @@ These policies define what must be decided before production, rather than prescr
 - In local development and CI, point restic and object-storage integration tests at the local `s3` service. Production backup jobs must verify that the NFS mount is present and writable before creating or pruning backups.
 - Treat an unavailable NFS mount as a backup failure, alert on it, and do not silently write to a local fallback path that could fill the production host.
 - Document the NFS export, mount point, ownership, permissions, encryption key handling, and the NFS provider's snapshot or replication policy.
+- Run the unattended backup job with a dedicated service account. Use a fixed `/srv/backups` mount and store one restic repository password in a protected key file readable only by that account or its rootless Podman secret. The single operator owns this password and must keep a separate offline recovery copy; losing it makes the encrypted backup repository unrecoverable. Test restore access whenever the host or backup configuration changes.
 - Add continuous write-ahead-log archiving or point-in-time recovery when the 24-hour RPO becomes insufficient.
 - Restrict who can read or delete backups, and keep backup credentials separate from application credentials.
 - Test a restore on a scheduled basis. A backup is not considered valid until a restore produces a usable database and the result is recorded.
@@ -229,7 +232,7 @@ These policies define what must be decided before production, rather than prescr
 - Keep `/metrics` and `/stats` separate: Prometheus metrics are machine-readable time series for alerting, while `/stats` is an application API for dashboard cards and business aggregates. Do not make Grafana query the primary application database directly.
 - Track baseline metrics: request count, error count, latency, active connections, pool saturation, migration status, and process health.
 - Use stable metric names and low-cardinality labels such as `service`, `route`, `method`, `status_code`, and `environment`. Never label metrics by user, email, session, request ID, or unrestricted URL values.
-- Start with Grafana, Prometheus, and Loki as separate rootless containers on the same production Linux host. Grafana provides dashboards and alert views, Prometheus stores and evaluates metrics, and Loki stores searchable logs. Apply explicit CPU, memory, and disk-retention limits so monitoring cannot consume all application capacity.
+- Start with Grafana, Prometheus, and Loki as separate rootless containers on the same production Linux host. Grafana provides dashboards and alert views, Prometheus stores and evaluates metrics, and Loki stores searchable logs. Reserve approximately 1 CPU and 1.5-2 GiB RAM and 10 GiB total disk for the small initial monitoring stack, with an alert at 80% disk usage and explicit per-container CPU, memory, and disk-retention limits so monitoring cannot consume all application capacity.
 - Retain observability data for 14 days initially. Back up Grafana dashboards, alert rules, and configuration even when short-lived Prometheus and Loki data is not retained long term.
 - Add OpenTelemetry and Grafana Tempo tracing when cross-service debugging becomes necessary; tracing is intentionally deferred from the first implementation.
 - Define alerts for sustained API 5xx errors, high latency, failed readiness, PgBouncer pool exhaustion, PostgreSQL storage or connection pressure, backup failures, and certificate expiry in the external platform.
@@ -261,8 +264,6 @@ For an ADR, include `Status`, `Context`, `Decision`, and `Consequences`. Keep th
 
 ## Open Decisions
 
-- The exact NFS export, mount point, and restic encryption-key rotation procedure.
-- The concrete resource limits and disk sizing for the Grafana, Prometheus, and Loki containers.
-- Revisit the single-host design after a host-level outage or when sustained CPU, memory, database connection, or request-latency pressure reaches the capacity threshold agreed by the team.
+- The actual private NFS hostname and export path are deployment-specific values supplied outside the repository.
 
 These should become ADRs once implementation begins and the alternatives are understood.
