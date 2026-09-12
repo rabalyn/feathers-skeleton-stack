@@ -201,8 +201,12 @@ These policies define what must be decided before production, rather than prescr
 ### Observability policy
 
 - Emit structured JSON logs to standard output with timestamp, level, service, request ID, user ID where appropriate, route, status, duration, and error details. Never log passwords, tokens, or sensitive request bodies.
-- Provide separate liveness and readiness endpoints. Liveness says the process is running; readiness verifies required dependencies such as PgBouncer are reachable.
+- Provide separate health endpoints: `GET /health/live` only confirms that the API process is running, while `GET /health/ready` verifies required dependencies such as PgBouncer are reachable. Readiness may return dependency details to internal callers, but public failure responses should not disclose connection information.
+- Expose `GET /metrics` in Prometheus text format. This endpoint is for the Prometheus scraper, should be reachable only from the internal monitoring network or with dedicated scrape credentials, and must not contain passwords, tokens, email addresses, user IDs, or other high-cardinality personal data.
+- Expose an authenticated `GET /stats` resource for application dashboards. It should return aggregate values such as total users, active users, session counts, activity counts, request/error totals, and time-bucketed trends. Protect it with a dedicated admin/observability permission and apply pagination or bounded time windows where details are requested.
+- Keep `/metrics` and `/stats` separate: Prometheus metrics are machine-readable time series for alerting, while `/stats` is an application API for dashboard cards and business aggregates. Do not make Grafana query the primary application database directly.
 - Track baseline metrics: request count, error count, latency, active connections, pool saturation, migration status, and process health.
+- Use stable metric names and low-cardinality labels such as `service`, `route`, `method`, `status_code`, and `environment`. Never label metrics by user, email, session, request ID, or unrestricted URL values.
 - Start with a self-hosted Grafana, Prometheus, and Loki stack. Grafana provides dashboards and alert views, Prometheus stores and evaluates metrics, and Loki stores searchable logs.
 - Add OpenTelemetry and Grafana Tempo tracing when cross-service debugging becomes necessary; tracing is intentionally deferred from the first implementation.
 - Define alerts for sustained API 5xx errors, high latency, failed readiness, PgBouncer pool exhaustion, PostgreSQL storage or connection pressure, backup failures, and certificate expiry in the external platform.
