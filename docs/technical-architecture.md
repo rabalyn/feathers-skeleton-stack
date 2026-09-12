@@ -71,10 +71,11 @@ In production, the intended topology is:
 ```text
 Browser --HTTPS--> externally managed Nginx -> frontend assets
                                       \\-> Feathers API --pool--> PgBouncer -> PostgreSQL
+                                      \\-> S3-compatible object storage
                                       \\-> WebSocket upgrade
 ```
 
-Production Nginx, certificates, DNS, and public routing are managed outside this repository. This repository produces the frontend assets/image and the Feathers API image for that platform to deploy. The API connects to PgBouncer, not directly to PostgreSQL; PgBouncer owns the database connection pool and forwards pooled connections to PostgreSQL.
+Production Nginx, certificates, DNS, and public routing are managed outside this repository. This repository produces the frontend assets/image, the Feathers API image, and the S3-compatible object-storage service configuration for the production platform to deploy. The API connects to PgBouncer, not directly to PostgreSQL; PgBouncer owns the database connection pool and forwards pooled connections to PostgreSQL.
 
 PostgreSQL and its production storage are infrastructure concerns. The API should receive its connection details through environment variables or a secret mechanism, never from committed files.
 
@@ -88,7 +89,7 @@ The service topology should be described once in `compose.yaml` and be usable wi
 
 - `db`: PostgreSQL with a named persistent volume and a health check.
 - `pgbouncer`: PgBouncer between the API and PostgreSQL, with pool size and pool mode configured explicitly.
-- `s3`: local S3-compatible object storage service, such as MinIO, backed by a named Podman volume.
+- `s3`: S3-compatible object storage service, such as MinIO, backed by a persistent named Podman volume in local and production profiles.
 - `api`: FeathersJS API, dependent on database readiness rather than merely container startup.
 - `web`: production frontend image containing static assets.
 - `nginx`: local/test reverse proxy, static asset server, API router, and WebSocket endpoint.
@@ -102,15 +103,25 @@ PgBouncer is a connection pooler, not a replacement for PostgreSQL. The API shou
 
 The pooler must have its own health check and the API must fail clearly when the pooler is unavailable. PostgreSQL remains private to the Compose network; application containers should not need a direct database route.
 
-### Local S3-compatible storage
+### S3-compatible object storage
 
-The local Compose profile should provide an S3-compatible object storage service using a rootless Podman container and a named local volume. MinIO is the initial candidate because it provides the S3 API needed by backup and application tests without requiring a cloud account. The API and backup jobs should use the internal service name and port; the storage console and S3 port should be bound to localhost only when interactive inspection is needed.
+The local and production Compose/Quadlet profiles should provide an S3-compatible object storage service using a rootless Podman container and persistent storage. MinIO is the initial candidate because it provides the S3 API needed by the application without requiring a third-party cloud account. The API should use the internal service name and port; the storage console and S3 port should be bound to localhost or a private network unless external access is explicitly required.
 
-Local object storage is disposable development infrastructure. It must not be treated as a backup of itself: production backups must be copied to independent off-host S3-compatible storage. The S3 bucket names, endpoint, region, and path-style setting should be configurable through environment variables so tests can switch between local storage and production storage.
+The S3 service is intended for:
+
+- application object data such as uploaded documents, images, exports, and other binary files when the product requires them;
+- generated application artifacts that are too large or unsuitable for PostgreSQL rows;
+- local and CI staging of encrypted `pg_dump`/restic backup archives when testing backup and restore workflows.
+
+It is not intended for users, sessions, activity records, relational business data, PostgreSQL's primary storage, Prometheus metrics, Loki logs, or Grafana's system data. Those belong in PostgreSQL or their dedicated services. In the initial application scaffold, the S3 bucket and object schema should only be added when an upload/export feature actually needs them.
+
+In development and CI, the object-storage volume is disposable. In production, it is persistent application infrastructure and must have a volume backup or replication plan. The production S3 service is not a third-party dependency; it is deployed and operated with the rest of this stack. The S3 bucket names, endpoint, region, and path-style setting should be configurable through environment variables so tests can switch between local, CI, and production storage.
+
+Production database backups are stored on an NFS-mounted path accessible from the production host, not in the production S3 bucket. Backups stored on NFS protect against some logical or service-level failures, but not necessarily host, NFS server, disk, or site loss. The NFS service must provide its own snapshots or replication before the backup policy claims host-disaster protection.
 
 ### Production orchestration
 
-The initial production target is one Linux host using rootless Podman and systemd Quadlet. Quadlet unit files provide service ordering, restart behavior, environment-file integration, and startup after host reboots without requiring a full orchestration platform. External Nginx routes traffic to the API and frontend deployment on that host.
+The initial production target is one Linux host using rootless Podman and systemd Quadlet. Quadlet unit files provide service ordering, restart behavior, environment-file integration, and startup after host reboots without requiring a full orchestration platform. External Nginx routes traffic to the API, frontend, and private S3 service on that host.
 
 The deployment should use immutable image tags, a controlled update procedure, health checks, and a documented rollback to the previous image tag. Move to multiple application hosts or a managed container platform when availability requirements exceed a single-host design.
 
@@ -160,8 +171,8 @@ The CI image build should be the same Containerfile path used for deployment. Th
 
 ### Production
 
-- Deploy immutable versioned images for the API and frontend assets through the external production platform.
-- Use externally managed Nginx, TLS certificates, DNS, PostgreSQL, PgBouncer, storage, and log collection.
+- Deploy immutable versioned images for the API and frontend assets, plus the persistent S3-compatible storage service, through the production host's Quadlet setup.
+- Use externally managed Nginx, TLS certificates, DNS, PostgreSQL, PostgreSQL storage, PgBouncer, and production log collection.
 - Apply migrations as a controlled release step before enabling code that depends on them.
 - Pass configuration through environment variables or a secret store.
 - Add health and readiness endpoints, structured logs, and basic metrics before the first production release.
@@ -189,9 +200,11 @@ These policies define what must be decided before production, rather than prescr
 ### Backup policy
 
 - The initial target is an RPO of 24 hours and an RTO of 4 hours. RPO is the maximum acceptable data loss; RTO is the maximum acceptable time to restore service.
-- The application team owns the backup jobs, encrypted off-host storage, retention, restore procedure, and restore drills.
-- Use scheduled `pg_dump` backups, encrypt and deduplicate them with restic, and store them in S3-compatible off-host storage. Retain daily PostgreSQL backups for 30 days.
-- In local development and CI, point restic and object-storage integration tests at the local `s3` service. In production, use independent off-host S3-compatible storage.
+- The application team owns the backup jobs, encrypted storage, retention, restore procedure, and restore drills.
+- Use scheduled `pg_dump` backups, encrypt and deduplicate them with restic, and store the resulting repository on the production NFS mount. Retain daily PostgreSQL backups for 30 days.
+- In local development and CI, point restic and object-storage integration tests at the local `s3` service. Production backup jobs must verify that the NFS mount is present and writable before creating or pruning backups.
+- Treat an unavailable NFS mount as a backup failure, alert on it, and do not silently write to a local fallback path that could fill the production host.
+- Document the NFS export, mount point, ownership, permissions, encryption key handling, and the NFS provider's snapshot or replication policy.
 - Add continuous write-ahead-log archiving or point-in-time recovery when the 24-hour RPO becomes insufficient.
 - Restrict who can read or delete backups, and keep backup credentials separate from application credentials.
 - Test a restore on a scheduled basis. A backup is not considered valid until a restore produces a usable database and the result is recorded.
@@ -248,7 +261,7 @@ For an ADR, include `Status`, `Context`, `Decision`, and `Consequences`. Keep th
 
 ## Open Decisions
 
-- The exact S3-compatible backup destination and credential rotation procedure.
+- The exact NFS export, mount point, and restic encryption-key rotation procedure.
 - The concrete resource limits and disk sizing for the Grafana, Prometheus, and Loki containers.
 - Revisit the single-host design after a host-level outage or when sustained CPU, memory, database connection, or request-latency pressure reaches the capacity threshold agreed by the team.
 
