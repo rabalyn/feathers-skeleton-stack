@@ -183,7 +183,8 @@ These policies define what must be decided before production, rather than prescr
 
 - The initial target is an RPO of 24 hours and an RTO of 4 hours. RPO is the maximum acceptable data loss; RTO is the maximum acceptable time to restore service.
 - The application team owns the backup jobs, encrypted off-host storage, retention, restore procedure, and restore drills.
-- Take automated PostgreSQL backups and retain daily backups for a defined period. Add continuous write-ahead-log archiving or point-in-time recovery when the 24-hour RPO becomes insufficient.
+- Use scheduled `pg_dump` backups, encrypt and deduplicate them with restic, and store them in S3-compatible off-host storage. Retain daily PostgreSQL backups for 30 days.
+- Add continuous write-ahead-log archiving or point-in-time recovery when the 24-hour RPO becomes insufficient.
 - Restrict who can read or delete backups, and keep backup credentials separate from application credentials.
 - Test a restore on a scheduled basis. A backup is not considered valid until a restore produces a usable database and the result is recorded.
 - Document who can start a restore, where the restored database is created, how application access is paused, and how the restored version is verified.
@@ -207,7 +208,8 @@ These policies define what must be decided before production, rather than prescr
 - Keep `/metrics` and `/stats` separate: Prometheus metrics are machine-readable time series for alerting, while `/stats` is an application API for dashboard cards and business aggregates. Do not make Grafana query the primary application database directly.
 - Track baseline metrics: request count, error count, latency, active connections, pool saturation, migration status, and process health.
 - Use stable metric names and low-cardinality labels such as `service`, `route`, `method`, `status_code`, and `environment`. Never label metrics by user, email, session, request ID, or unrestricted URL values.
-- Start with a self-hosted Grafana, Prometheus, and Loki stack. Grafana provides dashboards and alert views, Prometheus stores and evaluates metrics, and Loki stores searchable logs.
+- Start with Grafana, Prometheus, and Loki as separate rootless containers on the same production Linux host. Grafana provides dashboards and alert views, Prometheus stores and evaluates metrics, and Loki stores searchable logs. Apply explicit CPU, memory, and disk-retention limits so monitoring cannot consume all application capacity.
+- Retain observability data for 14 days initially. Back up Grafana dashboards, alert rules, and configuration even when short-lived Prometheus and Loki data is not retained long term.
 - Add OpenTelemetry and Grafana Tempo tracing when cross-service debugging becomes necessary; tracing is intentionally deferred from the first implementation.
 - Define alerts for sustained API 5xx errors, high latency, failed readiness, PgBouncer pool exhaustion, PostgreSQL storage or connection pressure, backup failures, and certificate expiry in the external platform.
 - Define an owner and response action for every alert. Review logs and alerts after the first releases and adjust thresholds based on observed normal behavior.
@@ -236,8 +238,8 @@ For an ADR, include `Status`, `Context`, `Decision`, and `Consequences`. Keep th
 ## Open Decisions
 
 - Exact retention periods for PostgreSQL backups and observability data.
-- The concrete backup tooling and storage destination on the production host.
-- The concrete Grafana, Prometheus, and Loki deployment layout and resource limits.
-- When availability requirements justify multiple application hosts or a managed container platform.
+- The exact S3-compatible backup destination and credential rotation procedure.
+- The concrete resource limits and disk sizing for the Grafana, Prometheus, and Loki containers.
+- Revisit the single-host design after a host-level outage or when sustained CPU, memory, database connection, or request-latency pressure reaches the capacity threshold agreed by the team.
 
 These should become ADRs once implementation begins and the alternatives are understood.
