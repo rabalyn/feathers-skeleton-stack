@@ -42,6 +42,8 @@ This repository will use a pnpm workspace. A monorepo is a single repository con
 
 pnpm provides workspace dependency linking, a shared lockfile, and efficient package storage without requiring a separate monorepo orchestration product. Start with pnpm workspace scripts. Add a task orchestrator such as Turborepo or Nx only if build caching or task graphs become a demonstrated need; it is not required for the initial project.
 
+The initial API contract will use Feathers' typed client directly. Feathers service interfaces, TypeBox schemas, and inferred TypeScript types should live in a shared `packages/contracts` package imported by both the API and frontend. OpenAPI client generation is deferred until an external consumer or language requires it.
+
 ## Repository Layout
 
 The implementation should grow toward this structure:
@@ -98,6 +100,12 @@ Use separate profiles or Compose files for development and production where thei
 PgBouncer is a connection pooler, not a replacement for PostgreSQL. The API should use a pooler connection string and a pool mode appropriate to the application. Transaction pooling is the default candidate for stateless Feathers requests, but it must be checked against session-specific features such as prepared statements, advisory locks, and session variables. PostgreSQL migrations should use a direct administrative connection or a separately configured session-pooling path when required.
 
 The pooler must have its own health check and the API must fail clearly when the pooler is unavailable. PostgreSQL remains private to the Compose network; application containers should not need a direct database route.
+
+### Production orchestration
+
+The initial production target is one Linux host using rootless Podman and systemd Quadlet. Quadlet unit files provide service ordering, restart behavior, environment-file integration, and startup after host reboots without requiring a full orchestration platform. External Nginx routes traffic to the API and frontend deployment on that host.
+
+The deployment should use immutable image tags, a controlled update procedure, health checks, and a documented rollback to the previous image tag. Move to multiple application hosts or a managed container platform when availability requirements exceed a single-host design.
 
 ### Nginx and local TLS
 
@@ -173,11 +181,11 @@ These policies define what must be decided before production, rather than prescr
 
 ### Backup policy
 
-- Define an RPO (maximum acceptable data loss) and RTO (maximum acceptable restore time). A reasonable initial target is an RPO of 24 hours and an RTO of 4 hours; tighten these after the application has real operational requirements.
-- Take automated PostgreSQL backups, retain daily backups for a chosen period, and encrypt them at rest.
-- Prefer continuous write-ahead-log archiving or point-in-time recovery when the hosting platform supports it; this reduces data loss compared with daily dumps alone.
-- Store backups outside the database host or volume and restrict who can read or delete them.
-- Test a restore on a schedule. A backup is not considered valid until a restore produces a usable database and the result is recorded.
+- The initial target is an RPO of 24 hours and an RTO of 4 hours. RPO is the maximum acceptable data loss; RTO is the maximum acceptable time to restore service.
+- The application team owns the backup jobs, encrypted off-host storage, retention, restore procedure, and restore drills.
+- Take automated PostgreSQL backups and retain daily backups for a defined period. Add continuous write-ahead-log archiving or point-in-time recovery when the 24-hour RPO becomes insufficient.
+- Restrict who can read or delete backups, and keep backup credentials separate from application credentials.
+- Test a restore on a scheduled basis. A backup is not considered valid until a restore produces a usable database and the result is recorded.
 - Document who can start a restore, where the restored database is created, how application access is paused, and how the restored version is verified.
 
 ### Migration and rollback policy
@@ -195,9 +203,11 @@ These policies define what must be decided before production, rather than prescr
 - Emit structured JSON logs to standard output with timestamp, level, service, request ID, user ID where appropriate, route, status, duration, and error details. Never log passwords, tokens, or sensitive request bodies.
 - Provide separate liveness and readiness endpoints. Liveness says the process is running; readiness verifies required dependencies such as PgBouncer are reachable.
 - Track baseline metrics: request count, error count, latency, active connections, pool saturation, migration status, and process health.
-- Start with the production platform's log and metric service. Add OpenTelemetry tracing when cross-service debugging becomes necessary; do not add a large observability platform before there is a clear operational need.
+- Start with a self-hosted Grafana, Prometheus, and Loki stack. Grafana provides dashboards and alert views, Prometheus stores and evaluates metrics, and Loki stores searchable logs.
+- Add OpenTelemetry and Grafana Tempo tracing when cross-service debugging becomes necessary; tracing is intentionally deferred from the first implementation.
 - Define alerts for sustained API 5xx errors, high latency, failed readiness, PgBouncer pool exhaustion, PostgreSQL storage or connection pressure, backup failures, and certificate expiry in the external platform.
 - Define an owner and response action for every alert. Review logs and alerts after the first releases and adjust thresholds based on observed normal behavior.
+- Back up Grafana, Prometheus, and Loki configuration and any dashboards or alert rules that are not reproducibly defined in the repository.
 
 ## Configuration and Security
 
@@ -221,9 +231,9 @@ For an ADR, include `Status`, `Context`, `Decision`, and `Consequences`. Keep th
 
 ## Open Decisions
 
-- API contract generation and shared TypeScript types beyond TypeBox schemas.
-- Production orchestration target and the external platform's deployment contract.
-- Exact backup RPO/RTO, retention, and restore ownership.
-- Production metrics, tracing, log retention, and alerting providers.
+- Exact retention periods for PostgreSQL backups and observability data.
+- The concrete backup tooling and storage destination on the production host.
+- The concrete Grafana, Prometheus, and Loki deployment layout and resource limits.
+- When availability requirements justify multiple application hosts or a managed container platform.
 
 These should become ADRs once implementation begins and the alternatives are understood.
