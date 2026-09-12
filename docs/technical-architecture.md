@@ -88,7 +88,9 @@ Browser --HTTPS--> externally managed Nginx -> frontend assets
                                       \\-> WebSocket upgrade
 ```
 
-Production Nginx, certificates, DNS, and public routing are managed outside this repository but run on the same initial production host. On that host, Feathers listens on `0.0.0.0:3000` inside its container and Quadlet publishes it only as `127.0.0.1:3000:3000`; the web server listens on `0.0.0.0:8080` inside its container and is published only as `127.0.0.1:8080:8080`. External Nginx proxies frontend requests to the web loopback upstream and REST/WebSocket requests to the API loopback upstream. The WebSocket route uses HTTP/1.1 upgrade headers and an explicit idle timeout. S3 remains private and is reachable only by the API and backup jobs. This repository produces the frontend image, the Feathers API image, and the S3-compatible object-storage service configuration for the production platform to deploy. The API connects to PgBouncer, not directly to PostgreSQL; PgBouncer owns the database connection pool and forwards pooled connections to PostgreSQL.
+Production Nginx, certificates, DNS, and public routing are managed in a separate infrastructure repository but run on the same initial production host. On that host, Feathers listens on `0.0.0.0:3000` inside its container and Quadlet publishes it only as `127.0.0.1:3000:3000`; the web server listens on `0.0.0.0:8080` inside its container and is published only as `127.0.0.1:8080:8080`. External Nginx proxies frontend requests to the web loopback upstream and REST/WebSocket requests to the API loopback upstream. The WebSocket route uses HTTP/1.1 upgrade headers and an explicit idle timeout. S3 remains private and is reachable only by the API and backup jobs. This repository produces the frontend image, the Feathers API image, and the S3-compatible object-storage service configuration for the production platform to deploy. The API connects to PgBouncer, not directly to PostgreSQL; PgBouncer owns the database connection pool and forwards pooled connections to PostgreSQL.
+
+The production host firewall exposes HTTPS publicly, optionally HTTP for redirects or certificate issuance, and restricts SSH to an approved management source. API, web, Loki, Dozzle, S3, PostgreSQL, PgBouncer, Prometheus, and Grafana ports remain loopback-only or private-network-only.
 
 PostgreSQL and PgBouncer are operated as part of this deployment in production. PostgreSQL data uses dedicated persistent storage, while the API receives its connection details through environment variables or a secret mechanism, never from committed files. A separate PostgreSQL node and a Valkey node are future scaling options, not part of the initial deployment. Valkey should only be introduced when a concrete need such as shared caching, rate-limit coordination, background jobs, or multi-instance real-time coordination is identified.
 
@@ -195,10 +197,9 @@ CI should build the API, web, and Nginx images and run checks against an ephemer
 The CI build should use the same API and frontend Containerfiles used for deployment, while the test-only Nginx image uses its repository-owned test Containerfile and configuration. This catches missing files, incorrect runtime configuration, and frontend routing issues before release.
 
 ### Production
-
-- Deploy immutable versioned images for the API and frontend assets, plus the persistent S3-compatible storage service, through the production host's Quadlet setup.
+ Create production initial data with a manual, authenticated one-time bootstrap command after migrations. Never auto-create demo users, default passwords, or administrator credentials during API startup.
 - Use externally managed Nginx, TLS certificates, DNS, and public routing. This deployment operates PostgreSQL, PostgreSQL storage, PgBouncer, S3-compatible storage, Grafana, Prometheus, Loki, and their persistent volumes.
-- Keep PostgreSQL on a dedicated persistent volume with an 80% capacity alert; do not share its data volume with S3 or observability services.
+ Provide an explicit deterministic local/CI seed command such as `pnpm db:seed`; do not seed automatically on every development startup.
 - Apply migrations as a controlled release step before enabling code that depends on them.
 - Pass configuration through environment variables or a secret store.
 - Add health and readiness endpoints, structured logs, and basic metrics before the first production release.
