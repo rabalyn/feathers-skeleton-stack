@@ -50,6 +50,10 @@ Initial abuse controls use Valkey-backed login and password-reset rate limits by
 - `feathers-pinia` for Feathers service state, querying, pagination, and real-time synchronization where needed.
 - A generated production bundle of static assets.
 
+### Authorization model
+
+The initial shared-app role model is `owner + admin + user`, implemented with `feathers-casl` for explicit service-level authorization. This gives a clean permission boundary without introducing multi-tenancy in v1. The first app should assume a single shared app context and only add tenant boundaries when an actual product need appears.
+
 ### Workspace and package management
 
 This repository will use a pnpm workspace. A monorepo is a single repository containing multiple related packages or applications that can be developed, tested, and versioned together. Here, the API and web applications live under `apps/`, while genuinely shared code can live under `packages/`.
@@ -57,6 +61,10 @@ This repository will use a pnpm workspace. A monorepo is a single repository con
 pnpm provides workspace dependency linking, a shared lockfile, and efficient package storage without requiring a separate monorepo orchestration product. Start with pnpm workspace scripts. Add a task orchestrator such as Turborepo or Nx only if build caching or task graphs become a demonstrated need; it is not required for the initial project.
 
 The initial API contract will use Feathers' typed client directly. Feathers service interfaces, TypeBox schemas, and inferred TypeScript types should live in a shared `packages/contracts` package imported by both the API and frontend. OpenAPI client generation is deferred until an external consumer or language requires it.
+
+## Initial v1 domain model
+
+The simplest first domain model is a shared-app user plus a basic document/profile object. This gives the app a real CRUD surface, supports upload and export permissions, and does not require tenant boundaries or a larger domain model before the first scaffold is working.
 
 ## Repository Layout
 
@@ -140,7 +148,7 @@ It is not intended for users, sessions, activity records, relational business da
 
 The browser accesses object data through authorized Feathers API operations. The API validates ownership and permissions, then streams objects to or from S3. The S3 API and console are private and are not exposed through public Nginx routes. Presigned URLs can be introduced later if large-file bandwidth makes API-mediated transfers impractical.
 
-The initial API upload limit is 50 MiB per object. Accept only an explicit allowlist of MIME types and extensions, validate detected content type where practical, stream transfers without buffering entire objects in API memory, and reject unknown or oversized objects. Use separate S3 buckets for application uploads and generated exports in production. A backup-staging bucket exists only in local/CI profiles; production exports objects directly to the dated NFS staging tree.
+The initial API upload limit is 50 MiB per object. Accept only an explicit allowlist of MIME types and extensions, validate detected content type where practical, stream transfers without buffering entire objects in API memory, and reject unknown or oversized objects. v1 includes uploads and exports, with separate S3 buckets for application uploads and generated exports in production. A backup-staging bucket exists only in local/CI profiles; production exports objects directly to the dated NFS staging tree.
 
 In development and CI, the object-storage volume is disposable. In production, it is persistent application infrastructure and must have a volume backup or replication plan. The production S3 service is not a third-party dependency; it is deployed and operated with the rest of this stack. The S3 bucket names, endpoint, region, and path-style setting should be configurable through environment variables so tests can switch between local, CI, and production storage. Use an API-level object export or supported bucket listing/download to create an immutable dated staging tree containing production object bytes, metadata, and checksums, then snapshot that tree with restic. Never copy a live MinIO data directory as if it were a consistent object backup.
 
