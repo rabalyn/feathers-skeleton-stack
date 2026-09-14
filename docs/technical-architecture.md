@@ -41,7 +41,7 @@ Application activity is recorded as explicit, successful audit events for meanin
 
 Because the access token is JavaScript-readable while it lives in memory, the frontend must still apply a strict Content Security Policy, avoid unsafe HTML rendering, keep dependencies updated, and never place secrets in the token payload. Cookie-based refresh requests require CSRF protection and explicit origin checks.
 
-Initial abuse controls use Valkey-backed login and password-reset rate limits by IP and account identifier, generic authentication failure messages, and structured security-event logging without passwords or tokens. If Valkey is unavailable, reject affected authentication and password-reset attempts rather than fail open. Password reset and email verification may use development-only tokens during scaffolding; production release requires a real email delivery integration with expiring, single-use tokens.
+Initial abuse controls use Valkey-backed login and password-reset rate limits by IP and account identifier, generic authentication failure messages, and structured security-event logging without passwords or tokens. Use a default of 3 failed login attempts per 10 minutes per account or IP, a password-reset limit of 3 requests per hour per account or IP, and a 15-minute rate-limit cooldown. If Valkey is unavailable, reject affected authentication and password-reset attempts rather than fail open. Password reset and email verification may use development-only tokens during scaffolding; production release requires a real email delivery integration with expiring, single-use tokens.
 
 ### Frontend
 
@@ -156,7 +156,7 @@ Production uses separate private networks: `backend` contains API, PgBouncer, Po
 
 The deployment should use immutable image tags, a controlled update procedure, health checks, and a documented rollback to the previous image tag. Move to multiple application hosts or a managed container platform when availability requirements exceed a single-host design.
 
-Initially, CI does not publish images to a registry. The production host builds the API, web, and production service images from a versioned release source using the pinned lockfile and Containerfiles. Each release has a versioned GitHub release manifest recording the source commit, dependency lockfile checksum, build inputs, and resulting local image digests. The host retains the previous image set for rollback. Revisit a registry when build time, host access, or multi-host deployment makes local production builds impractical.
+Initially, CI does not publish images to a registry. The production host builds the API, web, and production service images from a versioned release source using the pinned lockfile and Containerfiles. Use semantic-version tags such as `v1.2.3` plus the exact git SHA, and record both in a versioned GitHub release manifest with the source commit, dependency lockfile checksum, build inputs, and resulting local image digests. The host retains the previous image set for rollback. Revisit a registry when build time, host access, or multi-host deployment makes local production builds impractical.
 
 ### Nginx and local TLS
 
@@ -185,6 +185,7 @@ This gives deployment a reproducible artifact and makes the build environment co
 - Run PostgreSQL in rootless Podman.
 - Run PgBouncer, Nginx, and the log viewer in the containerized development/test profile.
 - Run the API and frontend either locally for fast reload or through the development Compose profile.
+- Use the default local development ports: Feathers API on `3000`, Vite/Quasar on `5173`, and the test Nginx profile on `8443` for HTTPS and `8080` for HTTP. Keep the same host ports across local, CI, and the test profile to reduce surprise.
 - Use the Nginx profile for browser and WebSocket integration testing; use `mkcert` certificates when HTTPS behavior matters.
 - Use a non-production database and credentials.
 - Keep migrations and seed data repeatable.
@@ -206,6 +207,7 @@ The CI build should use the same API and frontend Containerfiles used for deploy
 ### Production
 - Use externally managed Nginx, TLS certificates, DNS, and public routing. This deployment operates PostgreSQL, PostgreSQL storage, PgBouncer, S3-compatible storage, Grafana, Prometheus, Loki, and their persistent volumes.
 - Create production initial data with a manual, authenticated one-time bootstrap command after migrations. Never auto-create demo users, default passwords, or administrator credentials during API startup.
+- Validate the bootstrap workflow before opening the app to real users, and use a single initial admin account created explicitly for the first deployment.
 - Apply migrations as a controlled release step before enabling code that depends on them.
 - Pass configuration through environment variables or a secret store.
 - Add health and readiness endpoints, structured logs, and basic metrics before the first production release.
