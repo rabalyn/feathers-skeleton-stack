@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADRs 0035, 0037
-- Related: [0001](0001-one-stack-every-environment.md), [0004](0004-pgbouncer-pools.md), [0008](0008-authentication-saml2-ldap.md), [0017](0017-nfs-backup-storage.md), [0020](0020-object-storage-uploads.md), [0022](0022-observability-and-alerting.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md)
+- Related: [0001](0001-one-stack-every-environment.md), [0004](0004-pgbouncer-pools.md), [0008](0008-authentication-saml2-ldap.md), [0015](0015-testing-vitest-playwright.md), [0017](0017-nfs-backup-storage.md), [0020](0020-object-storage-uploads.md), [0022](0022-observability-and-alerting.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md)
 
 ## Context
 
@@ -41,14 +41,16 @@ The stack needs a fixed service list and a network layout where no component can
 | `uptime` | Uptime Kuma, external availability check | must run on another machine ([0022](0022-observability-and-alerting.md)) |
 | `backup` | Scheduled `pg_dump` + restic service | same |
 | `migrate` | One-shot Knex migration job | same |
+| `test` | One-shot Vitest run for unit and integration tests, built from the `api` build stage; `test` profile only ([0015](0015-testing-vitest-playwright.md)) | — |
+| `e2e` | One-shot Playwright run; `test` profile only ([0015](0015-testing-vitest-playwright.md)) | — |
 
 ### Networks
 
 | Network | Members | Purpose |
 | --- | --- | --- |
-| `edge` | `nginx`, `api`, `web` (dev), `uptime` | Public request path |
-| `idp-edge` | `nginx`, `idp` | Browser access to the local IdP; local and CI only |
-| `app-data` | `api`, `worker`, `pgbouncer`, `valkey`, `valkey-exporter` | Application data access |
+| `edge` | `nginx`, `api`, `web` (dev), `uptime`, `e2e` (test) | Public request path |
+| `idp-edge` | `nginx`, `idp`, `e2e` (test) | Browser access to the local IdP; local and CI only |
+| `app-data` | `api`, `worker`, `pgbouncer`, `valkey`, `valkey-exporter`, `test` (test) | Application data access |
 | `db` | `pgbouncer`, `postgres`, `backup`, `migrate`, `postgres-exporter`, `pgbouncer-exporter` | Direct database access |
 | `identity` | `api`, `idp`, `ldap` | Authentication and directory lookup |
 | `object` | `api`, `worker`, `s3`, `backup` | Object storage |
@@ -65,6 +67,7 @@ Consequences of this layout, all intentional:
 - `openbao` is reachable only by agents and the backup service. Application containers never talk to it; they read files the agent wrote.
 - The `api` and `worker` join `observability` for scraping and, for the worker, for SMTP. This is wider than a dedicated scrape network and is accepted as the cost of a flat single-host model.
 - The API's metrics and health listener is a separate port reachable only on `observability` ([0022](0022-observability-and-alerting.md)).
+- The test runners sit where the code they test sits. `test` is on `app-data` only, like the API, so integration tests reach PostgreSQL through PgBouncer and cannot bypass it; the migration into `test_template` is done by the `migrate` job. `e2e` is on `edge` and `idp-edge`, like a browser, and reaches nothing else. Neither exists in production.
 
 Only `nginx` publishes ports to the host. Every other service is reachable only on its private networks.
 

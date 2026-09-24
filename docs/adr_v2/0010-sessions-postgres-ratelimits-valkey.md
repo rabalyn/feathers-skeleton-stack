@@ -21,7 +21,7 @@ A JWT that is only checked by signature stays valid until it expires, so logout,
 ### Two credentials, two mechanisms
 
 - The **access token** is a JWT signed with the authentication signing secret ([0023](0023-secrets-management.md)). It carries the session id, is held **in memory only** in the browser, lasts 15 minutes, and is what the WebSocket connection authenticates with. Because the session row is checked per request, the signature proves the token was issued here; the row decides whether it is still valid.
-- The **refresh token** is an opaque random value, stored server-side only as a hash. It is not a JWT and does not depend on the signing secret. It travels in an `HttpOnly; Secure; SameSite=Strict` cookie scoped to `Path=/authentication`, which covers both refresh and logout.
+- The **refresh token** is an opaque random value, stored server-side only as a hash. It is not a JWT and does not depend on the signing secret. It travels in an `HttpOnly; Secure; SameSite=Strict` cookie scoped to `Path=/api/authentication`, which covers both refresh and logout. The endpoint sits under the `/api` prefix like every API path ([0016](0016-nginx-and-tls-everywhere.md)).
 - Rotating the signing secret therefore invalidates outstanding access tokens only. Clients refresh transparently and nobody is logged out. Revoking every session is a separate, explicit operation.
 
 ### Refresh rotation and reuse detection

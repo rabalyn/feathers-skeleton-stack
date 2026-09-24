@@ -47,8 +47,8 @@ The dividing line for `operator` is deliberate and worth stating plainly: an ope
 - `feathers-casl` defines abilities per role. Rules are declared in one module, not scattered across services.
 - A **global default-deny hook** requires authentication and authorization on every service. Public endpoints are an explicit allowlist, each rate-limited where it accepts credentials:
   - `GET /api/ping`,
-  - the SAML routes: metadata, login, ACS and logout,
-  - the `/authentication` endpoint for refresh, logout and the break-glass password login.
+  - the SAML routes under `/api/auth/saml/`: metadata, login, ACS and logout,
+  - the `/api/authentication` endpoint for refresh, logout and the break-glass password login.
 - Health, readiness and metrics are not on the public port at all ([0022](0022-observability-and-alerting.md)), so they need no allowlist entry.
 - For `find` and `get`, CASL conditions are translated into Knex query conditions, so a `user` role query is scoped to owned rows by the authorization layer rather than by each service remembering to filter.
 - Field-level restrictions are enforced by the external resolver ([0005](0005-typebox-schema-boundary.md)), so a permitted read cannot leak a forbidden field.

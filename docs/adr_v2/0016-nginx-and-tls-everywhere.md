@@ -26,6 +26,7 @@ Nginx is the reverse proxy and TLS terminator in every environment. Only the sou
 ### The local CA
 
 - On first start, `certs` creates a root CA and stores it in a volume. On every start it issues or renews the leaf certificate for the configured local host names (by default `app.localhost` and `idp.localhost`) if it is missing or near expiry. `*.localhost` resolves to the loopback address in browsers without editing `/etc/hosts`.
+- Locally Nginx publishes HTTPS on host port **8443** by default, because rootless Podman cannot bind ports below `net.ipv4.ip_unprivileged_port_start` (1024 by default) and changing that sysctl on every developer machine and runner is not worth it. The local origins are therefore `https://app.localhost:8443` and `https://idp.localhost:8443`. The port is part of the configured public origin, from which the SAML entity ID and ACS URL are derived, so production on 443 differs by configuration only.
 - The root is trusted by Playwright's browser context, by Node through `NODE_EXTRA_CA_CERTS`, and — through a documented one-time import — by the developer's own browser. Tests never ignore certificate errors.
 - The root's private key never leaves the volume and is unique per machine; nothing about it is committed.
 
