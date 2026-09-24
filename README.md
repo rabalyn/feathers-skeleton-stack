@@ -1,22 +1,12 @@
 # claude-feathers
 
-FeathersJS and Vue/Quasar application with PostgreSQL, PgBouncer, and rootless Podman deployment.
+Skeleton for FeathersJS and Vue/Quasar applications: a common infrastructure base that future products build on.
 
 ## Status
 
-The repository is currently in the architecture and setup phase. The proposed stack and deployment model are documented in [docs/technical-architecture.md](docs/technical-architecture.md).
-
-## Planned Stack
-
-- FeathersJS API
-- PostgreSQL behind PgBouncer
-- Vue 3, Quasar, and `feathers-pinia`
-- pnpm workspace for the API, web app, and future shared packages
-- Nginx reverse proxy for production-like local and CI testing
-- Rootless Podman for the containerized stack
-- Dedicated local stack log viewer
+The repository is in the architecture phase. The architecture is defined by the decision records in [docs/adr_v2/](docs/adr_v2/README.md); start with its README. There is no separate architecture document, so the ADRs are the only source of truth.
 
 ## Documentation
 
-- [Technical architecture](docs/technical-architecture.md): current system design, container topology, testing approach, and documentation convention
-- `docs/adr/`: architecture decision records for choices with meaningful alternatives
+- [docs/adr_v2/](docs/adr_v2/README.md): current architecture decision records
+- `docs/adr/`: superseded v1 records, kept for history only

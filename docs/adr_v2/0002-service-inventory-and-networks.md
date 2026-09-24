@@ -1,0 +1,75 @@
+# 0002: Service inventory and network segmentation
+
+- Status: Accepted
+- Date: 2026-09-23
+- Scope: Required (v1)
+- Supersedes: v1 ADRs 0035, 0037
+- Related: [0001](0001-one-stack-every-environment.md), [0004](0004-pgbouncer-pools.md), [0008](0008-authentication-saml2-ldap.md), [0017](0017-nfs-backup-storage.md), [0020](0020-object-storage-uploads.md), [0022](0022-observability-and-alerting.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md)
+
+## Context
+
+The stack needs a fixed service list and a network layout where no component can reach a peer it has no business reaching. The previous network plan put the API and PostgreSQL on one network while also claiming the API had no direct database route, and put the backup container on the same network as the API while claiming it had no application access. Both claims were false as drawn.
+
+## Decision
+
+### Services
+
+| Service | Role | Production counterpart |
+| --- | --- | --- |
+| `nginx` | Reverse proxy, TLS termination, serves the built frontend bundle | same |
+| `web` | Vite dev server, `dev` profile only. In CI and production the built bundle is part of the `nginx` image | — |
+| `api` | FeathersJS application | same |
+| `worker` | BullMQ worker; same image as `api`, different command ([0024](0024-background-jobs-bullmq.md)) | same |
+| `pgbouncer` | Connection pooler | same |
+| `postgres` | PostgreSQL 18 | same |
+| `valkey` | Rate-limit state and job queues, persisted to disk | same |
+| `s3` | Garage, S3-compatible object storage | same |
+| `openbao` | Secret store ([0023](0023-secrets-management.md)) | same |
+| `*-agent` | One OpenBao Agent per service that reads secrets | same |
+| `idp` | Keycloak, SAML2 identity provider | university IdP (external) |
+| `ldap` | OpenLDAP, seeded test directory | university directory (external) |
+| `mail` | Mailpit, SMTP capture | university SMTP relay (external) |
+| `certs` | One-shot job creating the local CA and certificates | ACME client (see [0016](0016-nginx-and-tls-everywhere.md)) |
+| `prometheus` | Metrics store | same |
+| `loki` | Log store | same |
+| `promtail` | Log shipper | same |
+| `grafana` | Dashboards and alerting | same |
+| `postgres-exporter` | PostgreSQL metrics | same |
+| `pgbouncer-exporter` | PgBouncer pool metrics | same |
+| `valkey-exporter` | Valkey memory and queue metrics | same |
+| `node-exporter` | Host CPU, memory and volume metrics | same |
+| `uptime` | Uptime Kuma, external availability check | must run on another machine ([0022](0022-observability-and-alerting.md)) |
+| `backup` | Scheduled `pg_dump` + restic service | same |
+| `migrate` | One-shot Knex migration job | same |
+
+### Networks
+
+| Network | Members | Purpose |
+| --- | --- | --- |
+| `edge` | `nginx`, `api`, `web` (dev), `uptime` | Public request path |
+| `idp-edge` | `nginx`, `idp` | Browser access to the local IdP; local and CI only |
+| `app-data` | `api`, `worker`, `pgbouncer`, `valkey`, `valkey-exporter` | Application data access |
+| `db` | `pgbouncer`, `postgres`, `backup`, `migrate`, `postgres-exporter`, `pgbouncer-exporter` | Direct database access |
+| `identity` | `api`, `idp`, `ldap` | Authentication and directory lookup |
+| `object` | `api`, `worker`, `s3`, `backup` | Object storage |
+| `secrets` | `openbao`, every `*-agent`, `backup` | Secret delivery; `backup` for OpenBao snapshots |
+| `observability` | `api`, `worker`, `prometheus`, `loki`, `promtail`, `grafana`, all exporters, `mail`, `uptime` | Metrics, logs, alert delivery |
+
+Consequences of this layout, all intentional:
+
+- The `api` and `worker` are on `app-data` but not on `db`, so they physically cannot bypass PgBouncer.
+- The `backup` service is on `db`, `object` and `secrets` only. It has no route to the API, the worker or Valkey. It reaches its NFS target through a host mount, not a network ([0017](0017-nfs-backup-storage.md)), and reads Valkey's snapshot file from a read-only volume mount.
+- `postgres` is reachable only from `db`.
+- `s3` is reachable only by the API, the worker and the backup service, never by Nginx, so object bytes can only leave through an authorized API call ([0020](0020-object-storage-uploads.md)).
+- `ldap` is reachable by the API because administrators and operators look users up in the directory ([0008](0008-authentication-saml2-ldap.md)). It is not reachable by Nginx: the browser only needs the IdP, which is why `idp-edge` is a separate network.
+- `openbao` is reachable only by agents and the backup service. Application containers never talk to it; they read files the agent wrote.
+- The `api` and `worker` join `observability` for scraping and, for the worker, for SMTP. This is wider than a dedicated scrape network and is accepted as the cost of a flat single-host model.
+- The API's metrics and health listener is a separate port reachable only on `observability` ([0022](0022-observability-and-alerting.md)).
+
+Only `nginx` publishes ports to the host. Every other service is reachable only on its private networks.
+
+## Consequences
+
+- Eight networks, each removing a specific reachability the previous plan claimed but did not enforce.
+- The `api` joins five networks and remains the hub, which is inherent to a single-application stack.
+- One-shot and scheduled jobs (`migrate`, `certs`, `backup`) need explicit network membership, which the generated Quadlet units inherit from `compose.yaml`.
