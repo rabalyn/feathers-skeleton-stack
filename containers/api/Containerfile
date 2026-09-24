@@ -1,0 +1,35 @@
+# Build context: repository root.
+ARG NODE_IMAGE=docker.io/library/node:24.21.0-trixie-slim@sha256:b64fccfbcd1ae10d11b969a868b50e1c2530a7054813d5cdea04ac3bce551697
+
+FROM ${NODE_IMAGE} AS base
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+WORKDIR /repo
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
+COPY apps/api/package.json apps/api/
+
+# Full dependency set; also the base of the `test` target (ADR 0015).
+FROM base AS build
+RUN pnpm install --frozen-lockfile --filter @app/api...
+COPY apps/api apps/api
+RUN pnpm --filter @app/api build
+
+FROM build AS test
+WORKDIR /repo/apps/api
+USER node
+CMD ["pnpm", "exec", "vitest", "run"]
+
+FROM base AS prod-deps
+RUN pnpm install --frozen-lockfile --prod --filter @app/api...
+
+FROM ${NODE_IMAGE} AS runtime
+ENV NODE_ENV=production
+WORKDIR /repo
+COPY --from=prod-deps /repo/node_modules node_modules
+COPY --from=prod-deps /repo/apps/api/node_modules apps/api/node_modules
+COPY --from=build /repo/apps/api/package.json apps/api/
+COPY --from=build /repo/apps/api/dist apps/api/dist
+WORKDIR /repo/apps/api
+USER node
+EXPOSE 3030 9090
+CMD ["node", "dist/index.js"]
