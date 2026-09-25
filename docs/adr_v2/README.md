@@ -78,7 +78,7 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 - The CI workflow ([0015](0015-testing-vitest-playwright.md)), lint including the client dependency boundary ([0007](0007-typed-client-from-api.md)), and `gitleaks` ([0023](0023-secrets-management.md))
 - The Quasar frontend replacing the placeholder page ([0014](0014-frontend-quasar-vue.md))
 
-**Later.** The worker and background jobs, object storage and uploads, observability, backups, and the break-glass account with the bootstrap command. The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
+**Later.** The contract step of refresh rotation: dropping `auth_sessions.refresh_token_hash`, `rotated_at` and `family_id`, unused since slice 2 ([0003](0003-postgresql-and-knex.md) expand and contract). The worker and background jobs, object storage and uploads, observability, backups, and the break-glass account with the bootstrap command. The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
 
 ## Status of this set
 

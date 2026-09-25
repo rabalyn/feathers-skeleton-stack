@@ -79,6 +79,7 @@ services:
     environment:
       PUBLIC_ORIGIN: https://app.localhost:8443
       AUTH_SIGNING_SECRET_FILE: /run/secrets/auth_signing_secret
+      REFRESH_TOKEN_KEY_FILE: /run/secrets/refresh_token_key
       SAML_SP_PRIVATE_KEY_FILE: /run/secrets/saml_sp_key
       SAML_SP_CERTIFICATE_FILE: /run/secrets/saml_sp_cert
       SAML_IDP_CERTIFICATE_FILE: /run/secrets/saml_idp_cert

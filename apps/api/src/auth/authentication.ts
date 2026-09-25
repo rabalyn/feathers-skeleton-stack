@@ -11,12 +11,12 @@ import type { HookContext, Params } from '@feathersjs/feathers'
 import type { Application } from '../app.js'
 import { recordAudit } from '../audit.js'
 import { SamlRejected, ServiceProvider } from './saml.js'
-import { SESSION_ABSOLUTE_MS, SessionStore, isActive, type AuthSession } from './sessions.js'
+import { SessionStore, isActive, type AuthSession } from './sessions.js'
 
 // Authentication (ADR 0008, 0010). Three strategies behind one Feathers
 // authentication service at /api/authentication:
 //   jwt      the 15-minute access token; every use re-checks the session row
-//   refresh  the HttpOnly cookie; exchanges it for a fresh access token
+//   refresh  the HttpOnly cookie; rotates it and issues a fresh access token
 //   (SAML)   the ACS route validates an assertion and opens the session; the
 //            browser then calls refresh, as on every page load (ADR 0014).
 
@@ -34,11 +34,12 @@ const readCookie = (header: unknown, name: string): string | undefined => {
   return undefined
 }
 
-export const refreshCookie = (token: string, secure = true): string =>
+// The cookie lives exactly as long as the token family may.
+export const refreshCookie = (token: string, familyExpiresAt: Date, secure = true): string =>
   [
     `${REFRESH_COOKIE}=${token}`,
     `Path=${COOKIE_PATH}`,
-    `Max-Age=${Math.floor(SESSION_ABSOLUTE_MS / 1000)}`,
+    `Max-Age=${Math.max(0, Math.floor((familyExpiresAt.getTime() - Date.now()) / 1000))}`,
     'HttpOnly',
     ...(secure ? ['Secure'] : []),
     'SameSite=Strict'
@@ -85,14 +86,21 @@ class RefreshStrategy extends AuthenticationBaseStrategy {
   async authenticate(_authentication: AuthenticationRequest, params: AuthenticationParams) {
     assertSameOrigin(this.app, params)
     const token = readCookie(params.headers?.cookie, REFRESH_COOKIE)
-    const found = token ? await sessions(this.app).findByRefreshToken(token) : undefined
-    const session = found && isActive(found) ? await sessions(this.app).touch(found.id) : undefined
-    if (!session) throw new NotAuthenticated('Not authenticated')
+    const outcome = token ? await sessions(this.app).refresh(token) : ({ status: 'rejected' } as const)
+    if (outcome.status === 'reuse') {
+      this.app.get('logger').warn({ user_ref: outcome.session.userId, session_ref: outcome.session.id }, 'refresh token reuse: session revoked')
+    }
+    if (outcome.status !== 'rotated') throw new NotAuthenticated('Not authenticated')
+    const { session, refreshToken } = outcome
 
     const user = await this.app.service('users').get(session.userId)
     if (!user.enabled) throw new NotAuthenticated('Not authenticated')
 
-    return { authentication: { strategy: 'refresh', sessionId: session.id }, user }
+    // The rotated token leaves as a cookie only (setRotatedCookie below).
+    return {
+      authentication: { strategy: 'refresh', sessionId: session.id, refreshToken, familyExpiresAt: session.familyExpiresAt },
+      user
+    }
   }
 }
 
@@ -136,13 +144,30 @@ class AppAuthenticationService extends AuthenticationService {
   }
 }
 
+// A refresh answers with the rotated token as a cookie, never in the body:
+// the browser's script must not be able to read it (ADR 0010).
+const setRotatedCookie = async (context: HookContext) => {
+  const authentication = (context.result as { authentication?: { refreshToken?: string; familyExpiresAt?: Date } })
+    ?.authentication
+  if (!authentication?.refreshToken || !authentication.familyExpiresAt) return
+  context.http = {
+    ...context.http,
+    headers: {
+      ...context.http?.headers,
+      'Set-Cookie': refreshCookie(authentication.refreshToken, authentication.familyExpiresAt)
+    }
+  }
+  delete authentication.refreshToken
+  delete authentication.familyExpiresAt
+}
+
 // Logout always clears the cookie, whatever else happened.
 const clearCookieOnLogout = async (context: HookContext) => {
   context.http = { ...context.http, headers: { ...context.http?.headers, 'Set-Cookie': clearedRefreshCookie() } }
 }
 
 export const authentication = (app: Application) => {
-  const { publicOrigin, authSigningSecret } = app.get('config')
+  const { publicOrigin, authSigningSecret, refreshTokenKey } = app.get('config')
   app.set('authentication', {
     secret: authSigningSecret,
     entity: 'user',
@@ -156,14 +181,14 @@ export const authentication = (app: Application) => {
       expiresIn: ACCESS_TOKEN_LIFETIME
     }
   })
-  app.set('sessions', new SessionStore(app.get('knex')))
+  app.set('sessions', new SessionStore(app.get('knex'), app.get('settings'), refreshTokenKey))
   app.set('serviceProvider', new ServiceProvider(app.get('config'), app.get('knex')))
 
   const service = new AppAuthenticationService(app)
   service.register('jwt', new SessionJwtStrategy())
   service.register('refresh', new RefreshStrategy())
   app.use(AUTH_PATH, service, { methods: ['create', 'remove'] })
-  app.service(AUTH_PATH).hooks({ after: { remove: [clearCookieOnLogout] } })
+  app.service(AUTH_PATH).hooks({ after: { create: [setRotatedCookie], remove: [clearCookieOnLogout] } })
 }
 
 export const samlRoutes = (app: Application) => {
@@ -227,7 +252,7 @@ export const samlRoutes = (app: Application) => {
             resourceId: session.id,
             detail: { method: 'saml' }
           })
-          ctx.set('Set-Cookie', refreshCookie(refreshToken))
+          ctx.set('Set-Cookie', refreshCookie(refreshToken, session.familyExpiresAt))
           ctx.status = 303
           ctx.redirect(identity.returnTo)
           return

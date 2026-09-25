@@ -26,6 +26,12 @@ template {
 }
 
 template {
+  contents    = "{{ with secret \"kv/data/api\" }}{{ .Data.data.refresh_token_key }}{{ end }}"
+  destination = "/run/secrets/refresh_token_key"
+  perms       = "0440"
+}
+
+template {
   contents    = "{{ with secret \"kv/data/api\" }}{{ .Data.data.database_password }}{{ end }}"
   destination = "/run/secrets/database_password"
   perms       = "0440"

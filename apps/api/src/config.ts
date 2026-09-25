@@ -20,6 +20,9 @@ const port = Type.Integer({ minimum: 1, maximum: 65535 })
 const fields = {
   publicOrigin: { schema: Type.String({ pattern: '^https://[^/]+$' }), env: 'PUBLIC_ORIGIN' },
   authSigningSecret: { schema: Type.String({ minLength: 32 }), env: 'AUTH_SIGNING_SECRET', secret: true },
+  // Derives each refresh token's successor (ADR 0010). Independent of the
+  // signing secret, so rotating either never logs anybody out.
+  refreshTokenKey: { schema: Type.String({ minLength: 32 }), env: 'REFRESH_TOKEN_KEY', secret: true },
   port: { schema: port, env: 'PORT', integer: true, default: '3030' },
   internalPort: { schema: port, env: 'INTERNAL_PORT', integer: true, default: '9090' },
   logLevel: {
@@ -96,6 +99,7 @@ export const SAML_KEYS = [
 export const API_KEYS = [
   'publicOrigin',
   'authSigningSecret',
+  'refreshTokenKey',
   ...SAML_KEYS,
   'port',
   'internalPort',

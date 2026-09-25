@@ -8,7 +8,7 @@
 
 ## Context
 
-The stack needs many credentials: database roles, the authentication signing secret, the SAML SP private key, the LDAP service account, object storage keys, the Valkey password, the restic repository password, SMTP credentials, and the Grafana admin password.
+The stack needs many credentials: database roles, the authentication signing secret, the refresh token key, the SAML SP private key, the LDAP service account, object storage keys, the Valkey password, the restic repository password, SMTP credentials, and the Grafana admin password.
 
 Three constraints shape the design:
 
@@ -84,6 +84,7 @@ The application **has no dotenv dependency**. A stray `.env` file therefore does
 A value is rotated by writing a new version in OpenBao; the agent re-renders the file and the affected service is restarted. Consequences worth stating:
 
 - Rotating the **authentication signing secret** invalidates outstanding access tokens only; clients refresh and nobody is logged out ([0010](0010-sessions-postgres-ratelimits-valkey.md)).
+- Rotating the **refresh token key** affects only the refresh grace window: a retry with a just-rotated token within that window, straddling the rotation, is treated as reuse and logs that one session out. Nobody else is affected ([0010](0010-sessions-postgres-ratelimits-valkey.md)).
 - The **restic password** is changed through restic's own key management (add the new key, then remove the old one), never by overwriting it, and the KeePass copy is updated in the same step. Losing it makes every backup unrecoverable ([0017](0017-nfs-backup-storage.md)).
 
 ### Backup

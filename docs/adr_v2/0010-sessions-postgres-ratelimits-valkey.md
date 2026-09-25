@@ -14,7 +14,8 @@ A JWT that is only checked by signature stays valid until it expires, so logout,
 
 ### Sessions live in PostgreSQL and are checked on every authenticated request
 
-- An `auth_sessions` table stores: surrogate user id, a **hash** of the refresh token, token family, issue/expiry/rotation/revocation timestamps, last-used timestamp, and coarse client metadata. Never the token itself.
+- An `auth_sessions` row is one login, which is one refresh token **family**: surrogate user id, issue, idle-expiry, absolute-expiry and revocation timestamps, last-used timestamp, and coarse client metadata. Its id is the session id the access token carries, and it does not change when the refresh token rotates, so the per-request check stays one primary-key lookup.
+- An `auth_refresh_tokens` row is one refresh token of a family: a **hash** of the token, its issue time and its rotation time. At most one row per family is current (not rotated). Never the token itself is stored.
 - Every authenticated request — REST and WebSocket alike — resolves its session row and rejects the request if the session is revoked or expired, the user is disabled, or the role on the token no longer matches the role on the user record.
 - Consequences of that check, all of them the point of the exercise: logout is immediate, logout-all is immediate, disabling an account is immediate, and a role change takes effect on the next request rather than after the token expires.
 
@@ -28,7 +29,10 @@ A JWT that is only checked by signature stays valid until it expires, so logout,
 ### Refresh rotation and reuse detection
 
 - Refresh rotates the token. Presenting a rotated-away token revokes the entire family. Rotated rows are retained until the family expires, because deleting them is what silently disables reuse detection.
-- A **grace window** applies: a rotated-away token presented within the window after its rotation returns the current successor instead of revoking the family. This keeps a refresh response lost to a flaky connection from logging the user out. The window is a runtime setting ([0025](0025-runtime-settings.md)), default 10 seconds; outside it, reuse revokes the family as before.
+- A **grace window** applies: a rotated-away token presented within the window after its rotation returns the current successor instead of revoking the family. This keeps a refresh response lost to a flaky connection from logging the user out. The window is a runtime setting ([0025](0025-runtime-settings.md)), default 10 seconds; outside it, reuse revokes the family as before. Reuse detection is an audit event ([0013](0013-gdpr-export-and-retention.md)).
+- To return the current successor without storing any token, successors are **derived**: a family's first token is random, and each successor is an HMAC of its predecessor under the **refresh token key**, a secret of its own delivered like every other ([0023](0023-secrets-management.md)). Inside the grace window the server follows that chain from the presented token to the family's current one and returns exactly that token, so a lost response, a retry and concurrent refreshes from one browser all end up holding the same cookie. The key is independent of the signing secret; rotating it affects only the grace path.
+- Refreshes of one family are serialised by a row lock on its session, so concurrent requests see each other's rotation.
+- A refresh returns the rotated token only as the cookie, never in the response body. The cookie's lifetime is what remains of the family.
 - Cross-tab refreshes are coordinated with a `BroadcastChannel` lock so ordinary races do not look like theft. Server-side detection stays authoritative.
 - A daily job deletes sessions whose family expired more than the retention window ago ([0013](0013-gdpr-export-and-retention.md), [0024](0024-background-jobs-bullmq.md)).
 

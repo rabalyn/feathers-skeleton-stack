@@ -1,23 +1,28 @@
-import { createHash, randomBytes } from 'node:crypto'
+import { createHash, createHmac, randomBytes } from 'node:crypto'
 import type { Knex } from 'knex'
+import { recordAudit } from '../audit.js'
+import type { SettingsStore } from '../settings/store.js'
 
 // Sessions in PostgreSQL, checked on every authenticated request (ADR 0010).
-// Rotation, reuse detection and the grace window arrive with slice 2; until
-// then a refresh extends the idle window of the same row.
-
-// Runtime settings once the settings table exists (ADR 0025).
-export const SESSION_IDLE_MS = 8 * 60 * 60 * 1000
-export const SESSION_ABSOLUTE_MS = 7 * 24 * 60 * 60 * 1000
+//
+// An auth_sessions row is one login: one refresh token family, with an idle
+// and an absolute expiry. Its refresh tokens are rows of auth_refresh_tokens,
+// stored as hashes only. Every refresh rotates the token; presenting a
+// rotated-away token revokes the family, except inside the grace window,
+// where it yields the family's current token.
+//
+// Successors are derived, not random: successor = HMAC(key, predecessor).
+// So the server can hand out the *same* current token again inside the
+// grace window without ever storing a token, and concurrent refreshes from
+// one browser converge on one cookie. The first token of a family is random.
 
 export interface AuthSession {
   id: string
   userId: string
-  familyId: string
   issuedAt: Date
   lastUsedAt: Date
   idleExpiresAt: Date
   familyExpiresAt: Date
-  rotatedAt: Date | null
   revokedAt: Date | null
   userAgent: string | null
   samlNameId: string | null
@@ -31,61 +36,157 @@ export interface SamlLoginContext {
   sessionIndex?: string | null
 }
 
+export type RefreshOutcome =
+  | { status: 'rotated'; session: AuthSession; refreshToken: string }
+  | { status: 'rejected' }
+  | { status: 'reuse'; session: AuthSession }
+
+// How far the grace path follows successors. Each step is one refresh inside
+// the window, so a real chain is a handful long.
+const MAX_GRACE_STEPS = 16
+
 // 256 random bits; a plain SHA-256 is enough to make the stored value useless.
 export const hashRefreshToken = (token: string): Buffer => createHash('sha256').update(token, 'utf8').digest()
 
 export const isActive = (session: AuthSession, now = new Date()): boolean =>
   session.revokedAt === null && session.idleExpiresAt > now && session.familyExpiresAt > now
 
+const SESSION_COLUMNS: string[] = [
+  'id',
+  'userId',
+  'issuedAt',
+  'lastUsedAt',
+  'idleExpiresAt',
+  'familyExpiresAt',
+  'revokedAt',
+  'userAgent',
+  'samlNameId',
+  'samlNameIdFormat',
+  'samlSessionIndex'
+]
+
 export class SessionStore {
-  constructor(private readonly knex: Knex) {}
+  constructor(
+    private readonly knex: Knex,
+    private readonly settings: SettingsStore,
+    private readonly refreshTokenKey: string
+  ) {}
+
+  successorOf(token: string): string {
+    return createHmac('sha256', this.refreshTokenKey).update(`refresh-successor\0${token}`, 'utf8').digest('base64url')
+  }
 
   async issue(
     userId: string,
     { userAgent, saml }: { userAgent?: string | undefined; saml?: SamlLoginContext } = {}
   ): Promise<{ session: AuthSession; refreshToken: string }> {
+    const [idle, absolute] = await Promise.all([
+      this.settings.get('sessionIdleSeconds'),
+      this.settings.get('sessionAbsoluteSeconds')
+    ])
     const refreshToken = randomBytes(32).toString('base64url')
-    const now = Date.now()
-    const [session] = await this.knex<AuthSession>('authSessions')
-      .insert({
-        userId,
-        refreshTokenHash: hashRefreshToken(refreshToken),
-        idleExpiresAt: new Date(now + SESSION_IDLE_MS),
-        familyExpiresAt: new Date(now + SESSION_ABSOLUTE_MS),
-        userAgent: userAgent?.slice(0, 256) ?? null,
-        samlNameId: saml?.nameId ?? null,
-        samlNameIdFormat: saml?.nameIdFormat ?? null,
-        samlSessionIndex: saml?.sessionIndex ?? null
-      } as never)
-      .returning('*')
-    if (!session) throw new Error('session insert returned nothing')
-    return { session, refreshToken }
+    return this.knex.transaction(async (trx) => {
+      const [session]: AuthSession[] = await trx('authSessions')
+        .insert({
+          userId,
+          familyExpiresAt: trx.raw('now() + make_interval(secs => ?)', [absolute]),
+          idleExpiresAt: trx.raw('now() + make_interval(secs => ?)', [Math.min(idle, absolute)]),
+          userAgent: userAgent?.slice(0, 256) ?? null,
+          samlNameId: saml?.nameId ?? null,
+          samlNameIdFormat: saml?.nameIdFormat ?? null,
+          samlSessionIndex: saml?.sessionIndex ?? null
+        } as never)
+        .returning(SESSION_COLUMNS)
+      if (!session) throw new Error('session insert returned nothing')
+      await trx('authRefreshTokens').insert({ sessionId: session.id, tokenHash: hashRefreshToken(refreshToken) })
+      return { session, refreshToken }
+    })
   }
 
   async get(id: string): Promise<AuthSession | undefined> {
-    return this.knex<AuthSession>('authSessions').where({ id }).first()
+    return this.knex<AuthSession>('authSessions').where({ id }).first(SESSION_COLUMNS)
   }
 
+  // The session a presented token belongs to, whether or not the token is
+  // still current. For logout, which ends the family either way.
   async findByRefreshToken(token: string): Promise<AuthSession | undefined> {
     return this.knex<AuthSession>('authSessions')
-      .where({ refreshTokenHash: hashRefreshToken(token) } as never)
-      .first()
+      .join('authRefreshTokens', 'authRefreshTokens.sessionId', 'authSessions.id')
+      .where('authRefreshTokens.tokenHash', hashRefreshToken(token))
+      .first(SESSION_COLUMNS.map((c) => `authSessions.${c}`))
   }
 
-  // Extends the idle window, never past the family's absolute expiry. Only
-  // an active session is extended; the returned row is undefined otherwise.
-  async touch(id: string): Promise<AuthSession | undefined> {
-    const [session] = await this.knex<AuthSession>('authSessions')
-      .where({ id })
-      .whereNull('revokedAt')
-      .where('idleExpiresAt', '>', this.knex.fn.now())
-      .where('familyExpiresAt', '>', this.knex.fn.now())
-      .update({
-        lastUsedAt: this.knex.fn.now(),
-        idleExpiresAt: this.knex.raw('least(now() + ?::interval, family_expires_at)', [`${SESSION_IDLE_MS} milliseconds`])
-      } as never)
-      .returning('*')
-    return session
+  // Exchanges a presented refresh token for the family's next one. The
+  // session row is locked for the duration, so concurrent refreshes of one
+  // family are serialised and see each other's rotations.
+  async refresh(token: string): Promise<RefreshOutcome> {
+    const grace = await this.settings.get('refreshGraceSeconds')
+    const idle = await this.settings.get('sessionIdleSeconds')
+
+    return this.knex.transaction(async (trx): Promise<RefreshOutcome> => {
+      const tokenHash = hashRefreshToken(token)
+      const found = await trx('authRefreshTokens').where({ tokenHash }).first('sessionId')
+      if (!found) return { status: 'rejected' }
+
+      const session: AuthSession | undefined = await trx('authSessions')
+        .where({ id: found.sessionId })
+        .forUpdate()
+        .first(SESSION_COLUMNS)
+      if (!session || !isActive(session)) return { status: 'rejected' }
+
+      // Read again under the lock: a concurrent refresh may have rotated it.
+      const presented = await trx('authRefreshTokens')
+        .where({ tokenHash })
+        .first('id', 'rotatedAt', trx.raw('rotated_at > now() - make_interval(secs => ?) AS within_grace', [grace]))
+
+      // Which token the caller is entitled to hold now.
+      let current: string | undefined
+      if (presented.rotatedAt === null) {
+        const successor = this.successorOf(token)
+        await trx('authRefreshTokens').where({ id: presented.id }).update({ rotatedAt: trx.fn.now() })
+        await trx('authRefreshTokens').insert({ sessionId: session.id, tokenHash: hashRefreshToken(successor) })
+        current = successor
+      } else if (presented.withinGrace) {
+        current = await this.currentDescendant(trx, session.id, token)
+      }
+
+      if (current === undefined) {
+        // A rotated-away token outside the grace window: someone else holds
+        // a copy. End the whole family.
+        await trx('authSessions').where({ id: session.id }).update({ revokedAt: trx.fn.now() })
+        await recordAudit(trx, {
+          actorId: session.userId,
+          action: 'session.reuse-detected',
+          resourceType: 'authSessions',
+          resourceId: session.id
+        })
+        return { status: 'reuse', session }
+      }
+
+      const [touched]: AuthSession[] = await trx('authSessions')
+        .where({ id: session.id })
+        .update({
+          lastUsedAt: trx.fn.now(),
+          idleExpiresAt: trx.raw('least(now() + make_interval(secs => ?), family_expires_at)', [idle])
+        } as never)
+        .returning(SESSION_COLUMNS)
+      return { status: 'rotated', session: touched ?? session, refreshToken: current }
+    })
+  }
+
+  // Follows derived successors from a rotated token to the family's current
+  // one. Undefined if the chain leaves the family or never reaches it.
+  private async currentDescendant(trx: Knex.Transaction, sessionId: string, token: string): Promise<string | undefined> {
+    let candidate = token
+    for (let step = 0; step < MAX_GRACE_STEPS; step++) {
+      candidate = this.successorOf(candidate)
+      const row = await trx('authRefreshTokens')
+        .where({ tokenHash: hashRefreshToken(candidate), sessionId })
+        .first('rotatedAt')
+      if (!row) return undefined
+      if (row.rotatedAt === null) return candidate
+    }
+    return undefined
   }
 
   async revoke(id: string): Promise<void> {

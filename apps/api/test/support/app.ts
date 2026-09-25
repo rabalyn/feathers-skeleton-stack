@@ -24,6 +24,7 @@ export const createTestApp = async (): Promise<TestContext> => {
       ...database,
       publicOrigin: PUBLIC_ORIGIN,
       authSigningSecret: 'test-only-signing-secret-that-is-long-enough',
+      refreshTokenKey: 'test-only-refresh-token-key-that-is-long-enough',
       samlSpPrivateKey: sp.privateKey,
       samlSpCertificate: sp.certificate,
       samlIdpCertificate: idpKey.certificate,
