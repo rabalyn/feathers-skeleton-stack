@@ -142,7 +142,11 @@ services:
       - ./containers/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro,Z
       - ./containers/postgres/initdb:/docker-entrypoint-initdb.d:ro,Z
     healthcheck:
-      test: ["CMD", "gosu", "postgres", "pg_isready", "-q"]
+      # Over TCP, the way clients connect: during first initialisation the
+      # image runs a temporary server on the Unix socket only, which a socket
+      # probe would report as ready (and systemd trusts this via
+      # Notify=healthy).
+      test: ["CMD", "gosu", "postgres", "pg_isready", "-q", "-h", "127.0.0.1"]
       interval: 5s
       timeout: 3s
       retries: 10

@@ -6,7 +6,7 @@ Notify=healthy
 ContainerName=postgres
 Environment=POSTGRES_PASSWORD_FILE=/run/secrets/superuser_password PGDATA=/var/lib/postgresql/data/pgdata
 Exec=postgres -c 'hba_file=/etc/postgresql/pg_hba.conf' -c 'ssl=on' -c 'ssl_cert_file=/tls/tls.crt' -c 'ssl_key_file=/tls/tls.key' -c 'ssl_min_protocol_version=TLSv1.2' -c 'password_encryption=scram-sha-256' -c 'max_connections=100'
-HealthCmd=["gosu","postgres","pg_isready","-q"]
+HealthCmd=["gosu","postgres","pg_isready","-q","-h","127.0.0.1"]
 HealthInterval=5s
 HealthRetries=10
 HealthTimeout=3s

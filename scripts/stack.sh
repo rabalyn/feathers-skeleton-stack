@@ -366,7 +366,10 @@ case $cmd in
     setup
     log "starting the stack"
     # shellcheck disable=SC2046
-    compose up -d --force-recreate --no-deps $(app_services) >/dev/null 2>&1
+    compose up -d --force-recreate --no-deps $(app_services | grep -vx migrate) >/dev/null 2>&1
+    # --no-deps drops depends_on conditions, so migrate waits here explicitly.
+    wait_healthy postgres 120
+    compose up -d --force-recreate --no-deps migrate >/dev/null 2>&1
     podman wait migrate >/dev/null
     [[ $(podman inspect -f '{{.State.ExitCode}}' migrate) == 0 ]] || die "migrate failed; see: podman logs migrate"
     idp_setup
