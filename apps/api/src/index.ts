@@ -1,12 +1,13 @@
 import { createApp } from './app.js'
-import { ConfigError, loadConfig } from './config.js'
+import { API_KEYS, ConfigError, loadConfig } from './config.js'
+import { createKnex } from './db.js'
 import { createInternalServer } from './internal.js'
 import { createLogger } from './logger.js'
 
 const main = async () => {
   let config
   try {
-    config = await loadConfig()
+    config = await loadConfig(API_KEYS)
   } catch (error) {
     // Refuse to start half-configured (ADR 0006).
     if (error instanceof ConfigError) {
@@ -17,7 +18,7 @@ const main = async () => {
   }
 
   const logger = createLogger('api', config.logLevel)
-  const app = createApp(config, logger)
+  const app = createApp(config, logger, createKnex(config))
 
   await app.listen(config.port)
   createInternalServer().listen(config.internalPort)

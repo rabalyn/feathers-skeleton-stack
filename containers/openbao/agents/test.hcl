@@ -1,5 +1,5 @@
-# OpenBao Agent for `api` (ADR 0023). Renders kv/api into /run/secrets,
-# one file per key, readable by the api's group only.
+# OpenBao Agent for `test` (ADR 0023). Renders kv/test into /run/secrets,
+# one file per key, readable by the test group only.
 vault {
   address = "https://openbao:8200"
   ca_cert = "/openbao/trust/ca.crt"
@@ -20,13 +20,7 @@ template_config {
 }
 
 template {
-  contents    = "{{ with secret \"kv/data/api\" }}{{ .Data.data.auth_signing_secret }}{{ end }}"
-  destination = "/run/secrets/auth_signing_secret"
-  perms       = "0440"
-}
-
-template {
-  contents    = "{{ with secret \"kv/data/api\" }}{{ .Data.data.database_password }}{{ end }}"
+  contents    = "{{ with secret \"kv/data/test\" }}{{ .Data.data.database_password }}{{ end }}"
   destination = "/run/secrets/database_password"
   perms       = "0440"
 }

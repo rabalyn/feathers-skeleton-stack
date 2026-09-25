@@ -8,6 +8,9 @@
 #                            the local unseal material
 #   scripts/stack.sh ca      print the local root CA certificate, for a
 #                            one-time import into your browser (ADR 0016)
+#   scripts/stack.sh test [vitest args]
+#                            rebuild test_template and run Vitest in the
+#                            `test` container (ADR 0015); the stack must be up
 #
 # The OpenBao unseal key lives in a local-only podman volume that no compose
 # service mounts. Production never runs this script: an administrator unseals
@@ -28,6 +31,15 @@ agents() {
   local f
   for f in "$OPENBAO_DIR"/agents/*.hcl; do basename "$f" .hcl; done
 }
+
+# Agents of the always-on stack; test-profile agents start with `test`.
+TEST_AGENTS=" test "
+stack_agents() {
+  local svc
+  for svc in $(agents); do [[ $TEST_AGENTS == *" $svc "* ]] || echo "$svc"; done
+}
+
+running() { [[ $(podman container inspect -f '{{.State.Running}}' "$1" 2>/dev/null) == true ]]; }
 
 # --- local unseal material -------------------------------------------------
 
@@ -190,6 +202,7 @@ fill_secrets() {
 issue_secret_ids() {
   local svc accessor wrap
   for svc in $(agents); do
+    running "$svc-agent" || continue
     for accessor in $({ bao list -format=json "auth/approle/role/$svc/secret-id" 2>/dev/null || echo '[]'; } | jq -r '.[]'); do
       bao write "auth/approle/role/$svc/secret-id-accessor/destroy" secret_id_accessor="$accessor" >/dev/null
     done
@@ -206,6 +219,7 @@ issue_secret_ids() {
 wait_for_rendered() {
   local svc i
   for svc in $(agents); do
+    running "$svc-agent" || continue
     for i in $(seq 60); do
       podman exec "$svc-agent" sh -c 'ls /run/secrets/* >/dev/null 2>&1' && continue 2
       sleep 1
@@ -236,7 +250,7 @@ case $cmd in
     compose build
     log "starting certificates, OpenBao and agents"
     # shellcheck disable=SC2046
-    compose up -d certs openbao $(agents | sed 's/$/-agent/')
+    compose up -d certs openbao $(stack_agents | sed 's/$/-agent/')
     setup
     log "starting the stack"
     compose up -d
@@ -245,10 +259,19 @@ case $cmd in
   ca)
     podman run --rm --network none -v "${PROJECT}_trust:/t:ro" "$HELPER_IMAGE" cat /t/ca.crt
     ;;
-  down) compose down ;;
+  test)
+    shift
+    compose --profile test build api test
+    compose --profile test up -d test-agent
+    setup
+    log "rebuilding test_template"
+    compose run --rm migrate node dist/migrate.js --test-template
+    compose --profile test run --rm test pnpm exec vitest run "$@"
+    ;;
+  down) compose --profile test down ;;
   reset)
-    compose down -v
+    compose --profile test down -v
     podman volume rm -f "$UNSEAL_VOLUME" >/dev/null 2>&1 || true
     ;;
-  *) sed -n '2,14p' "$0"; exit 2 ;;
+  *) sed -n '2,17p' "$0"; exit 2 ;;
 esac

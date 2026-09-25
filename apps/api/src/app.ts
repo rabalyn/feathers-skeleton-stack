@@ -1,8 +1,9 @@
-import { feathers } from '@feathersjs/feathers'
+import { feathers, type HookContext, type NextFunction } from '@feathersjs/feathers'
 import { koa, rest, bodyParser, errorHandler, type Application as KoaApplication } from '@feathersjs/koa'
 import socketio from '@feathersjs/socketio'
 import type { Logger } from 'pino'
-import type { Config } from './config.js'
+import type { Knex } from 'knex'
+import type { ApiConfig } from './config.js'
 
 export const API_PREFIX = '/api'
 
@@ -10,16 +11,18 @@ export const API_PREFIX = '/api'
 export interface ServiceTypes {}
 
 export interface AppSettings {
-  config: Config
+  config: ApiConfig
   logger: Logger
+  knex: Knex
 }
 
 export type Application = KoaApplication<ServiceTypes, AppSettings>
 
-export const createApp = (config: Config, logger: Logger): Application => {
+export const createApp = (config: ApiConfig, logger: Logger, knex: Knex): Application => {
   const app: Application = koa(feathers())
   app.set('config', config)
   app.set('logger', logger)
+  app.set('knex', knex)
 
   app.use(errorHandler())
 
@@ -47,6 +50,15 @@ export const createApp = (config: Config, logger: Logger): Application => {
   app.use(bodyParser())
   app.configure(rest())
   app.configure(socketio({ path: `${API_PREFIX}/socket.io`, transports: ['websocket'] }))
+
+  app.hooks({
+    teardown: [
+      async (_context: HookContext<Application>, next: NextFunction) => {
+        await next()
+        await knex.destroy()
+      }
+    ]
+  })
 
   return app
 }

@@ -12,7 +12,11 @@
 # - `build:` (podlet rejects it; production pulls built images),
 # - services under the `local` and `test` profiles (ADR 0001, 0002), and
 #   every depends_on entry that pointed at one of them,
-# - networks left with fewer than two members (idp-edge, once idp is gone).
+# - networks left with fewer than two members (idp-edge, once idp is gone),
+#   and volumes no remaining service mounts.
+# `condition: service_healthy` has no podlet translation; it becomes a plain
+# dependency, and the service depended on gets `Notify=healthy`, which makes
+# systemd consider it started only once its healthcheck passes.
 # After generation, bind-mount sources relative to the repository root are
 # rewritten relative to deploy/quadlet/, which is how Quadlet resolves them.
 set -euo pipefail
@@ -25,7 +29,7 @@ HEADER='# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
 # production settings in a drop-in directory next to this file.'
 
 generate() { # <dir>
-  local dir=$1 f
+  local dir=$1 f svc
   mkdir -p "$dir/units"
   podman run --rm -i --network none "$YQ" '
     del(.services[].build)
@@ -38,9 +42,20 @@ generate() { # <dir>
     | ([.services[].networks // [] | .[]] | group_by(.) | map(select(length < 2) | .[0])) as $lonely
     | .services[] |= (select(has("networks")).networks |= map(select(. as $n | $lonely | any_c(. == $n) | not)))
     | .networks |= with_entries(select(.key as $n | $lonely | any_c(. == $n) | not))
-  ' <"$ROOT/compose.yaml" >"$dir/compose.yaml"
+    | [.services[].volumes // [] | .[] | split(":") | .[0]] as $used
+    | .volumes |= with_entries(select(.key as $v | $used | any_c(. == $v)))
+  ' <"$ROOT/compose.yaml" >"$dir/stripped.yaml"
+  podman run --rm -i --network none "$YQ" \
+    '[.services[].depends_on // {} | to_entries[] | select(.value.condition == "service_healthy") | .key] | unique | .[]' \
+    <"$dir/stripped.yaml" >"$dir/healthy.txt"
+  podman run --rm -i --network none "$YQ" \
+    '(.services[] | select(has("depends_on")) | .depends_on[] | select(.condition == "service_healthy") | .condition) = "service_started"' \
+    <"$dir/stripped.yaml" >"$dir/compose.yaml"
   podman run --rm --network none -v "$dir:/w:Z" -w /w "$PODLET" \
     --file units compose compose.yaml >/dev/null
+  while read -r svc; do
+    [[ -n $svc ]] && sed -i '/^\[Container\]$/a Notify=healthy' "$dir/units/$svc.container"
+  done <"$dir/healthy.txt"
   for f in "$dir"/units/*; do
     sed -i -e 's#^Volume=\./#Volume=../../#' "$f"
     { printf '%s\n\n' "$HEADER"; cat "$f"; } >"$f.tmp" && mv "$f.tmp" "$f"

@@ -7,6 +7,10 @@
 #   /trust     public:  ca.crt, mounted read-only by everything that verifies
 #   /tls/nginx          nginx leaf for the public host names
 #   /tls/openbao        OpenBao listener leaf (ADR 0023)
+#   /tls/postgres       PostgreSQL leaf (ADR 0004)
+#   /tls/pgbouncer      PgBouncer leaf (ADR 0004)
+#
+# Each leaf is owned by the uid:gid of the process that reads its key.
 #
 # The root is created once. Leaves are (re)issued when missing, when they
 # expire within RENEW_DAYS, or when their names no longer match.
@@ -15,8 +19,9 @@ set -eu
 : "${CERT_HOSTNAMES:?comma-separated public host names, e.g. app.localhost,idp.localhost}"
 LEAF_DAYS="${LEAF_DAYS:-90}"
 RENEW_DAYS="${RENEW_DAYS:-30}"
-OPENBAO_UID="${OPENBAO_UID:-100}"
-OPENBAO_GID="${OPENBAO_GID:-1000}"
+OPENBAO_OWNER="${OPENBAO_OWNER:-100:1000}"
+POSTGRES_OWNER="${POSTGRES_OWNER:-70:70}"
+PGBOUNCER_OWNER="${PGBOUNCER_OWNER:-101:101}"
 
 umask 077
 
@@ -73,5 +78,7 @@ issue() {
 }
 
 issue /tls/nginx "$CERT_HOSTNAMES" 0:0
-issue /tls/openbao "openbao,127.0.0.1" "$OPENBAO_UID:$OPENBAO_GID"
+issue /tls/openbao "openbao,127.0.0.1" "$OPENBAO_OWNER"
+issue /tls/postgres "postgres" "$POSTGRES_OWNER"
+issue /tls/pgbouncer "pgbouncer" "$PGBOUNCER_OWNER"
 echo "certs: done"
