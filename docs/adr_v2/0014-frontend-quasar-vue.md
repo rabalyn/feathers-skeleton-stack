@@ -13,7 +13,7 @@ The frontend needs a component framework, a build tool, and state management tha
 ## Decision
 
 - **Vue 3** with the **Quasar Framework** on its Vite build, in **SPA mode**. No SSR, PWA, Capacitor or Electron.
-- **`feathers-pinia`** for service state, querying, pagination and real-time synchronisation.
+- **`feathers-pinia`** for service state, querying, pagination and real-time synchronisation, as a **vendored fork** in `packages/feathers-pinia` (`@app/feathers-pinia`, private, never published). Upstream's last release, 4.5.4, supports Pinia 2 only and depends on `vue-demi`; the fork targets Pinia 4, Vue 3.5 and TypeScript 6 with upstream's whole test suite passing. The changes are listed in the package's README. It is built with `tsc` and consumed as built output, like the API client ([0007](0007-typed-client-from-api.md)). The fork is excluded from the repository's ESLint rules, as third-party code kept close to upstream, but is typechecked and tested in CI.
 - TypeScript throughout, typechecked with `vue-tsc` in CI.
 - The typed client is imported from the API package ([0007](0007-typed-client-from-api.md)).
 - The production artifact is a static asset bundle, built in a Node stage and copied into an image that contains no Node runtime. It is served by Nginx ([0016](0016-nginx-and-tls-everywhere.md)), which also owns the SPA history fallback and cache headers. Lint, typecheck and unit tests run in CI, not inside the image build.
@@ -32,6 +32,6 @@ The client re-authenticates its WebSocket connection after every refresh and rec
 ## Consequences
 
 - A large component library is available immediately, and Quasar's build handles the production bundle.
-- The frontend depends on `feathers-pinia` keeping pace with Vue, Pinia and Feathers releases. If it stalls, the fallback is plain Pinia stores around the Feathers client, which is a contained change because the client itself is unaffected.
+- `feathers-pinia` stalled upstream. The fallback this ADR first named, plain Pinia stores around the Feathers client, was not taken: the instance API and the stores that update themselves from service events are what the library is chosen for, and rebuilding them by hand is more code to own than the fork. The price is that keeping the fork current with Vue, Pinia and Feathers is now this project's job, and its tests run in CI for that reason. The plain-Pinia fallback remains open and stays contained, because the Feathers client itself is unaffected.
 - Authenticated startup always costs one refresh round trip before the first render.
 - Every new string needs a German and an English entry; a missing key is caught by the i18n lint rather than in review.

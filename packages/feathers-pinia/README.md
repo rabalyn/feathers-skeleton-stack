@@ -1,0 +1,22 @@
+# @app/feathers-pinia
+
+A vendored fork of [feathers-pinia](https://github.com/marshallswain/feathers-pinia) 4.5.4 (commit `de1d7db`, 2025-08-10), ported to Pinia 4, Vue 3.5 and TypeScript 6 (ADR 0014). Private to this workspace and never published.
+
+Upstream's documentation applies: <https://feathers-pinia.pages.dev>. Import from `@app/feathers-pinia` instead of `feathers-pinia`.
+
+## License
+
+Upstream states "MIT Licensed" on its documentation site. The repository has no LICENSE file and its `package.json` has no `license` field. Copyright remains with the upstream authors.
+
+## Changes from upstream
+
+Only what the port needed, so that upstream fixes can still be compared:
+
+- Dependencies: `vue-demi` and the `@vue/composition-api` peer dropped; peers `pinia` ^4 and `vue` ^3.5; `@vueuse/core` ^15; unused runtime dependencies (`lz-string`, `bson-objectid`, `events`) dropped; `@feathersjs/rest-client` moved from optional to regular dependency; test dependencies updated, including `@faker-js/faker` 10 (8 has a high-severity advisory) and the missing `@feathersjs/errors`, which the fixtures import.
+- `from 'vue-demi'` is now `from 'vue'`. Vue 2's `set` and `del`, which `vue-demi` re-exported, are replaced by `src/utils/vue2-compat.ts`.
+- `MaybeRef` is imported from `vue`, not `@vueuse/core`.
+- `moduleResolution: "bundler"`, because TypeScript 6 deprecates `"node"`. The package is built with `tsc` into `dist/` (ESM and declarations) instead of upstream's Vite library build.
+- `src/stores/local-queries.ts`: a dead `|| {}` after an object spread removed, and one cast added in `createInStore`.
+- Tests, for Vitest 5: `mock.results` is now `mock.settledResults` for async mocks, and `tests/localstorage/storage-sync.test.ts` captures the store's module-level storage read before Vitest clears mock history between tests.
+
+As upstream does, only `src/` is typechecked; the tests run under Vitest.

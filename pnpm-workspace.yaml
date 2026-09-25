@@ -1,5 +1,6 @@
 packages:
   - apps/*
+  - packages/*
   - e2e
 
 # Security floor for transitive dependencies (ADR 0018): the SAML libraries

@@ -6,7 +6,16 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', '**/test-results/**', '**/playwright-report/**'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/test-results/**',
+      '**/playwright-report/**',
+      // Vendored third-party code, kept close to upstream (ADR 0014).
+      'packages/feathers-pinia/**'
+    ]
+  },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {

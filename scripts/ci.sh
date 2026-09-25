@@ -8,7 +8,8 @@
 #   scripts/ci.sh --static  static checks only: no stack, no image scan
 #
 # Static: gitleaks over the whole history, ESLint, the client dependency
-# boundary, typecheck, pnpm audit, the Quadlet drift check.
+# boundary, typecheck, unit tests that need no stack, pnpm audit, the Quadlet
+# drift check.
 # Stack: up, Vitest, Playwright, then the vulnerability scan of every image
 # compose.yaml names.
 #
@@ -78,6 +79,7 @@ step "building the ci image"
 podman build -q -t "$CI_IMAGE" -f "$ROOT/containers/ci/Containerfile" "$ROOT" >/dev/null
 check "lint and client boundary" in_ci_image pnpm lint
 check "typecheck" in_ci_image pnpm typecheck
+check "unit tests" in_ci_image pnpm test:unit
 check "pnpm audit (high and above)" in_ci_image pnpm audit --audit-level=high
 check "Quadlet units match compose.yaml" "$ROOT/scripts/quadlet.sh" --check
 

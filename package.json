@@ -9,6 +9,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
+    "test:unit": "pnpm --filter './packages/*' test",
     "lint": "eslint . && pnpm --filter @app/api lint:boundary",
     "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true"
   },
