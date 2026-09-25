@@ -1,31 +1,5 @@
 #!/bin/sh
 # gitleaks on what is about to be committed (ADR 0023), as a backstop; the
 # CI gate scans the whole history. Enabled by `pnpm install` (core.hooksPath).
-#
-# The work tree and the common git dir are mounted at their host paths, so a
-# linked worktree (whose .git is a file naming an absolute path under the
-# common dir) resolves inside the container as it does outside. The hook fails
-# when git cannot read the repository or gitleaks reports an error: gitleaks
-# itself logs git failures and still exits 0 with "no leaks found".
 set -eu
-GITLEAKS=docker.io/zricethezav/gitleaks@sha256:b109bc5f8f76a38196a3e413704fc5b9e3c32360bce4e4b603bd6f45b3721dbb # v8.30.1
-top=$(git rev-parse --show-toplevel)
-common=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
-exec podman run --rm --network none \
-  -v "$top:$top:ro,Z" -v "$common:$common:ro,Z" -w "$top" \
-  --entrypoint /bin/sh "$GITLEAKS" -c '
-    set -eu
-    git rev-parse --git-dir >/dev/null && git ls-files --stage >/dev/null || {
-      echo "pre-commit: git cannot read the repository in the container; not scanning" >&2
-      exit 1
-    }
-    log=$(mktemp)
-    status=0
-    gitleaks git --pre-commit --staged --redact --no-banner --no-color "$1" >"$log" 2>&1 || status=$?
-    cat "$log" >&2
-    if [ "$status" -eq 0 ] && grep -q " ERR " "$log"; then
-      echo "pre-commit: gitleaks reported an error; failing instead of trusting \"no leaks found\"" >&2
-      exit 1
-    fi
-    exit "$status"
-  ' sh "$top"
+exec "$(git rev-parse --show-toplevel)/scripts/gitleaks.sh" --staged

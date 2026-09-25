@@ -27,7 +27,6 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-GITLEAKS=docker.io/zricethezav/gitleaks@sha256:b109bc5f8f76a38196a3e413704fc5b9e3c32360bce4e4b603bd6f45b3721dbb # v8.30.1
 TRIVY=docker.io/aquasec/trivy@sha256:ee940acbf1f58ebadb42d01434ce4609530bf1b52536afbd1eee66cd7123c5c9 # 0.74.0
 YQ=docker.io/mikefarah/yq:4.53.6@sha256:127185429860d8240ba879fd96db7b33fe4895609864f0ab21b93e4d2ac20b5e
 CI_IMAGE=localhost/feathers-ci:dev
@@ -47,10 +46,7 @@ check() { # <name> <command...>: runs every check, fails at the end
 
 in_ci_image() { podman run --rm "$CI_IMAGE" "$@"; }
 
-gitleaks() {
-  podman run --rm --network none -v "$ROOT:/repo:ro,Z" "$GITLEAKS" \
-    git /repo --redact --no-banner
-}
+gitleaks() { (cd "$ROOT" && scripts/gitleaks.sh); }
 
 scan_images() {
   local images image rc=0 dir
