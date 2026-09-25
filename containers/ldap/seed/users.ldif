@@ -1,0 +1,41 @@
+# Test users (ADR 0008). The TU-ID is in `cn`. These passwords are the one
+# credential committed to the repository (ADR 0023): they exist only in the
+# local and CI directory, and end-to-end tests type them into the local IdP.
+#
+#   TU-ID     password
+#   ad01admn  admin-test-password
+#   op01oper  operator-test-password
+#   us01user  user-test-password
+#   us02othr  other-test-password
+
+dn: cn=ad01admn,ou=people,dc=feathers,dc=test
+objectClass: inetOrgPerson
+cn: ad01admn
+givenName: Ada
+sn: Admin
+mail: ada.admin@example.org
+userPassword: admin-test-password
+
+dn: cn=op01oper,ou=people,dc=feathers,dc=test
+objectClass: inetOrgPerson
+cn: op01oper
+givenName: Otto
+sn: Operator
+mail: otto.operator@example.org
+userPassword: operator-test-password
+
+dn: cn=us01user,ou=people,dc=feathers,dc=test
+objectClass: inetOrgPerson
+cn: us01user
+givenName: Uma
+sn: User
+mail: uma.user@example.org
+userPassword: user-test-password
+
+dn: cn=us02othr,ou=people,dc=feathers,dc=test
+objectClass: inetOrgPerson
+cn: us02othr
+givenName: Olaf
+sn: Other
+mail: olaf.other@example.org
+userPassword: other-test-password

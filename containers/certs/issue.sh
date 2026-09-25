@@ -9,6 +9,7 @@
 #   /tls/openbao        OpenBao listener leaf (ADR 0023)
 #   /tls/postgres       PostgreSQL leaf (ADR 0004)
 #   /tls/pgbouncer      PgBouncer leaf (ADR 0004)
+#   /tls/ldap           OpenLDAP leaf, local test directory (ADR 0008)
 #
 # Each leaf is owned by the uid:gid of the process that reads its key.
 #
@@ -22,6 +23,7 @@ RENEW_DAYS="${RENEW_DAYS:-30}"
 OPENBAO_OWNER="${OPENBAO_OWNER:-100:1000}"
 POSTGRES_OWNER="${POSTGRES_OWNER:-70:70}"
 PGBOUNCER_OWNER="${PGBOUNCER_OWNER:-101:101}"
+LDAP_OWNER="${LDAP_OWNER:-100:101}"
 
 umask 077
 
@@ -81,4 +83,5 @@ issue /tls/nginx "$CERT_HOSTNAMES" 0:0
 issue /tls/openbao "openbao,127.0.0.1" "$OPENBAO_OWNER"
 issue /tls/postgres "postgres" "$POSTGRES_OWNER"
 issue /tls/pgbouncer "pgbouncer" "$PGBOUNCER_OWNER"
+issue /tls/ldap "ldap" "$LDAP_OWNER"
 echo "certs: done"

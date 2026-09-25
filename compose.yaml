@@ -33,6 +33,7 @@ services:
       - tls-openbao:/tls/openbao
       - tls-postgres:/tls/postgres
       - tls-pgbouncer:/tls/pgbouncer
+      - tls-ldap:/tls/ldap
 
   nginx:
     build:
@@ -74,7 +75,7 @@ services:
       DATABASE_USER: app
       DATABASE_PASSWORD_FILE: /run/secrets/database_password
       DATABASE_CA_FILE: /trust/ca.crt
-    networks: [edge, app-data]
+    networks: [edge, app-data, identity]
     volumes:
       - api-secrets:/run/secrets:ro
       - trust:/trust:ro
@@ -173,6 +174,49 @@ services:
     volumes:
       - test-secrets:/run/secrets:ro
       - trust:/trust:ro
+
+  ldap:
+    build:
+      context: .
+      dockerfile: containers/ldap/Containerfile
+    image: localhost/feathers-ldap:dev
+    container_name: ldap
+    profiles: [local]
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+    networks: [identity]
+    volumes:
+      - ldap-data:/var/lib/openldap
+      - ldap-secrets:/run/secrets:ro
+      - tls-ldap:/tls:ro
+
+  idp:
+    build:
+      context: .
+      dockerfile: containers/idp/Containerfile
+    image: localhost/feathers-idp:dev
+    container_name: idp
+    profiles: [local]
+    depends_on:
+      ldap:
+        condition: service_started
+    environment:
+      KC_HOSTNAME: https://idp.localhost:8443
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_TRUSTSTORE_PATHS: /trust/ca.crt
+    networks: [idp-edge, identity]
+    volumes:
+      - idp-data:/opt/keycloak/data/h2
+      - idp-secrets:/run/secrets:ro
+      - trust:/trust:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
 
   openbao:
     image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
@@ -295,11 +339,54 @@ services:
       - test-secrets:/run/secrets
       - test-agent-cred:/run/agent
 
+  ldap-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: ldap-agent
+    profiles: [local]
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:101"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/ldap.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/ldap.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - ldap-secrets:/run/secrets
+      - ldap-agent-cred:/run/agent
+
+  idp-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: idp-agent
+    profiles: [local]
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:0"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/idp.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/idp.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - idp-secrets:/run/secrets
+      - idp-agent-cred:/run/agent
+
 networks:
   edge: {}
   idp-edge: {}
   app-data: {}
   db: {}
+  identity: {}
   secrets: {}
 
 volumes:
@@ -309,8 +396,11 @@ volumes:
   tls-openbao: {}
   tls-postgres: {}
   tls-pgbouncer: {}
+  tls-ldap: {}
   openbao-data: {}
   postgres-data: {}
+  ldap-data: {}
+  idp-data: {}
   # Secret delivery (ADR 0023): tmpfs only. <service>-secrets is shared with
   # the service; <service>-agent-cred holds the agent's secret_id and is seen
   # by the agent alone.
@@ -344,3 +434,15 @@ volumes:
   test-agent-cred:
     driver: local
     driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1000,mode=0700" }
+  ldap-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=101,mode=0750" }
+  ldap-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=101,mode=0700" }
+  idp-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=0,mode=0750" }
+  idp-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=0,mode=0700" }
