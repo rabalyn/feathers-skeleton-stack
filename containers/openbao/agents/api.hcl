@@ -30,3 +30,21 @@ template {
   destination = "/run/secrets/database_password"
   perms       = "0440"
 }
+
+template {
+  contents    = "{{ with secret \"kv/data/api\" }}{{ .Data.data.saml_sp_key }}{{ end }}"
+  destination = "/run/secrets/saml_sp_key"
+  perms       = "0440"
+}
+
+template {
+  contents    = "{{ with secret \"kv/data/api\" }}{{ .Data.data.saml_sp_cert }}{{ end }}"
+  destination = "/run/secrets/saml_sp_cert"
+  perms       = "0440"
+}
+
+template {
+  contents    = "{{ with secret \"kv/data/api\" }}{{ .Data.data.saml_idp_cert }}{{ end }}"
+  destination = "/run/secrets/saml_idp_cert"
+  perms       = "0440"
+}

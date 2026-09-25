@@ -69,6 +69,12 @@ services:
     environment:
       PUBLIC_ORIGIN: https://app.localhost:8443
       AUTH_SIGNING_SECRET_FILE: /run/secrets/auth_signing_secret
+      SAML_SP_PRIVATE_KEY_FILE: /run/secrets/saml_sp_key
+      SAML_SP_CERTIFICATE_FILE: /run/secrets/saml_sp_cert
+      SAML_IDP_CERTIFICATE_FILE: /run/secrets/saml_idp_cert
+      SAML_IDP_ENTITY_ID: https://idp.localhost:8443/realms/feathers
+      SAML_IDP_SSO_URL: https://idp.localhost:8443/realms/feathers/protocol/saml
+      SAML_IDP_SLO_URL: https://idp.localhost:8443/realms/feathers/protocol/saml
       DATABASE_HOST: pgbouncer
       DATABASE_PORT: "6432"
       DATABASE_NAME: app

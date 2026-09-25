@@ -13,10 +13,12 @@ let operator: User
 let member: User
 let other: User
 
-const as = (user: User) => ({ provider: 'rest' as const, user })
+// An already authenticated external call; authentication itself is tested in
+// authentication.test.ts.
+const as = (user: User) => ({ provider: 'rest' as const, user, authenticated: true })
 
 beforeAll(async () => {
-  app = createTestApp()
+  ;({ app } = await createTestApp())
   const users = app.service('users')
   const make = async (tuId: string, role: User['role']) => {
     const created = await users.create({

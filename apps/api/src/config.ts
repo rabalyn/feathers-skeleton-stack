@@ -35,6 +35,26 @@ const fields = {
   // CA root that the database server certificate must chain to (ADR 0004).
   // A path, not a secret.
   databaseCaFile: { schema: Type.String({ minLength: 1 }), env: 'DATABASE_CA_FILE' },
+  // SAML (ADR 0008). Certificates are not secret but are delivered the same
+  // way as the key, as files rendered by the api-agent.
+  samlSpPrivateKey: {
+    schema: Type.String({ pattern: '-----BEGIN (RSA )?PRIVATE KEY-----' }),
+    env: 'SAML_SP_PRIVATE_KEY',
+    secret: true
+  },
+  samlSpCertificate: {
+    schema: Type.String({ pattern: '-----BEGIN CERTIFICATE-----' }),
+    env: 'SAML_SP_CERTIFICATE',
+    secret: true
+  },
+  samlIdpCertificate: {
+    schema: Type.String({ pattern: '-----BEGIN CERTIFICATE-----' }),
+    env: 'SAML_IDP_CERTIFICATE',
+    secret: true
+  },
+  samlIdpEntityId: { schema: Type.String({ minLength: 1 }), env: 'SAML_IDP_ENTITY_ID' },
+  samlIdpSsoUrl: { schema: Type.String({ pattern: '^https://' }), env: 'SAML_IDP_SSO_URL' },
+  samlIdpSloUrl: { schema: Type.String({ pattern: '^https://' }), env: 'SAML_IDP_SLO_URL' },
   databasePoolMax: {
     schema: Type.Integer({ minimum: 1, maximum: 50 }),
     env: 'DATABASE_POOL_MAX',
@@ -57,9 +77,19 @@ export const DATABASE_KEYS = [
   'databasePoolMax'
 ] as const satisfies readonly ConfigKey[]
 
+export const SAML_KEYS = [
+  'samlSpPrivateKey',
+  'samlSpCertificate',
+  'samlIdpCertificate',
+  'samlIdpEntityId',
+  'samlIdpSsoUrl',
+  'samlIdpSloUrl'
+] as const satisfies readonly ConfigKey[]
+
 export const API_KEYS = [
   'publicOrigin',
   'authSigningSecret',
+  ...SAML_KEYS,
   'port',
   'internalPort',
   'logLevel',

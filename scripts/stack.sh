@@ -3,6 +3,8 @@
 #
 #   scripts/stack.sh up      build, start, unseal, deliver secrets, start the rest
 #   scripts/stack.sh setup   unseal OpenBao and (re)issue every agent's secret_id
+#   scripts/stack.sh idp     exchange certificates with the local IdP and
+#                            restart the api
 #   scripts/stack.sh down    stop the stack, keep volumes
 #   scripts/stack.sh reset   stop the stack and delete every volume, including
 #                            the local unseal material
@@ -37,6 +39,11 @@ TEST_AGENTS=" test "
 stack_agents() {
   local svc
   for svc in $(agents); do [[ $TEST_AGENTS == *" $svc "* ]] || echo "$svc"; done
+}
+
+# Everything except the one-shot certs job, OpenBao and the agents.
+app_services() {
+  compose config --services 2>/dev/null | grep -vxE 'certs|openbao|.*-agent'
 }
 
 running() { [[ $(podman container inspect -f '{{.State.Running}}' "$1" 2>/dev/null) == true ]]; }
@@ -228,11 +235,102 @@ wait_for_rendered() {
   done
 }
 
+# --- SAML key material (ADR 0008) -----------------------------------------
+
+# The SP key pair: generated once, locally; deployment material in production.
+ensure_sp_keypair() {
+  [[ -n $(kv_get api saml_sp_key) ]] && return 0
+  log "generating the SAML SP key pair"
+  local pems key cert
+  pems=$(podman run --rm --network none --entrypoint sh localhost/feathers-certs:dev -c \
+    'openssl req -x509 -newkey rsa:3072 -nodes -days 3650 -subj "/CN=claude-feathers local SP" \
+       -keyout /dev/stdout -out /dev/stdout 2>/dev/null')
+  key=$(sed -n '/BEGIN PRIVATE KEY/,/END PRIVATE KEY/p' <<<"$pems")
+  cert=$(sed -n '/BEGIN CERTIFICATE/,/END CERTIFICATE/p' <<<"$pems")
+  [[ -n $key && -n $cert ]] || die "SP key generation failed"
+  printf '%s\n' "$key" | kv_set api saml_sp_key
+  printf '%s\n' "$cert" | kv_set api saml_sp_cert
+}
+
+pem_body() { sed '/-----/d' | tr -d '\n'; }
+
+wait_healthy() { # <container> <seconds>
+  local i
+  for i in $(seq "$2"); do
+    [[ $(podman inspect -f '{{.State.Health.Status}}' "$1" 2>/dev/null) == healthy ]] && return 0
+    sleep 1
+  done
+  die "$1 did not become healthy; see: podman logs $1"
+}
+
+# Exchanges certificates with the local Keycloak: the realm's signing
+# certificate goes to the api through OpenBao, the SP certificate into the
+# realm's client, which then requires signed requests and encrypts.
+configure_local_idp() {
+  local descriptor idp_cert sp_cert current
+  descriptor=$(podman exec nginx wget -qO- http://idp:8080/realms/feathers/protocol/saml/descriptor)
+  idp_cert=$(sed -n 's/.*<ds:X509Certificate>\([^<]*\)<.*/\1/p' <<<"$descriptor" | head -1)
+  [[ -n $idp_cert ]] || die "no signing certificate in the IdP descriptor"
+  idp_cert=$(printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "$(fold -w 64 <<<"$idp_cert")")
+  current=$(kv_get api saml_idp_cert)
+  if [[ $current != "${idp_cert%$'\n'}" ]]; then
+    printf '%s' "$idp_cert" | kv_set api saml_idp_cert
+    log "stored the local IdP's signing certificate"
+  fi
+
+  sp_cert=$(kv_get api saml_sp_cert | pem_body)
+  podman exec -i idp bash -s "$sp_cert" <<'KCADM'
+set -euo pipefail
+kc=/opt/keycloak/bin/kcadm.sh
+cfg=$(mktemp)
+trap 'rm -f "$cfg"' EXIT
+$kc config credentials --config "$cfg" --server http://localhost:8080 --realm master \
+  --user admin --password "$(</run/secrets/admin_password)" >/dev/null
+id=$($kc get clients --config "$cfg" -r feathers -q 'clientId=https://app.localhost:8443/api/auth/saml/metadata' --fields id --format csv --noquotes)
+$kc update "clients/$id" --config "$cfg" -r feathers \
+  -s 'attributes."saml_name_id_format"=transient' \
+  -s 'attributes."saml.client.signature"=true' \
+  -s "attributes.\"saml.signing.certificate\"=$1" \
+  -s 'attributes."saml.encrypt"=true' \
+  -s "attributes.\"saml.encryption.certificate\"=$1" \
+  -s 'attributes."saml.encryption.algorithm"=http://www.w3.org/2009/xmlenc11#aes256-gcm' \
+  -s 'attributes."saml.encryption.keyAlgorithm"=http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p' \
+  -s 'attributes."saml.encryption.digestMethod"=http://www.w3.org/2000/09/xmldsig#sha1'
+KCADM
+  log "configured the local IdP for signed requests and encryption"
+}
+
+# The api reads its SAML material at startup, so it is restarted once the
+# api-agent has rendered the current IdP certificate.
+wait_for_idp_cert() {
+  local want i
+  want=$(kv_get api saml_idp_cert)
+  for i in $(seq 120); do
+    [[ $(podman exec api-agent cat /run/secrets/saml_idp_cert 2>/dev/null) == "$want" ]] && return 0
+    sleep 1
+  done
+  die "api-agent did not render the IdP certificate"
+}
+
+idp_setup() {
+  wait_healthy idp 300
+  wait_for_openbao
+  init_or_unseal
+  configure_local_idp
+  wait_for_idp_cert
+  bao token revoke -self >/dev/null
+  TOKEN=
+  podman restart api >/dev/null
+  wait_healthy api 60
+  log "api restarted with the IdP certificate"
+}
+
 setup() {
   wait_for_openbao
   init_or_unseal
   configure
   fill_secrets
+  ensure_sp_keypair
   issue_secret_ids
   bao token revoke -self >/dev/null
   TOKEN=
@@ -248,14 +346,30 @@ case $cmd in
     command -v jq >/dev/null || die "jq is required"
     log "building images"
     compose build
-    log "starting certificates, OpenBao and agents"
+    # podman-compose neither reruns a completed one-shot nor recreates a
+    # container whose image was rebuilt, so services are recreated
+    # explicitly. OpenBao is not: recreating it seals it.
+    log "issuing certificates"
+    compose up -d --force-recreate --no-deps certs >/dev/null 2>&1
+    podman wait certs >/dev/null
+    [[ $(podman inspect -f '{{.State.ExitCode}}' certs) == 0 ]] || die "certs failed; see: podman logs certs"
+    log "starting OpenBao and agents"
+    compose up -d --no-deps openbao >/dev/null 2>&1
+    # Agents read their configuration only at start, so they are recreated;
+    # setup issues fresh secret_ids anyway. (`podman restart` refuses: the
+    # dependency chain ends at the exited one-shot `certs`.)
     # shellcheck disable=SC2046
-    compose up -d certs openbao $(stack_agents | sed 's/$/-agent/')
+    compose up -d --force-recreate --no-deps $(stack_agents | sed 's/$/-agent/') >/dev/null 2>&1
     setup
     log "starting the stack"
-    compose up -d
+    # shellcheck disable=SC2046
+    compose up -d --force-recreate --no-deps $(app_services) >/dev/null 2>&1
+    podman wait migrate >/dev/null
+    [[ $(podman inspect -f '{{.State.ExitCode}}' migrate) == 0 ]] || die "migrate failed; see: podman logs migrate"
+    idp_setup
     ;;
   setup) setup ;;
+  idp) idp_setup ;;
   ca)
     podman run --rm --network none -v "${PROJECT}_trust:/t:ro" "$HELPER_IMAGE" cat /t/ca.crt
     ;;
@@ -273,5 +387,5 @@ case $cmd in
     compose --profile test down -v
     podman volume rm -f "$UNSEAL_VOLUME" >/dev/null 2>&1 || true
     ;;
-  *) sed -n '2,17p' "$0"; exit 2 ;;
+  *) sed -n '2,19p' "$0"; exit 2 ;;
 esac
