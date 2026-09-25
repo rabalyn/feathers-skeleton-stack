@@ -4,6 +4,8 @@ import socketio from '@feathersjs/socketio'
 import type { Logger } from 'pino'
 import type { Knex } from 'knex'
 import type { ApiConfig } from './config.js'
+import { defaultDeny } from './hooks/default-deny.js'
+import { services } from './services/index.js'
 
 export const API_PREFIX = '/api'
 
@@ -50,7 +52,11 @@ export const createApp = (config: ApiConfig, logger: Logger, knex: Knex): Applic
   app.use(bodyParser())
   app.configure(rest())
   app.configure(socketio({ path: `${API_PREFIX}/socket.io`, transports: ['websocket'] }))
+  app.configure(services)
 
+  // Service hooks for every service (ADR 0011) ...
+  app.hooks({ around: { all: [defaultDeny] } })
+  // ... and application lifecycle hooks, which Feathers keeps separate.
   app.hooks({
     teardown: [
       async (_context: HookContext<Application>, next: NextFunction) => {

@@ -57,11 +57,15 @@ const main = async () => {
   const knex = createKnex(
     { ...config, databaseName: database, databasePoolMax: 1 },
     {
-      pool: {
+      overrides: {
+        pool: {
         min: 0,
         max: 1,
-        afterCreate: (conn: { query: (sql: string, cb: (err: Error | null) => void) => void }, done: (err: Error | null, conn: unknown) => void) =>
-          conn.query("SET lock_timeout = '10s'", (err) => done(err, conn))
+          afterCreate: (
+            conn: { query: (sql: string, cb: (err: Error | null) => void) => void },
+            done: (err: Error | null, conn: unknown) => void
+          ) => conn.query("SET lock_timeout = '10s'", (err) => done(err, conn))
+        }
       }
     }
   )

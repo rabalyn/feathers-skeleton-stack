@@ -18,7 +18,7 @@ const main = async () => {
   }
 
   const logger = createLogger('api', config.logLevel)
-  const app = createApp(config, logger, createKnex(config))
+  const app = createApp(config, logger, createKnex(config, { camelCase: true }))
 
   await app.listen(config.port)
   createInternalServer().listen(config.internalPort)

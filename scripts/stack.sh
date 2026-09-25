@@ -266,7 +266,7 @@ case $cmd in
     setup
     log "rebuilding test_template"
     compose run --rm migrate node dist/migrate.js --test-template
-    compose --profile test run --rm test pnpm exec vitest run "$@"
+    compose --profile test run --rm -T test pnpm exec vitest run "$@"
     ;;
   down) compose --profile test down ;;
   reset)

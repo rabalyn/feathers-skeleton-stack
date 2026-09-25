@@ -10,6 +10,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@casl/ability':
+        specifier: 6.8.1
+        version: 6.8.1
       '@feathersjs/authentication':
         specifier: 5.0.50
         version: 5.0.50(typescript@6.0.3)
@@ -34,6 +37,9 @@ importers:
       '@feathersjs/typebox':
         specifier: 5.0.50
         version: 5.0.50(typescript@6.0.3)
+      feathers-casl:
+        specifier: 3.0.0
+        version: 3.0.0(@casl/ability@6.8.1)(@feathersjs/feathers@5.0.50)
       knex:
         specifier: 3.3.0
         version: 3.3.0(pg@8.23.0)
@@ -62,6 +68,9 @@ packages:
   '@babel/runtime@7.29.7':
     resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
     engines: {node: '>=6.9.0'}
+
+  '@casl/ability@6.8.1':
+    resolution: {integrity: sha512-VX5DD1JbSP/DdewZnNwXXaCzve+0pLe14mcUj2l93CdOFAQUT/ylAptNqxf3Wc/jlsuSanAgXza4Z1Iq23dzpQ==}
 
   '@feathersjs/adapter-commons@5.0.50':
     resolution: {integrity: sha512-m3+TzrPtBdJiPI34e+bEOdBMmU/ApoF5Si5irRTlu3UsrFTfAHYg0bBUh80dpuhZZi8W+XHaJ7OQqtaXV4wNMg==}
@@ -349,6 +358,18 @@ packages:
   '@types/ws@8.18.1':
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
+  '@ucast/core@1.10.2':
+    resolution: {integrity: sha512-ons5CwXZ/51wrUPfoduC+cO7AS1/wRb0ybpQJ9RrssossDxVy4t49QxWoWgfBDvVKsz9VXzBk9z0wqTdZ+Cq8g==}
+
+  '@ucast/js@3.1.0':
+    resolution: {integrity: sha512-eJ7yQeYtMK85UZjxoxBEbTWx6UMxEXKbjVyp+NlzrT5oMKV5Gpo/9bjTl3r7msaXTVC8iD9NJacqJ8yp7joX+Q==}
+
+  '@ucast/mongo2js@1.4.1':
+    resolution: {integrity: sha512-9aeg5cmqwRQnKCXHN6I17wk83Rcm487bHelaG8T4vfpWneAI469wSI3Srnbu+PuZ5znWRbnwtVq9RgPL+bN6CA==}
+
+  '@ucast/mongo@2.4.3':
+    resolution: {integrity: sha512-XcI8LclrHWP83H+7H2anGCEeDq0n+12FU2mXCTz6/Tva9/9ddK/iacvvhCyW6cijAAOILmt0tWplRyRhVyZLsA==}
+
   '@vitest/mocker@5.0.1':
     resolution: {integrity: sha512-6K1DoBNAPGvuOcSsGA4D6x+5zEEff/KmOOP3uetT2TrGpVfI+HRHRnJJfKi5ib/g1vx8IYHQD8s0pbJz8WQI7Q==}
     peerDependencies:
@@ -487,6 +508,10 @@ packages:
     resolution: {integrity: sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==}
     engines: {node: '>= 0.8'}
 
+  dequal@2.0.3:
+    resolution: {integrity: sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==}
+    engines: {node: '>=6'}
+
   destroy@1.2.0:
     resolution: {integrity: sha512-2sJGJTaXIIaR1w4iJSNoN0hnMY7Gpc/n8D4qSCJw8QqFWXf7cuAgnEHxBpweaVcPevC2l3KpjYCx3NypQQgaJg==}
     engines: {node: '>= 0.8', npm: 1.2.8000 || >= 1.4.16}
@@ -557,6 +582,9 @@ packages:
     resolution: {integrity: sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==}
     engines: {node: '>=12.0.0'}
 
+  fast-copy@4.1.1:
+    resolution: {integrity: sha512-A4QTJmuiztpGtr6AMeJts9R4hbj2ZBUwtOaKrG6rw2y7t6+IaJKjz5M3XDs8BUznxDH43FVc6A0y/gWlMl4UtA==}
+
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
 
@@ -570,6 +598,23 @@ packages:
       picomatch: ^3 || ^4
     peerDependenciesMeta:
       picomatch:
+        optional: true
+
+  feathers-casl@3.0.0:
+    resolution: {integrity: sha512-HQFUwmOIP49FhzDdjDEocmVKXIGvtANVr+U+HxXjTwHZjdWXseErN6kJuJ2/F4tbzzP0dwKzdUlPH0d+HDLfgw==}
+    engines: {node: '>= 22.0.0'}
+    peerDependencies:
+      '@casl/ability': 6.x
+      '@feathersjs/feathers': ^5.0.0
+
+  feathers-utils@10.8.3:
+    resolution: {integrity: sha512-Mrr0qpEbkDPNyKlDMyaYrzCTJHZWsssP5p+EuVBu+FCu2LtYEIhZaTc8YXurDB80EDA/kV1pazjbYRb0LsACtA==}
+    engines: {node: '>=22.0.0'}
+    peerDependencies:
+      '@feathersjs/feathers': ^5.0.0
+      rate-limiter-flexible: '>=10.0.0'
+    peerDependenciesMeta:
+      rate-limiter-flexible:
         optional: true
 
   formidable@3.5.4:
@@ -879,6 +924,10 @@ packages:
   negotiator@0.6.3:
     resolution: {integrity: sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==}
     engines: {node: '>= 0.6'}
+
+  neotraverse@0.6.18:
+    resolution: {integrity: sha512-Z4SmBUweYa09+o6pG+eASabEpP6QkQ70yHj351pQoEXIs8uHbaU2DWVmzBANKgflPa47A50PtB2+NgRpQvr7vA==}
+    engines: {node: '>= 10'}
 
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
@@ -1304,6 +1353,10 @@ snapshots:
 
   '@babel/runtime@7.29.7': {}
 
+  '@casl/ability@6.8.1':
+    dependencies:
+      '@ucast/mongo2js': 1.4.1
+
   '@feathersjs/adapter-commons@5.0.50':
     dependencies:
       '@feathersjs/commons': 5.0.50
@@ -1618,6 +1671,22 @@ snapshots:
     dependencies:
       '@types/node': 26.6.2
 
+  '@ucast/core@1.10.2': {}
+
+  '@ucast/js@3.1.0':
+    dependencies:
+      '@ucast/core': 1.10.2
+
+  '@ucast/mongo2js@1.4.1':
+    dependencies:
+      '@ucast/core': 1.10.2
+      '@ucast/js': 3.1.0
+      '@ucast/mongo': 2.4.3
+
+  '@ucast/mongo@2.4.3':
+    dependencies:
+      '@ucast/core': 1.10.2
+
   '@vitest/mocker@5.0.1(vite@8.3.0(@types/node@24.13.6))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
@@ -1719,6 +1788,8 @@ snapshots:
 
   depd@2.0.0: {}
 
+  dequal@2.0.3: {}
+
   destroy@1.2.0: {}
 
   detect-libc@2.1.2: {}
@@ -1784,6 +1855,8 @@ snapshots:
 
   expect-type@1.4.0: {}
 
+  fast-copy@4.1.1: {}
+
   fast-deep-equal@3.1.3: {}
 
   fast-uri@3.1.8: {}
@@ -1791,6 +1864,27 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
       picomatch: 4.0.7
+
+  feathers-casl@3.0.0(@casl/ability@6.8.1)(@feathersjs/feathers@5.0.50):
+    dependencies:
+      '@casl/ability': 6.8.1
+      '@feathersjs/errors': 5.0.50
+      '@feathersjs/feathers': 5.0.50
+      '@feathersjs/transport-commons': 5.0.50
+      feathers-utils: 10.8.3(@feathersjs/feathers@5.0.50)
+      lodash: 4.18.1
+    transitivePeerDependencies:
+      - rate-limiter-flexible
+
+  feathers-utils@10.8.3(@feathersjs/feathers@5.0.50):
+    dependencies:
+      '@feathersjs/adapter-commons': 5.0.50
+      '@feathersjs/errors': 5.0.50
+      '@feathersjs/feathers': 5.0.50
+      dequal: 2.0.3
+      fast-copy: 4.1.1
+      neotraverse: 0.6.18
+      safe-stable-stringify: 2.5.0
 
   formidable@3.5.4:
     dependencies:
@@ -2086,6 +2180,8 @@ snapshots:
   nanoid@3.3.19: {}
 
   negotiator@0.6.3: {}
+
+  neotraverse@0.6.18: {}
 
   object-assign@4.1.1: {}
 
