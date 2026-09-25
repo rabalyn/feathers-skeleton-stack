@@ -18,6 +18,7 @@ The alternatives considered were in-process cron in a worker (simplest, but no r
 - Jobs run in a dedicated **`worker` container**: the same image as `api`, started with a different entry point, sharing services, schemas and configuration code ([0006](0006-feathersjs-typescript-api.md)). The API only enqueues.
 - Recurring jobs are BullMQ **job schedulers**, so a schedule exists once in Valkey regardless of how many worker processes run. Their intervals are runtime settings where a setting exists ([0025](0025-runtime-settings.md)).
 - The worker reaches PostgreSQL through PgBouncer in transaction mode like the API ([0004](0004-pgbouncer-pools.md)); maintenance jobs delete in batches, one transaction per batch.
+- The worker has **credentials of its own**: the `worker` database login (a member of `app_rw`, like `app`), its own Valkey user confined to the queues ([0010](0010-sessions-postgres-ratelimits-valkey.md)), and its own `worker-agent` and AppRole ([0023](0023-secrets-management.md)). Its activity is attributable, and each credential rotates alone.
 - Jobs carry the `request_id` of the request that enqueued them, so logs correlate across the hand-off ([0021](0021-structured-logging.md)). Job payloads carry surrogate ids, never direct identifiers or file contents.
 - Failed jobs retry with backoff; a job that exhausts its retries logs at `error` level, which the Loki error alert picks up ([0022](0022-observability-and-alerting.md)).
 

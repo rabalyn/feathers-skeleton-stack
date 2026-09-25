@@ -25,6 +25,7 @@ template {
   contents    = <<-EOT
   {{ with secret "kv/data/pgbouncer" }}"app" "{{ .Data.data.app_password }}"
   "test" "{{ .Data.data.test_password }}"
+  "worker" "{{ .Data.data.worker_password }}"
   {{ end }}
   EOT
   destination = "/run/secrets/userlist.txt"

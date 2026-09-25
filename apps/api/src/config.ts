@@ -69,6 +69,8 @@ const fields = {
   // database hops (ADR 0004).
   valkeyHost: { schema: Type.String({ minLength: 1 }), env: 'VALKEY_HOST' },
   valkeyPort: { schema: port, env: 'VALKEY_PORT', integer: true, default: '6379' },
+  // Each service has its own Valkey user, confined to its keys (ADR 0010).
+  valkeyUser: { schema: Type.String({ minLength: 1 }), env: 'VALKEY_USER' },
   valkeyPassword: { schema: Type.String({ minLength: 16 }), env: 'VALKEY_PASSWORD', secret: true },
   valkeyCaFile: { schema: Type.String({ minLength: 1 }), env: 'VALKEY_CA_FILE' },
   // X-Forwarded-For is believed only from this host's addresses (ADR 0016).
@@ -110,7 +112,13 @@ export const SAML_KEYS = [
   'samlIdpSloUrl'
 ] as const satisfies readonly ConfigKey[]
 
-export const VALKEY_KEYS = ['valkeyHost', 'valkeyPort', 'valkeyPassword', 'valkeyCaFile'] as const satisfies readonly ConfigKey[]
+export const VALKEY_KEYS = [
+  'valkeyHost',
+  'valkeyPort',
+  'valkeyUser',
+  'valkeyPassword',
+  'valkeyCaFile'
+] as const satisfies readonly ConfigKey[]
 
 export const LDAP_KEYS = ['ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapBaseDn', 'ldapCaFile'] as const satisfies readonly ConfigKey[]
 

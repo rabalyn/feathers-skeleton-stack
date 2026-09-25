@@ -19,16 +19,30 @@ template_config {
   static_secret_render_interval = "1m"
 }
 
-# Included by valkey.conf. Valkey reads it at start only.
+# Included by valkey.conf. Valkey reads it at start only. One user per
+# client service, each confined to its own keys (ADR 0010, 0024):
+#   api     rate limits (rl:) and enqueueing (bull:)
+#   worker  the queues (bull:)
+#   test    any key: test files namespace their own
+#   probe   PING, for the healthcheck
+# INFO is @dangerous, and ioredis and BullMQ need it: the ready check, the
+# server version and the eviction policy.
 template {
-  contents    = "{{ with secret \"kv/data/valkey\" }}requirepass \"{{ .Data.data.password }}\"{{ end }}\n"
+  contents    = <<-EOT
+  {{ with secret "kv/data/valkey" }}user default off
+  user probe on >{{ .Data.data.probe_password }} -@all +ping
+  user api on >{{ .Data.data.api_password }} ~rl:* ~bull:* &* +@all -@dangerous +info
+  user worker on >{{ .Data.data.worker_password }} ~bull:* &* +@all -@dangerous +info
+  user test on >{{ .Data.data.test_password }} ~* &* +@all -@admin
+  {{ end }}
+  EOT
   destination = "/run/secrets/valkey-auth.conf"
   perms       = "0440"
 }
 
 # For the healthcheck's client.
 template {
-  contents    = "{{ with secret \"kv/data/valkey\" }}{{ .Data.data.password }}{{ end }}"
-  destination = "/run/secrets/password"
+  contents    = "{{ with secret \"kv/data/valkey\" }}{{ .Data.data.probe_password }}{{ end }}"
+  destination = "/run/secrets/probe_password"
   perms       = "0440"
 }

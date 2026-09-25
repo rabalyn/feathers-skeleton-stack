@@ -4,7 +4,7 @@
 [Container]
 ContainerName=valkey
 Exec=valkey-server /etc/valkey/valkey.conf
-HealthCmd=REDISCLI_AUTH="$$(cat /run/secrets/password)" valkey-cli --tls --cacert /trust/ca.crt -h valkey ping | grep -q PONG
+HealthCmd=REDISCLI_AUTH="$$(cat /run/secrets/probe_password)" valkey-cli --user probe --tls --cacert /trust/ca.crt -h valkey ping | grep -q PONG
 HealthInterval=5s
 HealthRetries=10
 HealthTimeout=3s

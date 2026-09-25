@@ -12,6 +12,7 @@ export const createValkey = (config: ValkeyConfig): Redis =>
   new Redis({
     host: config.valkeyHost,
     port: config.valkeyPort,
+    username: config.valkeyUser,
     password: config.valkeyPassword,
     tls: { ca: readFileSync(config.valkeyCaFile, 'utf8'), servername: config.valkeyHost },
     enableOfflineQueue: false,
