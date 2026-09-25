@@ -1,7 +1,7 @@
 # Local and CI only: the browser reaches Keycloak here (ADR 0008, 0016).
 # Removed at startup when NGINX_IDP_HOST is empty, as in production.
 server {
-  listen 443 ssl;
+  listen ${NGINX_PUBLIC_PORT} ssl;
   http2 on;
   server_name ${NGINX_IDP_HOST};
 

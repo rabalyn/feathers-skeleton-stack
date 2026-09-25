@@ -13,6 +13,9 @@
 #   scripts/stack.sh test [vitest args]
 #                            rebuild test_template and run Vitest in the
 #                            `test` container (ADR 0015); the stack must be up
+#   scripts/stack.sh e2e [playwright args]
+#                            run the Playwright suite in the `e2e` container
+#                            against the running stack (ADR 0015)
 #
 # The OpenBao unseal key lives in a local-only podman volume that no compose
 # service mounts. Production never runs this script: an administrator unseals
@@ -382,10 +385,15 @@ case $cmd in
     compose run --rm migrate node dist/migrate.js --test-template
     compose --profile test run --rm -T test pnpm exec vitest run "$@"
     ;;
+  e2e)
+    shift
+    compose --profile test build e2e
+    compose --profile test run --rm -T e2e pnpm exec playwright test "$@"
+    ;;
   down) compose --profile test down ;;
   reset)
     compose --profile test down -v
     podman volume rm -f "$UNSEAL_VOLUME" >/dev/null 2>&1 || true
     ;;
-  *) sed -n '2,19p' "$0"; exit 2 ;;
+  *) sed -n '2,22p' "$0"; exit 2 ;;
 esac

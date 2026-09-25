@@ -1,6 +1,6 @@
 # The application origin (ADR 0016).
 server {
-  listen 443 ssl;
+  listen ${NGINX_PUBLIC_PORT} ssl;
   http2 on;
   server_name ${NGINX_APP_HOST};
 

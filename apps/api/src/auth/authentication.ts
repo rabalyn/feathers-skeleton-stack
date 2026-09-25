@@ -212,11 +212,15 @@ export const samlRoutes = (app: Application) => {
           return
         }
 
-        case 'GET /auth/saml/logout': {
+        case 'GET /auth/saml/logout':
+        case 'POST /auth/saml/logout': {
           // The IdP's answer to our LogoutRequest; the session is already
-          // revoked, so a bad response only changes where we land.
-          const original = ctx.querystring
-          await sp().validateLogoutResponse(ctx.query as Record<string, string>, original)
+          // revoked, so a bad response only changes what the browser sees.
+          await sp().validateLogoutResponse(
+            ctx.method === 'POST'
+              ? { body: ctx.request.body as Record<string, string> }
+              : { query: ctx.query as Record<string, string>, originalQuery: ctx.querystring }
+          )
           ctx.status = 303
           ctx.redirect('/')
           return

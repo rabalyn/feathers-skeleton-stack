@@ -54,7 +54,9 @@ services:
       NGINX_API_UPSTREAM: api:3030
       NGINX_IDP_UPSTREAM: idp:8080
     ports:
-      - "127.0.0.1:8443:443"
+      # Nginx listens on the public port itself, so inside the networks
+      # nginx:8443 is the same origin a browser uses (the e2e container).
+      - "127.0.0.1:8443:8443"
     networks: [edge, idp-edge]
     volumes:
       - tls-nginx:/etc/nginx/tls:ro
@@ -223,6 +225,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
+
+  e2e:
+    build:
+      context: .
+      dockerfile: containers/e2e/Containerfile
+    image: localhost/feathers-e2e:dev
+    container_name: e2e
+    profiles: [test]
+    environment:
+      E2E_APP_ORIGIN: https://app.localhost:8443
+      # Chromium resolves *.localhost to loopback; map the public names to
+      # nginx instead (ADR 0015).
+      E2E_HOST_RESOLVER_RULES: MAP app.localhost nginx, MAP idp.localhost nginx
+    networks: [edge, idp-edge]
+    volumes:
+      - trust:/trust:ro
 
   openbao:
     image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0

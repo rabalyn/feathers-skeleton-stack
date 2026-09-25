@@ -226,9 +226,17 @@ export class ServiceProvider {
     )
   }
 
-  async validateLogoutResponse(query: Record<string, string>, originalQuery: string): Promise<void> {
+  // The IdP's LogoutResponse, by redirect (query) or by POST (form).
+  async validateLogoutResponse(
+    message: { query: Record<string, string>; originalQuery: string } | { body: Record<string, string> }
+  ): Promise<void> {
     try {
-      await this.saml().validateRedirectAsync(query, originalQuery)
+      if ('body' in message) {
+        const { loggedOut } = await this.saml().validatePostResponseAsync(message.body)
+        if (!loggedOut) throw new Error('not a logout response')
+      } else {
+        await this.saml().validateRedirectAsync(message.query, message.originalQuery)
+      }
     } catch (error) {
       throw new SamlRejected(`logout response invalid: ${(error as Error).message}`)
     }

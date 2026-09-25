@@ -1,0 +1,18 @@
+# Build context: repository root.
+FROM mcr.microsoft.com/playwright:v1.63.0-noble@sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libnss3-tools \
+ && rm -rf /var/lib/apt/lists/*
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+WORKDIR /repo
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
+COPY e2e/package.json e2e/
+RUN pnpm install --frozen-lockfile --filter @app/e2e
+COPY e2e e2e
+COPY containers/e2e/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chown -R pwuser:pwuser /repo/e2e
+USER pwuser
+WORKDIR /repo/e2e
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/entrypoint.sh"]
+CMD ["pnpm", "exec", "playwright", "test"]
