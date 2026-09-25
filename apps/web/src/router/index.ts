@@ -17,7 +17,7 @@ export default defineRouter(({ store }) => {
   router.beforeEach(async (to) => {
     // Nothing authenticated renders before the session is known.
     await session.settled
-    if (to.name === 'login') {
+    if (to.name === 'login' || to.name === 'break-glass') {
       return session.isAuthenticated ? safePath(to.query.returnTo) : true
     }
     if (to.meta.public) return true
@@ -29,12 +29,14 @@ export default defineRouter(({ store }) => {
   })
 
   // A session that ends while a page is open (expiry, revocation, a logout
-  // in another tab) leads back to the login page.
+  // in another tab) leads back to the login page. Before the first
+  // navigation has finished no page is open: the guard above decides, so a
+  // first visit to another public page is not sent to the login page.
   watch(
     () => session.status,
     (status) => {
       const current = router.currentRoute.value
-      if (status === 'anonymous' && !current.meta.public) {
+      if (status === 'anonymous' && current.matched.length > 0 && !current.meta.public) {
         void router.replace({ name: 'login', query: { returnTo: current.fullPath } })
       }
     }

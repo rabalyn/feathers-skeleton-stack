@@ -21,7 +21,17 @@
     "logout": "Abmelden",
     "welcome": "Bitte melden Sie sich mit Ihrer TU-ID an.",
     "unavailable": "Der Dienst ist gerade nicht erreichbar. Ihre Sitzung bleibt erhalten.",
-    "expired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an."
+    "expired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+    "breakGlass": {
+      "title": "Notfall-Anmeldung",
+      "hint": "Nur für das Notfallkonto, wenn die Anmeldung mit TU-ID nicht möglich ist. Jeder Versuch wird protokolliert.",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "submit": "Anmelden",
+      "invalid": "E-Mail oder Passwort ist falsch.",
+      "limited": "Zu viele Versuche. Bitte warten Sie eine Minute.",
+      "unavailable": "Der Dienst ist gerade nicht erreichbar."
+    }
   },
   "user": {
     "tuId": "TU-ID",

@@ -17,6 +17,13 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/LoginPage.vue'),
     meta: { public: true }
   },
+  // The break-glass login (ADR 0008): nothing links here.
+  {
+    path: '/break-glass',
+    name: 'break-glass',
+    component: () => import('@/pages/BreakGlassPage.vue'),
+    meta: { public: true }
+  },
   {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),

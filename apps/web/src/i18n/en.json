@@ -21,7 +21,17 @@
     "logout": "Log out",
     "welcome": "Please log in with your TU-ID.",
     "unavailable": "The service cannot be reached right now. Your session is kept.",
-    "expired": "Your session has ended. Please log in again."
+    "expired": "Your session has ended. Please log in again.",
+    "breakGlass": {
+      "title": "Emergency login",
+      "hint": "Only for the break-glass account, when the TU-ID login is unavailable. Every attempt is recorded.",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Log in",
+      "invalid": "Email or password is wrong.",
+      "limited": "Too many attempts. Please wait a minute.",
+      "unavailable": "The service cannot be reached right now."
+    }
   },
   "user": {
     "tuId": "TU-ID",

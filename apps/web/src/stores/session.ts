@@ -161,6 +161,30 @@ export const useSessionStore = defineStore('session', () => {
     window.location.assign(`${SAML_LOGIN_URL}?${new URLSearchParams({ returnTo }).toString()}`)
   }
 
+  // The break-glass login (ADR 0008): email and password over REST, which
+  // answers with the refresh cookie; the session then starts like any other,
+  // with a refresh. The answer never says which part was wrong.
+  const passwordLogin = async (
+    email: string,
+    password: string
+  ): Promise<'ok' | 'invalid' | 'limited' | 'unavailable'> => {
+    let response: Response
+    try {
+      response = await fetch(AUTHENTICATION_URL, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ strategy: 'password', email, password })
+      })
+    } catch {
+      return 'unavailable'
+    }
+    if (response.status === 401 || response.status === 403) return 'invalid'
+    if (response.status === 429) return 'limited'
+    if (!response.ok) return 'unavailable'
+    return (await refresh()) === 'authenticated' ? 'ok' : 'unavailable'
+  }
+
   // Revokes the session behind the cookie, then continues to the IdP's
   // logout where the login came from there (ADR 0008). Throws when the
   // server could not confirm it: the session would still be alive.
@@ -193,6 +217,7 @@ export const useSessionStore = defineStore('session', () => {
     start,
     refresh,
     login,
+    passwordLogin,
     logout,
     can,
     canAll

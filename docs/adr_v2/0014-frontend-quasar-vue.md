@@ -26,6 +26,7 @@ The frontend needs a component framework, a build tool, and state management tha
 
 - **The access token is kept in memory only.** The Feathers authentication client stores tokens in `localStorage` by default and `feathers-pinia`'s auth store builds on it, so in-memory storage must be configured explicitly. Left at the default, the design in [0010](0010-sessions-postgres-ratelimits-valkey.md) is silently defeated.
 - **SAML login is a full-page redirect, not an XHR.** The app navigates the browser to `/api/auth/saml/login` and is returned to by the identity provider. On return, and on every reload or new tab, no access token exists in memory, so the app calls refresh on startup to re-establish the session from the cookie before rendering an authenticated view.
+- **The break-glass login is a page of its own, `/break-glass`**, which nothing links to ([0008](0008-authentication-saml2-ldap.md)). It posts email and password to `/api/authentication`, which answers with the refresh cookie, and then starts the session with a refresh like every other page load. Wrong credentials, a rate-limited attempt and an unreachable service are told apart; which of email or password was wrong is not.
 
 The client re-authenticates its WebSocket connection after every refresh and reconnect ([0012](0012-role-scoped-channels.md)). A failed refresh clears state, closes the socket and returns to login; a transient network error is distinguished from a rejected refresh so offline users are not logged out.
 
