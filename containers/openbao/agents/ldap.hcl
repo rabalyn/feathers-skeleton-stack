@@ -30,3 +30,9 @@ template {
   destination = "/run/secrets/keycloak_password"
   perms       = "0440"
 }
+
+template {
+  contents    = "{{ with secret \"kv/data/ldap\" }}{{ .Data.data.api_password }}{{ end }}"
+  destination = "/run/secrets/api_password"
+  perms       = "0440"
+}

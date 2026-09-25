@@ -4,5 +4,7 @@
 // Types are imported with `import type`, which leaves nothing at runtime.
 export type { ServiceTypes } from './app.js'
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
+export type { Setting, SettingPatch, SettingQuery } from './services/settings/settings.schema.js'
+export type { DirectoryEntry, DirectoryPage, DirectoryQuery } from './services/directory/directory.schema.js'
 export { ROLES, defineAbilitiesFor, type AbilityUser, type AppAbility, type Role } from './abilities.js'
 export { PAGINATE } from './paginate.js'

@@ -1,7 +1,7 @@
 FROM docker.io/library/alpine:3.24.2@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
 RUN apk add --no-cache openldap openldap-back-mdb openldap-clients
 COPY containers/ldap/slapd.conf.in /etc/openldap/slapd.conf.in
-COPY containers/ldap/base.ldif.in /etc/openldap/base.ldif.in
+COPY containers/ldap/base.ldif /etc/openldap/base.ldif
 COPY containers/ldap/seed/ /etc/openldap/seed/
 COPY containers/ldap/entrypoint.sh /usr/local/bin/entrypoint.sh
 EXPOSE 636

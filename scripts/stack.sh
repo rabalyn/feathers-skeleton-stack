@@ -388,7 +388,8 @@ case $cmd in
   test)
     shift
     compose --profile test build api test
-    compose --profile test up -d test-agent
+    # Recreated like every agent in `up`: it reads its templates at start.
+    compose --profile test up -d --force-recreate --no-deps test-agent >/dev/null 2>&1
     setup
     log "rebuilding test_template"
     compose run --rm migrate node dist/migrate.js --test-template

@@ -11,10 +11,3 @@ ou: people
 dn: ou=services,dc=feathers,dc=test
 objectClass: organizationalUnit
 ou: services
-
-# Keycloak's bind account (ADR 0008); password from OpenBao.
-dn: cn=keycloak,ou=services,dc=feathers,dc=test
-objectClass: applicationProcess
-objectClass: simpleSecurityObject
-cn: keycloak
-userPassword: @KEYCLOAK_PW@

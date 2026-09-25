@@ -32,9 +32,11 @@ access to attrs=userPassword
   by anonymous auth
   by * none
 
-# Service accounts read the people subtree; nobody else reads anything.
+# Service accounts read the people subtree: Keycloak for federation, the
+# api for directory lookup (ADR 0008). Nobody else reads anything.
 access to dn.subtree="ou=people,dc=feathers,dc=test"
   by dn.exact="cn=keycloak,ou=services,dc=feathers,dc=test" read
+  by dn.exact="cn=api,ou=services,dc=feathers,dc=test" read
   by * none
 
 access to *

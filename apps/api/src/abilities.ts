@@ -38,10 +38,13 @@ export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
       // Runtime settings (ADR 0025): operator observes, admin changes.
       can('read', 'settings')
       can('patch', 'settings')
+      // Directory lookup (ADR 0008).
+      can('read', 'directory')
       break
     case 'operator':
       can('read', 'users')
       can('read', 'settings')
+      can('read', 'directory')
       break
     case 'user':
       break

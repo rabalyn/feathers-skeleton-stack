@@ -54,7 +54,7 @@ The stack needs a fixed service list and a network layout where no component can
 | `dozzle-edge` | `nginx`, `dozzle` | Browser access to Dozzle; local only |
 | `app-data` | `api`, `worker`, `pgbouncer`, `valkey`, `valkey-exporter`, `test` (test) | Application data access |
 | `db` | `pgbouncer`, `postgres`, `backup`, `migrate`, `postgres-exporter`, `pgbouncer-exporter` | Direct database access |
-| `identity` | `api`, `idp`, `ldap` | Authentication and directory lookup |
+| `identity` | `api`, `idp`, `ldap`, `test` (test) | Authentication and directory lookup |
 | `object` | `api`, `worker`, `s3`, `backup` | Object storage |
 | `secrets` | `openbao`, every `*-agent`, `backup` | Secret delivery; `backup` for OpenBao snapshots |
 | `observability` | `api`, `worker`, `prometheus`, `loki`, `promtail`, `grafana`, all exporters, `mail`, `uptime` | Metrics, logs, alert delivery |
@@ -70,7 +70,7 @@ Consequences of this layout, all intentional:
 - `openbao` is reachable only by agents and the backup service. Application containers never talk to it; they read files the agent wrote.
 - The `api` and `worker` join `observability` for scraping and, for the worker, for SMTP. This is wider than a dedicated scrape network and is accepted as the cost of a flat single-host model.
 - The API's metrics and health listener is a separate port reachable only on `observability` ([0022](0022-observability-and-alerting.md)).
-- The test runners sit where the code they test sits. `test` is on `app-data` only, like the API, so integration tests reach PostgreSQL through PgBouncer and cannot bypass it; the migration into `test_template` is done by the `migrate` job. `e2e` is on `edge` and `idp-edge`, like a browser, and reaches nothing else. Neither exists in production.
+- The test runners sit where the code they test sits. `test` is on `app-data` and `identity`, like the API, so integration tests reach PostgreSQL through PgBouncer and cannot bypass it, and reach the test directory as the API's directory lookup does; the migration into `test_template` is done by the `migrate` job. `e2e` is on `edge` and `idp-edge`, like a browser, and reaches nothing else. Neither exists in production.
 
 Only `nginx` publishes ports to the host. Every other service is reachable only on its private networks.
 

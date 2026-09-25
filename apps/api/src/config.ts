@@ -73,6 +73,12 @@ const fields = {
   valkeyCaFile: { schema: Type.String({ minLength: 1 }), env: 'VALKEY_CA_FILE' },
   // X-Forwarded-For is believed only from this host's addresses (ADR 0016).
   trustedProxyHost: { schema: Type.String({ minLength: 1 }), env: 'TRUSTED_PROXY_HOST' },
+  // Directory lookup (ADR 0008): LDAPS with a read-only service account.
+  ldapUrl: { schema: Type.String({ pattern: '^ldaps://' }), env: 'LDAP_URL' },
+  ldapBindDn: { schema: Type.String({ minLength: 1 }), env: 'LDAP_BIND_DN' },
+  ldapBindPassword: { schema: Type.String({ minLength: 1 }), env: 'LDAP_BIND_PASSWORD', secret: true },
+  ldapBaseDn: { schema: Type.String({ minLength: 1 }), env: 'LDAP_BASE_DN' },
+  ldapCaFile: { schema: Type.String({ minLength: 1 }), env: 'LDAP_CA_FILE' },
   databasePoolMax: {
     schema: Type.Integer({ minimum: 1, maximum: 50 }),
     env: 'DATABASE_POOL_MAX',
@@ -106,6 +112,8 @@ export const SAML_KEYS = [
 
 export const VALKEY_KEYS = ['valkeyHost', 'valkeyPort', 'valkeyPassword', 'valkeyCaFile'] as const satisfies readonly ConfigKey[]
 
+export const LDAP_KEYS = ['ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapBaseDn', 'ldapCaFile'] as const satisfies readonly ConfigKey[]
+
 export const API_KEYS = [
   'publicOrigin',
   'authSigningSecret',
@@ -117,6 +125,7 @@ export const API_KEYS = [
   'bodySizeCeilingBytes',
   'trustedProxyHost',
   ...VALKEY_KEYS,
+  ...LDAP_KEYS,
   ...DATABASE_KEYS
 ] as const satisfies readonly ConfigKey[]
 
@@ -182,4 +191,5 @@ export const loadConfig = async <K extends ConfigKey>(
 
 export type ApiConfig = Pick<Config, (typeof API_KEYS)[number]>
 export type DatabaseConfig = Pick<Config, (typeof DATABASE_KEYS)[number]>
+export type LdapConfig = Pick<Config, (typeof LDAP_KEYS)[number]>
 export type ValkeyConfig = Pick<Config, (typeof VALKEY_KEYS)[number]>

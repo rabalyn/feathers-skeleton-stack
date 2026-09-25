@@ -37,6 +37,16 @@ The `ldap` container (OpenLDAP) serves **LDAPS only**, with a certificate from t
 
 The API never uses LDAP to authenticate a user. Login is SAML2 only.
 
+**Directory lookup** is the read-only `directory` service, `GET /api/directory?q=…`:
+
+- One search term of at least **two** characters (historical TU-IDs have two), split into words. Every word must be a **prefix** of the TU-ID (`cn`), given name, surname or mail, so `Uma Us` finds Uma User. Prefix matching uses the directory's initial-substring indexes even for two-character words, where a "contains" match would scan the whole directory.
+- Every word is escaped before it enters the filter. The search asks only for `cn`, `givenName`, `sn` and `mail`.
+- The directory returns at most **50** entries per search. The answer uses the usual page shape plus `truncated`, which says there were more and the term should be narrowed.
+- Each result carries the `userId` of the person's account if they have logged in before, and `null` otherwise. Lookup creates nothing: a person gets an account only by logging in ([0009](0009-tu-id-identity-model.md)).
+- A directory that is unreachable or refuses the service account is answered with **503**.
+- Lookups are not audit events, like reading user records; the search term is never logged.
+- Locally the service account is `cn=api,ou=services` in the test directory, readable only on the people subtree and never on passwords. Its password is generated at setup and delivered through OpenBao. Service accounts are added to an existing local directory at start when missing.
+
 ### Break-glass superadmin
 
 One local account, authenticated by email and password, exists so the system is administrable when SAML2 is unavailable or before any user has logged in.

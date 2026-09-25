@@ -100,6 +100,12 @@ services:
       VALKEY_CA_FILE: /trust/ca.crt
       # X-Forwarded-For is believed only from this container (ADR 0016).
       TRUSTED_PROXY_HOST: nginx
+      # Directory lookup (ADR 0008); the university directory in production.
+      LDAP_URL: ldaps://ldap:636
+      LDAP_BIND_DN: cn=api,ou=services,dc=feathers,dc=test
+      LDAP_BIND_PASSWORD_FILE: /run/secrets/ldap_bind_password
+      LDAP_BASE_DN: ou=people,dc=feathers,dc=test
+      LDAP_CA_FILE: /trust/ca.crt
     networks: [edge, app-data, identity]
     volumes:
       - api-secrets:/run/secrets:ro
@@ -222,7 +228,12 @@ services:
       VALKEY_HOST: valkey
       VALKEY_PASSWORD_FILE: /run/secrets/valkey_password
       VALKEY_CA_FILE: /trust/ca.crt
-    networks: [app-data]
+      LDAP_URL: ldaps://ldap:636
+      LDAP_BIND_DN: cn=api,ou=services,dc=feathers,dc=test
+      LDAP_BIND_PASSWORD_FILE: /run/secrets/ldap_bind_password
+      LDAP_BASE_DN: ou=people,dc=feathers,dc=test
+      LDAP_CA_FILE: /trust/ca.crt
+    networks: [app-data, identity]
     volumes:
       - test-secrets:/run/secrets:ro
       - trust:/trust:ro

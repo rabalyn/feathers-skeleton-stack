@@ -9,6 +9,7 @@ import { authentication, samlRoutes } from './auth/authentication.js'
 import type { ServiceProvider } from './auth/saml.js'
 import type { SessionStore } from './auth/sessions.js'
 import { TrustedProxy } from './client-ip.js'
+import { Directory } from './directory.js'
 import { defaultDeny } from './hooks/default-deny.js'
 import { sanitizeHttpErrors, sanitizeServiceErrors } from './hooks/errors.js'
 import { RateLimiter } from './rate-limit.js'
@@ -30,6 +31,7 @@ export interface AppSettings {
   settings: SettingsStore
   valkey: Redis
   rateLimiter: RateLimiter
+  directory: Directory
 }
 
 export interface AppOptions {
@@ -55,6 +57,7 @@ export const createApp = (
   app.set('settings', new SettingsStore(knex, options.settingsTtlMs))
   app.set('valkey', valkey)
   app.set('rateLimiter', new RateLimiter(valkey, app.get('settings'), options.rateLimitPrefix))
+  app.set('directory', new Directory(config))
   const proxy = new TrustedProxy(config.trustedProxyHost)
 
   app.use(errorHandler())

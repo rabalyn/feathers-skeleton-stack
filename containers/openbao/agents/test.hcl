@@ -30,3 +30,9 @@ template {
   destination = "/run/secrets/valkey_password"
   perms       = "0440"
 }
+
+template {
+  contents    = "{{ with secret \"kv/data/test\" }}{{ .Data.data.ldap_bind_password }}{{ end }}"
+  destination = "/run/secrets/ldap_bind_password"
+  perms       = "0440"
+}
