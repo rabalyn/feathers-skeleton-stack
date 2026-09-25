@@ -6,8 +6,11 @@
 #   scripts/stack.sh idp     exchange certificates with the local IdP and
 #                            restart the api
 #   scripts/stack.sh down    stop the stack, keep volumes
-#   scripts/stack.sh reset   stop the stack and delete every volume, including
-#                            the local unseal material
+#   scripts/stack.sh reset [--ca]
+#                            stop the stack and delete every volume, including
+#                            the local unseal material, but keep the local root
+#                            CA so the browser import stays valid (ADR 0016);
+#                            --ca deletes the CA too
 #   scripts/stack.sh ca      print the local root CA certificate, for a
 #                            one-time import into your browser (ADR 0016)
 #   scripts/stack.sh test [vitest args]
@@ -398,8 +401,14 @@ case $cmd in
     ;;
   down) compose --profile test down ;;
   reset)
-    compose --profile test down -v
+    compose --profile test down
+    keep=${PROJECT}_certs-ca
+    [[ ${2:-} == --ca ]] && keep=
+    for volume in $(podman volume ls -q --filter "label=io.podman.compose.project=$PROJECT"); do
+      [[ $volume == "$keep" ]] || podman volume rm -f "$volume" >/dev/null
+    done
+    [[ -n $keep ]] && log "kept the local root CA; '$0 reset --ca' deletes it"
     podman volume rm -f "$UNSEAL_VOLUME" >/dev/null 2>&1 || true
     ;;
-  *) sed -n '2,22p' "$0"; exit 2 ;;
+  *) sed -n '2,25p' "$0"; exit 2 ;;
 esac
