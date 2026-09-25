@@ -31,6 +31,7 @@ Stated here so that nothing claims more parity than exists:
 | Backup target | Named volume | Real NFS mount on the runner | Real NFS export, mounted by the host | Rootless Podman can neither mount NFS nor run an NFS server; CI runners have root ([0017](0017-nfs-backup-storage.md)) |
 | OpenBao unseal | Scripted | Scripted | Manual, by an administrator | Local and CI secrets are random throwaway values ([0023](0023-secrets-management.md)) |
 | Uptime check | In the stack | In the stack | Must run on another machine | A check on the same host dies with it ([0022](0022-observability-and-alerting.md)) |
+| Container log viewer | Dozzle | Dozzle, unused; the runner needs the rootless Podman API socket | None | A developer convenience that nothing depends on; production logs are read in Grafana ([0002](0002-service-inventory-and-networks.md), [0022](0022-observability-and-alerting.md)) |
 
 ## Consequences
 

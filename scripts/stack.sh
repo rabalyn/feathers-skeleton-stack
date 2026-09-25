@@ -347,6 +347,9 @@ cmd=${1:-}
 case $cmd in
   up)
     command -v jq >/dev/null || die "jq is required"
+    # Dozzle reads container output through the rootless Podman API (ADR 0002).
+    [[ -S ${XDG_RUNTIME_DIR:-}/podman/podman.sock ]] ||
+      die "the Podman API socket is missing; run: systemctl --user enable --now podman.socket"
     log "building images"
     compose build
     # podman-compose neither reruns a completed one-shot nor recreates a

@@ -25,8 +25,8 @@ Nginx is the reverse proxy and TLS terminator in every environment. Only the sou
 
 ### The local CA
 
-- On first start, `certs` creates a root CA and stores it in a volume. On every start it issues or renews the leaf certificate for the configured local host names (by default `app.localhost` and `idp.localhost`) if it is missing or near expiry, together with the server certificates of the internal TLS listeners: OpenBao ([0023](0023-secrets-management.md)), PgBouncer and PostgreSQL ([0004](0004-pgbouncer-pools.md)), and the local test directory ([0008](0008-authentication-saml2-ldap.md)). `*.localhost` resolves to the loopback address in browsers without editing `/etc/hosts`.
-- Locally Nginx publishes HTTPS on host port **8443** by default, because rootless Podman cannot bind ports below `net.ipv4.ip_unprivileged_port_start` (1024 by default) and changing that sysctl on every developer machine and runner is not worth it. The local origins are therefore `https://app.localhost:8443` and `https://idp.localhost:8443`. The port is part of the configured public origin, from which the SAML entity ID and ACS URL are derived, so production on 443 differs by configuration only. Nginx listens on that same public port inside the container network too, so a client inside the stack (the end-to-end browser, [0015](0015-testing-vitest-playwright.md)) reaches exactly the origin a developer's browser does.
+- On first start, `certs` creates a root CA and stores it in a volume. On every start it issues or renews the leaf certificate for the configured local host names (by default `app.localhost`, `idp.localhost` and `dozzle.localhost`) if it is missing or near expiry, together with the server certificates of the internal TLS listeners: OpenBao ([0023](0023-secrets-management.md)), PgBouncer and PostgreSQL ([0004](0004-pgbouncer-pools.md)), and the local test directory ([0008](0008-authentication-saml2-ldap.md)). `*.localhost` resolves to the loopback address in browsers without editing `/etc/hosts`.
+- Locally Nginx publishes HTTPS on host port **8443** by default, because rootless Podman cannot bind ports below `net.ipv4.ip_unprivileged_port_start` (1024 by default) and changing that sysctl on every developer machine and runner is not worth it. The local origins are therefore `https://app.localhost:8443`, `https://idp.localhost:8443` and `https://dozzle.localhost:8443`. The port is part of the configured public origin, from which the SAML entity ID and ACS URL are derived, so production on 443 differs by configuration only. Nginx listens on that same public port inside the container network too, so a client inside the stack (the end-to-end browser, [0015](0015-testing-vitest-playwright.md)) reaches exactly the origin a developer's browser does.
 - The root is trusted by Playwright's browser context, by Node through `NODE_EXTRA_CA_CERTS`, and — through a documented one-time import — by the developer's own browser. Tests never ignore certificate errors.
 - The root's private key never leaves the volume and is unique per machine; nothing about it is committed.
 
@@ -38,6 +38,7 @@ Nginx reads its certificate from one path in every environment and reloads when 
 - Serves the built frontend bundle, which is part of the `nginx` image, with the SPA history fallback; hashed assets cached immutably and `index.html` not cached. Under the `dev` profile, proxies to the Vite dev server instead ([0014](0014-frontend-quasar-vue.md)).
 - Proxies `/api` to the API and upgrades `/api/socket.io` to WebSocket, with an idle timeout longer than the Socket.io ping interval.
 - Locally, serves the IdP under its own host name so the browser can complete the SAML redirect ([0008](0008-authentication-saml2-ldap.md)). This virtual host is disabled in production, where the IdP is external.
+- Locally, serves Dozzle ([0002](0002-service-inventory-and-networks.md)) under its own host name, unbuffered so its server-sent event streams stay live. It is a developer convenience with no production counterpart; the virtual host is removed when its host name is unset, as in production. The application's security headers are not applied to it, because its CSP is written for the application, not for a third-party UI.
 - Sets `X-Forwarded-For` and `X-Forwarded-Proto`; the API trusts these only from the proxy address, which is what makes the IP-keyed rate limits in [0010](0010-sessions-postgres-ratelimits-valkey.md) meaningful.
 - Sends the security headers in [0018](0018-owasp-security-baseline.md), including CSP and HSTS.
 - Enforces a request body size **ceiling** as deployment configuration. The upload size limit is a runtime setting validated to stay below this ceiling ([0020](0020-object-storage-uploads.md)).
@@ -47,7 +48,7 @@ The API is mounted under the `/api` prefix so Feathers service paths cannot coll
 
 ### One configuration, not two
 
-There is a single Nginx configuration, parameterised by environment (server names, certificate path, upstream addresses, whether the IdP virtual host is enabled). Production-specific concerns that belong to the institution — DNS, the public address, the ACME endpoint — are configuration values, not a separate config file.
+There is a single Nginx configuration, parameterised by environment (server names, certificate path, upstream addresses, whether the IdP and Dozzle virtual hosts are enabled). Production-specific concerns that belong to the institution — DNS, the public address, the ACME endpoint — are configuration values, not a separate config file.
 
 ## Consequences
 

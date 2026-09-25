@@ -30,6 +30,7 @@ The stack needs a fixed service list and a network layout where no component can
 | `ldap` | OpenLDAP, seeded test directory | university directory (external) |
 | `mail` | Mailpit, SMTP capture | university SMTP relay (external) |
 | `certs` | One-shot job creating the local CA and certificates | ACME client (see [0016](0016-nginx-and-tls-everywhere.md)) |
+| `dozzle` | Dozzle, a live browser view of container output; local only, a developer convenience | — |
 | `prometheus` | Metrics store | same |
 | `loki` | Log store | same |
 | `promtail` | Log shipper | same |
@@ -50,6 +51,7 @@ The stack needs a fixed service list and a network layout where no component can
 | --- | --- | --- |
 | `edge` | `nginx`, `api`, `web` (dev), `uptime`, `e2e` (test) | Public request path |
 | `idp-edge` | `nginx`, `idp`, `e2e` (test) | Browser access to the local IdP; local and CI only |
+| `dozzle-edge` | `nginx`, `dozzle` | Browser access to Dozzle; local only |
 | `app-data` | `api`, `worker`, `pgbouncer`, `valkey`, `valkey-exporter`, `test` (test) | Application data access |
 | `db` | `pgbouncer`, `postgres`, `backup`, `migrate`, `postgres-exporter`, `pgbouncer-exporter` | Direct database access |
 | `identity` | `api`, `idp`, `ldap` | Authentication and directory lookup |
@@ -64,6 +66,7 @@ Consequences of this layout, all intentional:
 - `postgres` is reachable only from `db`.
 - `s3` is reachable only by the API, the worker and the backup service, never by Nginx, so object bytes can only leave through an authorized API call ([0020](0020-object-storage-uploads.md)).
 - `ldap` is reachable by the API because administrators and operators look users up in the directory ([0008](0008-authentication-saml2-ldap.md)). It is not reachable by Nginx: the browser only needs the IdP, which is why `idp-edge` is a separate network.
+- `dozzle` is reachable only by Nginx, under its own host name ([0016](0016-nginx-and-tls-everywhere.md)). It reads container output through the rootless Podman API socket, bind-mounted from the host, which gives it control over the developer's containers; it runs with actions and shell disabled and filtered to this project, and exists only under the `local` profile. It is not part of log collection or alerting ([0022](0022-observability-and-alerting.md)).
 - `openbao` is reachable only by agents and the backup service. Application containers never talk to it; they read files the agent wrote.
 - The `api` and `worker` join `observability` for scraping and, for the worker, for SMTP. This is wider than a dedicated scrape network and is accepted as the cost of a flat single-host model.
 - The API's metrics and health listener is a separate port reachable only on `observability` ([0022](0022-observability-and-alerting.md)).
@@ -73,6 +76,6 @@ Only `nginx` publishes ports to the host. Every other service is reachable only 
 
 ## Consequences
 
-- Eight networks, each removing a specific reachability the previous plan claimed but did not enforce.
+- Nine networks, each removing a specific reachability the previous plan claimed but did not enforce.
 - The `api` joins five networks and remains the hub, which is inherent to a single-application stack.
 - One-shot and scheduled jobs (`migrate`, `certs`, `backup`) need explicit network membership, which the generated Quadlet units inherit from `compose.yaml`.

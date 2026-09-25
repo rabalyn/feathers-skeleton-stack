@@ -29,6 +29,8 @@ The deployment needs metrics, searchable logs, dashboards, and an alert that act
 
 All run as containers in every environment ([0001](0001-one-stack-every-environment.md)).
 
+The local stack additionally runs Dozzle ([0002](0002-service-inventory-and-networks.md)), a live view of container output for developers. It is not part of this stack: it reads stdout through the Podman API rather than the log files, keeps nothing, feeds no dashboard or alert, and has no production counterpart. Nothing here may depend on it.
+
 ### Internal and public endpoints
 
 - The API and the worker expose `GET /metrics` in Prometheus format, and the API exposes health and readiness endpoints, on an **internal port** reachable only on the `observability` network. Nginx never routes them, and they sit outside the Feathers authentication pipeline. Container health checks call them from inside the container.

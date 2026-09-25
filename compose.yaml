@@ -24,7 +24,7 @@ services:
     container_name: certs
     profiles: [local]
     environment:
-      CERT_HOSTNAMES: app.localhost,idp.localhost
+      CERT_HOSTNAMES: app.localhost,idp.localhost,dozzle.localhost
     network_mode: none
     volumes:
       - certs-ca:/ca
@@ -53,11 +53,13 @@ services:
       NGINX_BODY_SIZE_LIMIT: 10m
       NGINX_API_UPSTREAM: api:3030
       NGINX_IDP_UPSTREAM: idp:8080
+      NGINX_DOZZLE_HOST: dozzle.localhost
+      NGINX_DOZZLE_UPSTREAM: dozzle:8080
     ports:
       # Nginx listens on the public port itself, so inside the networks
       # nginx:8443 is the same origin a browser uses (the e2e container).
       - "127.0.0.1:8443:8443"
-    networks: [edge, idp-edge]
+    networks: [edge, idp-edge, dozzle-edge]
     volumes:
       - tls-nginx:/etc/nginx/tls:ro
 
@@ -229,6 +231,35 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
+
+  # Local convenience only (ADR 0002): a live view of container output at
+  # https://dozzle.localhost:8443. Not part of the log pipeline (ADR 0021,
+  # 0022), which reads the log files, not container output.
+  dozzle:
+    image: docker.io/amir20/dozzle@sha256:c90494cbc3a9ca959634b89fdb3fdecbcbae1f690d7a567d0d356c6fda1d957c # v11.1.1
+    container_name: dozzle
+    profiles: [local]
+    environment:
+      DOZZLE_FILTER: label=com.docker.compose.project=feathers
+      DOZZLE_ENABLE_ACTIONS: "false"
+      DOZZLE_ENABLE_SHELL: "false"
+      DOZZLE_NO_ANALYTICS: "true"
+      DOZZLE_RELEASE_CHECK_MODE: manual
+      DOZZLE_IMAGE_CHECK_MODE: "off"
+    networks: [dozzle-edge]
+    # The rootless Podman API socket (systemctl --user enable --now
+    # podman.socket). A socket cannot be mounted read-only in any useful
+    # sense: whoever reaches it controls the user's containers, which is
+    # accepted for a local-only tool behind 127.0.0.1. SELinux hosts need
+    # the label disabled to connect to it.
+    security_opt: [label=disable]
+    volumes:
+      - ${XDG_RUNTIME_DIR}/podman/podman.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "/dozzle", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   e2e:
     build:
@@ -412,6 +443,7 @@ services:
 networks:
   edge: {}
   idp-edge: {}
+  dozzle-edge: {}
   app-data: {}
   db: {}
   identity: {}
