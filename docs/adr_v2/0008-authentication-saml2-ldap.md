@@ -20,6 +20,8 @@ The application is a SAML2 **service provider**. It never sees a university pass
 - Local and CI: the SP is configured against a **Keycloak container** acting as the identity provider, which uses **LDAP user federation** against the seeded `ldap` container as its user store, and is configured declaratively through a realm import file committed to the repository.
 - Locally the browser reaches Keycloak through Nginx under its own host name (for example `idp.localhost`), over the same TLS as the application ([0016](0016-nginx-and-tls-everywhere.md)). In production the IdP is external and Nginx has no such virtual host.
 
+The local Keycloak exists only to get development and testing going quickly, so it is kept self-contained: it runs in `start-dev` mode on Keycloak's embedded storage, kept on its own volume, imports the committed realm on first start, and has no database connection. Its production-mode behaviour is irrelevant here, because production never runs it. If embedded storage ever becomes a problem, giving it a PostgreSQL database is acceptable; it is a development tool, not part of the production topology.
+
 The application code, routes, assertion handling and session issuance are identical in both cases. Only the IdP metadata URL and certificate differ, by configuration.
 
 ### Attributes
@@ -28,7 +30,7 @@ The TU-ID is carried in **`cn`**. The SP requests and maps: `cn` (TU-ID), `given
 
 ### LDAP
 
-The `ldap` container (OpenLDAP) is seeded at startup with a small set of test users carrying `cn` (TU-ID), `givenName`, `sn`, `mail` and `userPassword`. It serves two consumers:
+The `ldap` container (OpenLDAP) serves **LDAPS only**, with a certificate from the local CA ([0016](0016-nginx-and-tls-everywhere.md)), so no bind credential crosses a network in plaintext and the API's LDAP client uses TLS exactly as it will against the university directory. It is seeded at startup with a small set of test users carrying `cn` (TU-ID), `givenName`, `sn`, `mail` and `userPassword`. It serves two consumers:
 
 - **Keycloak** binds to it as its user store, which is the shape the university deployment has.
 - **The API** binds to it with a read-only service account for **directory lookup**: finding a person who has not logged in yet. Lookup is available to `admin` and `operator` only ([0011](0011-casl-role-authorization.md)). The same kind of service account is already in use against the university directory by other applications. Every filter built from user input is escaped ([0018](0018-owasp-security-baseline.md)).
