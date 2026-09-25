@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { QueueEvents } from 'bullmq'
 import { pino } from 'pino'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Application } from '../../src/app.js'
 import {
   DAILY,
@@ -10,6 +10,7 @@ import {
   startMaintenance,
   type Maintenance
 } from '../../src/jobs/maintenance.js'
+import { createRegistry } from '../../src/metrics.js'
 import { createTestApp, loadValkeyConfig } from '../support/app.js'
 
 // ADR 0024 against the stack's Valkey: the schedule exists once, and a job
@@ -19,6 +20,7 @@ let app: Application
 let maintenance: Maintenance
 // Completion is observed through the queue's events.
 let events: QueueEvents
+const metrics = createRegistry('worker')
 
 beforeAll(async () => {
   ;({ app } = await createTestApp())
@@ -29,7 +31,8 @@ beforeAll(async () => {
     knex: app.get('knex'),
     settings: app.get('settings'),
     logger: pino({ level: 'silent' }),
-    prefix
+    prefix,
+    metrics
   })
   events = new QueueEvents(maintenance.queue.name, { connection, prefix })
   await events.waitUntilReady()
@@ -55,6 +58,16 @@ describe('maintenance queue', () => {
     const job = await maintenance.queue.add(RETENTION_CLEANUP, {})
     const result = await job.waitUntilFinished(events, 10_000)
     expect(result).toEqual({ auditEvents: expect.any(Number), sessions: expect.any(Number) })
+  })
+
+  it('reports job outcomes, durations and queue depth (ADR 0022)', async () => {
+    // The worker's own completion event may trail the queue's.
+    await vi.waitFor(async () =>
+      expect(await metrics.metrics()).toMatch(/bullmq_jobs_total\{queue="maintenance",outcome="completed",service="worker"\} [1-9]/)
+    )
+    const text = await metrics.metrics()
+    expect(text).toMatch(/bullmq_job_duration_seconds_count\{service="worker",queue="maintenance"\} [1-9]/)
+    expect(text).toMatch(/bullmq_queue_jobs\{queue="maintenance",state="waiting",service="worker"\} \d+/)
   })
 
   it('fails an unknown job at once, without retrying', async () => {

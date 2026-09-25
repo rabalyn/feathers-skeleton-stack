@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { Queue, UnrecoverableError, Worker, type JobsOptions, type RedisOptions } from 'bullmq'
 import type { Knex } from 'knex'
 import type { Logger } from 'pino'
+import { Counter, Gauge, Histogram, type Registry } from 'prom-client'
 import type { ValkeyConfig } from '../config.js'
 import type { SettingsStore } from '../settings/store.js'
 import { retentionCleanup } from './retention.js'
@@ -47,10 +48,49 @@ export interface MaintenanceOptions {
   logger: Logger
   // Tests keep their queues apart.
   prefix?: string
+  // Job outcomes, durations and queue depth (ADR 0022).
+  metrics?: Registry
 }
 
-export const startMaintenance = ({ connection, knex, settings, logger, prefix = QUEUE_PREFIX }: MaintenanceOptions) => {
+export const startMaintenance = ({
+  connection,
+  knex,
+  settings,
+  logger,
+  prefix = QUEUE_PREFIX,
+  metrics
+}: MaintenanceOptions) => {
   const queue = new Queue(MAINTENANCE_QUEUE, { connection, prefix, defaultJobOptions: JOB_OPTIONS })
+  const registers = metrics ? [metrics] : []
+  const outcomes = new Counter({
+    name: 'bullmq_jobs_total',
+    help: 'Finished job attempts by outcome',
+    labelNames: ['queue', 'outcome'],
+    registers
+  })
+  const durations = new Histogram({
+    name: 'bullmq_job_duration_seconds',
+    help: 'Duration of job attempts, from start to finish',
+    labelNames: ['queue'],
+    buckets: [0.1, 0.5, 1, 5, 15, 60, 300, 900, 3600],
+    registers
+  })
+  new Gauge({
+    name: 'bullmq_queue_jobs',
+    help: 'Jobs in the queue by state',
+    labelNames: ['queue', 'state'],
+    registers,
+    async collect() {
+      const counts = await queue.getJobCounts('waiting', 'active', 'delayed', 'failed')
+      for (const [state, count] of Object.entries(counts)) this.set({ queue: MAINTENANCE_QUEUE, state }, count)
+    }
+  })
+  const finished = (job: { processedOn?: number; finishedOn?: number } | undefined, outcome: string) => {
+    outcomes.inc({ queue: MAINTENANCE_QUEUE, outcome })
+    if (job?.processedOn && job.finishedOn) {
+      durations.observe({ queue: MAINTENANCE_QUEUE }, (job.finishedOn - job.processedOn) / 1000)
+    }
+  }
 
   const worker = new Worker(
     MAINTENANCE_QUEUE,
@@ -66,10 +106,12 @@ export const startMaintenance = ({ connection, knex, settings, logger, prefix = 
   )
 
   worker.on('completed', (job, result: unknown) => {
+    finished(job, 'completed')
     logger.info({ queue: MAINTENANCE_QUEUE, job: job.name, job_id: job.id, result }, 'job completed')
   })
   worker.on('failed', (job, error) => {
     const final = !job || error instanceof UnrecoverableError || job.attemptsMade >= (job.opts.attempts ?? 1)
+    finished(job, final ? 'failed' : 'retried')
     logger[final ? 'error' : 'warn'](
       { queue: MAINTENANCE_QUEUE, job: job?.name, job_id: job?.id, attempt: job?.attemptsMade, err: { message: error.message } },
       final ? 'job failed' : 'job failed, will retry'

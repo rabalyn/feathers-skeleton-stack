@@ -60,6 +60,8 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
       internalPort: 0,
       logLevel: 'fatal',
       logFile: '',
+      internalTlsCertFile: 'unused-in-tests',
+      internalTlsKeyFile: 'unused-in-tests',
       bodySizeCeilingBytes: BODY_SIZE_CEILING_BYTES,
       trustedProxyHost: options.trustedProxyHost ?? TRUSTED_PROXY_HOST
     },

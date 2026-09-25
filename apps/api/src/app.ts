@@ -4,6 +4,7 @@ import socketio from '@feathersjs/socketio'
 import type { Logger } from 'pino'
 import type { Knex } from 'knex'
 import type { Redis } from 'ioredis'
+import type { Registry } from 'prom-client'
 import type { ApiConfig } from './config.js'
 import { authentication, samlRoutes } from './auth/authentication.js'
 import { channels } from './channels.js'
@@ -15,6 +16,7 @@ import { defaultDeny } from './hooks/default-deny.js'
 import { sanitizeHttpErrors, sanitizeServiceErrors } from './hooks/errors.js'
 import { API_PREFIX, SOCKET_PATH } from './paths.js'
 import { RateLimiter } from './rate-limit.js'
+import { createRegistry, observeKnexPool, requestMetrics, websocketConnections } from './metrics.js'
 import { httpRequests, socketCalls } from './request-log.js'
 import { services } from './services/index.js'
 import { SettingsStore } from './settings/store.js'
@@ -33,6 +35,7 @@ export interface AppSettings {
   valkey: Redis
   rateLimiter: RateLimiter
   directory: Directory
+  metrics: Registry
 }
 
 export interface AppOptions {
@@ -61,8 +64,15 @@ export const createApp = (
   app.set('directory', new Directory(config))
   const proxy = new TrustedProxy(config.trustedProxyHost)
 
+  // Served by the internal listener (ADR 0022).
+  const metrics = createRegistry('api')
+  app.set('metrics', metrics)
+  observeKnexPool(metrics, knex)
+  websocketConnections(metrics, () => (app as { io?: { engine: { clientsCount: number } } }).io?.engine.clientsCount ?? 0)
+  const observeRequest = requestMetrics(metrics)
+
   // Outermost, so it sees the status the error handler settled on.
-  app.use(httpRequests(app, proxy))
+  app.use(httpRequests(app, proxy, observeRequest))
   app.use(errorHandler())
   app.use(sanitizeHttpErrors(() => app.get('logger')))
 
@@ -106,7 +116,7 @@ export const createApp = (
   app.configure(authentication)
 
   // Service hooks for every service (ADR 0011) ...
-  app.hooks({ around: { all: [socketCalls(), sanitizeServiceErrors(() => app.get('logger')), defaultDeny] } })
+  app.hooks({ around: { all: [socketCalls(observeRequest), sanitizeServiceErrors(() => app.get('logger')), defaultDeny] } })
   // ... and application lifecycle hooks, which Feathers keeps separate.
   app.hooks({
     teardown: [

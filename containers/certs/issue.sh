@@ -11,6 +11,8 @@
 #   /tls/pgbouncer      PgBouncer leaf (ADR 0004)
 #   /tls/ldap           OpenLDAP leaf, local test directory (ADR 0008)
 #   /tls/valkey         Valkey leaf (ADR 0010)
+#   /tls/api            the api's internal listener: metrics, health (ADR 0022)
+#   /tls/worker         the worker's internal listener (ADR 0022)
 #
 # Each leaf is owned by the uid:gid of the process that reads its key.
 #
@@ -26,6 +28,7 @@ POSTGRES_OWNER="${POSTGRES_OWNER:-70:70}"
 PGBOUNCER_OWNER="${PGBOUNCER_OWNER:-101:101}"
 LDAP_OWNER="${LDAP_OWNER:-100:101}"
 VALKEY_OWNER="${VALKEY_OWNER:-999:1000}"
+NODE_OWNER="${NODE_OWNER:-1000:1000}"
 
 umask 077
 
@@ -87,4 +90,7 @@ issue /tls/postgres "postgres" "$POSTGRES_OWNER"
 issue /tls/pgbouncer "pgbouncer" "$PGBOUNCER_OWNER"
 issue /tls/ldap "ldap" "$LDAP_OWNER"
 issue /tls/valkey "valkey" "$VALKEY_OWNER"
+# `localhost` for the container healthcheck.
+issue /tls/api "api,localhost" "$NODE_OWNER"
+issue /tls/worker "worker,localhost" "$NODE_OWNER"
 echo "certs: done"

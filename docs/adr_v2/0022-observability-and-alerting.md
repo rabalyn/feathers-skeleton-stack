@@ -34,12 +34,15 @@ The local stack additionally runs Dozzle ([0002](0002-service-inventory-and-netw
 ### Internal and public endpoints
 
 - The API and the worker expose `GET /metrics` in Prometheus format, and the API exposes health and readiness endpoints, on an **internal port** reachable only on the `observability` network. Nginx never routes them, and they sit outside the Feathers authentication pipeline. Container health checks call them from inside the container.
+- **Every observability hop uses TLS**, verified against the CA root like the data hops ([0004](0004-pgbouncer-pools.md), [0016](0016-nginx-and-tls-everywhere.md)): scrapes of the internal ports and every exporter, the log push to Loki, Grafana's queries to Prometheus and Loki, mail to Mailpit, and Nginx to Grafana and Mailpit. Each listener has a certificate for its own service name; the API's and the worker's also name `localhost`, for the container healthcheck. Locally the `certs` job issues them; production's source is the private CA still open in [0016](0016-nginx-and-tls-everywhere.md).
 - The only public liveness signal is `GET /api/ping` through Nginx. It returns a constant and says nothing about internal state; it exists for the uptime check.
 - Observability for people is Grafana: dashboards and alerts, not raw endpoints.
 
 ### Metrics
 
-Baseline series from the API: request count, error count, request duration histogram, active WebSocket connections, **Knex pool usage** (in use, idle, waiting). From the worker: job outcomes and durations per queue. PgBouncer's own view of pool saturation comes from `pgbouncer-exporter`, so pool pressure is visible from both sides of the pooler.
+Baseline series from the API: request count, error count, request duration histogram, active WebSocket connections, **Knex pool usage** (in use, idle, waiting). From the worker: job outcomes and durations per queue.
+
+- In Prometheus terms: `http_requests_total{route,method,status_code}` (errors are its 5xx), `http_request_duration_seconds{route,method}`, `websocket_connections`, `knex_pool_connections{state}`; `bullmq_jobs_total{queue,outcome}` (`completed`, `retried`, `failed`), `bullmq_job_duration_seconds{queue}` and `bullmq_queue_jobs{queue,state}`; plus Node's process metrics. HTTP requests and WebSocket calls are counted alike, the `method` telling them apart as in the request log ([0021](0021-structured-logging.md)). Every series carries `service`. PgBouncer's own view of pool saturation comes from `pgbouncer-exporter`, so pool pressure is visible from both sides of the pooler.
 
 Labels are low-cardinality — `service`, `route` (as route template, never a path containing an id), `method`, `status_code`, `queue`, `environment`. Never labelled by user, session or request id.
 

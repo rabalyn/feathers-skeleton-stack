@@ -7,9 +7,9 @@ After=migrate.service
 
 [Container]
 ContainerName=worker
-Environment=LOG_FILE=/var/log/app/worker DATABASE_HOST=pgbouncer DATABASE_PORT=6432 DATABASE_NAME=app DATABASE_USER=worker DATABASE_PASSWORD_FILE=/run/secrets/database_password DATABASE_CA_FILE=/trust/ca.crt VALKEY_HOST=valkey VALKEY_USER=worker VALKEY_PASSWORD_FILE=/run/secrets/valkey_password VALKEY_CA_FILE=/trust/ca.crt
+Environment=LOG_FILE=/var/log/app/worker INTERNAL_TLS_CERT_FILE=/tls/tls.crt INTERNAL_TLS_KEY_FILE=/tls/tls.key DATABASE_HOST=pgbouncer DATABASE_PORT=6432 DATABASE_NAME=app DATABASE_USER=worker DATABASE_PASSWORD_FILE=/run/secrets/database_password DATABASE_CA_FILE=/trust/ca.crt VALKEY_HOST=valkey VALKEY_USER=worker VALKEY_PASSWORD_FILE=/run/secrets/valkey_password VALKEY_CA_FILE=/trust/ca.crt
 Exec=node dist/worker.js
-HealthCmd=["node","-e","fetch('http://127.0.0.1:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+HealthCmd=NODE_EXTRA_CA_CERTS=/trust/ca.crt node -e "fetch('https://localhost:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
 HealthInterval=10s
 HealthRetries=3
 HealthTimeout=3s
@@ -18,3 +18,4 @@ Network=app-data.network
 Volume=worker-secrets.volume:/run/secrets:ro
 Volume=trust:/trust:ro
 Volume=logs.volume:/var/log/app
+Volume=tls-worker:/tls:ro

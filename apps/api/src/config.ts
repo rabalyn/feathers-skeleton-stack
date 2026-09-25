@@ -25,6 +25,10 @@ const fields = {
   refreshTokenKey: { schema: Type.String({ minLength: 32 }), env: 'REFRESH_TOKEN_KEY', secret: true },
   port: { schema: port, env: 'PORT', integer: true, default: '3030' },
   internalPort: { schema: port, env: 'INTERNAL_PORT', integer: true, default: '9090' },
+  // The internal listener's certificate (ADR 0022): TLS on every
+  // observability hop.
+  internalTlsCertFile: { schema: Type.String({ minLength: 1 }), env: 'INTERNAL_TLS_CERT_FILE' },
+  internalTlsKeyFile: { schema: Type.String({ minLength: 1 }), env: 'INTERNAL_TLS_KEY_FILE' },
   // Base path of the rotated log files on the shared log volume (ADR 0021);
   // empty for stdout only.
   logFile: { schema: Type.String(), env: 'LOG_FILE', default: '' },
@@ -132,6 +136,8 @@ export const API_KEYS = [
   ...SAML_KEYS,
   'port',
   'internalPort',
+  'internalTlsCertFile',
+  'internalTlsKeyFile',
   'logLevel',
   'logFile',
   'bodySizeCeilingBytes',
@@ -145,6 +151,8 @@ export const MIGRATE_KEYS = ['logLevel', ...DATABASE_KEYS] as const satisfies re
 
 export const WORKER_KEYS = [
   'internalPort',
+  'internalTlsCertFile',
+  'internalTlsKeyFile',
   'logLevel',
   'logFile',
   ...VALKEY_KEYS,

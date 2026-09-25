@@ -3,6 +3,7 @@ import { createKnex } from './db.js'
 import { createInternalServer } from './internal.js'
 import { startMaintenance, queueConnection } from './jobs/maintenance.js'
 import { createLogger } from './logger.js'
+import { createRegistry, observeKnexPool } from './metrics.js'
 import { WORKER_SETTINGS } from './settings/registry.js'
 import { SettingsError, SettingsStore } from './settings/store.js'
 
@@ -37,9 +38,15 @@ const main = async () => {
     throw error
   }
 
-  const maintenance = startMaintenance({ connection: queueConnection(config), knex, settings, logger })
+  const metrics = createRegistry('worker')
+  observeKnexPool(metrics, knex)
+  const maintenance = startMaintenance({ connection: queueConnection(config), knex, settings, logger, metrics })
   await maintenance.schedule()
-  const internal = createInternalServer(maintenance.isRunning).listen(config.internalPort)
+  const internal = createInternalServer({
+    metrics,
+    live: maintenance.isRunning,
+    tls: { certFile: config.internalTlsCertFile, keyFile: config.internalTlsKeyFile }
+  }).listen(config.internalPort)
   logger.info({ internalPort: config.internalPort }, 'worker running')
 
   // Lets a running job finish before exiting.
