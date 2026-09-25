@@ -35,8 +35,7 @@ listener "tcp" {
   tls_disable = true
 }
 api_addr      = "http://openbao-test:8200"
-cluster_addr  = "http://openbao-test:8201"
-disable_mlock = true'
+cluster_addr  = "http://openbao-test:8201"'
 podman network create "$NET" >/dev/null
 podman run -d --name "$P" --network "$NET" -e BAO_ADDR=http://127.0.0.1:8200 --entrypoint sh "$OPENBAO_IMAGE" \
   -c "mkdir -p /openbao/data && printf '%s' '$config' > /tmp/server.hcl && exec bao server -config=/tmp/server.hcl" >/dev/null

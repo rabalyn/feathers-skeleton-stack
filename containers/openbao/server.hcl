@@ -13,7 +13,6 @@ listener "tcp" {
 
 api_addr      = "https://openbao:8200"
 cluster_addr  = "https://openbao:8201"
-disable_mlock = true
 ui            = false
 
 # Audit device (ADR 0023). OpenBao only accepts audit devices declared in
