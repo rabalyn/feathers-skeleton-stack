@@ -78,10 +78,10 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 - The CI gate `scripts/ci.sh` ([0015](0015-testing-vitest-playwright.md)), lint including the client dependency boundary ([0007](0007-typed-client-from-api.md)), `gitleaks` ([0023](0023-secrets-management.md)), and the audit and image scan gates with Renovate ([0018](0018-owasp-security-baseline.md)). The hosted workflow that calls the script waits for a remote
 - The Quasar frontend ([0014](0014-frontend-quasar-vue.md)): SAML login, session restore with the access token in memory only, own profile, logout, de/en, and screens for users (role, enable), runtime settings and directory lookup, with actions hidden by the shared CASL abilities. `createClient()` in the API's client entry point ([0007](0007-typed-client-from-api.md)); `feathers-pinia` as a vendored fork; the bundle built into the Nginx image and the Vite dev server under `up --dev`. The end-to-end suite runs on the real UI, including role-based visibility
 
-**Slice 3 — in progress.**
+**Slice 3 — done.**
 
 - Real-time channels ([0012](0012-role-scoped-channels.md)): publishers for the existing services, membership from the session's role, forced re-authentication when a role, the account state or the session changes, and the end-to-end test of an update arriving over the WebSocket. Settings became admin-only on the way ([0011](0011-casl-role-authorization.md))
-- The contract step of refresh rotation: `auth_sessions.refresh_token_hash`, `rotated_at` and `family_id` are dropped ([0003](0003-postgresql-and-knex.md) expand and contract) — done
+- The contract step of refresh rotation: `auth_sessions.refresh_token_hash`, `rotated_at` and `family_id` are dropped ([0003](0003-postgresql-and-knex.md) expand and contract)
 - The worker container and BullMQ ([0024](0024-background-jobs-bullmq.md)), which the GDPR export and uploads build on: its own database login and Valkey user (every service now has one), the maintenance queue with retention cleanup daily at 03:30, and `/health/live`. Export expiry and object purge arrive with their features
 
 **Later.** Object storage and uploads, observability, backups, and the break-glass account with the bootstrap command. The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
