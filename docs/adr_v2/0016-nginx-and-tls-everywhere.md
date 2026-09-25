@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADRs 0032, 0054, 0055
-- Related: [0001](0001-one-stack-every-environment.md), [0002](0002-service-inventory-and-networks.md), [0008](0008-authentication-saml2-ldap.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0015](0015-testing-vitest-playwright.md), [0018](0018-owasp-security-baseline.md), [0020](0020-object-storage-uploads.md)
+- Related: [0001](0001-one-stack-every-environment.md), [0002](0002-service-inventory-and-networks.md), [0008](0008-authentication-saml2-ldap.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0015](0015-testing-vitest-playwright.md), [0018](0018-owasp-security-baseline.md), [0020](0020-object-storage-uploads.md), [0023](0023-secrets-management.md)
 
 ## Context
 
@@ -25,7 +25,7 @@ Nginx is the reverse proxy and TLS terminator in every environment. Only the sou
 
 ### The local CA
 
-- On first start, `certs` creates a root CA and stores it in a volume. On every start it issues or renews the leaf certificate for the configured local host names (by default `app.localhost` and `idp.localhost`) if it is missing or near expiry. `*.localhost` resolves to the loopback address in browsers without editing `/etc/hosts`.
+- On first start, `certs` creates a root CA and stores it in a volume. On every start it issues or renews the leaf certificate for the configured local host names (by default `app.localhost` and `idp.localhost`) if it is missing or near expiry, together with the server certificate for OpenBao's internal listener ([0023](0023-secrets-management.md)). `*.localhost` resolves to the loopback address in browsers without editing `/etc/hosts`.
 - Locally Nginx publishes HTTPS on host port **8443** by default, because rootless Podman cannot bind ports below `net.ipv4.ip_unprivileged_port_start` (1024 by default) and changing that sysctl on every developer machine and runner is not worth it. The local origins are therefore `https://app.localhost:8443` and `https://idp.localhost:8443`. The port is part of the configured public origin, from which the SAML entity ID and ACS URL are derived, so production on 443 differs by configuration only.
 - The root is trusted by Playwright's browser context, by Node through `NODE_EXTRA_CA_CERTS`, and — through a documented one-time import — by the developer's own browser. Tests never ignore certificate errors.
 - The root's private key never leaves the volume and is unique per machine; nothing about it is committed.

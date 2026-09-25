@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADR 0067
-- Related: [0001](0001-one-stack-every-environment.md), [0002](0002-service-inventory-and-networks.md), [0008](0008-authentication-saml2-ldap.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0015](0015-testing-vitest-playwright.md), [0017](0017-nfs-backup-storage.md), [0018](0018-owasp-security-baseline.md), [0022](0022-observability-and-alerting.md)
+- Related: [0001](0001-one-stack-every-environment.md), [0002](0002-service-inventory-and-networks.md), [0008](0008-authentication-saml2-ldap.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0015](0015-testing-vitest-playwright.md), [0016](0016-nginx-and-tls-everywhere.md), [0017](0017-nfs-backup-storage.md), [0018](0018-owasp-security-baseline.md), [0022](0022-observability-and-alerting.md)
 
 ## Context
 
@@ -26,6 +26,7 @@ Environment files fail the first two constraints. An encrypted file in the repos
 
 - Secrets are **static** values in the KV v2 engine, one path per consuming service, `kv/<service>`, with one key per file the agent renders (key `database_password` becomes `/run/secrets/database_password`). Dynamic, short-lived database credentials are possible later as a change of engine, not of store; they are not used in v1 because they would rebuild PgBouncer's per-user pools on every rotation ([0004](0004-pgbouncer-pools.md)).
 - Each service has a **policy** granting read access to its own path only. The API cannot read the restic password; the backup service cannot read the Grafana credentials.
+- OpenBao's listener uses **TLS**, and agents verify its certificate against a configured CA root. Secret values and `secret_id` unwrap calls never cross a network in plaintext, even the internal `secrets` network. Locally and in CI the `certs` job issues the `openbao` server certificate from the local CA ([0016](0016-nginx-and-tls-everywhere.md)).
 - OpenBao's **audit device** is enabled and written to the shared log volume, so every secret access is shipped to Loki ([0021](0021-structured-logging.md)). Audit entries contain HMACs of values, never the values.
 
 ### Sealing and unsealing
@@ -52,7 +53,7 @@ Every service that reads a secret has its own **OpenBao Agent** container (`<ser
 
 Application containers never talk to OpenBao and are not on the `secrets` network. The file layout is the same in every environment.
 
-**Getting each agent its first credential.** Each agent's AppRole `role_id` is part of its configuration. Its `secret_id` is issued by the unseal procedure, response-wrapped, into that agent's own tmpfs. It therefore survives a container restart but not a host reboot. After a reboot the administrator who unseals OpenBao also re-issues the `secret_id`s, which is the same moment a person is present anyway. Locally and in CI the setup script does this.
+**Getting each agent its first credential.** Each agent's AppRole `role_id` is part of its configuration. Its `secret_id` is issued by the unseal procedure as a response-wrapped token, unwrapped inside the agent container, and kept only in that agent's own tmpfs. It lives exactly as long as that agent container: a tmpfs volume used by one container is emptied when the container stops, and systemd restarts Quadlet containers by stopping and recreating them. **Any stop or start of an agent therefore needs a new `secret_id`**, as does a host reboot. This is verified behaviour, not an assumption. Two things soften it: the files already rendered sit in the tmpfs shared with the service, which stays mounted while the service runs, so the service keeps working; and only re-rendering (rotation, or a restarted service) waits for the re-issue. In production the administrator who unseals OpenBao re-issues the `secret_id`s, which is the same moment a person is present anyway, and an agent that stopped on its own is re-issued by an administrator the same way. Locally and in CI the setup script does this.
 
 The local and CI setup script runs on the host and works only through `podman exec` into the `openbao` container (and, to read the local IdP's signing certificate, the `idp` container, [0008](0008-authentication-saml2-ldap.md)). It therefore needs no additional service and no network membership. It is idempotent: a second run unseals and re-issues `secret_id`s but does not regenerate values that already exist.
 
@@ -94,6 +95,11 @@ OpenBao's storage is backed up as a raft snapshot by the backup service ([0017](
 - Secrets are encrypted at rest, access-controlled per service, audited, and present in plaintext only in tmpfs while the stack runs.
 - **After every reboot, the stack cannot start until an administrator unseals OpenBao.** This is deliberate: it is what keeps the unseal key off the host. Unattended restarts are not possible.
 - While OpenBao is sealed or down, no service can start fresh; services already running keep their rendered files.
+- An agent that crashes or is restarted cannot re-authenticate on its own. Its service keeps running on the files already rendered, but in production a person has to re-issue the agent's `secret_id` before secrets can rotate or the service can restart cleanly. This is the price of never storing an agent credential outside a tmpfs.
 - Every secret-reading service gains an agent container, roughly doubling the container count for those services.
 - A new secret means deciding which service's path it belongs to and updating that policy, which is the intended moment to think about least privilege.
 - The team must learn to operate OpenBao: initialisation, unsealing, policies and snapshot restore. The restore test in CI exercises the last of these on every pipeline.
+
+## Open questions
+
+- Where the production certificate for OpenBao's internal listener comes from. The institutional ACME CA ([0016](0016-nginx-and-tls-everywhere.md)) cannot issue for an internal name such as `openbao`, so production needs a private issuing CA. Decide together with the production host, which is itself deferred ([README](README.md)).
