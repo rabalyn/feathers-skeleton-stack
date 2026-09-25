@@ -48,6 +48,7 @@ Nginx reads its certificate from one path in every environment and reloads when 
 - Sends `$request_id` to the API as `X-Request-Id` and writes it into its access log, so a request correlates across both ([0021](0021-structured-logging.md)).
 - Routes `GET /api/ping` like any API path. Health, readiness and metrics are on the API's internal port and are never routed ([0022](0022-observability-and-alerting.md)).
 - Resolves every upstream by container name at request time, so Nginx starts without its upstreams and follows a container that comes back on a new address, as a restarted container does under Podman. Resolved addresses are cached for **1 s**, and a connect to an upstream times out after **2 s** instead of the default 60 s: without both, a Socket.IO client reconnecting right after `podman stop api && podman start api` went to the old address for up to 10 s, and that attempt hung until the client gave up at 20 s. The setting applies to every virtual host, and a connect on the container network takes well under a millisecond.
+- Stops within Podman's 10-second stop timeout: on its stop signal (SIGQUIT, a graceful shutdown) Nginx gives open connections **5 seconds**, the API's grace period ([0006](0006-feathersjs-typescript-api.md)), then closes them. Without the bound a WebSocket held Nginx open until Podman sent SIGKILL.
 
 The API is mounted under the `/api` prefix so Feathers service paths cannot collide with SPA routes.
 
