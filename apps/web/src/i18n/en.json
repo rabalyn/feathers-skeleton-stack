@@ -1,0 +1,71 @@
+{
+  "app": {
+    "title": "claude-feathers",
+    "loading": "Loading …",
+    "language": "Language",
+    "retry": "Try again",
+    "locales": {
+      "de": "Deutsch",
+      "en": "English"
+    }
+  },
+  "nav": {
+    "profile": "My profile",
+    "users": "Users",
+    "settings": "Settings",
+    "directory": "Directory",
+    "menu": "Menu"
+  },
+  "auth": {
+    "login": "Log in",
+    "logout": "Log out",
+    "welcome": "Please log in with your TU-ID.",
+    "unavailable": "The service cannot be reached right now. Your session is kept.",
+    "expired": "Your session has ended. Please log in again."
+  },
+  "user": {
+    "tuId": "TU-ID",
+    "givenName": "Given name",
+    "surname": "Surname",
+    "email": "Email",
+    "role": "Role",
+    "enabled": "Active",
+    "createdAt": "Created",
+    "roles": {
+      "admin": "Administration",
+      "operator": "Operations",
+      "user": "User"
+    }
+  },
+  "users": {
+    "search": "Search",
+    "enable": "Enable",
+    "disable": "Disable",
+    "saved": "Saved",
+    "empty": "No users found"
+  },
+  "settings": {
+    "key": "Key",
+    "value": "Value",
+    "updatedAt": "Changed",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saved": "Setting saved",
+    "invalidJson": "Not valid JSON"
+  },
+  "directory": {
+    "search": "Name, TU-ID or email",
+    "hint": "At least {min} characters",
+    "empty": "No matches",
+    "truncated": "There are more matches than shown. Please narrow the search.",
+    "hasAccount": "Has an account"
+  },
+  "errors": {
+    "notFound": "This page does not exist.",
+    "home": "Go to the start page",
+    "forbidden": "You are not allowed to do that.",
+    "unavailable": "The service cannot be reached right now. Please try again later.",
+    "generic": "Something went wrong."
+  }
+}

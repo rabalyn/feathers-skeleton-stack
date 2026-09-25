@@ -12,11 +12,10 @@ import { TrustedProxy } from './client-ip.js'
 import { Directory } from './directory.js'
 import { defaultDeny } from './hooks/default-deny.js'
 import { sanitizeHttpErrors, sanitizeServiceErrors } from './hooks/errors.js'
+import { API_PREFIX, SOCKET_PATH } from './paths.js'
 import { RateLimiter } from './rate-limit.js'
 import { services } from './services/index.js'
 import { SettingsStore } from './settings/store.js'
-
-export const API_PREFIX = '/api'
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ServiceTypes {}
@@ -97,7 +96,7 @@ export const createApp = (
   // SAML needs real HTTP routes the IdP redirects browsers to (ADR 0006).
   samlRoutes(app)
   app.configure(rest())
-  app.configure(socketio({ path: `${API_PREFIX}/socket.io`, transports: ['websocket'] }))
+  app.configure(socketio({ path: SOCKET_PATH, transports: ['websocket'] }))
   app.configure(services)
   app.configure(authentication)
 

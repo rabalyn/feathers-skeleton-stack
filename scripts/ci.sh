@@ -96,6 +96,10 @@ fi
 if [[ $mode != --static ]]; then
   check "Vitest" "$ROOT/scripts/stack.sh" test
   check "Playwright" "$ROOT/scripts/stack.sh" e2e
+  # The dev server image is never started here but ships to developers, so
+  # it is built for the scan like every other image compose.yaml names.
+  step "building the dev server image"
+  (cd "$ROOT" && podman-compose --profile dev build web >/dev/null) || failed+=("dev server image build")
   check "image vulnerability scan" scan_images
 fi
 

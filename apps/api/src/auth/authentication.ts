@@ -10,6 +10,7 @@ import {
 import type { HookContext, Params } from '@feathersjs/feathers'
 import type { Application } from '../app.js'
 import { recordAudit } from '../audit.js'
+import { AUTHENTICATION_URL } from '../paths.js'
 import type { User } from '../services/users/users.schema.js'
 import { RateLimitUnavailable, TooManyRequests, type RateLimitBucket } from '../rate-limit.js'
 import { SamlRejected, ServiceProvider } from './saml.js'
@@ -24,7 +25,8 @@ import { SessionStore, isActive, type AuthSession } from './sessions.js'
 
 export const AUTH_PATH = 'authentication'
 export const REFRESH_COOKIE = 'refresh_token'
-const COOKIE_PATH = '/api/authentication'
+// The cookie reaches refresh and logout, and nothing else.
+const COOKIE_PATH = AUTHENTICATION_URL
 const ACCESS_TOKEN_LIFETIME = '15m'
 
 const readCookie = (header: unknown, name: string): string | undefined => {

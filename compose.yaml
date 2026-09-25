@@ -12,7 +12,11 @@
 # - services whose production counterpart is external or different (ADR
 #   0001, 0002) carry the `local` profile, test runners the `test` profile.
 #   Neither reaches the generated units, and scripts/stack.sh always runs
-#   with --profile local.
+#   with --profile local;
+# - the `dev` profile holds the Vite dev server (ADR 0014), started by
+#   `scripts/stack.sh up --dev`, which also sets NGINX_WEB_UPSTREAM. Values
+#   interpolated from the environment are local-only by the same rule and
+#   are dropped from the generated units.
 name: feathers
 
 services:
@@ -57,6 +61,8 @@ services:
       NGINX_IDP_UPSTREAM: idp:8080
       NGINX_DOZZLE_HOST: dozzle.localhost
       NGINX_DOZZLE_UPSTREAM: dozzle:8080
+      # Empty: serve the built bundle. `up --dev`: the dev server.
+      NGINX_WEB_UPSTREAM: ${NGINX_WEB_UPSTREAM:-}
     ports:
       # Nginx listens on the public port itself, so inside the networks
       # nginx:8443 is the same origin a browser uses (the e2e container).
@@ -64,6 +70,27 @@ services:
     networks: [edge, idp-edge, dozzle-edge]
     volumes:
       - tls-nginx:/etc/nginx/tls:ro
+
+  # The Vite dev server with the frontend source bind-mounted (ADR 0014).
+  # Nginx proxies to it when NGINX_WEB_UPSTREAM is set; origin, TLS and
+  # headers stay those of production.
+  web:
+    build:
+      context: .
+      dockerfile: containers/nginx/Containerfile
+      target: web-dev
+    image: localhost/feathers-web-dev:dev
+    container_name: web
+    profiles: [dev]
+    environment:
+      PUBLIC_HOST: app.localhost
+      PUBLIC_PORT: "8443"
+    networks: [edge]
+    volumes:
+      - ./apps/web/src:/repo/apps/web/src:ro,Z
+      - ./apps/web/public:/repo/apps/web/public:ro,Z
+      - ./apps/web/index.html:/repo/apps/web/index.html:ro,Z
+      - ./apps/web/quasar.config.ts:/repo/apps/web/quasar.config.ts:ro,Z
 
   api:
     build:

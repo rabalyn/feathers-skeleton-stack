@@ -33,7 +33,7 @@ A JWT that is only checked by signature stays valid until it expires, so logout,
 - To return the current successor without storing any token, successors are **derived**: a family's first token is random, and each successor is an HMAC of its predecessor under the **refresh token key**, a secret of its own delivered like every other ([0023](0023-secrets-management.md)). Inside the grace window the server follows that chain from the presented token to the family's current one and returns exactly that token, so a lost response, a retry and concurrent refreshes from one browser all end up holding the same cookie. The key is independent of the signing secret; rotating it affects only the grace path.
 - Refreshes of one family are serialised by a row lock on its session, so concurrent requests see each other's rotation.
 - A refresh returns the rotated token only as the cookie, never in the response body. The cookie's lifetime is what remains of the family.
-- Cross-tab refreshes are coordinated with a `BroadcastChannel` lock so ordinary races do not look like theft. Server-side detection stays authoritative.
+- Cross-tab refreshes are serialised with the **Web Locks API** (`navigator.locks`), so ordinary races do not look like theft. It is a real mutual exclusion, and the browser releases the lock of a tab that dies; a `BroadcastChannel` only carries messages and would need an election with timeouts built on top. Server-side detection stays authoritative.
 - A daily job deletes sessions whose family expired more than the retention window ago ([0013](0013-gdpr-export-and-retention.md), [0024](0024-background-jobs-bullmq.md)).
 
 ### Valkey holds rate-limit state and job queues

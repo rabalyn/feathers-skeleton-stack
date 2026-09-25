@@ -18,8 +18,8 @@ The frontend needs a component framework, a build tool, and state management tha
 - The typed client is imported from the API package ([0007](0007-typed-client-from-api.md)).
 - The production artifact is a static asset bundle, built in a Node stage and copied into an image that contains no Node runtime. It is served by Nginx ([0016](0016-nginx-and-tls-everywhere.md)), which also owns the SPA history fallback and cache headers. Lint, typecheck and unit tests run in CI, not inside the image build.
 - Vue Router in **history mode**; Nginx serves `index.html` for unmatched paths.
-- Under the `dev` Compose profile, a `web` container runs the Vite dev server with the source bind-mounted, and Nginx proxies to it instead of serving the bundle. Routing, TLS and origin stay the same.
-- **Internationalisation from the first screen**: German is the default locale, English the second. All user-facing strings go through the i18n layer (`vue-i18n`, with Quasar's language packs for its own components); hard-coded UI text is a lint error.
+- Under the `dev` Compose profile, a `web` container runs the Vite dev server with the source bind-mounted, and Nginx proxies to it instead of serving the bundle. Routing, TLS and origin stay the same. `scripts/stack.sh up --dev` starts it and sets `NGINX_WEB_UPSTREAM`, which switches Nginx from the bundle to the proxy at container start; plain `up` serves the bundle, which is what the end-to-end tests exercise. The `dev` profile and the interpolated upstream never reach the generated Quadlet units ([0001](0001-one-stack-every-environment.md)).
+- **Internationalisation from the first screen**: German is the default locale, English the second. All user-facing strings go through the i18n layer (`vue-i18n`, with Quasar's language packs for its own components); hard-coded UI text is a lint error. The catalogues are JSON files (`apps/web/src/i18n/<locale>.json`), because that is what the i18n lint reads: it rejects raw text in templates, a key the code uses that a catalogue lacks, and a key present in one catalogue but not the other. `vue/no-v-html` is an error as well.
 - The CASL ability definitions are imported from the client export to hide actions the user may not take ([0011](0011-casl-role-authorization.md)). The server remains the only enforcement point.
 
 ### Two consequences of the authentication design the frontend must respect
@@ -28,6 +28,15 @@ The frontend needs a component framework, a build tool, and state management tha
 - **SAML login is a full-page redirect, not an XHR.** The app navigates the browser to `/api/auth/saml/login` and is returned to by the identity provider. On return, and on every reload or new tab, no access token exists in memory, so the app calls refresh on startup to re-establish the session from the cookie before rendering an authenticated view.
 
 The client re-authenticates its WebSocket connection after every refresh and reconnect ([0012](0012-role-scoped-channels.md)). A failed refresh clears state, closes the socket and returns to login; a transient network error is distinguished from a rejected refresh so offline users are not logged out.
+
+How the frontend implements this:
+
+- Only **401 and 403** from refresh end the session. A network failure, 429 and every 5xx (including the 503 of a Valkey outage, [0010](0010-sessions-postgres-ratelimits-valkey.md)) keep it and retry with exponential backoff up to a minute; the page shows that the service is unreachable. At startup, the router waits for a real answer rather than sending the user to the login page.
+- The access token is renewed a minute before it expires, and at once when a tab becomes visible again with a token about to expire, because background tabs have their timers throttled.
+- Refreshes are serialised across tabs with the Web Locks API ([0010](0010-sessions-postgres-ratelimits-valkey.md)).
+- The authentication client's own reconnect handling is switched off: it re-authenticates with the stored token and leaves the failure unhandled once that token has expired. The session store re-authenticates a reconnected socket instead, refreshing first where needed. A service call refused with 401 triggers a refresh, which tells a changed role (new token) from a revoked session (login).
+- Service stores are never synchronised to browser storage: the data is personal, and a shared computer must not keep it. The only thing in `localStorage` is the chosen locale.
+- Actions are hidden with the shared CASL abilities. A page for a whole subject (the users list, the settings editor) requires an unconditional rule, because everybody may read their own user record but only some may list users.
 
 ## Consequences
 

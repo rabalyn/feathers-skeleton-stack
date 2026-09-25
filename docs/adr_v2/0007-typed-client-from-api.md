@@ -12,10 +12,10 @@ The frontend should call the API with compile-time type safety, and a breaking A
 
 ## Decision
 
-- `apps/api` exposes a dedicated client entry point (`apps/api/src/client.ts`, published as the `./client` subpath export of the workspace package). It exports the service interfaces, the TypeBox-derived types, and a `createClient()` factory.
+- `apps/api` exposes a dedicated client entry point (`apps/api/src/client.ts`, published as the `./client` subpath export of the workspace package). It exports the service interfaces as a browser sees them (only each service's external methods), the TypeBox-derived types, the public paths and input limits, and a `createClient(connection)` factory. The caller passes in the transport connection, so the socket library stays in the frontend. `createClient` always configures the authentication client with in-memory token storage, and the caller cannot override it ([0014](0014-frontend-quasar-vue.md)).
 - `apps/web` imports that entry point through the pnpm workspace link. There is no separate contracts package.
 - The client entry point must not transitively import server-only code. Knex, `pg`, the SAML library, resolvers and hooks are forbidden there. This is enforced by a dependency boundary lint rule in CI, not by convention, because a violation ships a database driver into the browser bundle.
-- The rule is a **dependency-cruiser allowlist** (`apps/api/.dependency-cruiser.cjs`, run by `pnpm lint`): at runtime, `src/client.ts` may reach only `abilities`, `paginate` and `@casl/ability`, following every import chain. Type-only imports compile away and are not followed, which is how the entry point exports server types. An allowlist rather than a list of forbidden packages refuses a new server-only dependency without anybody having to remember to add it.
+- The rule is a **dependency-cruiser allowlist** (`apps/api/.dependency-cruiser.cjs`, run by `pnpm lint`): at runtime, `src/client.ts` may reach only `abilities`, `paginate`, `paths`, `limits`, `@casl/ability` and the Feathers client core (`@feathersjs/feathers`, `@feathersjs/authentication-client`), following every import chain. Type-only imports compile away and are not followed, which is how the entry point exports server types. An allowlist rather than a list of forbidden packages refuses a new server-only dependency without anybody having to remember to add it.
 - Types are consumed as built output (`tsc` declaration files), so the frontend build does not typecheck the entire API source on every run.
 
 ## Repository layout

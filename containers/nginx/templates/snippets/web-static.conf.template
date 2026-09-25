@@ -1,0 +1,15 @@
+# The built frontend bundle (ADR 0014, 0016). Included by app.conf.
+location /assets/ {
+  root /usr/share/nginx/html;
+  add_header Cache-Control "public, max-age=31536000, immutable" always;
+  include /etc/nginx/conf.d/snippets/security-headers.conf;
+  try_files $uri =404;
+}
+
+# SPA history fallback; index.html is never cached.
+location / {
+  root /usr/share/nginx/html;
+  try_files $uri /index.html;
+  add_header Cache-Control "no-store" always;
+  include /etc/nginx/conf.d/snippets/security-headers.conf;
+}

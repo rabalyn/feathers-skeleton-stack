@@ -20,6 +20,7 @@
   "dependencies": {
     "@casl/ability": "6.8.1",
     "@feathersjs/authentication": "5.0.50",
+    "@feathersjs/authentication-client": "5.0.50",
     "@feathersjs/errors": "5.0.50",
     "@feathersjs/feathers": "5.0.50",
     "@feathersjs/knex": "5.0.50",

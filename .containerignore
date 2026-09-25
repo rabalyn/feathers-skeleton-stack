@@ -4,3 +4,4 @@
 docs
 test-results
 playwright-report
+**/.quasar

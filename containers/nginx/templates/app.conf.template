@@ -41,18 +41,7 @@ server {
     return 404;
   }
 
-  location /assets/ {
-    root /usr/share/nginx/html;
-    add_header Cache-Control "public, max-age=31536000, immutable" always;
-    include /etc/nginx/conf.d/snippets/security-headers.conf;
-    try_files $uri =404;
-  }
-
-  # SPA history fallback; index.html is never cached.
-  location / {
-    root /usr/share/nginx/html;
-    try_files $uri /index.html;
-    add_header Cache-Control "no-store" always;
-    include /etc/nginx/conf.d/snippets/security-headers.conf;
-  }
+  # The frontend: the built bundle, or the Vite dev server under the `dev`
+  # profile (entrypoint.d/27-web.sh picks one; ADR 0014).
+  include /etc/nginx/conf.d/snippets/web.conf;
 }

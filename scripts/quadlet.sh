@@ -10,8 +10,10 @@
 #
 # Before podlet sees the file, local-only parts are removed:
 # - `build:` (podlet rejects it; production pulls built images),
-# - services under the `local` and `test` profiles (ADR 0001, 0002), and
-#   every depends_on entry that pointed at one of them,
+# - services under the `local`, `test` and `dev` profiles (ADR 0001, 0002,
+#   0014), and every depends_on entry that pointed at one of them,
+# - environment values interpolated from the caller's environment (`${...}`),
+#   which podlet would copy literally; they are local switches,
 # - networks left with fewer than two members (idp-edge, once idp is gone),
 #   and volumes no remaining service mounts.
 # `condition: service_healthy` has no podlet translation; it becomes a plain
@@ -37,7 +39,8 @@ generate() { # <dir>
   mkdir -p "$dir/units"
   podman run --rm -i --network none "$YQ" '
     del(.services[].build)
-    | del(.services[] | select((.profiles // []) | any_c(. == "local" or . == "test")))
+    | del(.services[] | select((.profiles // []) | any_c(. == "local" or . == "test" or . == "dev")))
+    | .services[] |= (select(has("environment")).environment |= with_entries(select(.value | tostring | test("\\$\\{") | not)))
     | (.services | keys) as $names
     | .services[] |= (
         select(has("depends_on")).depends_on |= with_entries(select(.key as $k | $names | any_c(. == $k)))

@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # Local and CI stack control (ADR 0001, 0023).
 #
-#   scripts/stack.sh up      build, start, unseal, deliver secrets, start the rest
+#   scripts/stack.sh up [--dev]
+#                            build, start, unseal, deliver secrets, start the
+#                            rest; --dev adds the Vite dev server with hot
+#                            reload behind Nginx (ADR 0014), plain `up`
+#                            serves the built bundle
 #   scripts/stack.sh setup   unseal OpenBao and (re)issue every agent's secret_id
 #   scripts/stack.sh idp     exchange certificates with the local IdP and
 #                            restart the api
@@ -31,7 +35,8 @@ UNSEAL_VOLUME=${PROJECT}-openbao-local-unseal
 HELPER_IMAGE=docker.io/library/alpine:3.24.2@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
 OPENBAO_DIR=$ROOT/containers/openbao
 
-compose() { (cd "$ROOT" && podman-compose --profile local "$@"); }
+PROFILES=(--profile local)
+compose() { (cd "$ROOT" && podman-compose "${PROFILES[@]}" "$@"); }
 log() { printf '\033[1mstack:\033[0m %s\n' "$*" >&2; }
 die() { log "$*"; exit 1; }
 
@@ -349,6 +354,17 @@ setup() {
 cmd=${1:-}
 case $cmd in
   up)
+    case ${2:-} in
+      --dev)
+        PROFILES+=(--profile dev)
+        export NGINX_WEB_UPSTREAM=web:5173
+        ;;
+      "")
+        # Leaving dev mode: nginx serves the bundle again.
+        podman rm -f web >/dev/null 2>&1 || true
+        ;;
+      *) die "usage: $0 up [--dev]" ;;
+    esac
     command -v jq >/dev/null || die "jq is required"
     # Dozzle reads container output through the rootless Podman API (ADR 0002).
     [[ -S ${XDG_RUNTIME_DIR:-}/podman/podman.sock ]] ||
@@ -398,11 +414,22 @@ case $cmd in
   e2e)
     shift
     compose --profile test build e2e
+    # The test accounts with their roles, as an administrator would assign
+    # them; a login refreshes directory fields but never the role (ADR 0009,
+    # 0011). Idempotent, and resets what an earlier run changed.
+    podman exec -i -u postgres postgres psql -q -v ON_ERROR_STOP=1 -d app <<'SQL' >/dev/null
+INSERT INTO users (tu_id, given_name, surname, role, enabled, auth_source) VALUES
+  ('ad01admn', 'Ada', 'Admin', 'admin', true, 'saml'),
+  ('op01oper', 'Otto', 'Operator', 'operator', true, 'saml'),
+  ('us01user', 'Uma', 'User', 'user', true, 'saml'),
+  ('us02othr', 'Olaf', 'Other', 'user', true, 'saml')
+ON CONFLICT (tu_id) DO UPDATE SET role = excluded.role, enabled = excluded.enabled;
+SQL
     compose --profile test run --rm -T e2e pnpm exec playwright test "$@"
     ;;
-  down) compose --profile test down ;;
+  down) compose --profile test --profile dev down ;;
   reset)
-    compose --profile test down
+    compose --profile test --profile dev down
     keep=${PROJECT}_certs-ca
     [[ ${2:-} == --ca ]] && keep=
     for volume in $(podman volume ls -q --filter "label=io.podman.compose.project=$PROJECT"); do
@@ -411,5 +438,5 @@ case $cmd in
     [[ -n $keep ]] && log "kept the local root CA; '$0 reset --ca' deletes it"
     podman volume rm -f "$UNSEAL_VOLUME" >/dev/null 2>&1 || true
     ;;
-  *) sed -n '2,25p' "$0"; exit 2 ;;
+  *) sed -n '2,29p' "$0"; exit 2 ;;
 esac

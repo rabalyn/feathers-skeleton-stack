@@ -11,9 +11,11 @@ WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json eslint.config.js ./
 COPY apps/api/package.json apps/api/
 COPY packages/feathers-pinia/package.json packages/feathers-pinia/
+COPY apps/web/package.json apps/web/
 COPY e2e/package.json e2e/
 RUN pnpm install --frozen-lockfile
 COPY apps/api apps/api
+COPY apps/web apps/web
 COPY packages packages
 COPY e2e e2e
 RUN chown -R node:node /repo

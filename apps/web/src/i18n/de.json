@@ -1,0 +1,71 @@
+{
+  "app": {
+    "title": "claude-feathers",
+    "loading": "Wird geladen …",
+    "language": "Sprache",
+    "retry": "Erneut versuchen",
+    "locales": {
+      "de": "Deutsch",
+      "en": "English"
+    }
+  },
+  "nav": {
+    "profile": "Mein Profil",
+    "users": "Benutzer",
+    "settings": "Einstellungen",
+    "directory": "Verzeichnis",
+    "menu": "Menü"
+  },
+  "auth": {
+    "login": "Anmelden",
+    "logout": "Abmelden",
+    "welcome": "Bitte melden Sie sich mit Ihrer TU-ID an.",
+    "unavailable": "Der Dienst ist gerade nicht erreichbar. Ihre Sitzung bleibt erhalten.",
+    "expired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an."
+  },
+  "user": {
+    "tuId": "TU-ID",
+    "givenName": "Vorname",
+    "surname": "Nachname",
+    "email": "E-Mail",
+    "role": "Rolle",
+    "enabled": "Aktiv",
+    "createdAt": "Angelegt",
+    "roles": {
+      "admin": "Administration",
+      "operator": "Betrieb",
+      "user": "Benutzer"
+    }
+  },
+  "users": {
+    "search": "Suchen",
+    "enable": "Aktivieren",
+    "disable": "Deaktivieren",
+    "saved": "Gespeichert",
+    "empty": "Keine Benutzer gefunden"
+  },
+  "settings": {
+    "key": "Schlüssel",
+    "value": "Wert",
+    "updatedAt": "Geändert",
+    "edit": "Bearbeiten",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "saved": "Einstellung gespeichert",
+    "invalidJson": "Kein gültiges JSON"
+  },
+  "directory": {
+    "search": "Name, TU-ID oder E-Mail",
+    "hint": "Mindestens {min} Zeichen",
+    "empty": "Keine Treffer",
+    "truncated": "Es gibt mehr Treffer, als angezeigt werden. Bitte die Suche eingrenzen.",
+    "hasAccount": "Hat ein Konto"
+  },
+  "errors": {
+    "notFound": "Diese Seite gibt es nicht.",
+    "home": "Zur Startseite",
+    "forbidden": "Dafür fehlt Ihnen die Berechtigung.",
+    "unavailable": "Der Dienst ist gerade nicht erreichbar. Bitte später erneut versuchen.",
+    "generic": "Etwas ist schiefgegangen."
+  }
+}

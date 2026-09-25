@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { Client, escapeFilter } from 'ldapts'
 import type { LdapConfig } from './config.js'
+import { DIRECTORY_MAX_RESULTS as MAX_RESULTS } from './limits.js'
 
 // Directory lookup (ADR 0008): finding a person who has not logged in yet,
 // with a read-only service account over LDAPS. Never used to authenticate.
@@ -11,11 +12,12 @@ import type { LdapConfig } from './config.js'
 // (historical TU-IDs have two characters), where a "contains" match would
 // scan the whole directory. Every word is escaped (ADR 0018).
 
-export const MIN_TERM_LENGTH = 2
-export const MAX_TERM_LENGTH = 64
+export {
+  DIRECTORY_MAX_RESULTS as MAX_RESULTS,
+  DIRECTORY_MAX_TERM_LENGTH as MAX_TERM_LENGTH,
+  DIRECTORY_MIN_TERM_LENGTH as MIN_TERM_LENGTH
+} from './limits.js'
 export const MAX_WORDS = 4
-// The most entries one search returns; the directory stops there.
-export const MAX_RESULTS = 50
 
 const ATTRIBUTES = ['cn', 'givenName', 'sn', 'mail']
 
