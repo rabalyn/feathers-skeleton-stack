@@ -20,6 +20,19 @@ describe('database access through PgBouncer', () => {
     await expect(db().raw('SELECT 1 FROM knex_migrations')).rejects.toThrow(/permission denied/)
   })
 
+  // Contract step of refresh rotation (ADR 0003): the tokens live in
+  // auth_refresh_tokens only.
+  it('keeps no refresh token state on auth_sessions', async () => {
+    const { rows } = await db().raw<{ rows: { name: string }[] }>(
+      `SELECT column_name AS name FROM information_schema.columns WHERE table_name = 'auth_sessions'`
+    )
+    const columns = rows.map((row) => row.name)
+    expect(columns).toContain('family_expires_at')
+    expect(columns).not.toEqual(expect.arrayContaining(['refresh_token_hash']))
+    expect(columns).not.toEqual(expect.arrayContaining(['rotated_at']))
+    expect(columns).not.toEqual(expect.arrayContaining(['family_id']))
+  })
+
   it('generates UUIDv7 surrogate keys', async () => {
     const [row] = await db()('users')
       .insert({ tu_id: 'ab12cdef', auth_source: 'saml' })
