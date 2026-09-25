@@ -1,6 +1,10 @@
 # Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
 # production settings in a drop-in directory next to this file.
 
+[Unit]
+Requires=loki.service
+After=loki.service
+
 [Container]
 ContainerName=alloy
 Environment=ENVIRONMENT=local

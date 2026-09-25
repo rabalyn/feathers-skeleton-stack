@@ -681,6 +681,11 @@ services:
   alloy:
     image: docker.io/grafana/alloy@sha256:f111cce835516c5f99166342be7038496b52ced16667be5a11e19258a3e4cd30 # v1.20.0
     container_name: alloy
+    # Stopped before Loki, so the lines it still holds are shipped rather
+    # than retried until Podman's SIGKILL.
+    depends_on:
+      loki:
+        condition: service_started
     command:
       - run
       - /etc/alloy/config.alloy
