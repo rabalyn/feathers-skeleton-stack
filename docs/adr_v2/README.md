@@ -57,7 +57,7 @@ Covered in v1 but not carried forward, or deliberately deferred. Listed so nothi
 | --- | --- |
 | Health and readiness endpoint contents | Placement is decided (internal port, [0022](0022-observability-and-alerting.md)); which dependencies readiness checks needs a short ADR before production |
 | Release procedure, rollback, image build and registry | Deferred. Needed before the first production deployment |
-| Production host, firewall | Deferred until a host exists. Must publish Nginx so that client source addresses survive, which rootless Podman's default port publishing does not ([0016](0016-nginx-and-tls-everywhere.md)) |
+| Production host, firewall | Deferred until a host exists. Must publish Nginx so that client source addresses survive, which rootless Podman's default port publishing does not ([0016](0016-nginx-and-tls-everywhere.md)). Must set `vm.overcommit_memory=1`: Valkey forks for its RDB snapshot and AOF rewrite, and without overcommit that fork can fail with memory to spare, silently stopping persistence ([0010](0010-sessions-postgres-ratelimits-valkey.md)); Valkey warns about it at every start |
 | Off-site backup copy | Accepted risk for now ([0017](0017-nfs-backup-storage.md)) |
 | Distributed tracing | Deferred; `request_id` correlation is in place and should stay `traceparent`-compatible ([0021](0021-structured-logging.md)) |
 | Multi-host scale-out | Deferred, as in v1 |
