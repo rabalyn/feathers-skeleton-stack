@@ -61,7 +61,7 @@ One local account, authenticated by email and password, exists so the system is 
 - Logs in with the `password` strategy of `/api/authentication` (email and password), over REST only and from the application's own origin, like refresh. A successful login opens a session exactly as the ACS does ([0010](0010-sessions-postgres-ratelimits-valkey.md)). Wrong password, unknown address and disabled account get the same 401; an unknown address is verified against a decoy hash, so it takes as long.
 - Subject to the same rate limits as every other login, and every authentication attempt against it — successful or not — is recorded as an audit event. Every attempt is also logged at `warn`, and repeated failures alert ([0022](0022-observability-and-alerting.md)).
 - The UI offers the login on a route of its own, `/break-glass`, which the normal login page does not link to ([0014](0014-frontend-quasar-vue.md)).
-- Locally and in CI, `scripts/stack.sh up` runs the same bootstrap command for `breakglass@app.localhost` and keeps that password in OpenBao, for the end-to-end test only.
+- Locally and in CI, `scripts/stack.sh up` runs the same bootstrap command for `breakglass@app.localhost` and keeps that password in OpenBao; `scripts/stack.sh breakglass` prints it, for trying the login by hand. The end-to-end suite bootstraps `breakglass@e2e.localhost` in its own database for every run ([0015](0015-testing-vitest-playwright.md)).
 - This is the only password the application stores.
 
 ### Assertion validation

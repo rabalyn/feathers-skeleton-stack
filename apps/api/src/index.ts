@@ -26,7 +26,9 @@ const main = async () => {
   // Unreachable Valkey is not a reason to exit: rate-limited attempts are
   // refused until it is back (ADR 0010).
   valkey.on('error', (err: Error) => logger.warn({ err: { message: err.message } }, 'valkey unavailable'))
-  const app = createApp(config, logger, createKnex(config, { camelCase: true }), valkey)
+  const app = createApp(config, logger, createKnex(config, { camelCase: true }), valkey, {
+    rateLimitPrefix: config.rateLimitPrefix
+  })
 
   // An environment never runs with a policy silently absent (ADR 0025).
   try {

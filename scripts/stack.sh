@@ -10,11 +10,12 @@
 #   scripts/stack.sh idp     exchange certificates with the local IdP and
 #                            restart the api
 #   scripts/stack.sh down    stop the stack, keep volumes
-#   scripts/stack.sh reset [--ca]
+#   scripts/stack.sh reset [--ca|--keep-data]
 #                            stop the stack and delete every volume, including
 #                            the local unseal material, but keep the local root
 #                            CA so the browser import stays valid (ADR 0016);
-#                            --ca deletes the CA too
+#                            --ca deletes the CA too; --keep-data also keeps the
+#                            database and OpenBao, so local data survives
 #   scripts/stack.sh ca      print the local root CA certificate, for a
 #                            one-time import into your browser (ADR 0016)
 #   scripts/stack.sh test [vitest args]
@@ -22,7 +23,12 @@
 #                            `test` container (ADR 0015); the stack must be up
 #   scripts/stack.sh e2e [playwright args]
 #                            run the Playwright suite in the `e2e` container
-#                            against the running stack (ADR 0015)
+#                            against api-e2e on a fresh database of its own,
+#                            at https://e2e.localhost:8443 (ADR 0015); the
+#                            local app and its data are not touched
+#   scripts/stack.sh breakglass
+#                            print the local app's break-glass email and
+#                            password (ADR 0008)
 #   scripts/stack.sh alerts  prove the alert path end to end (ADR 0022): make
 #                            the worker log errors, then wait for Grafana's
 #                            mail about them to arrive in Mailpit
@@ -191,14 +197,24 @@ configure_local_idp() {
   fi
 
   sp_cert=$(kv_get api saml_sp_cert | pem_body)
-  podman exec -i idp bash -s "$sp_cert" <<'KCADM'
+  # One SAML client per local origin: the app's and the e2e api's (ADR 0015).
+  # Both share the api's SP key pair. The realm is imported only into a fresh
+  # IdP, so a client added to the realm file later is created here.
+  local client
+  while IFS= read -r client; do
+    podman exec -i idp bash -s "$sp_cert" "$client" <<'KCADM'
 set -euo pipefail
 kc=/opt/keycloak/bin/kcadm.sh
 cfg=$(mktemp)
 trap 'rm -f "$cfg"' EXIT
 $kc config credentials --config "$cfg" --server http://localhost:8080 --realm master \
   --user admin --password "$(</run/secrets/admin_password)" >/dev/null
-id=$($kc get clients --config "$cfg" -r feathers -q 'clientId=https://app.localhost:8443/api/auth/saml/metadata' --fields id --format csv --noquotes)
+client_id=$(sed -n 's/^{"clientId":"\([^"]*\)".*/\1/p' <<<"$2")
+id=$($kc get clients --config "$cfg" -r feathers -q "clientId=$client_id" --fields id --format csv --noquotes)
+if [[ -z $id ]]; then
+  $kc create clients --config "$cfg" -r feathers -f - <<<"$2" >/dev/null
+  id=$($kc get clients --config "$cfg" -r feathers -q "clientId=$client_id" --fields id --format csv --noquotes)
+fi
 $kc update "clients/$id" --config "$cfg" -r feathers \
   -s 'attributes."saml_name_id_format"=transient' \
   -s 'attributes."saml.client.signature"=true' \
@@ -209,6 +225,7 @@ $kc update "clients/$id" --config "$cfg" -r feathers \
   -s 'attributes."saml.encryption.keyAlgorithm"=http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p' \
   -s 'attributes."saml.encryption.digestMethod"=http://www.w3.org/2000/09/xmldsig#sha1'
 KCADM
+  done < <(jq -c '.clients[]' "$ROOT/containers/idp/realm-feathers.json")
   log "configured the local IdP for signed requests and encryption"
 }
 
@@ -238,8 +255,9 @@ idp_setup() {
 }
 
 # The local break-glass account (ADR 0008), made by the same bootstrap command
-# an administrator runs in production. Its password is kept in OpenBao for the
-# e2e suite only; an account without a stored password gets a new one.
+# an administrator runs in production. Its password is kept in OpenBao, at a
+# path only this script reads, so `$0 breakglass` can show it; an account
+# without a stored password gets a new one.
 BREAKGLASS_EMAIL=breakglass@app.localhost
 ensure_breakglass() {
   local count password
@@ -250,13 +268,48 @@ ensure_breakglass() {
     password=$(podman exec api node dist/bootstrap.js --email "$BREAKGLASS_EMAIL" 2>/dev/null) ||
       die "bootstrap failed; see: podman exec api node dist/bootstrap.js --email $BREAKGLASS_EMAIL"
     log "created the break-glass account $BREAKGLASS_EMAIL"
-  elif [[ -z $(kv_get e2e breakglass_password) ]]; then
+  elif [[ -z $(kv_get stack breakglass_password) ]]; then
     password=$(podman exec api node dist/bootstrap.js --rotate 2>/dev/null) || die "bootstrap --rotate failed"
     log "rotated the break-glass password"
   fi
-  [[ -z ${password:-} ]] || printf '%s' "$password" | kv_set e2e breakglass_password
+  [[ -z ${password:-} ]] || printf '%s' "$password" | kv_set stack breakglass_password
+  # Where the e2e suite used to read it, before it had a database of its own.
+  bao kv metadata delete kv/e2e >/dev/null 2>&1 || true
   bao token revoke -self >/dev/null
   TOKEN=
+}
+
+# The e2e suite's own api and database (ADR 0015), fresh for every run:
+# `app_e2e` is dropped, created like `app` in containers/postgres/initdb and
+# migrated, then api-e2e starts on it. Nothing of the local `app` is touched.
+E2E_DATABASE=app_e2e
+E2E_BREAKGLASS_EMAIL=breakglass@e2e.localhost
+start_e2e_api() {
+  podman rm -f api-e2e >/dev/null 2>&1 || true
+  podman exec -i -u postgres postgres psql -q -v ON_ERROR_STOP=1 -d postgres <<SQL >/dev/null
+DROP DATABASE IF EXISTS $E2E_DATABASE WITH (FORCE);
+CREATE DATABASE $E2E_DATABASE OWNER migrator;
+REVOKE ALL ON DATABASE $E2E_DATABASE FROM PUBLIC;
+GRANT CONNECT, TEMPORARY ON DATABASE $E2E_DATABASE TO app_rw;
+SQL
+  compose run --rm -T -e DATABASE_NAME=$E2E_DATABASE migrate >/dev/null 2>&1 ||
+    die "migrating $E2E_DATABASE failed; rerun without output: compose run --rm -e DATABASE_NAME=$E2E_DATABASE migrate"
+  compose --profile test up -d --force-recreate --no-deps api-e2e >/dev/null 2>&1
+  wait_healthy api-e2e 60
+  # The test accounts with their roles, as an administrator would assign
+  # them; a login refreshes directory fields but never the role (ADR 0009,
+  # 0011).
+  podman exec -i -u postgres postgres psql -q -v ON_ERROR_STOP=1 -d "$E2E_DATABASE" <<'SQL' >/dev/null
+INSERT INTO users (tu_id, given_name, surname, role, enabled, auth_source) VALUES
+  ('ad01admn', 'Ada', 'Admin', 'admin', true, 'saml'),
+  ('op01oper', 'Otto', 'Operator', 'operator', true, 'saml'),
+  ('us01user', 'Uma', 'User', 'user', true, 'saml'),
+  ('us02othr', 'Olaf', 'Other', 'user', true, 'saml');
+SQL
+  E2E_BREAKGLASS_PASSWORD=$(podman exec api-e2e node dist/bootstrap.js --email "$E2E_BREAKGLASS_EMAIL" 2>/dev/null) ||
+    die "bootstrap in api-e2e failed"
+  export E2E_BREAKGLASS_PASSWORD
+  log "api-e2e is up on a fresh $E2E_DATABASE"
 }
 
 setup() {
@@ -342,24 +395,20 @@ case $cmd in
   e2e)
     shift
     compose --profile test build e2e
-    # The test accounts with their roles, as an administrator would assign
-    # them; a login refreshes directory fields but never the role (ADR 0009,
-    # 0011). Idempotent, and resets what an earlier run changed.
-    podman exec -i -u postgres postgres psql -q -v ON_ERROR_STOP=1 -d app <<'SQL' >/dev/null
-INSERT INTO users (tu_id, given_name, surname, role, enabled, auth_source) VALUES
-  ('ad01admn', 'Ada', 'Admin', 'admin', true, 'saml'),
-  ('op01oper', 'Otto', 'Operator', 'operator', true, 'saml'),
-  ('us01user', 'Uma', 'User', 'user', true, 'saml'),
-  ('us02othr', 'Olaf', 'Other', 'user', true, 'saml')
-ON CONFLICT (tu_id) DO UPDATE SET role = excluded.role, enabled = excluded.enabled;
-SQL
+    # api-e2e and its database exist for the run only.
+    trap 'podman rm -f api-e2e >/dev/null 2>&1 || true' EXIT
+    start_e2e_api
+    compose --profile test run --rm -T e2e pnpm exec playwright test "$@"
+    ;;
+  breakglass)
+    # The local app's break-glass login, for trying /break-glass by hand.
     wait_for_openbao
     init_or_unseal
-    breakglass_password=$(kv_get e2e breakglass_password)
+    password=$(kv_get stack breakglass_password)
     bao token revoke -self >/dev/null
     TOKEN=
-    [[ -n $breakglass_password ]] || die "no local break-glass password; run '$0 up'"
-    E2E_BREAKGLASS_PASSWORD=$breakglass_password compose --profile test run --rm -T e2e pnpm exec playwright test "$@"
+    [[ -n $password ]] || die "no local break-glass password; run '$0 up'"
+    printf '%s\n%s\n' "$BREAKGLASS_EMAIL" "$password"
     ;;
   alerts)
     # Unknown jobs fail at once and log at `error`: Alloy ships the lines to
@@ -396,14 +445,24 @@ JS
     ;;
   down) compose --profile test --profile dev down ;;
   reset)
+    case ${2:-} in
+      "") keep=" ${PROJECT}_certs-ca " ;;
+      --ca) keep=" " ;;
+      # The local app's data survives: its database (with the test
+      # databases, which are rebuilt anyway) and the OpenBao values and
+      # unseal key its roles' passwords depend on. Everything else starts
+      # from nothing, as on a fresh runner. `scripts/ci.sh --cold` uses this.
+      --keep-data) keep=" ${PROJECT}_certs-ca ${PROJECT}_postgres-data ${PROJECT}_openbao-data $UNSEAL_VOLUME " ;;
+      *) die "usage: $0 reset [--ca|--keep-data]" ;;
+    esac
     compose --profile test --profile dev down
-    keep=${PROJECT}_certs-ca
-    [[ ${2:-} == --ca ]] && keep=
-    for volume in $(podman volume ls -q --filter "label=io.podman.compose.project=$PROJECT"); do
-      [[ $volume == "$keep" ]] || podman volume rm -f "$volume" >/dev/null
+    for volume in $(podman volume ls -q --filter "label=io.podman.compose.project=$PROJECT") $UNSEAL_VOLUME; do
+      [[ $keep == *" $volume "* ]] || podman volume rm -f "$volume" >/dev/null 2>&1 || true
     done
-    [[ -n $keep ]] && log "kept the local root CA; '$0 reset --ca' deletes it"
-    podman volume rm -f "$UNSEAL_VOLUME" >/dev/null 2>&1 || true
+    case ${2:-} in
+      "") log "kept the local root CA; '$0 reset --ca' deletes it" ;;
+      --keep-data) log "kept the local root CA, the app's database and OpenBao; '$0 reset' deletes them" ;;
+    esac
     ;;
   *) sed -n '2,29p' "$0"; exit 2 ;;
 esac

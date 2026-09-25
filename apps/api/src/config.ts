@@ -80,6 +80,14 @@ const fields = {
   valkeyUser: { schema: Type.String({ minLength: 1 }), env: 'VALKEY_USER' },
   valkeyPassword: { schema: Type.String({ minLength: 16 }), env: 'VALKEY_PASSWORD', secret: true },
   valkeyCaFile: { schema: Type.String({ minLength: 1 }), env: 'VALKEY_CA_FILE' },
+  // Where the rate limiter keeps its counters. The Valkey user may touch
+  // `rl:*` only (ADR 0010); a second api on the same Valkey, the local e2e
+  // one (ADR 0015), counts under its own prefix.
+  rateLimitPrefix: {
+    schema: Type.String({ pattern: '^rl(:[a-z0-9-]+)?$' }),
+    env: 'RATE_LIMIT_PREFIX',
+    default: 'rl'
+  },
   // X-Forwarded-For is believed only from this host's addresses (ADR 0016).
   trustedProxyHost: { schema: Type.String({ minLength: 1 }), env: 'TRUSTED_PROXY_HOST' },
   // Directory lookup (ADR 0008): LDAPS with a read-only service account.
@@ -142,6 +150,7 @@ export const API_KEYS = [
   'logFile',
   'bodySizeCeilingBytes',
   'trustedProxyHost',
+  'rateLimitPrefix',
   ...VALKEY_KEYS,
   ...LDAP_KEYS,
   ...DATABASE_KEYS

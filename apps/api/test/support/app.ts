@@ -63,7 +63,9 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
       internalTlsCertFile: 'unused-in-tests',
       internalTlsKeyFile: 'unused-in-tests',
       bodySizeCeilingBytes: BODY_SIZE_CEILING_BYTES,
-      trustedProxyHost: options.trustedProxyHost ?? TRUSTED_PROXY_HOST
+      trustedProxyHost: options.trustedProxyHost ?? TRUSTED_PROXY_HOST,
+      // Replaced by the per-app prefix below.
+      rateLimitPrefix: 'rl'
     },
     pino({ level: 'silent' }),
     createKnex(database, { camelCase: true }),

@@ -28,7 +28,7 @@ services:
     container_name: certs
     profiles: [local]
     environment:
-      CERT_HOSTNAMES: app.localhost,idp.localhost,dozzle.localhost,grafana.localhost,mail.localhost
+      CERT_HOSTNAMES: app.localhost,e2e.localhost,idp.localhost,dozzle.localhost,grafana.localhost,mail.localhost
     network_mode: none
     volumes:
       - certs-ca:/ca
@@ -69,6 +69,10 @@ services:
       # Mirrored in bytes as the api's BODY_SIZE_CEILING_BYTES (ADR 0025).
       NGINX_BODY_SIZE_LIMIT: 10m
       NGINX_API_UPSTREAM: api:3030
+      # The e2e origin (ADR 0015), local only: interpolated values never
+      # reach the production units.
+      NGINX_E2E_HOST: ${NGINX_E2E_HOST:-e2e.localhost}
+      NGINX_E2E_API_UPSTREAM: ${NGINX_E2E_API_UPSTREAM:-api-e2e:3030}
       NGINX_IDP_UPSTREAM: idp:8080
       NGINX_DOZZLE_HOST: dozzle.localhost
       NGINX_DOZZLE_UPSTREAM: dozzle:8080
@@ -130,7 +134,7 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-    environment:
+    environment: &api-environment
       PUBLIC_ORIGIN: https://app.localhost:8443
       # Rotated JSON log files, read by the collector (ADR 0021).
       LOG_FILE: /var/log/app/api
@@ -170,6 +174,33 @@ services:
       - api-secrets:/run/secrets:ro
       - trust:/trust:ro
       - logs:/var/log/app
+      - tls-api:/tls:ro
+    healthcheck:
+      test: ["CMD-SHELL", "NODE_EXTRA_CA_CERTS=/trust/ca.crt node -e \"fetch('https://localhost:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # The api of the end-to-end suite (ADR 0015): the same image and
+  # configuration on a database of its own, `app_e2e`, behind its own origin,
+  # so a Playwright run never touches the data of the local `app`.
+  # `scripts/stack.sh e2e` recreates the database, starts this container for
+  # the run and removes it afterwards.
+  api-e2e:
+    image: localhost/feathers-api:dev
+    container_name: api-e2e
+    profiles: [test]
+    environment:
+      <<: *api-environment
+      PUBLIC_ORIGIN: https://e2e.localhost:8443
+      DATABASE_NAME: app_e2e
+      RATE_LIMIT_PREFIX: rl:e2e
+      # Stdout only: its lines stay out of Loki and the alert rules.
+      LOG_FILE: ""
+    networks: [edge, app-data, identity]
+    volumes:
+      - api-secrets:/run/secrets:ro
+      - trust:/trust:ro
       - tls-api:/tls:ro
     healthcheck:
       test: ["CMD-SHELL", "NODE_EXTRA_CA_CERTS=/trust/ca.crt node -e \"fetch('https://localhost:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))\""]
@@ -415,13 +446,14 @@ services:
     container_name: e2e
     profiles: [test]
     environment:
-      E2E_APP_ORIGIN: https://app.localhost:8443
+      # The e2e origin, served by api-e2e on its own database (ADR 0015).
+      E2E_APP_ORIGIN: https://e2e.localhost:8443
       # Chromium resolves *.localhost to loopback; map the public names to
       # nginx instead (ADR 0015).
-      E2E_HOST_RESOLVER_RULES: MAP app.localhost nginx, MAP idp.localhost nginx
-      # The local break-glass account (ADR 0008), handed over by
-      # `stack.sh e2e` from OpenBao; a local test value, never a real one.
-      E2E_BREAKGLASS_EMAIL: breakglass@app.localhost
+      E2E_HOST_RESOLVER_RULES: MAP e2e.localhost nginx, MAP idp.localhost nginx
+      # The e2e database's break-glass account (ADR 0008), made by
+      # `stack.sh e2e` for the run; a local test value, never a real one.
+      E2E_BREAKGLASS_EMAIL: breakglass@e2e.localhost
       E2E_BREAKGLASS_PASSWORD: ${E2E_BREAKGLASS_PASSWORD:-}
     # The container networks are IPv4 only. Link-local IPv6 addresses still
     # appear, and settle, just after start; Chromium reports that as a

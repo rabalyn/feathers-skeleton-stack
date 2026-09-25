@@ -44,19 +44,20 @@ The stack needs a fixed service list and a network layout where no component can
 | `migrate` | One-shot Knex migration job | same |
 | `test` | One-shot Vitest run for unit and integration tests, built from the `api` build stage; `test` profile only ([0015](0015-testing-vitest-playwright.md)) | — |
 | `e2e` | One-shot Playwright run; `test` profile only ([0015](0015-testing-vitest-playwright.md)) | — |
+| `api-e2e` | The api's image and configuration on the database `app_e2e`, behind `e2e.localhost`, for the Playwright run only; `test` profile only ([0015](0015-testing-vitest-playwright.md)) | — |
 
 ### Networks
 
 | Network | Members | Purpose |
 | --- | --- | --- |
-| `edge` | `nginx`, `api`, `web` (dev), `blackbox`, `e2e` (test) | Public request path; Nginx is also `app.localhost` here locally, so clients inside the stack reach the public origin |
+| `edge` | `nginx`, `api`, `web` (dev), `blackbox`, `e2e` (test), `api-e2e` (test) | Public request path; Nginx is also `app.localhost` here locally, so clients inside the stack reach the public origin |
 | `idp-edge` | `nginx`, `idp`, `e2e` (test) | Browser access to the local IdP; local and CI only |
 | `dozzle-edge` | `nginx`, `dozzle` | Browser access to Dozzle; local only |
 | `grafana-edge` | `nginx`, `grafana` | Browser access to Grafana ([0022](0022-observability-and-alerting.md)) |
 | `mail-edge` | `nginx`, `mail` | Browser access to Mailpit's inbox; local only |
-| `app-data` | `api`, `worker`, `pgbouncer`, `valkey`, `valkey-exporter`, `test` (test) | Application data access |
+| `app-data` | `api`, `worker`, `pgbouncer`, `valkey`, `valkey-exporter`, `test` (test), `api-e2e` (test) | Application data access |
 | `db` | `pgbouncer`, `postgres`, `backup`, `migrate`, `postgres-exporter`, `pgbouncer-exporter` | Direct database access |
-| `identity` | `api`, `idp`, `ldap`, `test` (test) | Authentication and directory lookup |
+| `identity` | `api`, `idp`, `ldap`, `test` (test), `api-e2e` (test) | Authentication and directory lookup |
 | `object` | `api`, `worker`, `s3`, `backup` | Object storage |
 | `secrets` | `openbao`, every `*-agent`, `backup` | Secret delivery; `backup` for OpenBao snapshots |
 | `observability` | `api`, `worker`, `prometheus`, `loki`, `alloy`, `grafana`, all exporters, `mail`, `blackbox` | Metrics, logs, alert delivery |

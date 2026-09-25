@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { APP } from '../playwright.config.js'
 import { ADMIN, IDP_ORIGIN, OPERATOR, USER, loginAs, nav, navLabels } from './support.js'
 
 // SAML2 login through the local IdP into the real frontend (ADR 0014, 0015):
@@ -10,7 +11,7 @@ test('login, session restore, profile and immediate logout', async ({ page, cont
   const problems: string[] = []
   page.on('pageerror', (error) => problems.push(error.message))
   page.on('console', (message) => {
-    if (message.type() === 'error' && message.location().url.startsWith('https://app.localhost:8443/')) {
+    if (message.type() === 'error' && message.location().url.startsWith(`${APP}/`)) {
       problems.push(message.text())
     }
   })

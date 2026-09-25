@@ -8,7 +8,8 @@
 # here. Production settings live in drop-in directories next to them
 # (<unit>.d/*.conf) and are never touched.
 #
-# Before podlet sees the file, local-only parts are removed:
+# Before podlet sees the file, YAML anchors are resolved and local-only
+# parts are removed:
 # - `build:` (podlet rejects it; production pulls built images),
 # - services under the `local`, `test` and `dev` profiles (ADR 0001, 0002,
 #   0014), and every depends_on entry that pointed at one of them,
@@ -38,8 +39,10 @@ HEADER='# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
 generate() { # <dir>
   local dir=$1 f svc
   mkdir -p "$dir/units"
-  podman run --rm -i --network none "$YQ" '
-    del(.services[].build)
+  # To the YAML spec: a service's own keys win over those it merges in.
+  podman run --rm -i --network none "$YQ" --yaml-fix-merge-anchor-to-spec=true '
+    explode(.)
+    | del(.services[].build)
     | del(.services[] | select((.profiles // []) | any_c(. == "local" or . == "test" or . == "dev")))
     | .services[] |= (select(has("environment")).environment |= with_entries(select(.value | tostring | test("\\$\\{") | not)))
     | (.services | keys) as $names

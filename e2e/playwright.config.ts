@@ -4,7 +4,9 @@ import { defineConfig, devices } from '@playwright/test'
 // stack over real TLS. Chromium maps the public host names to the nginx
 // container and trusts the local CA through its NSS store (imported by the
 // container's entrypoint); certificate errors are never ignored.
-export const APP = process.env.E2E_APP_ORIGIN ?? 'https://app.localhost:8443'
+
+// The e2e origin: api-e2e on a database of its own (ADR 0015).
+export const APP = process.env.E2E_APP_ORIGIN ?? 'https://e2e.localhost:8443'
 
 export default defineConfig({
   testDir: './tests',

@@ -1,0 +1,36 @@
+# The application's locations (ADR 0016), included by every origin that
+# serves the application: $api_upstream names that origin's api.
+location /api/socket.io/ {
+  proxy_pass $api_upstream;
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection $connection_upgrade;
+  proxy_set_header Host $http_host;
+  proxy_set_header X-Forwarded-For $remote_addr;
+  proxy_set_header X-Forwarded-Proto https;
+  proxy_set_header X-Request-Id $request_id;
+  # Longer than Socket.io's ping interval plus timeout (25 s + 20 s).
+  proxy_read_timeout 75s;
+  proxy_send_timeout 75s;
+}
+
+location /api/ {
+  proxy_pass $api_upstream;
+  proxy_http_version 1.1;
+  proxy_set_header Connection "";
+  proxy_set_header Host $http_host;
+  # Replaced, not appended: the client's own X-Forwarded-For is never trusted.
+  proxy_set_header X-Forwarded-For $remote_addr;
+  proxy_set_header X-Forwarded-Proto https;
+  # 32 hex digits, a traceparent trace-id; the api keeps it as the request
+  # id, so the access log and the api's lines correlate (ADR 0021).
+  proxy_set_header X-Request-Id $request_id;
+}
+
+location = /api {
+  return 404;
+}
+
+# The frontend: the built bundle, or the Vite dev server under the `dev`
+# profile (entrypoint.d/27-web.sh picks one; ADR 0014).
+include /etc/nginx/conf.d/snippets/web.conf;

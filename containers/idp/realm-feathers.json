@@ -243,6 +243,75 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "https://e2e.localhost:8443/api/auth/saml/metadata",
+      "name": "claude-feathers (local e2e)",
+      "protocol": "saml",
+      "enabled": true,
+      "frontchannelLogout": true,
+      "redirectUris": [
+        "https://e2e.localhost:8443/api/auth/saml/*"
+      ],
+      "attributes": {
+        "saml_assertion_consumer_url_post": "https://e2e.localhost:8443/api/auth/saml/acs",
+        "saml_single_logout_service_url_redirect": "https://e2e.localhost:8443/api/auth/saml/logout",
+        "saml.assertion.signature": "true",
+        "saml.server.signature": "true",
+        "saml.signature.algorithm": "RSA_SHA256",
+        "saml_signature_canonicalization_method": "http://www.w3.org/2001/10/xml-exc-c14n#",
+        "saml.client.signature": "true",
+        "saml.encrypt": "true",
+        "saml.force.post.binding": "true",
+        "saml_force_name_id_format": "true",
+        "saml_name_id_format": "transient",
+        "saml.authnstatement": "true",
+        "saml.encryption.algorithm": "http://www.w3.org/2009/xmlenc11#aes256-gcm",
+        "saml.encryption.keyAlgorithm": "http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p",
+        "saml.encryption.digestMethod": "http://www.w3.org/2000/09/xmldsig#sha1"
+      },
+      "protocolMappers": [
+        {
+          "name": "cn (TU-ID)",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "attribute.name": "cn",
+            "attribute.nameformat": "Basic"
+          }
+        },
+        {
+          "name": "givenName",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "firstName",
+            "attribute.name": "givenName",
+            "attribute.nameformat": "Basic"
+          }
+        },
+        {
+          "name": "sn",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "lastName",
+            "attribute.name": "sn",
+            "attribute.nameformat": "Basic"
+          }
+        },
+        {
+          "name": "mail",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "email",
+            "attribute.name": "mail",
+            "attribute.nameformat": "Basic"
+          }
+        }
+      ]
     }
   ]
 }

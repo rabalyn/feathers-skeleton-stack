@@ -4,7 +4,8 @@
 #
 #   scripts/ci.sh           static checks, then the stack checks against the
 #                           current stack (`up` rebuilds and recreates)
-#   scripts/ci.sh --cold    reset the stack first, as a fresh runner would
+#   scripts/ci.sh --cold    reset the stack first, as a fresh runner would,
+#                           but keep the local app's database and OpenBao
 #   scripts/ci.sh --static  static checks only: no stack, no image scan
 #
 # Static: gitleaks over the whole history, ESLint, the client dependency
@@ -85,8 +86,10 @@ check "production OpenBao procedure" "$ROOT/scripts/openbao-test.sh"
 
 if [[ $mode != --static ]]; then
   if [[ $mode == --cold ]]; then
-    step "cold start: reset"
-    "$ROOT/scripts/stack.sh" reset
+    # The local app's database and OpenBao survive (ADR 0015); on a fresh
+    # runner there is nothing to keep, so it is a full cold start there.
+    step "cold start: reset (keeping the local app's data)"
+    "$ROOT/scripts/stack.sh" reset --keep-data
   fi
   step "stack up"
   "$ROOT/scripts/stack.sh" up || { failed+=("stack up"); mode=--static; }
