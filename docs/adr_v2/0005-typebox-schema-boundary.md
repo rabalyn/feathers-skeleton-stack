@@ -23,7 +23,7 @@ Requests arrive over REST and over WebSocket. Both must be validated identically
   - **data resolvers** set server-controlled fields (timestamps, owner id) and must never take those values from the request,
   - **query resolvers** apply mandatory scoping the client cannot remove,
   - **result resolvers** shape the response,
-  - **external resolvers** strip anything the caller must not see — password material, internal ids, other users' fields.
+  - **external resolvers** strip anything the caller must not see — password material, internal identifiers such as object storage keys, session ids and token hashes, other users' fields. A record's own surrogate `id` is not internal in this sense: it is the resource address in the API ([0009](0009-tu-id-identity-model.md)).
 - The external resolver is the single place that redacts, and it applies to real-time event payloads as well as direct responses. Nothing may bypass it.
 - The database keeps the constraints that guarantee integrity independently of application state (see [0003](0003-postgresql-and-knex.md)). Where an invariant matters for both (unique TU-ID, unique email), it is expressed in both places deliberately.
 
