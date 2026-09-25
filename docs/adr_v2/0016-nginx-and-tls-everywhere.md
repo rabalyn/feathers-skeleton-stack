@@ -25,7 +25,7 @@ Nginx is the reverse proxy and TLS terminator in every environment. Only the sou
 
 ### The local CA
 
-- On first start, `certs` creates a root CA and stores it in a volume. On every start it issues or renews the leaf certificate for the configured local host names (by default `app.localhost` and `idp.localhost`) if it is missing or near expiry, together with the server certificate for OpenBao's internal listener ([0023](0023-secrets-management.md)). `*.localhost` resolves to the loopback address in browsers without editing `/etc/hosts`.
+- On first start, `certs` creates a root CA and stores it in a volume. On every start it issues or renews the leaf certificate for the configured local host names (by default `app.localhost` and `idp.localhost`) if it is missing or near expiry, together with the server certificates of the internal TLS listeners: OpenBao ([0023](0023-secrets-management.md)), PgBouncer and PostgreSQL ([0004](0004-pgbouncer-pools.md)). `*.localhost` resolves to the loopback address in browsers without editing `/etc/hosts`.
 - Locally Nginx publishes HTTPS on host port **8443** by default, because rootless Podman cannot bind ports below `net.ipv4.ip_unprivileged_port_start` (1024 by default) and changing that sysctl on every developer machine and runner is not worth it. The local origins are therefore `https://app.localhost:8443` and `https://idp.localhost:8443`. The port is part of the configured public origin, from which the SAML entity ID and ACS URL are derived, so production on 443 differs by configuration only.
 - The root is trusted by Playwright's browser context, by Node through `NODE_EXTRA_CA_CERTS`, and — through a documented one-time import — by the developer's own browser. Tests never ignore certificate errors.
 - The root's private key never leaves the volume and is unique per machine; nothing about it is committed.
@@ -54,3 +54,7 @@ There is a single Nginx configuration, parameterised by environment (server name
 - TLS, cookie behaviour, SAML redirects and security headers are exercised identically from the first local run.
 - Certificate issuance itself is not exercised before production. This is accepted: issuance is a configuration of an off-the-shelf ACME client, and its failure mode is visible (Nginx keeps the last valid certificate and the expiry is monitored).
 - Each developer imports one root certificate into their browser once.
+
+## Open questions
+
+- Where production certificates for the **internal** TLS listeners come from — OpenBao ([0023](0023-secrets-management.md)), PgBouncer and PostgreSQL ([0004](0004-pgbouncer-pools.md)). The institutional ACME CA cannot issue for internal names such as `openbao` or `postgres`, so production needs a private issuing CA. Decide together with the production host, which is itself deferred ([README](README.md)).

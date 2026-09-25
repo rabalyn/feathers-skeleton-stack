@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADR 0014
-- Related: [0002](0002-service-inventory-and-networks.md), [0003](0003-postgresql-and-knex.md), [0015](0015-testing-vitest-playwright.md), [0024](0024-background-jobs-bullmq.md)
+- Related: [0002](0002-service-inventory-and-networks.md), [0003](0003-postgresql-and-knex.md), [0015](0015-testing-vitest-playwright.md), [0016](0016-nginx-and-tls-everywhere.md), [0024](0024-background-jobs-bullmq.md)
 
 ## Context
 
@@ -42,6 +42,15 @@ PgBouncer keeps one pool per database/user pair. With one database per test work
 - No `LISTEN`/`NOTIFY`, no temp tables outliving a transaction, no server-side named prepared statements. Knex with `node-postgres` does not create named prepared statements by default.
 
 Authentication is `scram-sha-256`.
+
+### TLS on both hops
+
+Both database hops use TLS with full verification, so query data and results — personal data — never cross a container network in plaintext:
+
+- clients (API, worker, tests) → PgBouncer: PgBouncer requires TLS from clients; clients verify its certificate and host name against the CA root,
+- PgBouncer → PostgreSQL, and `migrate` / `backup` → PostgreSQL: PostgreSQL accepts only `hostssl` connections; its clients verify with `verify-full`.
+
+Locally and in CI the certificates come from the `certs` job's local CA ([0016](0016-nginx-and-tls-everywhere.md)). The CPU cost of TLS is paid per connection, which pooling amortises.
 
 ## Consequences
 

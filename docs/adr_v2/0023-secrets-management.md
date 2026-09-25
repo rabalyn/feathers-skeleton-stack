@@ -26,7 +26,7 @@ Environment files fail the first two constraints. An encrypted file in the repos
 
 - Secrets are **static** values in the KV v2 engine, one path per consuming service, `kv/<service>`, with one key per file the agent renders (key `database_password` becomes `/run/secrets/database_password`). Dynamic, short-lived database credentials are possible later as a change of engine, not of store; they are not used in v1 because they would rebuild PgBouncer's per-user pools on every rotation ([0004](0004-pgbouncer-pools.md)).
 - Each service has a **policy** granting read access to its own path only. The API cannot read the restic password; the backup service cannot read the Grafana credentials.
-- OpenBao's listener uses **TLS**, and agents verify its certificate against a configured CA root. Secret values and `secret_id` unwrap calls never cross a network in plaintext, even the internal `secrets` network. Locally and in CI the `certs` job issues the `openbao` server certificate from the local CA ([0016](0016-nginx-and-tls-everywhere.md)).
+- OpenBao's listener uses **TLS**, and agents verify its certificate against a configured CA root. Secret values and `secret_id` unwrap calls never cross a network in plaintext, even the internal `secrets` network. Locally and in CI the `certs` job issues the `openbao` server certificate from the local CA; the production source is an open question in [0016](0016-nginx-and-tls-everywhere.md).
 - OpenBao's **audit device** is declared in the server configuration (OpenBao accepts no other way) and written to the shared log volume, so every secret access is shipped to Loki ([0021](0021-structured-logging.md)). Audit entries contain HMACs of values, never the values.
 
 ### Sealing and unsealing
@@ -99,7 +99,3 @@ OpenBao's storage is backed up as a raft snapshot by the backup service ([0017](
 - Every secret-reading service gains an agent container, roughly doubling the container count for those services.
 - A new secret means deciding which service's path it belongs to and updating that policy, which is the intended moment to think about least privilege.
 - The team must learn to operate OpenBao: initialisation, unsealing, policies and snapshot restore. The restore test in CI exercises the last of these on every pipeline.
-
-## Open questions
-
-- Where the production certificate for OpenBao's internal listener comes from. The institutional ACME CA ([0016](0016-nginx-and-tls-everywhere.md)) cannot issue for an internal name such as `openbao`, so production needs a private issuing CA. Decide together with the production host, which is itself deferred ([README](README.md)).
