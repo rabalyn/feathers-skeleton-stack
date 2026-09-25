@@ -67,7 +67,10 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
     },
     pino({ level: 'silent' }),
     createKnex(database, { camelCase: true }),
-    options.valkey ?? createValkey(valkeyConfig),
+    // A listener, as index.ts attaches one: without it ioredis prints every
+    // connection error, e.g. of an app torn down mid-handshake. Failing
+    // commands still reach the tests.
+    options.valkey ?? createValkey(valkeyConfig).on('error', () => {}),
     // Tests change settings in the database directly and expect the next
     // request to see them.
     { settingsTtlMs: 0, rateLimitPrefix: `test:${randomUUID()}` }
