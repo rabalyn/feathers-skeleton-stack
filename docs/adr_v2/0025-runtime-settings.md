@@ -22,6 +22,8 @@ Every operational policy the application or its own services enforce is a runtim
 | Data export retention | 7 days | Worker |
 | Soft-deleted object purge delay | 32 days | Worker ([0020](0020-object-storage-uploads.md)) |
 | Refresh reuse grace window | 10 seconds | API ([0010](0010-sessions-postgres-ratelimits-valkey.md)) |
+| Session idle timeout | 8 hours | API ([0010](0010-sessions-postgres-ratelimits-valkey.md)) |
+| Session absolute lifetime | 7 days | API ([0010](0010-sessions-postgres-ratelimits-valkey.md)) |
 | Maximum upload size | Set at implementation, below the Nginx ceiling | API ([0020](0020-object-storage-uploads.md)) |
 | Storage quota per user | 100 MB | API |
 | Storage quota total | 5 GB | API |
