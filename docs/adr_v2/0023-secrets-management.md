@@ -27,7 +27,7 @@ Environment files fail the first two constraints. An encrypted file in the repos
 - Secrets are **static** values in the KV v2 engine, one path per consuming service, `kv/<service>`, with one key per file the agent renders (key `database_password` becomes `/run/secrets/database_password`). Dynamic, short-lived database credentials are possible later as a change of engine, not of store; they are not used in v1 because they would rebuild PgBouncer's per-user pools on every rotation ([0004](0004-pgbouncer-pools.md)).
 - Each service has a **policy** granting read access to its own path only. The API cannot read the restic password; the backup service cannot read the Grafana credentials.
 - OpenBao's listener uses **TLS**, and agents verify its certificate against a configured CA root. Secret values and `secret_id` unwrap calls never cross a network in plaintext, even the internal `secrets` network. Locally and in CI the `certs` job issues the `openbao` server certificate from the local CA ([0016](0016-nginx-and-tls-everywhere.md)).
-- OpenBao's **audit device** is enabled and written to the shared log volume, so every secret access is shipped to Loki ([0021](0021-structured-logging.md)). Audit entries contain HMACs of values, never the values.
+- OpenBao's **audit device** is declared in the server configuration (OpenBao accepts no other way) and written to the shared log volume, so every secret access is shipped to Loki ([0021](0021-structured-logging.md)). Audit entries contain HMACs of values, never the values.
 
 ### Sealing and unsealing
 
@@ -38,7 +38,7 @@ OpenBao starts **sealed** and cannot read its own storage until unsealed.
 | Production | **Manually, by an administrator**, after every start of the host or the `openbao` container. The unseal key is split into shares at initialisation; the shares and the initial root token are kept in the team's KeePass store |
 | Local, CI | Scripted. The first start initialises OpenBao, keeps the unseal key in a local container volume, and fills every secret path with generated random values |
 
-The server configuration, policies and secret paths are identical in every environment; only who unseals, and whether the values are real, differs ([0001](0001-one-stack-every-environment.md)). The root token is revoked once initial configuration is done and regenerated from the unseal shares only when needed. Administrators work with personal OpenBao accounts whose policy covers issuing agent credentials and editing secret values, nothing more.
+The server configuration, policies and secret paths are identical in every environment; only who unseals, and whether the values are real, differs ([0001](0001-one-stack-every-environment.md)). The root token is revoked once initial configuration is done and regenerated from the unseal shares only when needed. Administrators work with personal OpenBao accounts whose policy covers issuing agent credentials, editing secret values, and **starting** root generation, nothing more. OpenBao refuses unauthenticated root generation by default (`disable_unauthed_generate_root_endpoints`), and that default is kept: starting it needs an administrator's account, and completing it still needs the unseal key shares. Locally, a periodic token with the same admin policy, kept in the local unseal volume, stands in for the administrator's account.
 
 ### Delivery: one OpenBao Agent per service, files in tmpfs
 
