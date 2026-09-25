@@ -325,6 +325,14 @@ setup() {
   log "secrets delivered"
 }
 
+# podman-compose stops every container at once on `down`, ignoring
+# depends_on; Alloy goes first so it can ship what it holds while Loki is
+# still there (compose.yaml orders them for the production units).
+stack_down() {
+  podman stop alloy >/dev/null 2>&1 || true
+  compose --profile test --profile dev down
+}
+
 # --- commands ----------------------------------------------------------------
 
 cmd=${1:-}
@@ -443,7 +451,7 @@ while (Date.now() < deadline) {
 process.exit(1)
 JS
     ;;
-  down) compose --profile test --profile dev down ;;
+  down) stack_down ;;
   reset)
     case ${2:-} in
       "") keep=" ${PROJECT}_certs-ca " ;;
@@ -455,7 +463,7 @@ JS
       --keep-data) keep=" ${PROJECT}_certs-ca ${PROJECT}_postgres-data ${PROJECT}_openbao-data $UNSEAL_VOLUME " ;;
       *) die "usage: $0 reset [--ca|--keep-data]" ;;
     esac
-    compose --profile test --profile dev down
+    stack_down
     for volume in $(podman volume ls -q --filter "label=io.podman.compose.project=$PROJECT") $UNSEAL_VOLUME; do
       [[ $keep == *" $volume "* ]] || podman volume rm -f "$volume" >/dev/null 2>&1 || true
     done

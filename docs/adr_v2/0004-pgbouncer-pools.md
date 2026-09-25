@@ -52,6 +52,8 @@ Both database hops use TLS with full verification, so query data and results —
 
 Locally and in CI the certificates come from the `certs` job's local CA ([0016](0016-nginx-and-tls-everywhere.md)). The CPU cost of TLS is paid per connection, which pooling amortises.
 
+PgBouncer is stopped with **SIGINT**, its safe shutdown: transactions in progress finish, then it exits. Its SIGTERM (since 1.23) waits for every client to disconnect, which ran into Podman's 10-second SIGKILL whenever a client outlived the stop.
+
 ## Consequences
 
 - A parallel test run of any width is bounded by `max_user_connections` rather than by PostgreSQL's `max_connections`.

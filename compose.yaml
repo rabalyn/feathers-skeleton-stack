@@ -307,6 +307,10 @@ services:
       dockerfile: containers/pgbouncer/Containerfile
     image: localhost/feathers-pgbouncer:dev
     container_name: pgbouncer
+    # Safe shutdown: running transactions finish, then it exits. On SIGTERM
+    # PgBouncer 1.23+ waits for every client to disconnect, which ran into
+    # Podman's SIGKILL whenever a client outlived the stop (ADR 0004).
+    stop_signal: SIGINT
     depends_on:
       postgres:
         condition: service_started
@@ -714,7 +718,9 @@ services:
     image: docker.io/grafana/alloy@sha256:f111cce835516c5f99166342be7038496b52ced16667be5a11e19258a3e4cd30 # v1.20.0
     container_name: alloy
     # Stopped before Loki, so the lines it still holds are shipped rather
-    # than retried until Podman's SIGKILL.
+    # than retried until Podman's SIGKILL: by systemd through this ordering
+    # in production, and by scripts/stack.sh locally, because podman-compose
+    # stops everything at once on `down`.
     depends_on:
       loki:
         condition: service_started
