@@ -4,6 +4,10 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends libnss3-tools \
  && rm -rf /var/lib/apt/lists/*
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# Dependencies are fixed when the image is built; pnpm's pre-run check would
+# see the build's lockfile and manifest writes as drift and try to reinstall
+# as the unprivileged user (ADR 0015).
+ENV pnpm_config_verify_deps_before_run=false
 # pnpm comes through corepack; npm and yarn are never used (ADR 0018).
 RUN corepack enable && rm -rf /usr/lib/node_modules/npm /usr/lib/node_modules/yarn /usr/bin/npm /usr/bin/npx /usr/bin/yarn
 WORKDIR /repo
