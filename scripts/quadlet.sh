@@ -17,6 +17,10 @@
 # `condition: service_healthy` has no podlet translation; it becomes a plain
 # dependency, and the service depended on gets `Notify=healthy`, which makes
 # systemd consider it started only once its healthcheck passes.
+# `condition: service_completed_successfully` (which podlet drops silently)
+# likewise becomes a plain dependency on a `Type=oneshot` unit with
+# `RemainAfterExit=yes`, which systemd considers started once it has exited
+# successfully.
 # After generation, bind-mount sources relative to the repository root are
 # rewritten relative to deploy/quadlet/, which is how Quadlet resolves them.
 set -euo pipefail
@@ -49,13 +53,19 @@ generate() { # <dir>
     '[.services[].depends_on // {} | to_entries[] | select(.value.condition == "service_healthy") | .key] | unique | .[]' \
     <"$dir/stripped.yaml" >"$dir/healthy.txt"
   podman run --rm -i --network none "$YQ" \
-    '(.services[] | select(has("depends_on")) | .depends_on[] | select(.condition == "service_healthy") | .condition) = "service_started"' \
+    '[.services[].depends_on // {} | to_entries[] | select(.value.condition == "service_completed_successfully") | .key] | unique | .[]' \
+    <"$dir/stripped.yaml" >"$dir/oneshot.txt"
+  podman run --rm -i --network none "$YQ" \
+    '(.services[] | select(has("depends_on")) | .depends_on[] | select(.condition == "service_healthy" or .condition == "service_completed_successfully") | .condition) = "service_started"' \
     <"$dir/stripped.yaml" >"$dir/compose.yaml"
   podman run --rm --network none -v "$dir:/w:Z" -w /w "$PODLET" \
     --file units compose compose.yaml >/dev/null
   while read -r svc; do
     [[ -n $svc ]] && sed -i '/^\[Container\]$/a Notify=healthy' "$dir/units/$svc.container"
   done <"$dir/healthy.txt"
+  while read -r svc; do
+    [[ -n $svc ]] && printf '\n[Service]\nType=oneshot\nRemainAfterExit=yes\n' >>"$dir/units/$svc.container"
+  done <"$dir/oneshot.txt"
   for f in "$dir"/units/*; do
     sed -i -e 's#^Volume=\./#Volume=../../#' "$f"
     { printf '%s\n\n' "$HEADER"; cat "$f"; } >"$f.tmp" && mv "$f.tmp" "$f"

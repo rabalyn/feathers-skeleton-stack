@@ -17,6 +17,8 @@ import {
   type UserQuery
 } from './users.schema.js'
 import type { Params } from '@feathersjs/feathers'
+import { recordAudit } from '../../audit.js'
+import type { HookContext } from '../../declarations.js'
 
 export type UserParams = Params<UserQuery>
 
@@ -26,6 +28,23 @@ export const USERS_PATH = 'users'
 // create and remove are internal only: provisioning happens on login, and
 // erasure is its own operation (ADR 0013).
 export const USER_EXTERNAL_METHODS = ['find', 'get', 'patch'] as const
+
+// Role changes and enabling or disabling an account are administrative
+// actions and audited (ADR 0018). Internal patches are not user actions.
+const auditPatch = async (context: HookContext<UserService>) => {
+  if (!context.params.provider) return
+  await recordAudit(context.app.get('knex'), {
+    actorId: context.params.user?.id ?? null,
+    action: 'users.patch',
+    resourceType: USERS_PATH,
+    resourceId: String(context.id),
+    detail: Object.fromEntries(
+      (['role', 'enabled'] as const)
+        .filter((field) => (context.data as UserPatch)[field] !== undefined)
+        .map((field) => [field, (context.data as UserPatch)[field]])
+    )
+  })
+}
 
 export const users = (app: Application) => {
   app.use(
@@ -47,6 +66,9 @@ export const users = (app: Application) => {
       all: [schemaHooks.validateQuery(userQueryValidator), schemaHooks.resolveQuery(userQueryResolver)],
       create: [schemaHooks.validateData(userDataValidator), schemaHooks.resolveData(userDataResolver)],
       patch: [schemaHooks.validateData(userPatchValidator), schemaHooks.resolveData(userPatchResolver)]
+    },
+    after: {
+      patch: [auditPatch]
     }
   })
 }

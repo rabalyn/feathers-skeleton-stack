@@ -55,6 +55,13 @@ const fields = {
   samlIdpEntityId: { schema: Type.String({ minLength: 1 }), env: 'SAML_IDP_ENTITY_ID' },
   samlIdpSsoUrl: { schema: Type.String({ pattern: '^https://' }), env: 'SAML_IDP_SSO_URL' },
   samlIdpSloUrl: { schema: Type.String({ pattern: '^https://' }), env: 'SAML_IDP_SLO_URL' },
+  // Nginx's client_max_body_size in bytes (ADR 0016), which the maximum
+  // upload size setting must stay below (ADR 0025).
+  bodySizeCeilingBytes: {
+    schema: Type.Integer({ minimum: 1 }),
+    env: 'BODY_SIZE_CEILING_BYTES',
+    integer: true
+  },
   databasePoolMax: {
     schema: Type.Integer({ minimum: 1, maximum: 50 }),
     env: 'DATABASE_POOL_MAX',
@@ -93,6 +100,7 @@ export const API_KEYS = [
   'port',
   'internalPort',
   'logLevel',
+  'bodySizeCeilingBytes',
   ...DATABASE_KEYS
 ] as const satisfies readonly ConfigKey[]
 

@@ -3,6 +3,8 @@ import { API_KEYS, ConfigError, loadConfig } from './config.js'
 import { createKnex } from './db.js'
 import { createInternalServer } from './internal.js'
 import { createLogger } from './logger.js'
+import { API_SETTINGS } from './settings/registry.js'
+import { SettingsError } from './settings/store.js'
 
 const main = async () => {
   let config
@@ -19,6 +21,18 @@ const main = async () => {
 
   const logger = createLogger('api', config.logLevel)
   const app = createApp(config, logger, createKnex(config, { camelCase: true }))
+
+  // An environment never runs with a policy silently absent (ADR 0025).
+  try {
+    await app.get('settings').assertPresent(API_SETTINGS)
+  } catch (error) {
+    if (error instanceof SettingsError) {
+      logger.fatal(error.message)
+      await app.teardown()
+      process.exit(1)
+    }
+    throw error
+  }
 
   await app.listen(config.port)
   createInternalServer().listen(config.internalPort)

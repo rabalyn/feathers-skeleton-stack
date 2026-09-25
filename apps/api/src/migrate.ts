@@ -1,6 +1,7 @@
 import { ConfigError, MIGRATE_KEYS, loadConfig } from './config.js'
 import { createKnex } from './db.js'
 import { createLogger } from './logger.js'
+import { seedSettings } from './settings/store.js'
 
 // One-shot migration job (ADR 0003). Connects directly to PostgreSQL as the
 // migrator role, never through PgBouncer.
@@ -72,6 +73,10 @@ const main = async () => {
   try {
     const [batch, applied] = (await knex.migrate.latest(migrationsConfig)) as [number, string[]]
     logger.info({ database, batch, applied }, applied.length ? 'migrations applied' : 'schema up to date')
+    // Keys introduced by this release get their defaults; existing values
+    // are never overwritten (ADR 0025).
+    const seeded = await seedSettings(knex)
+    if (seeded.length) logger.info({ database, seeded }, 'runtime settings seeded')
   } finally {
     await knex.destroy()
   }

@@ -4,6 +4,8 @@ import { createKnex } from '../../src/db.js'
 import { IDP_ENTITY_ID, IDP_SSO_URL, PUBLIC_ORIGIN, TestIdp, keyPair, type KeyPair } from './saml-idp.js'
 import { workerDatabaseConfig } from './worker-database.js'
 
+export const BODY_SIZE_CEILING_BYTES = 10 * 1024 * 1024
+
 export interface TestContext {
   app: Application
   idp: TestIdp
@@ -30,10 +32,14 @@ export const createTestApp = async (): Promise<TestContext> => {
       samlIdpSloUrl: IDP_SSO_URL,
       port: 0,
       internalPort: 0,
-      logLevel: 'fatal'
+      logLevel: 'fatal',
+      bodySizeCeilingBytes: BODY_SIZE_CEILING_BYTES
     },
     pino({ level: 'silent' }),
-    createKnex(database, { camelCase: true })
+    createKnex(database, { camelCase: true }),
+    // Tests change settings in the database directly and expect the next
+    // request to see them.
+    { settingsTtlMs: 0 }
   )
   return { app, idp: new TestIdp(idpKey), sp }
 }

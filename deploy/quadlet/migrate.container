@@ -13,3 +13,7 @@ Image=localhost/feathers-api:dev
 Network=db.network
 Volume=migrate-secrets.volume:/run/secrets:ro
 Volume=trust:/trust:ro
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes

@@ -10,6 +10,7 @@ import type { SessionStore } from './auth/sessions.js'
 import { defaultDeny } from './hooks/default-deny.js'
 import { sanitizeHttpErrors, sanitizeServiceErrors } from './hooks/errors.js'
 import { services } from './services/index.js'
+import { SettingsStore } from './settings/store.js'
 
 export const API_PREFIX = '/api'
 
@@ -23,15 +24,22 @@ export interface AppSettings {
   authentication: Record<string, unknown>
   sessions: SessionStore
   serviceProvider: ServiceProvider
+  settings: SettingsStore
+}
+
+export interface AppOptions {
+  // How long runtime settings are cached in process (ADR 0025).
+  settingsTtlMs?: number
 }
 
 export type Application = KoaApplication<ServiceTypes, AppSettings>
 
-export const createApp = (config: ApiConfig, logger: Logger, knex: Knex): Application => {
+export const createApp = (config: ApiConfig, logger: Logger, knex: Knex, options: AppOptions = {}): Application => {
   const app: Application = koa(feathers())
   app.set('config', config)
   app.set('logger', logger)
   app.set('knex', knex)
+  app.set('settings', new SettingsStore(knex, options.settingsTtlMs))
 
   app.use(errorHandler())
   app.use(sanitizeHttpErrors(() => app.get('logger')))

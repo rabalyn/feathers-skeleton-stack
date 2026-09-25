@@ -50,6 +50,7 @@ services:
       NGINX_APP_HOST: app.localhost
       NGINX_IDP_HOST: idp.localhost
       NGINX_PUBLIC_PORT: "8443"
+      # Mirrored in bytes as the api's BODY_SIZE_CEILING_BYTES (ADR 0025).
       NGINX_BODY_SIZE_LIMIT: 10m
       NGINX_API_UPSTREAM: api:3030
       NGINX_IDP_UPSTREAM: idp:8080
@@ -70,6 +71,11 @@ services:
       target: runtime
     image: localhost/feathers-api:dev
     container_name: api
+    # The api refuses to start before migrate has seeded the runtime
+    # settings (ADR 0025).
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     environment:
       PUBLIC_ORIGIN: https://app.localhost:8443
       AUTH_SIGNING_SECRET_FILE: /run/secrets/auth_signing_secret
@@ -85,6 +91,8 @@ services:
       DATABASE_USER: app
       DATABASE_PASSWORD_FILE: /run/secrets/database_password
       DATABASE_CA_FILE: /trust/ca.crt
+      # Nginx's NGINX_BODY_SIZE_LIMIT (10m) in bytes.
+      BODY_SIZE_CEILING_BYTES: "10485760"
     networks: [edge, app-data, identity]
     volumes:
       - api-secrets:/run/secrets:ro

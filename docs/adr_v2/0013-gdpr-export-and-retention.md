@@ -56,6 +56,10 @@ Backups are not rewritten on erasure. Erased data leaves the backups when the sn
 - Logs carry the surrogate id, not the TU-ID ([0009](0009-tu-id-identity-model.md)), so the 14-day log retention does not accumulate direct identifiers.
 - Audit events record what was done, by which account, to which resource — never request bodies, credentials, or assertion contents.
 
+### Audit event store
+
+Audit events are rows of one `audit_events` table: time, acting account (surrogate id, null for the system), action, resource type and id, the request id ([0021](0021-structured-logging.md)) where there is one, and a small JSON detail — the changed fields of an administrative change, never a body. The table exists from slice 2, written for logins and refused logins, logouts, detected refresh token reuse, role and enable/disable changes, and runtime settings changes ([0025](0025-runtime-settings.md)). A change and its audit event commit in one transaction where the change is a database write. Reading audit events through the API, their place in the export and the retention job arrive with the rest of this ADR.
+
 ### Organisational deliverables
 
 A **record of processing activities** (Art. 30 GDPR) and a **data protection impact assessment** (Art. 35 GDPR) are prepared together with the institutional data protection officer before production. They are organisational documents, not code, but the skeleton's registry, retention table and erasure semantics are their technical basis. Each product built on the skeleton extends them for its own data.

@@ -9,6 +9,7 @@ import {
 } from '@feathersjs/authentication'
 import type { HookContext, Params } from '@feathersjs/feathers'
 import type { Application } from '../app.js'
+import { recordAudit } from '../audit.js'
 import { SamlRejected, ServiceProvider } from './saml.js'
 import { SESSION_ABSOLUTE_MS, SessionStore, isActive, type AuthSession } from './sessions.js'
 
@@ -117,6 +118,12 @@ class AppAuthenticationService extends AuthenticationService {
     let idpLogoutUrl: string | null = null
     if (session) {
       await sessions(this.app).revoke(session.id)
+      await recordAudit(this.app.get('knex'), {
+        actorId: session.userId,
+        action: 'logout',
+        resourceType: 'authSessions',
+        resourceId: session.id
+      })
       if (session.samlNameId) {
         idpLogoutUrl = await (this.app.get('serviceProvider') as ServiceProvider).logoutUrl({
           nameId: session.samlNameId,
@@ -197,15 +204,29 @@ export const samlRoutes = (app: Application) => {
             .returning(['id', 'enabled'])
           if (!user?.enabled) {
             logger().warn({ user_ref: user?.id }, 'login refused: account disabled')
+            await recordAudit(app.get('knex'), {
+              actorId: user?.id ?? null,
+              action: 'login.refused',
+              resourceType: 'users',
+              resourceId: user?.id ?? null,
+              detail: { reason: 'account disabled' }
+            })
             ctx.status = 403
             ctx.body = 'Account disabled'
             return
           }
-          const { refreshToken } = await app.get('sessions').issue(user.id, {
+          const { session, refreshToken } = await app.get('sessions').issue(user.id, {
             userAgent: ctx.get('user-agent'),
             saml: { nameId: identity.nameId, nameIdFormat: identity.nameIdFormat, sessionIndex: identity.sessionIndex }
           })
           logger().info({ user_ref: user.id }, 'login')
+          await recordAudit(app.get('knex'), {
+            actorId: user.id,
+            action: 'login',
+            resourceType: 'authSessions',
+            resourceId: session.id,
+            detail: { method: 'saml' }
+          })
           ctx.set('Set-Cookie', refreshCookie(refreshToken))
           ctx.status = 303
           ctx.redirect(identity.returnTo)
