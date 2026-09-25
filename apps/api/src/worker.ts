@@ -21,7 +21,7 @@ const main = async () => {
     throw error
   }
 
-  const logger = createLogger('worker', config.logLevel)
+  const logger = await createLogger('worker', config.logLevel, config.logFile)
   const knex = createKnex(config, { camelCase: true })
   const settings = new SettingsStore(knex)
 

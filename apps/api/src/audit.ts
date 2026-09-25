@@ -1,4 +1,5 @@
 import type { Knex } from 'knex'
+import { currentRequest } from './request-context.js'
 
 // Audit events (ADR 0013, 0018): authentication, role changes, settings
 // changes and other administrative actions. Stored in PostgreSQL under the
@@ -32,7 +33,8 @@ export const recordAudit = async (knex: Knex | Knex.Transaction, event: AuditEve
     action: event.action,
     resourceType: event.resourceType,
     resourceId: event.resourceId ?? null,
-    requestId: event.requestId ?? null,
+    // The request the change happened in, unless the caller names one.
+    requestId: event.requestId ?? currentRequest()?.requestId ?? null,
     detail: JSON.stringify(event.detail ?? {})
   })
 }

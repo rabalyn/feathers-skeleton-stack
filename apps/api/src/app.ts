@@ -15,6 +15,7 @@ import { defaultDeny } from './hooks/default-deny.js'
 import { sanitizeHttpErrors, sanitizeServiceErrors } from './hooks/errors.js'
 import { API_PREFIX, SOCKET_PATH } from './paths.js'
 import { RateLimiter } from './rate-limit.js'
+import { httpRequests, socketCalls } from './request-log.js'
 import { services } from './services/index.js'
 import { SettingsStore } from './settings/store.js'
 
@@ -60,6 +61,8 @@ export const createApp = (
   app.set('directory', new Directory(config))
   const proxy = new TrustedProxy(config.trustedProxyHost)
 
+  // Outermost, so it sees the status the error handler settled on.
+  app.use(httpRequests(app, proxy))
   app.use(errorHandler())
   app.use(sanitizeHttpErrors(() => app.get('logger')))
 
@@ -103,7 +106,7 @@ export const createApp = (
   app.configure(authentication)
 
   // Service hooks for every service (ADR 0011) ...
-  app.hooks({ around: { all: [sanitizeServiceErrors(() => app.get('logger')), defaultDeny] } })
+  app.hooks({ around: { all: [socketCalls(), sanitizeServiceErrors(() => app.get('logger')), defaultDeny] } })
   // ... and application lifecycle hooks, which Feathers keeps separate.
   app.hooks({
     teardown: [

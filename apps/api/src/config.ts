@@ -25,6 +25,9 @@ const fields = {
   refreshTokenKey: { schema: Type.String({ minLength: 32 }), env: 'REFRESH_TOKEN_KEY', secret: true },
   port: { schema: port, env: 'PORT', integer: true, default: '3030' },
   internalPort: { schema: port, env: 'INTERNAL_PORT', integer: true, default: '9090' },
+  // Base path of the rotated log files on the shared log volume (ADR 0021);
+  // empty for stdout only.
+  logFile: { schema: Type.String(), env: 'LOG_FILE', default: '' },
   logLevel: {
     schema: Type.Union(['fatal', 'error', 'warn', 'info', 'debug', 'trace'].map((l) => Type.Literal(l))),
     env: 'LOG_LEVEL',
@@ -130,6 +133,7 @@ export const API_KEYS = [
   'port',
   'internalPort',
   'logLevel',
+  'logFile',
   'bodySizeCeilingBytes',
   'trustedProxyHost',
   ...VALKEY_KEYS,
@@ -142,6 +146,7 @@ export const MIGRATE_KEYS = ['logLevel', ...DATABASE_KEYS] as const satisfies re
 export const WORKER_KEYS = [
   'internalPort',
   'logLevel',
+  'logFile',
   ...VALKEY_KEYS,
   ...DATABASE_KEYS
 ] as const satisfies readonly ConfigKey[]

@@ -22,6 +22,7 @@ server {
     proxy_set_header Host $http_host;
     proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Request-Id $request_id;
     # Longer than Socket.io's ping interval plus timeout (25 s + 20 s).
     proxy_read_timeout 75s;
     proxy_send_timeout 75s;
@@ -35,6 +36,9 @@ server {
     # Replaced, not appended: the client's own X-Forwarded-For is never trusted.
     proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header X-Forwarded-Proto https;
+    # 32 hex digits, a traceparent trace-id; the api keeps it as the request
+    # id, so the access log and the api's lines correlate (ADR 0021).
+    proxy_set_header X-Request-Id $request_id;
   }
 
   location = /api {

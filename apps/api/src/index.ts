@@ -20,7 +20,7 @@ const main = async () => {
     throw error
   }
 
-  const logger = createLogger('api', config.logLevel)
+  const logger = await createLogger('api', config.logLevel, config.logFile)
   const valkey = createValkey(config)
   // Unreachable Valkey is not a reason to exit: rate-limited attempts are
   // refused until it is back (ADR 0010).

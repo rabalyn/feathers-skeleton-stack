@@ -4,6 +4,7 @@ import type { NextFunction } from '@feathersjs/feathers'
 import { authorize } from 'feathers-casl'
 import { defineAbilitiesFor } from '../abilities.js'
 import type { HookContext } from '../declarations.js'
+import { currentRequest } from '../request-context.js'
 
 // ADR 0011: every external call to every service is authenticated and
 // authorized unless the service is on this allowlist. A service without
@@ -29,6 +30,9 @@ export const defaultDeny = async (context: HookContext, next: NextFunction) => {
   if (!user) {
     throw new NotAuthenticated('Not authenticated')
   }
+  // From here on, log lines of this call name the user (ADR 0021).
+  const request = currentRequest()
+  if (request) request.userRef = user.id
   context.params.ability = defineAbilitiesFor(user)
   await casl(context, next)
 }

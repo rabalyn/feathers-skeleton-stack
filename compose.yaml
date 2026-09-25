@@ -106,6 +106,8 @@ services:
         condition: service_completed_successfully
     environment:
       PUBLIC_ORIGIN: https://app.localhost:8443
+      # Rotated JSON log files, read by the collector (ADR 0021).
+      LOG_FILE: /var/log/app/api
       AUTH_SIGNING_SECRET_FILE: /run/secrets/auth_signing_secret
       REFRESH_TOKEN_KEY_FILE: /run/secrets/refresh_token_key
       SAML_SP_PRIVATE_KEY_FILE: /run/secrets/saml_sp_key
@@ -138,6 +140,7 @@ services:
     volumes:
       - api-secrets:/run/secrets:ro
       - trust:/trust:ro
+      - logs:/var/log/app
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
       interval: 10s
@@ -154,6 +157,7 @@ services:
         condition: service_completed_successfully
     command: ["node", "dist/worker.js"]
     environment:
+      LOG_FILE: /var/log/app/worker
       DATABASE_HOST: pgbouncer
       DATABASE_PORT: "6432"
       DATABASE_NAME: app
@@ -168,6 +172,7 @@ services:
     volumes:
       - worker-secrets:/run/secrets:ro
       - trust:/trust:ro
+      - logs:/var/log/app
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
       interval: 10s
@@ -619,6 +624,10 @@ volumes:
   ldap-data: {}
   idp-data: {}
   valkey-data: {}
+  # JSON log files of the api and the worker (ADR 0021), written by uid 1000.
+  logs:
+    driver: local
+    driver_opts: { o: "uid=1000,gid=1000" }
   # Secret delivery (ADR 0023): tmpfs only. <service>-secrets is shared with
   # the service; <service>-agent-cred holds the agent's secret_id and is seen
   # by the agent alone.

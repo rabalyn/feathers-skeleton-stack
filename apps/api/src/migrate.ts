@@ -29,7 +29,7 @@ const main = async () => {
     }
     throw error
   }
-  const logger = createLogger('migrate', config.logLevel)
+  const logger = await createLogger('migrate', config.logLevel)
   const testTemplate = process.argv.includes('--test-template')
   const database = testTemplate ? TEST_TEMPLATE : config.databaseName
 

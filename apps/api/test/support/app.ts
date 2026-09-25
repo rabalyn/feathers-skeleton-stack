@@ -59,6 +59,7 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
       port: 0,
       internalPort: 0,
       logLevel: 'fatal',
+      logFile: '',
       bodySizeCeilingBytes: BODY_SIZE_CEILING_BYTES,
       trustedProxyHost: options.trustedProxyHost ?? TRUSTED_PROXY_HOST
     },
