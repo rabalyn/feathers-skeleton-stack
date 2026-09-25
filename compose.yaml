@@ -144,6 +144,36 @@ services:
       timeout: 3s
       retries: 3
 
+  # Background jobs (ADR 0024): the api's image, another entry point, and
+  # credentials of its own.
+  worker:
+    image: localhost/feathers-api:dev
+    container_name: worker
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: ["node", "dist/worker.js"]
+    environment:
+      DATABASE_HOST: pgbouncer
+      DATABASE_PORT: "6432"
+      DATABASE_NAME: app
+      DATABASE_USER: worker
+      DATABASE_PASSWORD_FILE: /run/secrets/database_password
+      DATABASE_CA_FILE: /trust/ca.crt
+      VALKEY_HOST: valkey
+      VALKEY_USER: worker
+      VALKEY_PASSWORD_FILE: /run/secrets/valkey_password
+      VALKEY_CA_FILE: /trust/ca.crt
+    networks: [app-data]
+    volumes:
+      - worker-secrets:/run/secrets:ro
+      - trust:/trust:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   migrate:
     image: localhost/feathers-api:dev
     container_name: migrate

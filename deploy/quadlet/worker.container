@@ -1,0 +1,19 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Unit]
+Requires=migrate.service
+After=migrate.service
+
+[Container]
+ContainerName=worker
+Environment=DATABASE_HOST=pgbouncer DATABASE_PORT=6432 DATABASE_NAME=app DATABASE_USER=worker DATABASE_PASSWORD_FILE=/run/secrets/database_password DATABASE_CA_FILE=/trust/ca.crt VALKEY_HOST=valkey VALKEY_USER=worker VALKEY_PASSWORD_FILE=/run/secrets/valkey_password VALKEY_CA_FILE=/trust/ca.crt
+Exec=node dist/worker.js
+HealthCmd=["node","-e","fetch('http://127.0.0.1:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+HealthInterval=10s
+HealthRetries=3
+HealthTimeout=3s
+Image=localhost/feathers-api:dev
+Network=app-data.network
+Volume=worker-secrets.volume:/run/secrets:ro
+Volume=trust:/trust:ro

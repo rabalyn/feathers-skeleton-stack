@@ -82,7 +82,7 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 
 - Real-time channels ([0012](0012-role-scoped-channels.md)): publishers for the existing services, membership from the session's role, forced re-authentication when a role, the account state or the session changes, and the end-to-end test of an update arriving over the WebSocket. Settings became admin-only on the way ([0011](0011-casl-role-authorization.md))
 - The contract step of refresh rotation: `auth_sessions.refresh_token_hash`, `rotated_at` and `family_id` are dropped ([0003](0003-postgresql-and-knex.md) expand and contract) — done
-- The worker container and BullMQ ([0024](0024-background-jobs-bullmq.md)), which the GDPR export and uploads build on
+- The worker container and BullMQ ([0024](0024-background-jobs-bullmq.md)), which the GDPR export and uploads build on: its own database login and Valkey user (every service now has one), the maintenance queue with retention cleanup daily at 03:30, and `/health/live`. Export expiry and object purge arrive with their features
 
 **Later.** Object storage and uploads, observability, backups, and the break-glass account with the bootstrap command. The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
 

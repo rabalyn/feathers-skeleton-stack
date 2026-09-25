@@ -9,6 +9,7 @@ packages:
 allowBuilds:
   '@parcel/watcher': false
   esbuild: false
+  msgpackr-extract: false
 
 # Security floor for transitive dependencies (ADR 0018): the SAML libraries
 # pin @xmldom/xmldom ranges that still admit versions with known XML

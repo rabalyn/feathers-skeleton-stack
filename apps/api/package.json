@@ -30,6 +30,7 @@
     "@feathersjs/typebox": "5.0.50",
     "@node-saml/node-saml": "5.1.0",
     "@xmldom/xmldom": "0.8.10",
+    "bullmq": "6.3.8",
     "feathers-casl": "3.0.0",
     "ioredis": "6.0.0",
     "knex": "3.3.0",

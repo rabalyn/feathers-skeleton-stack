@@ -28,7 +28,7 @@ Real-time events are a second delivery path out of the application, and it is ea
   - The triggers are: a patch of a user's `role` or `enabled`, which ends every connection of that user, and a revoked session (logout, refresh token reuse), which ends that session's connections.
   - Forcing means the server **closes the socket**. The client reconnects when the server closed it, re-authenticates with its access token and, when that is refused, refreshes first; a disabled account or a revoked session then ends in the anonymous state. A socket whose access token expires unrenewed is closed the same way, by Feathers.
   - Session expiry (idle or absolute) is not a trigger: every call re-checks the session anyway, and the access token lifetime bounds how long an expired session's socket keeps receiving events.
-- Connections and channels live in the one API process ([0002](0002-service-inventory-and-networks.md)). How a change made by the worker ([0024](0024-background-jobs-bullmq.md)) reaches them is decided with the worker.
+- Connections and channels live in the one API process ([0002](0002-service-inventory-and-networks.md)). The worker's first job, retention cleanup, changes nothing a connection is shown. How a change made by the worker ([0024](0024-background-jobs-bullmq.md)) reaches the channels is decided with the first job whose result a user sees, the GDPR export ([0013](0013-gdpr-export-and-retention.md)).
 
 ## Consequences
 

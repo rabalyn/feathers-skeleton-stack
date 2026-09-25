@@ -65,6 +65,11 @@ export const API_SETTINGS = [
   'maintenanceMode'
 ] as const satisfies readonly SettingKey[]
 
+export const WORKER_SETTINGS = [
+  'auditRetentionDays',
+  'expiredSessionRetentionDays'
+] as const satisfies readonly SettingKey[]
+
 // Rules that span two settings, or a setting and deployment configuration.
 // Checked on every write against the settings as they would be afterwards;
 // each returns a message when violated.

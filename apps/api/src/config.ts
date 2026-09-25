@@ -139,6 +139,13 @@ export const API_KEYS = [
 
 export const MIGRATE_KEYS = ['logLevel', ...DATABASE_KEYS] as const satisfies readonly ConfigKey[]
 
+export const WORKER_KEYS = [
+  'internalPort',
+  'logLevel',
+  ...VALKEY_KEYS,
+  ...DATABASE_KEYS
+] as const satisfies readonly ConfigKey[]
+
 export class ConfigError extends Error {}
 
 const readSecretFile = (name: string, path: string): string => {
@@ -201,3 +208,4 @@ export type ApiConfig = Pick<Config, (typeof API_KEYS)[number]>
 export type DatabaseConfig = Pick<Config, (typeof DATABASE_KEYS)[number]>
 export type LdapConfig = Pick<Config, (typeof LDAP_KEYS)[number]>
 export type ValkeyConfig = Pick<Config, (typeof VALKEY_KEYS)[number]>
+export type WorkerConfig = Pick<Config, (typeof WORKER_KEYS)[number]>
