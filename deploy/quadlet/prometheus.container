@@ -1,0 +1,17 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Container]
+ContainerName=prometheus
+Environment=ENVIRONMENT=local
+Exec='--config.file=/etc/prometheus/prometheus.yml' '--web.config.file=/etc/observability/web-config.yml' '--storage.tsdb.path=/prometheus' '--storage.tsdb.retention.time=14d' '--enable-feature=expand-external-labels'
+Image=docker.io/prom/prometheus@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+Memory=1gb
+Network=observability.network
+PodmanArgs=--cpus 1
+Volume=../../containers/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro,Z
+Volume=../../containers/prometheus/targets:/etc/prometheus/targets:ro,Z
+Volume=../../containers/observability/web-config.yml:/etc/observability/web-config.yml:ro,Z
+Volume=prometheus-data:/prometheus
+Volume=tls-prometheus:/tls:ro
+Volume=trust:/trust:ro

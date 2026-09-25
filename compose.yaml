@@ -28,7 +28,7 @@ services:
     container_name: certs
     profiles: [local]
     environment:
-      CERT_HOSTNAMES: app.localhost,idp.localhost,dozzle.localhost
+      CERT_HOSTNAMES: app.localhost,idp.localhost,dozzle.localhost,grafana.localhost,mail.localhost
     network_mode: none
     volumes:
       - certs-ca:/ca
@@ -41,6 +41,15 @@ services:
       - tls-valkey:/tls/valkey
       - tls-api:/tls/api
       - tls-worker:/tls/worker
+      - tls-prometheus:/tls/prometheus
+      - tls-loki:/tls/loki
+      - tls-grafana:/tls/grafana
+      - tls-mail:/tls/mail
+      - tls-blackbox:/tls/blackbox
+      - tls-postgres-exporter:/tls/postgres-exporter
+      - tls-pgbouncer-exporter:/tls/pgbouncer-exporter
+      - tls-valkey-exporter:/tls/valkey-exporter
+      - tls-node-exporter:/tls/node-exporter
 
   nginx:
     build:
@@ -63,15 +72,30 @@ services:
       NGINX_IDP_UPSTREAM: idp:8080
       NGINX_DOZZLE_HOST: dozzle.localhost
       NGINX_DOZZLE_UPSTREAM: dozzle:8080
+      # Grafana in every environment, Mailpit's inbox locally (ADR 0022);
+      # production sets its own Grafana host name and no mail host.
+      NGINX_GRAFANA_HOST: grafana.localhost
+      NGINX_GRAFANA_UPSTREAM: grafana:3000
+      NGINX_MAIL_HOST: mail.localhost
+      NGINX_MAIL_UPSTREAM: mail:8025
       # Empty: serve the built bundle. `up --dev`: the dev server.
       NGINX_WEB_UPSTREAM: ${NGINX_WEB_UPSTREAM:-}
     ports:
       # Nginx listens on the public port itself, so inside the networks
       # nginx:8443 is the same origin a browser uses (the e2e container).
       - "127.0.0.1:8443:8443"
-    networks: [edge, idp-edge, dozzle-edge]
+    networks:
+      edge:
+        # The public name, for clients inside the stack: the uptime probe
+        # reaches the same origin a browser does (ADR 0022).
+        aliases: [app.localhost]
+      idp-edge: {}
+      dozzle-edge: {}
+      grafana-edge: {}
+      mail-edge: {}
     volumes:
       - tls-nginx:/etc/nginx/tls:ro
+      - trust:/trust:ro
 
   # The Vite dev server with the frontend source bind-mounted (ADR 0014).
   # Nginx proxies to it when NGINX_WEB_UPSTREAM is set; origin, TLS and
@@ -141,7 +165,7 @@ services:
       LDAP_BIND_PASSWORD_FILE: /run/secrets/ldap_bind_password
       LDAP_BASE_DN: ou=people,dc=feathers,dc=test
       LDAP_CA_FILE: /trust/ca.crt
-    networks: [edge, app-data, identity]
+    networks: [edge, app-data, identity, observability]
     volumes:
       - api-secrets:/run/secrets:ro
       - trust:/trust:ro
@@ -176,7 +200,7 @@ services:
       VALKEY_USER: worker
       VALKEY_PASSWORD_FILE: /run/secrets/valkey_password
       VALKEY_CA_FILE: /trust/ca.crt
-    networks: [app-data]
+    networks: [app-data, observability]
     volumes:
       - worker-secrets:/run/secrets:ro
       - trust:/trust:ro
@@ -610,6 +634,288 @@ services:
       - worker-secrets:/run/secrets
       - worker-agent-cred:/run/agent
 
+  # --- observability (ADR 0021, 0022) ---------------------------------------
+  # TLS on every hop, each listener with its own leaf at /tls; CPU and
+  # memory are capped so monitoring cannot starve the application.
+
+  prometheus:
+    image: docker.io/prom/prometheus@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e # v3.15.0
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.config.file=/etc/observability/web-config.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=14d
+      - --enable-feature=expand-external-labels
+    environment:
+      ENVIRONMENT: local
+    mem_limit: 1g
+    cpus: 1.0
+    networks: [observability]
+    volumes:
+      - ./containers/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro,Z
+      - ./containers/prometheus/targets:/etc/prometheus/targets:ro,Z
+      - ./containers/observability/web-config.yml:/etc/observability/web-config.yml:ro,Z
+      - prometheus-data:/prometheus
+      - tls-prometheus:/tls:ro
+      - trust:/trust:ro
+
+  loki:
+    image: docker.io/grafana/loki@sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193 # 3.7.8
+    container_name: loki
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    mem_limit: 1g
+    cpus: 1.0
+    networks: [observability]
+    volumes:
+      - ./containers/loki/loki.yaml:/etc/loki/loki.yaml:ro,Z
+      - loki-data:/loki
+      - tls-loki:/tls:ro
+
+  # The log shipper. Root inside its rootless container, which is the host
+  # user: only that user may read the user journal Podman logs to.
+  alloy:
+    image: docker.io/grafana/alloy@sha256:f111cce835516c5f99166342be7038496b52ced16667be5a11e19258a3e4cd30 # v1.20.0
+    container_name: alloy
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --storage.path=/var/lib/alloy/data
+      - --server.http.listen-addr=127.0.0.1:12345
+      - --disable-reporting
+    environment:
+      ENVIRONMENT: local
+    networks: [observability]
+    volumes:
+      - ./containers/alloy/config.alloy:/etc/alloy/config.alloy:ro,Z
+      - logs:/var/log/app:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      - alloy-data:/var/lib/alloy/data
+      - trust:/trust:ro
+
+  grafana:
+    image: docker.io/grafana/grafana@sha256:ac461fb352abc50da10a51c7d02462e9c05488f11f53f14b3ad79a8145f638a0 # 13.2.2
+    container_name: grafana
+    environment:
+      GF_SERVER_PROTOCOL: https
+      GF_SERVER_CERT_FILE: /tls/tls.crt
+      GF_SERVER_CERT_KEY: /tls/tls.key
+      GF_SERVER_ROOT_URL: https://grafana.localhost:8443/
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/admin_password
+      GF_SECURITY_SECRET_KEY__FILE: /run/secrets/secret_key
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      # The CA root beside the system roots: Prometheus, Loki and Mailpit
+      # locally, a public relay in production.
+      SSL_CERT_DIR: /etc/ssl/certs:/trust
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: mail:1025
+      GF_SMTP_USER: grafana
+      GF_SMTP_PASSWORD__FILE: /run/secrets/smtp_password
+      GF_SMTP_FROM_ADDRESS: grafana@app.localhost
+      GF_SMTP_FROM_NAME: claude-feathers alerts
+      GF_SMTP_STARTTLS_POLICY: MandatoryStartTLS
+      # Deployment configuration (ADR 0022); may be a distribution list.
+      ALERT_EMAIL: operators@app.localhost
+    mem_limit: 512m
+    cpus: 1.0
+    networks: [observability, grafana-edge]
+    volumes:
+      - ./containers/grafana/provisioning:/etc/grafana/provisioning:ro,Z
+      - ./containers/grafana/dashboards:/var/lib/grafana/dashboards:ro,Z
+      - grafana-data:/var/lib/grafana
+      - grafana-secrets:/run/secrets:ro
+      - tls-grafana:/tls:ro
+      - trust:/trust:ro
+
+  # SMTP capture locally and in CI; the university relay in production.
+  mail:
+    image: docker.io/axllent/mailpit@sha256:74d609a42ec279aa63c6b4622a6fa9b5408d1ad5b1d76a1c4be40a265ce0863d # v1.31.2
+    container_name: mail
+    profiles: [local]
+    user: "65534:65534"
+    command:
+      - --smtp=0.0.0.0:1025
+      - --smtp-tls-cert=/tls/tls.crt
+      - --smtp-tls-key=/tls/tls.key
+      - --smtp-require-starttls
+      - --smtp-auth-accept-any
+      - --listen=0.0.0.0:8025
+      - --ui-tls-cert=/tls/tls.crt
+      - --ui-tls-key=/tls/tls.key
+      - --disable-version-check
+    networks: [observability, mail-edge]
+    volumes:
+      - tls-mail:/tls:ro
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter@sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e # v0.20.1
+    container_name: postgres-exporter
+    command: ["--web.config.file=/etc/observability/web-config.yml"]
+    environment:
+      DATA_SOURCE_URI: postgres:5432/postgres?sslmode=verify-full&sslrootcert=/trust/ca.crt
+      DATA_SOURCE_USER: exporter
+      DATA_SOURCE_PASS_FILE: /run/secrets/database_password
+    networks: [db, observability]
+    volumes:
+      - ./containers/observability/web-config.yml:/etc/observability/web-config.yml:ro,Z
+      - postgres-exporter-secrets:/run/secrets:ro
+      - tls-postgres-exporter:/tls:ro
+      - trust:/trust:ro
+
+  pgbouncer-exporter:
+    image: quay.io/prometheuscommunity/pgbouncer-exporter@sha256:30f31b6c2efdad3647f8182cc7c1a3a19e42bae5d17387694989f969371c230d # v0.12.1
+    container_name: pgbouncer-exporter
+    # The password goes into the connection string through the environment,
+    # never onto the command line.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        PGBOUNCER_EXPORTER_CONNECTION_STRING="postgres://stats:$$(cat /run/secrets/database_password)@pgbouncer:6432/pgbouncer?sslmode=verify-full&sslrootcert=/trust/ca.crt"
+        exec /bin/pgbouncer_exporter --web.config.file=/etc/observability/web-config.yml
+    networks: [db, observability]
+    volumes:
+      - ./containers/observability/web-config.yml:/etc/observability/web-config.yml:ro,Z
+      - pgbouncer-exporter-secrets:/run/secrets:ro
+      - tls-pgbouncer-exporter:/tls:ro
+      - trust:/trust:ro
+
+  valkey-exporter:
+    image: docker.io/oliver006/redis_exporter@sha256:ca3abd5f19da6c87e96038ba08aaa3dfaab34dc649834584c4d6880b05952fef # v1.92.0
+    container_name: valkey-exporter
+    command:
+      - --redis.addr=rediss://valkey:6379
+      - --redis.user=exporter
+      - --redis.password-file=/run/secrets/passwords.json
+      - --tls-ca-cert-file=/trust/ca.crt
+      - --tls-server-cert-file=/tls/tls.crt
+      - --tls-server-key-file=/tls/tls.key
+    networks: [app-data, observability]
+    volumes:
+      - valkey-exporter-secrets:/run/secrets:ro
+      - tls-valkey-exporter:/tls:ro
+      - trust:/trust:ro
+
+  # Host CPU, memory and filesystems, read through the host's root.
+  node-exporter:
+    image: quay.io/prometheus/node-exporter@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0 # v1.12.1
+    container_name: node-exporter
+    command:
+      - --path.rootfs=/host
+      - --web.config.file=/etc/observability/web-config.yml
+      # The defaults, plus /run: runtime tmpfs and removable media
+      # automounts, never a data, log or backup volume.
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|run|sys|var/lib/docker/.+|var/lib/containers/storage/.+)($|/)
+    pid: host
+    networks: [observability]
+    volumes:
+      - ./containers/observability/web-config.yml:/etc/observability/web-config.yml:ro,Z
+      - /:/host:ro
+      - tls-node-exporter:/tls:ro
+
+  # The uptime check (ADR 0022), probing the public endpoint through Nginx.
+  # In production it must run on another machine.
+  blackbox:
+    image: quay.io/prometheus/blackbox-exporter@sha256:e753ff9f3fc458d02cca5eddab5a77e1c175eee484a8925ac7d524f04366c2fc # v0.28.0
+    container_name: blackbox
+    user: "65534:65534"
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+      - --web.config.file=/etc/observability/web-config.yml
+    networks: [edge, observability]
+    volumes:
+      - ./containers/blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro,Z
+      - ./containers/observability/web-config.yml:/etc/observability/web-config.yml:ro,Z
+      - tls-blackbox:/tls:ro
+      - trust:/trust:ro
+
+  grafana-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: grafana-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:0"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/grafana.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/grafana.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - grafana-secrets:/run/secrets
+      - grafana-agent-cred:/run/agent
+
+  postgres-exporter-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: postgres-exporter-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:65534"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/postgres-exporter.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/postgres-exporter.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - postgres-exporter-secrets:/run/secrets
+      - postgres-exporter-agent-cred:/run/agent
+
+  pgbouncer-exporter-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: pgbouncer-exporter-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:65534"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/pgbouncer-exporter.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/pgbouncer-exporter.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - pgbouncer-exporter-secrets:/run/secrets
+      - pgbouncer-exporter-agent-cred:/run/agent
+
+  valkey-exporter-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: valkey-exporter-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:59000"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/valkey-exporter.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/valkey-exporter.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - valkey-exporter-secrets:/run/secrets
+      - valkey-exporter-agent-cred:/run/agent
+
 networks:
   edge: {}
   idp-edge: {}
@@ -618,6 +924,9 @@ networks:
   db: {}
   identity: {}
   secrets: {}
+  observability: {}
+  grafana-edge: {}
+  mail-edge: {}
 
 volumes:
   certs-ca: {}
@@ -630,6 +939,19 @@ volumes:
   tls-valkey: {}
   tls-api: {}
   tls-worker: {}
+  tls-prometheus: {}
+  tls-loki: {}
+  tls-grafana: {}
+  tls-mail: {}
+  tls-blackbox: {}
+  tls-postgres-exporter: {}
+  tls-pgbouncer-exporter: {}
+  tls-valkey-exporter: {}
+  tls-node-exporter: {}
+  prometheus-data: {}
+  loki-data: {}
+  alloy-data: {}
+  grafana-data: {}
   openbao-data: {}
   postgres-data: {}
   ldap-data: {}
@@ -696,3 +1018,27 @@ volumes:
   worker-agent-cred:
     driver: local
     driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1000,mode=0700" }
+  grafana-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=0,mode=0750" }
+  grafana-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=0,mode=0700" }
+  postgres-exporter-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=65534,mode=0750" }
+  postgres-exporter-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=65534,mode=0700" }
+  pgbouncer-exporter-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=65534,mode=0750" }
+  pgbouncer-exporter-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=65534,mode=0700" }
+  valkey-exporter-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=59000,mode=0750" }
+  valkey-exporter-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=59000,mode=0700" }

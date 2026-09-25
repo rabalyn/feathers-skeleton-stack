@@ -1,0 +1,12 @@
+# Dashboards from files in the repository (ADR 0022); changes made in the UI
+# are not saved.
+apiVersion: 1
+
+providers:
+  - name: repository
+    folder: Application
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards

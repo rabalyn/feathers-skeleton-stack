@@ -1,0 +1,73 @@
+// Grafana Alloy, the log shipper (ADR 0021, 0022). Labels stay
+// low-cardinality: service, level (the application's lines only) and
+// environment. request_id and user_ref stay inside the line.
+
+// The api's and the worker's JSON log files on the shared volume.
+local.file_match "app" {
+  path_targets = [{"__path__" = "/var/log/app/*.log"}]
+}
+
+loki.source.file "app" {
+  targets    = local.file_match.app.targets
+  forward_to = [loki.process.app.receiver]
+}
+
+loki.process "app" {
+  stage.json {
+    expressions = { level = "level", service = "service" }
+  }
+
+  stage.labels {
+    values = { level = "", service = "" }
+  }
+
+  forward_to = [loki.process.labels.receiver]
+}
+
+// Only the labels ADR 0021 names; the sources add their own.
+loki.process "labels" {
+  stage.label_drop {
+    values = ["filename", "job"]
+  }
+
+  forward_to = [loki.write.loki.receiver]
+}
+
+// What the stack's other containers print, as plain text labelled by
+// service: Podman logs to the journal, under Compose and Quadlet alike. The
+// journal is the host user's, so only this stack's services are kept, by
+// name; the api and the worker come from their files instead.
+loki.relabel "journal" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal_container_name"]
+    regex         = "nginx|postgres|pgbouncer|valkey|openbao|idp|ldap|migrate|s3|backup|prometheus|loki|alloy|grafana|mail|blackbox|.+-exporter|.+-agent"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__journal_container_name"]
+    target_label  = "service"
+  }
+}
+
+loki.source.journal "containers" {
+  path          = "/var/log/journal"
+  relabel_rules = loki.relabel.journal.rules
+  forward_to    = [loki.process.labels.receiver]
+}
+
+loki.write "loki" {
+  endpoint {
+    url = "https://loki:3100/loki/api/v1/push"
+
+    tls_config {
+      ca_file = "/trust/ca.crt"
+    }
+  }
+
+  external_labels = {
+    environment = sys.env("ENVIRONMENT"),
+  }
+}

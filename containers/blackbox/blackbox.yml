@@ -1,0 +1,14 @@
+# The uptime check (ADR 0022): the public liveness signal must answer 200
+# with its constant body, over a certificate the CA root verifies.
+modules:
+  public_ping:
+    prober: http
+    timeout: 5s
+    http:
+      method: GET
+      valid_status_codes: [200]
+      fail_if_body_not_matches_regexp: ['"pong":true']
+      fail_if_not_ssl: true
+      preferred_ip_protocol: ip4
+      tls_config:
+        ca_file: /trust/ca.crt

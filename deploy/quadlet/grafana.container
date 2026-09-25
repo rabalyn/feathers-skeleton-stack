@@ -1,0 +1,17 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Container]
+ContainerName=grafana
+Environment=GF_SERVER_PROTOCOL=https GF_SERVER_CERT_FILE=/tls/tls.crt GF_SERVER_CERT_KEY=/tls/tls.key GF_SERVER_ROOT_URL=https://grafana.localhost:8443/ GF_SECURITY_ADMIN_USER=admin GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/admin_password GF_SECURITY_SECRET_KEY__FILE=/run/secrets/secret_key GF_SECURITY_COOKIE_SECURE=true GF_USERS_ALLOW_SIGN_UP=false GF_AUTH_ANONYMOUS_ENABLED=false GF_ANALYTICS_REPORTING_ENABLED=false GF_ANALYTICS_CHECK_FOR_UPDATES=false GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false GF_NEWS_NEWS_FEED_ENABLED=false SSL_CERT_DIR=/etc/ssl/certs:/trust GF_SMTP_ENABLED=true GF_SMTP_HOST=mail:1025 GF_SMTP_USER=grafana GF_SMTP_PASSWORD__FILE=/run/secrets/smtp_password GF_SMTP_FROM_ADDRESS=grafana@app.localhost "GF_SMTP_FROM_NAME=claude-feathers alerts" GF_SMTP_STARTTLS_POLICY=MandatoryStartTLS ALERT_EMAIL=operators@app.localhost
+Image=docker.io/grafana/grafana@sha256:ac461fb352abc50da10a51c7d02462e9c05488f11f53f14b3ad79a8145f638a0
+Memory=512mb
+Network=observability.network
+Network=grafana-edge.network
+PodmanArgs=--cpus 1
+Volume=../../containers/grafana/provisioning:/etc/grafana/provisioning:ro,Z
+Volume=../../containers/grafana/dashboards:/var/lib/grafana/dashboards:ro,Z
+Volume=grafana-data:/var/lib/grafana
+Volume=grafana-secrets.volume:/run/secrets:ro
+Volume=tls-grafana:/tls:ro
+Volume=trust:/trust:ro

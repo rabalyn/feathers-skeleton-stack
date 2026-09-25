@@ -16,7 +16,7 @@ Logs are the primary diagnostic surface and simultaneously the easiest place to 
 
 The API, the worker and the backup service write **newline-delimited JSON** to log files on a shared, dedicated volume (one file per service), and the same stream to stdout.
 
-- The file is what the collector reads. Making it a file rather than container output is deliberate: container log handling differs between Compose and rootless Quadlet (json-file driver versus journald), and reading a mounted file is identical in both. The parity rule in [0001](0001-one-stack-every-environment.md) is only real if the collection path is the same everywhere.
+- The file is what the collector reads. Making it a file rather than container output is deliberate: it keeps the application's structured lines independent of how the container runtime handles output, and reading a mounted file is identical in every environment. The parity rule in [0001](0001-one-stack-every-environment.md) is only real if the collection path is the same everywhere. (This ADR first assumed Compose and Quadlet differ in log driver; under Podman both log to journald, which is what makes the collection of third-party output below uniform too.)
 - Stdout remains for interactive use during development.
 - Files are rotated by size with a bounded number of kept files, so a log volume cannot fill the host: `<service>.<n>.log` on the `logs` volume, 10 MB each, the current one and five more per service.
 
@@ -50,9 +50,9 @@ Enforced by pino's redaction configuration, not by discipline:
 
 ### Collection
 
-**Promtail** runs as a container, tails the log volume, and pushes to Loki. Labels are low-cardinality only — `service`, `level`, `environment`. `request_id` and `user_ref` stay JSON fields inside the line and are never promoted to labels; doing so would create one Loki stream per user and make the store unusable.
+**Grafana Alloy** runs as a container, tails the log volume, and pushes to Loki over TLS. (Promtail was the original choice; it reached end of life on 2026-03-02, and Alloy is its successor from the same vendor.) Labels are low-cardinality only — `service`, `level`, `environment`. `request_id` and `user_ref` stay JSON fields inside the line and are never promoted to labels; doing so would create one Loki stream per user and make the store unusable.
 
-Third-party containers (PostgreSQL, PgBouncer, Garage, Keycloak) do not emit JSON. Their output is collected as plain text and labelled by service. This is accepted rather than worked around.
+Third-party containers (PostgreSQL, PgBouncer, Garage, Keycloak) do not emit JSON. Their output is collected as plain text and labelled by service. This is accepted rather than worked around. Alloy reads it from the host user's journal, where Podman logs container output under Compose and Quadlet alike, labelled by container name; the API's and the worker's own output is taken from their files only, not twice. These lines carry no `level` label: stderr is not an error level.
 
 ## Consequences
 

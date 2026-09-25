@@ -25,6 +25,7 @@ template_config {
 #   worker  the queues (bull:)
 #   test    any key: test files namespace their own
 #   probe   PING, for the healthcheck
+#   exporter  server statistics for Prometheus, no keys (ADR 0022)
 # INFO is @dangerous, and ioredis and BullMQ need it: the ready check, the
 # server version and the eviction policy.
 template {
@@ -34,6 +35,7 @@ template {
   user api on >{{ .Data.data.api_password }} ~rl:* ~bull:* &* +@all -@dangerous +info
   user worker on >{{ .Data.data.worker_password }} ~bull:* &* +@all -@dangerous +info
   user test on >{{ .Data.data.test_password }} ~* &* +@all -@admin
+  user exporter on >{{ .Data.data.exporter_password }} -@all +ping +info +client|setname +config|get +slowlog|get +slowlog|len +latency|latest +latency|histogram +dbsize +select
   {{ end }}
   EOT
   destination = "/run/secrets/valkey-auth.conf"

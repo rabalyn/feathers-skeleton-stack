@@ -15,6 +15,7 @@
 # - environment values interpolated from the caller's environment (`${...}`),
 #   which podlet would copy literally; they are local switches,
 # - networks left with fewer than two members (idp-edge, once idp is gone),
+#   whether a service lists its networks or maps them (for aliases),
 #   and volumes no remaining service mounts.
 # `condition: service_healthy` has no podlet translation; it becomes a plain
 # dependency, and the service depended on gets `Notify=healthy`, which makes
@@ -46,8 +47,10 @@ generate() { # <dir>
         select(has("depends_on")).depends_on |= with_entries(select(.key as $k | $names | any_c(. == $k)))
       )
     | del(.services[] | select(.depends_on == {}) | .depends_on)
-    | ([.services[].networks // [] | .[]] | group_by(.) | map(select(length < 2) | .[0])) as $lonely
-    | .services[] |= (select(has("networks")).networks |= map(select(. as $n | $lonely | any_c(. == $n) | not)))
+    | ([.services[] | (.networks // []) | ((select(tag == "!!seq") | .[]), (select(tag == "!!map") | keys | .[]))]
+        | group_by(.) | map(select(length < 2) | .[0])) as $lonely
+    | .services[] |= (select(has("networks") and (.networks | tag == "!!seq")).networks |= map(select(. as $n | $lonely | any_c(. == $n) | not)))
+    | .services[] |= (select(has("networks") and (.networks | tag == "!!map")).networks |= with_entries(select(.key as $n | $lonely | any_c(. == $n) | not)))
     | .networks |= with_entries(select(.key as $n | $lonely | any_c(. == $n) | not))
     | [.services[].volumes // [] | .[] | split(":") | .[0]] as $used
     | .volumes |= with_entries(select(.key as $v | $used | any_c(. == $v)))
@@ -70,7 +73,8 @@ generate() { # <dir>
     [[ -n $svc ]] && printf '\n[Service]\nType=oneshot\nRemainAfterExit=yes\n' >>"$dir/units/$svc.container"
   done <"$dir/oneshot.txt"
   for f in "$dir"/units/*; do
-    sed -i -e 's#^Volume=\./#Volume=../../#' "$f"
+    # A network mapped without options comes out as `name.network:`.
+    sed -i -e 's#^Volume=\./#Volume=../../#' -e 's#^\(Network=[^:]*\):$#\1#' "$f"
     { printf '%s\n\n' "$HEADER"; cat "$f"; } >"$f.tmp" && mv "$f.tmp" "$f"
   done
 }

@@ -3,8 +3,10 @@
 
 [Container]
 ContainerName=nginx
-Environment=NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 NGINX_TLS_DIR=/etc/nginx/tls NGINX_APP_HOST=app.localhost NGINX_IDP_HOST=idp.localhost NGINX_PUBLIC_PORT=8443 NGINX_BODY_SIZE_LIMIT=10m NGINX_API_UPSTREAM=api:3030 NGINX_IDP_UPSTREAM=idp:8080 NGINX_DOZZLE_HOST=dozzle.localhost NGINX_DOZZLE_UPSTREAM=dozzle:8080
+Environment=NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 NGINX_TLS_DIR=/etc/nginx/tls NGINX_APP_HOST=app.localhost NGINX_IDP_HOST=idp.localhost NGINX_PUBLIC_PORT=8443 NGINX_BODY_SIZE_LIMIT=10m NGINX_API_UPSTREAM=api:3030 NGINX_IDP_UPSTREAM=idp:8080 NGINX_DOZZLE_HOST=dozzle.localhost NGINX_DOZZLE_UPSTREAM=dozzle:8080 NGINX_GRAFANA_HOST=grafana.localhost NGINX_GRAFANA_UPSTREAM=grafana:3000 NGINX_MAIL_HOST=mail.localhost NGINX_MAIL_UPSTREAM=mail:8025
 Image=localhost/feathers-nginx:dev
-Network=edge.network
+Network=edge.network:alias=app.localhost
+Network=grafana-edge.network
 PublishPort=127.0.0.1:8443:8443
 Volume=tls-nginx:/etc/nginx/tls:ro
+Volume=trust:/trust:ro

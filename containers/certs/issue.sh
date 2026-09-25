@@ -13,6 +13,8 @@
 #   /tls/valkey         Valkey leaf (ADR 0010)
 #   /tls/api            the api's internal listener: metrics, health (ADR 0022)
 #   /tls/worker         the worker's internal listener (ADR 0022)
+#   /tls/<name>         every observability listener (ADR 0022): prometheus,
+#                       loki, grafana, mail, blackbox and the exporters
 #
 # Each leaf is owned by the uid:gid of the process that reads its key.
 #
@@ -29,6 +31,10 @@ PGBOUNCER_OWNER="${PGBOUNCER_OWNER:-101:101}"
 LDAP_OWNER="${LDAP_OWNER:-100:101}"
 VALKEY_OWNER="${VALKEY_OWNER:-999:1000}"
 NODE_OWNER="${NODE_OWNER:-1000:1000}"
+NOBODY_OWNER="${NOBODY_OWNER:-65534:65534}"
+LOKI_OWNER="${LOKI_OWNER:-10001:10001}"
+GRAFANA_OWNER="${GRAFANA_OWNER:-472:0}"
+REDIS_EXPORTER_OWNER="${REDIS_EXPORTER_OWNER:-59000:59000}"
 
 umask 077
 
@@ -93,4 +99,13 @@ issue /tls/valkey "valkey" "$VALKEY_OWNER"
 # `localhost` for the container healthcheck.
 issue /tls/api "api,localhost" "$NODE_OWNER"
 issue /tls/worker "worker,localhost" "$NODE_OWNER"
+issue /tls/prometheus "prometheus" "$NOBODY_OWNER"
+issue /tls/loki "loki" "$LOKI_OWNER"
+issue /tls/grafana "grafana" "$GRAFANA_OWNER"
+issue /tls/mail "mail" "$NOBODY_OWNER"
+issue /tls/blackbox "blackbox" "$NOBODY_OWNER"
+issue /tls/postgres-exporter "postgres-exporter" "$NOBODY_OWNER"
+issue /tls/pgbouncer-exporter "pgbouncer-exporter" "$NOBODY_OWNER"
+issue /tls/valkey-exporter "valkey-exporter" "$REDIS_EXPORTER_OWNER"
+issue /tls/node-exporter "node-exporter" "$NOBODY_OWNER"
 echo "certs: done"
