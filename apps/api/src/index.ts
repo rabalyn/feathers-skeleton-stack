@@ -4,6 +4,7 @@ import { createKnex } from './db.js'
 import { createInternalServer } from './internal.js'
 import { createLogger } from './logger.js'
 import { createValkey } from './valkey.js'
+import { SHUTDOWN_GRACE_MS, closeServer } from './shutdown.js'
 import { API_SETTINGS } from './settings/registry.js'
 import { SettingsError } from './settings/store.js'
 
@@ -40,15 +41,21 @@ const main = async () => {
   }
 
   await app.listen(config.port)
-  createInternalServer({
+  const internal = createInternalServer({
     metrics: app.get('metrics'),
     tls: { certFile: config.internalTlsCertFile, keyFile: config.internalTlsKeyFile }
   }).listen(config.internalPort)
   logger.info({ port: config.port, internalPort: config.internalPort }, 'api listening')
 
+  // Requests in flight get SHUTDOWN_GRACE_MS (ADR 0006); should closing
+  // still hang past it, the process exits anyway, before Podman's SIGKILL.
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'shutting down')
-    await app.teardown()
+    setTimeout(() => {
+      logger.error('shutdown did not finish in time')
+      process.exit(1)
+    }, SHUTDOWN_GRACE_MS + 2000).unref()
+    await Promise.all([closeServer(internal), app.teardown()])
     process.exit(0)
   }
   process.once('SIGTERM', () => void shutdown('SIGTERM'))

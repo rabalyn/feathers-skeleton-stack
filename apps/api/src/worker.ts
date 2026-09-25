@@ -4,6 +4,7 @@ import { createInternalServer } from './internal.js'
 import { startMaintenance, queueConnection } from './jobs/maintenance.js'
 import { createLogger } from './logger.js'
 import { createRegistry, observeKnexPool } from './metrics.js'
+import { SHUTDOWN_GRACE_MS, closeServer, withDeadline } from './shutdown.js'
 import { WORKER_SETTINGS } from './settings/registry.js'
 import { SettingsError, SettingsStore } from './settings/store.js'
 
@@ -49,12 +50,25 @@ const main = async () => {
   }).listen(config.internalPort)
   logger.info({ internalPort: config.internalPort }, 'worker running')
 
-  // Lets a running job finish before exiting.
+  // A running job gets SHUTDOWN_GRACE_MS to finish (ADR 0024). One cut off
+  // keeps its lock until it expires; BullMQ then finds it stalled and runs
+  // it again.
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'shutting down')
-    internal.close()
-    await maintenance.close()
-    await knex.destroy()
+    setTimeout(() => {
+      logger.error('shutdown did not finish in time')
+      process.exit(1)
+    }, SHUTDOWN_GRACE_MS + 2000).unref()
+    const [, drained] = await Promise.all([
+      closeServer(internal),
+      withDeadline(
+        maintenance.close().then(() => true),
+        SHUTDOWN_GRACE_MS,
+        () => logger.warn('running job cut off by shutdown')
+      )
+    ])
+    // A job cut off still holds its connection, which destroy would wait for.
+    if (drained) await knex.destroy()
     process.exit(0)
   }
   process.once('SIGTERM', () => void shutdown('SIGTERM'))

@@ -21,6 +21,7 @@ The alternatives considered were in-process cron in a worker (simplest, but no r
 - The worker has **credentials of its own**: the `worker` database login (a member of `app_rw`, like `app`), its own Valkey user confined to the queues ([0010](0010-sessions-postgres-ratelimits-valkey.md)), and its own `worker-agent` and AppRole ([0023](0023-secrets-management.md)). Its activity is attributable, and each credential rotates alone.
 - Jobs carry the `request_id` of the request that enqueued them, so logs correlate across the hand-off ([0021](0021-structured-logging.md)). Job payloads carry surrogate ids, never direct identifiers or file contents.
 - Failed jobs retry with backoff; a job that exhausts its retries logs at `error` level, which the Loki error alert picks up ([0022](0022-observability-and-alerting.md)). A job the worker does not know fails at once, without retries.
+- On SIGTERM the worker stops taking jobs and gives a running job the API's **5-second** grace period ([0006](0006-feathersjs-typescript-api.md)). A job cut off keeps its lock until the lock expires; BullMQ then finds it stalled and runs it again, which maintenance jobs tolerate: each batch commits on its own, and a rerun deletes what is still due.
 - The worker has the API's internal listener ([0022](0022-observability-and-alerting.md)): `/health/live` answers while its BullMQ worker runs, and the container healthcheck calls it. `/metrics` joins it with observability. The worker refuses to start without the runtime settings its jobs read.
 
 ### Jobs in the skeleton
