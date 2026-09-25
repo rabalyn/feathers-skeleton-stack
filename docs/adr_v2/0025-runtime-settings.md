@@ -58,7 +58,7 @@ What stays **deployment configuration** is what the application cannot or should
 
 ### Access
 
-`admin` reads and writes settings through the UI; `operator` reads them ([0011](0011-casl-role-authorization.md)). The backup service reads them through its read-only database role. Consumers cache values in process for **30 seconds**, so a change takes effect within that interval without a restart; the API process that made a change drops its own cache at once. A stored value that no longer matches its schema is treated like a missing one.
+Only `admin` reads and writes settings through the UI; `operator` and `user` see none of them ([0011](0011-casl-role-authorization.md)). The backup service reads them through its read-only database role. Consumers cache values in process for **30 seconds**, so a change takes effect within that interval without a restart; the API process that made a change drops its own cache at once. A stored value that no longer matches its schema is treated like a missing one.
 
 ## Consequences
 

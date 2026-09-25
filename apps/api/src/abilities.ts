@@ -35,7 +35,7 @@ export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
       // Role assignment and enable/disable. Which fields a patch may carry
       // is fixed by the users patch schema.
       can('patch', 'users')
-      // Runtime settings (ADR 0025): operator observes, admin changes.
+      // Runtime settings (ADR 0025): configuration is the admin's alone.
       can('read', 'settings')
       can('patch', 'settings')
       // Directory lookup (ADR 0008).
@@ -43,7 +43,6 @@ export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
       break
     case 'operator':
       can('read', 'users')
-      can('read', 'settings')
       can('read', 'directory')
       break
     case 'user':

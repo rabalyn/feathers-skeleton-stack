@@ -68,14 +68,11 @@ describe('refusing to start', () => {
   })
 })
 
-describe('settings: read for admin and operator, write for admin only', () => {
-  it.each([
-    ['admin', () => admin],
-    ['operator', () => operator]
-  ])('%s lists and reads settings', async (_role, who) => {
-    const page = await app.service('settings').find(as(who()))
+describe('settings: read and write for admin only', () => {
+  it('admin lists and reads settings', async () => {
+    const page = await app.service('settings').find(as(admin))
     expect(page.total).toBe(SETTING_KEYS.length)
-    await expect(app.service('settings').get('sessionIdleSeconds', as(who()))).resolves.toMatchObject({
+    await expect(app.service('settings').get('sessionIdleSeconds', as(admin))).resolves.toMatchObject({
       key: 'sessionIdleSeconds',
       value: 8 * 3600
     })
@@ -83,10 +80,13 @@ describe('settings: read for admin and operator, write for admin only', () => {
 
   // With no rule on the resource at all, CASL refuses before any lookup, so
   // an existing and a missing key are answered alike (ADR 0011).
-  it('user can neither list nor read settings, and learns nothing about which keys exist', async () => {
-    await expect(app.service('settings').find(as(member))).rejects.toMatchObject({ code: 403 })
-    const existing = await app.service('settings').get('sessionIdleSeconds', as(member)).catch((e) => e)
-    const missing = await app.service('settings').get('noSuchKey', as(member)).catch((e) => e)
+  it.each([
+    ['operator', () => operator],
+    ['user', () => member]
+  ])('%s can neither list nor read settings, and learns nothing about which keys exist', async (_role, who) => {
+    await expect(app.service('settings').find(as(who()))).rejects.toMatchObject({ code: 403 })
+    const existing = await app.service('settings').get('sessionIdleSeconds', as(who())).catch((e) => e)
+    const missing = await app.service('settings').get('noSuchKey', as(who())).catch((e) => e)
     expect(existing).toMatchObject({ code: 403 })
     expect({ code: missing.code, message: missing.message }).toEqual({
       code: existing.code,

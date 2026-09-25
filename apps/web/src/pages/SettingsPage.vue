@@ -59,7 +59,7 @@ import { useFormat } from '@/composables/format'
 import { useNotify } from '@/composables/notify'
 import { useSessionStore } from '@/stores/session'
 
-// Runtime settings (ADR 0025): an operator observes, an admin changes. Each
+// Runtime settings (ADR 0025), for admins only (ADR 0011). Each
 // value is JSON whose shape depends on the key; the API validates it against
 // the registry and the cross-setting rules and says what is wrong.
 const api = useApi()

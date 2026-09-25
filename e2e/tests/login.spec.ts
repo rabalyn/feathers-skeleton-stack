@@ -100,18 +100,18 @@ test('login, session restore, profile and immediate logout', async ({ page, cont
   await expect(page.locator('#username')).toBeVisible()
 })
 
-test('an operator reads users and settings but changes nothing', async ({ page }) => {
+test('an operator reads users but changes nothing, and sees no settings', async ({ page }) => {
   await loginAs(page, OPERATOR)
-  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Benutzer', 'Einstellungen', 'Verzeichnis'])
+  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Benutzer', 'Verzeichnis'])
 
   await nav(page).getByRole('link', { name: 'Benutzer' }).click()
   const row = page.getByRole('row').filter({ hasText: 'us01user' })
   await expect(row).toBeVisible()
   await expect(row.getByRole('switch')).toBeDisabled()
 
-  await nav(page).getByRole('link', { name: 'Einstellungen' }).click()
-  await expect(page.getByRole('row').filter({ hasText: 'sessionIdleSeconds' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Bearbeiten' })).toHaveCount(0)
+  // Configuration is the admin's alone (ADR 0011).
+  await page.goto('/settings')
+  await expect(page).toHaveURL(/\/profile$/)
 })
 
 test('an admin changes a role, and the directory finds people', async ({ page }) => {

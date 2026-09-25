@@ -17,7 +17,7 @@ Roles are names for sets of CASL rules. A user has exactly one role, stored on t
 | Role | Intent |
 | --- | --- |
 | `admin` | Read and write everything, including configuration and runtime behaviour |
-| `operator` | Read and write operational data, but nothing that changes configuration or runtime behaviour |
+| `operator` | Read and write operational data, but neither see nor change configuration or runtime behaviour |
 | `user` | Only user-facing services, scoped to their own data |
 
 ### Permission matrix
@@ -35,12 +35,12 @@ Roles are names for sets of CASL rules. A user has exactly one role, stored on t
 | Audit / activity events | read | read | read — own only |
 | GDPR data export | trigger for any user | — | trigger for self |
 | GDPR erasure | trigger | — | — |
-| Runtime settings ([0025](0025-runtime-settings.md)) | read, write | read | — |
-| Feature flags, maintenance mode | read, write | read | — |
+| Runtime settings ([0025](0025-runtime-settings.md)) | read, write | — | — |
+| Feature flags, maintenance mode | read, write | — | — |
 
 Directory-sourced user fields are never writable by anyone in the application ([0009](0009-tu-id-identity-model.md)). Backups are not triggered through the application at all: they run on their configured schedule ([0017](0017-nfs-backup-storage.md)), and their schedule and retention are runtime settings covered by the row above.
 
-The dividing line for `operator` is deliberate and worth stating plainly: an operator may act on data, and may observe configuration, but may not change anything that alters how the system behaves — roles, settings, flags, maintenance state.
+The dividing line for `operator` is deliberate and worth stating plainly: an operator may act on data, but configuration is the admin's alone — roles, settings, flags, maintenance state are neither changed nor read by an operator. Operators observed settings until slice 3; that was dropped so that configuration has exactly one audience, over REST and over real-time events alike ([0012](0012-role-scoped-channels.md)).
 
 ### Enforcement
 
