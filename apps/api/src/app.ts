@@ -1,3 +1,4 @@
+import type { Server } from 'node:http'
 import { feathers, type HookContext, type NextFunction } from '@feathersjs/feathers'
 import { koa, rest, bodyParser, errorHandler, type Application as KoaApplication } from '@feathersjs/koa'
 import socketio from '@feathersjs/socketio'
@@ -19,6 +20,7 @@ import { RateLimiter } from './rate-limit.js'
 import { createRegistry, observeKnexPool, requestMetrics, websocketConnections } from './metrics.js'
 import { httpRequests, socketCalls } from './request-log.js'
 import { services } from './services/index.js'
+import { SHUTDOWN_GRACE_MS, trackConnections, withDeadline } from './shutdown.js'
 import { SettingsStore } from './settings/store.js'
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -118,10 +120,25 @@ export const createApp = (
   // Service hooks for every service (ADR 0011) ...
   app.hooks({ around: { all: [socketCalls(observeRequest), sanitizeServiceErrors(() => app.get('logger')), defaultDeny] } })
   // ... and application lifecycle hooks, which Feathers keeps separate.
+  // Teardown is the shutdown on SIGTERM (ADR 0006): Feathers closes the
+  // server, which waits for every open connection. Socket.IO connections are
+  // closed first, as a transport close, so clients reconnect to the next
+  // instance; requests in flight get SHUTDOWN_GRACE_MS, then their sockets are
+  // destroyed.
+  let destroyConnections = () => {}
   app.hooks({
+    setup: [
+      async (context: HookContext<Application> & { server?: Server }, next: NextFunction) => {
+        if (context.server) destroyConnections = trackConnections(context.server)
+        await next()
+      }
+    ],
     teardown: [
       async (_context: HookContext<Application>, next: NextFunction) => {
-        await next()
+        ;(app as { io?: { engine: { close(): void } } }).io?.engine.close()
+        const closing = next()
+        await withDeadline(closing, SHUTDOWN_GRACE_MS, destroyConnections)
+        await closing
         await knex.destroy()
         valkey.disconnect()
       }

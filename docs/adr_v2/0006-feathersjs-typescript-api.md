@@ -20,12 +20,14 @@ The API serves a Quasar frontend over REST and WebSocket, shares typed contracts
 - **Node.js 24 LTS**, **pnpm** pinned through the root `package.json` `packageManager` field. A single pnpm workspace holds `apps/api` and `apps/web`.
 - **Deployment configuration** (hostnames, endpoints, secret file paths) comes from environment variables and `*_FILE` secret files ([0023](0023-secrets-management.md)), validated at startup against a TypeBox schema. The process exits on missing or malformed configuration rather than starting in a half-configured state. **Operational settings** (retention, quotas, limits, schedules) are runtime settings in PostgreSQL ([0025](0025-runtime-settings.md)).
 - The API listens on two ports: the public one behind Nginx, and an **internal port** serving `/metrics` and the health and readiness endpoints, reachable only on the `observability` network and outside the Feathers authentication pipeline ([0022](0022-observability-and-alerting.md)). The only unauthenticated liveness signal on the public port is `GET /api/ping`, which returns a constant and reveals nothing about internal state.
+- **Shutdown on SIGTERM** finishes within Podman's 10-second stop timeout: both listeners stop accepting, idle keep-alive connections close at once, and Socket.IO connections close as a transport close, so clients reconnect to the next instance. Requests in flight get a grace period of **5 seconds**, after which their sockets are destroyed; should closing hang beyond that, the process exits anyway.
 - The `worker` runs the same image with a different entry point ([0024](0024-background-jobs-bullmq.md)), sharing services, schemas and configuration code.
 
 ## Consequences
 
 - Hooks give one place to enforce authentication, validation, authorization and audit for both transports.
 - The project depends on the Feathers ecosystem (`@feathersjs/knex`, `@feathersjs/typebox`, `feathers-casl`, `feathers-pinia`) staying mutually compatible.
+- A request running longer than the 5-second grace period at shutdown is cut off; the client sees a reset connection rather than a response.
 - Disabling polling means a client on a network that blocks WebSocket upgrades cannot use real-time features at all. Acceptable on a university network.
 - Mixing Koa routes and Feathers services means two request styles in one codebase; the SAML routes are the only place this occurs.
 - `feathers-casl`'s current release targets Feathers 5 and CASL 6, so the authorization design in [0011](0011-casl-role-authorization.md) rests on a supported combination.
