@@ -16,8 +16,9 @@ import {
   type UserPatch,
   type UserQuery
 } from './users.schema.js'
-import type { Params } from '@feathersjs/feathers'
+import type { NextFunction, Params } from '@feathersjs/feathers'
 import { recordAudit } from '../../audit.js'
+import { endUserConnections, publishTo, roleChannel, userChannel } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
 
 export type UserParams = Params<UserQuery>
@@ -46,6 +47,21 @@ const auditPatch = async (context: HookContext<UserService>) => {
   })
 }
 
+// A changed role or account state ends the user's sockets, so none of them
+// keeps the rights it was authenticated with (ADR 0012). A patch that
+// changes neither leaves them alone.
+const endConnectionsOnAccessChange = async (context: HookContext<UserService>, next: NextFunction) => {
+  const data = context.data as UserPatch | undefined
+  if (context.id === null || context.id === undefined || (data?.role === undefined && data?.enabled === undefined)) {
+    await next()
+    return
+  }
+  const before = await context.service._get(context.id)
+  await next()
+  const after = context.result as User
+  if (after.role !== before.role || after.enabled !== before.enabled) endUserConnections(context.app, after.id)
+}
+
 export const users = (app: Application) => {
   app.use(
     USERS_PATH,
@@ -60,7 +76,8 @@ export const users = (app: Application) => {
 
   app.service(USERS_PATH).hooks({
     around: {
-      all: [schemaHooks.resolveExternal(userExternalResolver), schemaHooks.resolveResult(userResolver)]
+      all: [schemaHooks.resolveExternal(userExternalResolver), schemaHooks.resolveResult(userResolver)],
+      patch: [endConnectionsOnAccessChange]
     },
     before: {
       all: [schemaHooks.validateQuery(userQueryValidator), schemaHooks.resolveQuery(userQueryResolver)],
@@ -71,6 +88,11 @@ export const users = (app: Application) => {
       patch: [auditPatch]
     }
   })
+
+  // A user record concerns its owner, and everyone who may read all users.
+  app.service(USERS_PATH).publish(
+    publishTo(app, (user) => [userChannel(String(user.id)), roleChannel('admin'), roleChannel('operator')])
+  )
 }
 
 declare module '../../app.js' {

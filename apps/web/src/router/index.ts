@@ -40,6 +40,18 @@ export default defineRouter(({ store }) => {
     }
   )
 
+  // Rights that change while a page is open (a new role after a forced
+  // re-authentication, ADR 0012) leave a page they no longer allow.
+  watch(
+    () => session.ability,
+    () => {
+      const current = router.currentRoute.value
+      if (session.isAuthenticated && current.meta.requires && !session.canAll(...current.meta.requires)) {
+        void router.replace({ name: 'profile' })
+      }
+    }
+  )
+
   return router
 })
 

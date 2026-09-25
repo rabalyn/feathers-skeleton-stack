@@ -6,6 +6,7 @@ import type { Knex } from 'knex'
 import type { Redis } from 'ioredis'
 import type { ApiConfig } from './config.js'
 import { authentication, samlRoutes } from './auth/authentication.js'
+import { channels } from './channels.js'
 import type { ServiceProvider } from './auth/saml.js'
 import type { SessionStore } from './auth/sessions.js'
 import { TrustedProxy } from './client-ip.js'
@@ -97,6 +98,7 @@ export const createApp = (
   samlRoutes(app)
   app.configure(rest())
   app.configure(socketio({ path: SOCKET_PATH, transports: ['websocket'] }))
+  app.configure(channels)
   app.configure(services)
   app.configure(authentication)
 

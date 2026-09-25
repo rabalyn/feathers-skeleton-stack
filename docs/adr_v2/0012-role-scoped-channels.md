@@ -20,10 +20,15 @@ Real-time events are a second delivery path out of the application, and it is ea
 - Each service declares a publisher that resolves an event to recipients:
   - events about a user-owned record publish to `users/{ownerId}` and `roles/admin`,
   - events an operator is permitted to see additionally publish to `roles/operator`,
-  - events concerning configuration or runtime state publish only to `roles/admin`, mirroring the matrix in [0011](0011-casl-role-authorization.md).
+  - events concerning configuration or runtime state publish only to `roles/admin`, mirroring the matrix in [0011](0011-casl-role-authorization.md), where configuration is the admin's alone.
 - Channel membership is a **projection of the CASL ability**, not a parallel rule set. `feathers-casl`'s channel helpers filter each outgoing event against the receiving connection's ability, so a connection cannot receive a record, or a field of a record, that a direct request would have denied it.
-- Every event payload passes through the same external resolver as the REST response ([0005](0005-typebox-schema-boundary.md)). There is no separate serialisation path for real-time.
+- Every event payload passes through the same external resolver as the REST response ([0005](0005-typebox-schema-boundary.md)). There is no separate serialisation path for real-time. The channel helpers are handed the resolved payload, never the service's internal result, because the per-connection copy they produce is what goes on the wire.
+- A publisher only names candidate channels; the ability filter is what decides. A service without a publisher, and every event of the authentication service, reaches nobody. When filtering fails, the event reaches nobody as well (`feathers-casl`'s default would fall back to every authenticated connection).
 - Membership is recomputed whenever the connection re-authenticates. When a session is revoked or a role changes, the connection is dropped from its channels and forced to re-authenticate, so an in-flight socket cannot outlive the permissions it was granted under ([0010](0010-sessions-postgres-ratelimits-valkey.md)).
+  - The triggers are: a patch of a user's `role` or `enabled`, which ends every connection of that user, and a revoked session (logout, refresh token reuse), which ends that session's connections.
+  - Forcing means the server **closes the socket**. The client reconnects when the server closed it, re-authenticates with its access token and, when that is refused, refreshes first; a disabled account or a revoked session then ends in the anonymous state. A socket whose access token expires unrenewed is closed the same way, by Feathers.
+  - Session expiry (idle or absolute) is not a trigger: every call re-checks the session anyway, and the access token lifetime bounds how long an expired session's socket keeps receiving events.
+- Connections and channels live in the one API process ([0002](0002-service-inventory-and-networks.md)). How a change made by the worker ([0024](0024-background-jobs-bullmq.md)) reaches them is decided with the worker.
 
 ## Consequences
 

@@ -1,46 +1,9 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+import { ADMIN, IDP_ORIGIN, OPERATOR, USER, loginAs, nav, navLabels } from './support.js'
 
 // SAML2 login through the local IdP into the real frontend (ADR 0014, 0015):
 // session restore with an in-memory access token, role-based visibility,
 // and logout taking effect immediately.
-//
-// `scripts/stack.sh e2e` gives the test accounts their roles before the run.
-
-interface Account {
-  tuId: string
-  password: string
-}
-const ADMIN: Account = { tuId: 'ad01admn', password: 'admin-test-password' }
-const OPERATOR: Account = { tuId: 'op01oper', password: 'operator-test-password' }
-const USER: Account = { tuId: 'us01user', password: 'user-test-password' }
-
-const IDP_ORIGIN = /^https:\/\/idp\.localhost:8443\//
-
-interface Refreshed {
-  accessToken: string
-  user: { id: string }
-}
-
-// Logs in through the UI and returns what the app's startup refresh
-// received, read off the wire: the page itself keeps the token in memory.
-const loginAs = async (page: Page, who: Account, path = '/') => {
-  await page.goto(path)
-  await page.getByRole('button', { name: 'Anmelden' }).click()
-  await expect(page).toHaveURL(IDP_ORIGIN)
-  await page.locator('#username').fill(who.tuId)
-  await page.locator('#password').fill(who.password)
-  const refreshed = page.waitForResponse(
-    (response) => response.url().endsWith('/api/authentication') && response.request().method() === 'POST'
-  )
-  await page.locator('#kc-login').click()
-  const response = await refreshed
-  expect(response.status()).toBe(201)
-  return (await response.json()) as Refreshed
-}
-
-const nav = (page: Page) => page.locator('.q-drawer')
-// The labels of the navigation, without the icons' ligature text.
-const navLabels = (page: Page) => nav(page).locator('.q-item__section--main')
 
 test('login, session restore, profile and immediate logout', async ({ page, context }) => {
   // CSP violations and uncaught errors only show in the console (ADR 0018).

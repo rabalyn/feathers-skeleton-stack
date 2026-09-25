@@ -10,6 +10,7 @@ import {
 import type { HookContext, Params } from '@feathersjs/feathers'
 import type { Application } from '../app.js'
 import { recordAudit } from '../audit.js'
+import { endSessionConnections } from '../channels.js'
 import { AUTHENTICATION_URL } from '../paths.js'
 import type { User } from '../services/users/users.schema.js'
 import { RateLimitUnavailable, TooManyRequests, type RateLimitBucket } from '../rate-limit.js'
@@ -201,7 +202,12 @@ export const authentication = (app: Application) => {
       expiresIn: ACCESS_TOKEN_LIFETIME
     }
   })
-  app.set('sessions', new SessionStore(app.get('knex'), app.get('settings'), refreshTokenKey))
+  app.set(
+    'sessions',
+    new SessionStore(app.get('knex'), app.get('settings'), refreshTokenKey, (sessionId) =>
+      endSessionConnections(app, sessionId)
+    )
+  )
   app.set('serviceProvider', new ServiceProvider(app.get('config'), app.get('knex')))
 
   const service = new AppAuthenticationService(app)

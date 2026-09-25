@@ -77,7 +77,9 @@ export class SessionStore {
   constructor(
     private readonly knex: Knex,
     private readonly settings: SettingsStore,
-    private readonly refreshTokenKey: string
+    private readonly refreshTokenKey: string,
+    // Told after a session was revoked, to end its sockets (ADR 0012).
+    private readonly onRevoked: (sessionId: string) => void = () => {}
   ) {}
 
   successorOf(token: string): string {
@@ -131,7 +133,7 @@ export class SessionStore {
     const grace = await this.settings.get('refreshGraceSeconds')
     const idle = await this.settings.get('sessionIdleSeconds')
 
-    return this.knex.transaction(async (trx): Promise<RefreshOutcome> => {
+    const outcome = await this.knex.transaction(async (trx): Promise<RefreshOutcome> => {
       const tokenHash = hashRefreshToken(token)
       const found = await trx<RefreshTokenRow>('authRefreshTokens').where({ tokenHash }).first('sessionId')
       if (!found) return { status: 'rejected' }
@@ -185,6 +187,8 @@ export class SessionStore {
         .returning(SESSION_COLUMNS)
       return { status: 'rotated', session: touched ?? session, refreshToken: current }
     })
+    if (outcome.status === 'reuse') this.onRevoked(outcome.session.id)
+    return outcome
   }
 
   // Follows derived successors from a rotated token to the family's current
@@ -204,5 +208,6 @@ export class SessionStore {
 
   async revoke(id: string): Promise<void> {
     await this.knex('authSessions').where({ id }).whereNull('revokedAt').update({ revokedAt: this.knex.fn.now() })
+    this.onRevoked(id)
   }
 }

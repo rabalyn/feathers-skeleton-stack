@@ -5,6 +5,7 @@ import type { Id, NullableId, Params } from '@feathersjs/feathers'
 import type { Knex } from 'knex'
 import type { Application } from '../../app.js'
 import { recordAudit } from '../../audit.js'
+import { publishTo, roleChannel } from '../../channels.js'
 import { PAGINATE } from '../../paginate.js'
 import { CROSS_SETTING_RULES, SETTING_KEYS, isSettingKey, type SettingValues } from '../../settings/registry.js'
 import { settingError } from '../../settings/store.js'
@@ -109,6 +110,9 @@ export const settings = (app: Application) => {
       patch: [schemaHooks.validateData(settingPatchValidator)]
     }
   })
+
+  // Configuration is the admin's alone (ADR 0011, 0012).
+  app.service(SETTINGS_PATH).publish(publishTo(app, () => [roleChannel('admin')]))
 }
 
 declare module '../../app.js' {

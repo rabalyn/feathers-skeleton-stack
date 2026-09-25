@@ -119,6 +119,15 @@ export const useSessionStore = defineStore('session', () => {
       .catch(() => refresh())
   })
 
+  // The server closes the socket when the session's rights changed (a role,
+  // the account, a revoked session) or its access token ran out unrenewed
+  // (ADR 0012). Socket.IO does not reconnect by itself after that; the
+  // connect handler above then re-authenticates, refreshing where the token
+  // no longer holds.
+  socket.on('disconnect', (reason) => {
+    if (reason === 'io server disconnect') socket.connect()
+  })
+
   // Background tabs have their timers throttled; catch up on return.
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible' || status.value !== 'authenticated') return
