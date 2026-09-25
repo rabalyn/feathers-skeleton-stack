@@ -44,9 +44,10 @@ export const searchFilter = (term: string): string => {
 }
 
 const first = (value: unknown): string | null => {
-  const single = Array.isArray(value) ? value[0] : value
+  const single: unknown = Array.isArray(value) ? (value as unknown[])[0] : value
   if (single === undefined || single === null) return null
-  const text = Buffer.isBuffer(single) ? single.toString('utf8') : String(single)
+  if (typeof single !== 'string' && !Buffer.isBuffer(single)) return null
+  const text = Buffer.isBuffer(single) ? single.toString('utf8') : single
   return text.length > 0 ? text : null
 }
 

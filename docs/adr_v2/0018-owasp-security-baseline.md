@@ -40,6 +40,11 @@ Frontend and API share one origin behind Nginx, so CORS is not needed in product
 
 - Rendering user-supplied HTML is prohibited; `vue/no-v-html` is enabled as a lint error rather than a guideline.
 - Dependency and image scanning are CI gates. Because images are rebuilt for each release, a security patch reaches production through a normal release.
+  - `pnpm audit` blocks at **high** severity and above.
+  - Trivy scans every image `compose.yaml` names, built or pinned, and blocks on **HIGH or CRITICAL findings that have a fix**. Unfixed findings are reported but do not block, because nobody can act on them and a permanently red gate stops being read. A finding that is accepted instead of fixed goes into `.trivyignore.yaml`, scoped to the package it concerns, with a statement and an expiry after which it blocks again. The one file not scanned is `gosu` in the PostgreSQL image: it only drops root privileges at container start, and its Go standard library findings concern code it never runs.
+  - Images built here run `apk upgrade` (Alpine) at build time, and Node images drop the bundled npm, which nothing uses (pnpm comes through corepack) and which only brings its own findings along.
+  - A vulnerable transitive dependency whose parent has not caught up is raised by a pnpm `overrides` floor in `pnpm-workspace.yaml`, with a comment saying when to remove it. The first was `@xmldom/xmldom` below 0.8.15 under the SAML libraries, which the audit gate found on its first run.
+- Dependency update PRs come from **Renovate** (`renovate.json`), which also keeps the digest-pinned images current, including the version comments that `compose.yaml` carries instead of tags. It becomes active once the repository is hosted with the Renovate app installed.
 - The authorization matrix in [0011](0011-casl-role-authorization.md) is the specification for authorization tests, including negative cases for every denied cell.
 
 ## Consequences

@@ -1,5 +1,5 @@
 import { BadRequest, GeneralError, NotFound } from '@feathersjs/errors'
-import type { HookContext } from '@feathersjs/feathers'
+import type { HookContext } from '../../src/declarations.js'
 import { pino } from 'pino'
 import { describe, expect, it } from 'vitest'
 import { sanitizeHttpErrors, sanitizeServiceErrors } from '../../src/hooks/errors.js'

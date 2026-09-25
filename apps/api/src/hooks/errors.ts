@@ -1,7 +1,8 @@
 import { FeathersError, GeneralError } from '@feathersjs/errors'
-import type { HookContext, NextFunction } from '@feathersjs/feathers'
+import type { NextFunction } from '@feathersjs/feathers'
 import type { Middleware } from '@feathersjs/koa'
 import type { Logger } from 'pino'
+import type { HookContext } from '../declarations.js'
 
 // Unexpected errors never reach the client with their details: a database
 // message, a stack or a library's wording tells an attacker about internals

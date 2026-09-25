@@ -56,13 +56,15 @@ export class SamlRejected extends Error {}
 export const safeReturnTo = (value: unknown): string => {
   if (typeof value !== 'string' || value.length > 2048) return '/'
   if (!value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return '/'
+  // Control characters are exactly what this rejects.
+  // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u001f\\]/.test(value)) return '/'
   return value
 }
 
 const attr = (profile: Profile, name: string): string | null => {
-  const value = profile[name]
-  const first = Array.isArray(value) ? value[0] : value
+  const value: unknown = profile[name]
+  const first: unknown = Array.isArray(value) ? (value as unknown[])[0] : value
   return typeof first === 'string' && first.length > 0 ? first : null
 }
 
@@ -182,7 +184,7 @@ export class ServiceProvider {
     // Consume the request and record the assertion in one transaction, so a
     // replay or a second answer to the same request cannot both succeed.
     const returnTo = await this.knex.transaction(async (trx) => {
-      const [request] = await trx('samlRequests')
+      const [request]: { returnTo: string }[] = await trx('samlRequests')
         .where({ id: inResponseTo })
         .where('expiresAt', '>', trx.fn.now())
         .delete()
@@ -196,7 +198,7 @@ export class ServiceProvider {
         .ignore()
         .returning(['id'])
       if (inserted.length === 0) throw new SamlRejected('assertion replayed')
-      return safeReturnTo((request as { returnTo: string }).returnTo)
+      return safeReturnTo(request.returnTo)
     })
 
     return {

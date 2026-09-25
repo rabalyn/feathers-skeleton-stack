@@ -36,6 +36,14 @@ export interface SamlLoginContext {
   sessionIndex?: string | null
 }
 
+interface RefreshTokenRow {
+  id: string
+  sessionId: string
+  tokenHash: Buffer
+  issuedAt: Date
+  rotatedAt: Date | null
+}
+
 export type RefreshOutcome =
   | { status: 'rotated'; session: AuthSession; refreshToken: string }
   | { status: 'rejected' }
@@ -95,7 +103,7 @@ export class SessionStore {
           samlNameId: saml?.nameId ?? null,
           samlNameIdFormat: saml?.nameIdFormat ?? null,
           samlSessionIndex: saml?.sessionIndex ?? null
-        } as never)
+        })
         .returning(SESSION_COLUMNS)
       if (!session) throw new Error('session insert returned nothing')
       await trx('authRefreshTokens').insert({ sessionId: session.id, tokenHash: hashRefreshToken(refreshToken) })
@@ -125,7 +133,7 @@ export class SessionStore {
 
     return this.knex.transaction(async (trx): Promise<RefreshOutcome> => {
       const tokenHash = hashRefreshToken(token)
-      const found = await trx('authRefreshTokens').where({ tokenHash }).first('sessionId')
+      const found = await trx<RefreshTokenRow>('authRefreshTokens').where({ tokenHash }).first('sessionId')
       if (!found) return { status: 'rejected' }
 
       const session: AuthSession | undefined = await trx('authSessions')
@@ -135,9 +143,14 @@ export class SessionStore {
       if (!session || !isActive(session)) return { status: 'rejected' }
 
       // Read again under the lock: a concurrent refresh may have rotated it.
-      const presented = await trx('authRefreshTokens')
+      const presented = await trx<RefreshTokenRow>('authRefreshTokens')
         .where({ tokenHash })
-        .first('id', 'rotatedAt', trx.raw('rotated_at > now() - make_interval(secs => ?) AS within_grace', [grace]))
+        .first<(Pick<RefreshTokenRow, 'id' | 'rotatedAt'> & { withinGrace: boolean | null }) | undefined>(
+          'id',
+          'rotatedAt',
+          trx.raw('rotated_at > now() - make_interval(secs => ?) AS within_grace', [grace])
+        )
+      if (!presented) return { status: 'rejected' }
 
       // Which token the caller is entitled to hold now.
       let current: string | undefined
@@ -180,7 +193,7 @@ export class SessionStore {
     let candidate = token
     for (let step = 0; step < MAX_GRACE_STEPS; step++) {
       candidate = this.successorOf(candidate)
-      const row = await trx('authRefreshTokens')
+      const row = await trx<RefreshTokenRow>('authRefreshTokens')
         .where({ tokenHash: hashRefreshToken(candidate), sessionId })
         .first('rotatedAt')
       if (!row) return undefined

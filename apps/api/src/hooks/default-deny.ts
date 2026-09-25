@@ -1,8 +1,9 @@
 import { NotAuthenticated } from '@feathersjs/errors'
 import { authenticate } from '@feathersjs/authentication'
-import type { HookContext, NextFunction } from '@feathersjs/feathers'
+import type { NextFunction } from '@feathersjs/feathers'
 import { authorize } from 'feathers-casl'
 import { defineAbilitiesFor } from '../abilities.js'
+import type { HookContext } from '../declarations.js'
 
 // ADR 0011: every external call to every service is authenticated and
 // authorized unless the service is on this allowlist. A service without
@@ -20,7 +21,8 @@ const jwt = authenticate('jwt')
 export const defaultDeny = async (context: HookContext, next: NextFunction) => {
   // Internal calls (no provider) are trusted server code.
   if (!context.params.provider || PUBLIC_SERVICES.has(context.path)) {
-    return next()
+    await next()
+    return
   }
   await jwt(context)
   const user = context.params.user
@@ -28,5 +30,5 @@ export const defaultDeny = async (context: HookContext, next: NextFunction) => {
     throw new NotAuthenticated('Not authenticated')
   }
   context.params.ability = defineAbilitiesFor(user)
-  return casl(context, next)
+  await casl(context, next)
 }

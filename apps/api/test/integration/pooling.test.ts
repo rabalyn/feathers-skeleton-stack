@@ -57,8 +57,8 @@ describe('parallel test workers', () => {
     sampling = false
     await sampler
 
-    const failures = results.filter((r) => r.status === 'rejected')
-    expect(failures, String(failures.map((f) => (f as PromiseRejectedResult).reason))).toHaveLength(0)
+    const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+    expect(failures, String(failures.map((f) => f.reason))).toHaveLength(0)
     expect(results).toHaveLength(WORKERS * POOL)
     // More transactions than the cap ran, so the cap was actually reached.
     expect(peak).toBeGreaterThan(USER_CAP / 2)

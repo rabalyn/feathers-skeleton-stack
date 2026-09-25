@@ -44,7 +44,7 @@ export class SettingsStore {
     const cached = this.cache.get(key)
     if (cached && cached.expires > Date.now()) return cached.value as SettingValues[K]
 
-    const row = await this.knex('settings').where({ key }).first('value')
+    const row = await this.knex<{ key: string; value: unknown }>('settings').where({ key }).first('value')
     if (!row) throw new SettingsError(`runtime setting ${key} is missing`)
     const error = settingError(key, row.value)
     if (error) throw new SettingsError(`runtime setting ${key} is invalid: ${error}`)

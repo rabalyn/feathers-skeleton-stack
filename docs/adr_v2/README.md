@@ -75,7 +75,7 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 - The `settings` table, its seeding, and the refuse-to-start check; session lifetimes move there from constants ([0025](0025-runtime-settings.md))
 - Valkey, with fail-closed rate limits on the ACS and logins ([0010](0010-sessions-postgres-ratelimits-valkey.md)), and trusting `X-Forwarded-For` only from Nginx
 - LDAP directory lookup from the API, with its service account ([0008](0008-authentication-saml2-ldap.md))
-- The CI workflow ([0015](0015-testing-vitest-playwright.md)), lint including the client dependency boundary ([0007](0007-typed-client-from-api.md)), and `gitleaks` ([0023](0023-secrets-management.md))
+- The CI gate `scripts/ci.sh` ([0015](0015-testing-vitest-playwright.md)), lint including the client dependency boundary ([0007](0007-typed-client-from-api.md)), `gitleaks` ([0023](0023-secrets-management.md)), and the audit and image scan gates with Renovate ([0018](0018-owasp-security-baseline.md)). The hosted workflow that calls the script waits for a remote
 - The Quasar frontend replacing the placeholder page ([0014](0014-frontend-quasar-vue.md))
 
 **Later.** The contract step of refresh rotation: dropping `auth_sessions.refresh_token_hash`, `rotated_at` and `family_id`, unused since slice 2 ([0003](0003-postgresql-and-knex.md) expand and contract). The worker and background jobs, object storage and uploads, observability, backups, and the break-glass account with the bootstrap command. The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.

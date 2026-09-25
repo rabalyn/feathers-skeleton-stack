@@ -14,7 +14,8 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/index.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint:boundary": "depcruise src/client.ts --config .dependency-cruiser.cjs"
   },
   "dependencies": {
     "@casl/ability": "6.8.1",

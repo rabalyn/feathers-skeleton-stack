@@ -1,3 +1,9 @@
 packages:
   - apps/*
   - e2e
+
+# Security floor for transitive dependencies (ADR 0018): the SAML libraries
+# pin @xmldom/xmldom ranges that still admit versions with known XML
+# injection and DoS flaws. Remove once they require >= 0.8.15 themselves.
+overrides:
+  '@xmldom/xmldom@<0.8.15': 0.8.15

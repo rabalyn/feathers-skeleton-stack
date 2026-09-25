@@ -4,7 +4,8 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends libnss3-tools \
  && rm -rf /var/lib/apt/lists/*
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable
+# pnpm comes through corepack; npm and yarn are never used (ADR 0018).
+RUN corepack enable && rm -rf /usr/lib/node_modules/npm /usr/lib/node_modules/yarn /usr/bin/npm /usr/bin/npx /usr/bin/yarn
 WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY e2e/package.json e2e/

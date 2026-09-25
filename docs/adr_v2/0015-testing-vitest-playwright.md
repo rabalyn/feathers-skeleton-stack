@@ -41,7 +41,11 @@ Playwright runs inside the one-shot `e2e` container, built on the official Playw
 
 ### CI
 
-GitHub Actions brings up the same `compose.yaml` stack and runs lint, typecheck, Vitest, the image builds, the Quadlet regeneration check ([0001](0001-one-stack-every-environment.md)), Playwright, and the backup-and-restore test ([0017](0017-nfs-backup-storage.md)).
+The CI gate is **one script, `scripts/ci.sh`**, which needs nothing on the host but rootless Podman and runs identically on a developer machine and a runner. It runs gitleaks over the whole history ([0023](0023-secrets-management.md)), lint and the client dependency boundary ([0007](0007-typed-client-from-api.md)), typecheck, `pnpm audit` and the Quadlet regeneration check ([0001](0001-one-stack-every-environment.md)), then brings up the same `compose.yaml` stack and runs Vitest, Playwright and the image vulnerability scan ([0018](0018-owasp-security-baseline.md)); the backup-and-restore test ([0017](0017-nfs-backup-storage.md)) joins it with the backup service. Every check runs even after one fails, and the script reports all failures at the end. The static checks run in a `ci` image built from the workspace, so no host Node.js is involved.
+
+A hosted pipeline runs `scripts/ci.sh --cold`, which resets the stack first as a fresh runner would. **The GitHub Actions workflow is not written yet**: the repository has no remote, and GitHub's hosted Ubuntu images ship an older Podman than the stack is built and verified on (6.1). The workflow is added when the repository is published, either installing a current Podman on a hosted runner or on a self-hosted one; it calls the script and holds no logic of its own.
+
+Lint is ESLint with type-aware `typescript-eslint` rules for every TypeScript package. The client boundary is checked by dependency-cruiser, because ESLint rules see one file at a time and the boundary is about whole import chains.
 
 Two CI-specific points:
 

@@ -1,9 +1,11 @@
-import type { HookContext as FeathersHookContext } from '@feathersjs/feathers'
+import type { HookContext as FeathersHookContext, Params, ServiceInterface } from '@feathersjs/feathers'
 import type { AppAbility } from './abilities.js'
 import type { Application } from './app.js'
 import type { User } from './services/users/users.schema.js'
 
-export type HookContext<S = unknown> = FeathersHookContext<Application, S>
+// Without a service type, Feathers types params as `any`; a hook for every
+// service still gets the application's Params.
+export type HookContext<S = ServiceInterface<unknown, unknown, Params>> = FeathersHookContext<Application, S>
 
 declare module '@feathersjs/feathers' {
   interface Params {

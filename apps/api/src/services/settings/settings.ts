@@ -85,7 +85,7 @@ export class SettingService extends KnexService<Setting, SettingPatch, SettingPa
       })
     })
     this.settingOptions.changed(key)
-    return this._get(key as Id, { ...params, query: {} })
+    return this._get(key, { ...params, query: {} })
   }
 }
 

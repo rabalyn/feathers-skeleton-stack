@@ -1,5 +1,7 @@
 FROM docker.io/library/nginx:1.30.5-alpine@sha256:8f84ed99befc3891b8f329c5c202785278a2cfb7c25107d57fb2a134a3117433
-RUN rm /etc/nginx/conf.d/default.conf
+# Alpine fixes reach the image with every build, not only with a new base
+# digest (ADR 0018).
+RUN apk upgrade --no-cache && rm /etc/nginx/conf.d/default.conf
 COPY containers/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY containers/nginx/templates/ /etc/nginx/templates/
 COPY containers/nginx/entrypoint.d/ /docker-entrypoint.d/

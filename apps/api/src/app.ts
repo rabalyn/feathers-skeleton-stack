@@ -72,7 +72,7 @@ export const createApp = (
       return
     }
     ctx.path = ctx.path.slice(API_PREFIX.length) || '/'
-    return next()
+    await next()
   })
 
   // The only unauthenticated liveness signal on the public port (ADR 0006).
@@ -81,7 +81,7 @@ export const createApp = (
       ctx.body = { pong: true }
       return
     }
-    return next()
+    await next()
   })
 
   // The client address, for rate limits and security events (ADR 0010,
@@ -90,7 +90,7 @@ export const createApp = (
     const clientIp = await proxy.clientIp(ctx.req.socket.remoteAddress, ctx.req.headers['x-forwarded-for'])
     ctx.state.clientIp = clientIp
     ctx.feathers = { ...ctx.feathers, clientIp }
-    return next()
+    await next()
   })
 
   app.use(bodyParser())
