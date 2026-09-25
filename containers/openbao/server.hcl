@@ -1,0 +1,26 @@
+# Identical in every environment (ADR 0023).
+storage "raft" {
+  path    = "/openbao/data"
+  node_id = "openbao"
+}
+
+listener "tcp" {
+  address       = "0.0.0.0:8200"
+  tls_cert_file = "/openbao/tls/fullchain.crt"
+  tls_key_file  = "/openbao/tls/tls.key"
+  tls_min_version = "tls12"
+}
+
+api_addr      = "https://openbao:8200"
+cluster_addr  = "https://openbao:8201"
+disable_mlock = true
+ui            = false
+
+# Audit device (ADR 0023). OpenBao only accepts audit devices declared in
+# configuration. It writes to stdout until the shared log volume exists
+# (ADR 0021); entries carry HMACs of values, never the values.
+audit "file" "stdout" {
+  options {
+    file_path = "/dev/stdout"
+  }
+}

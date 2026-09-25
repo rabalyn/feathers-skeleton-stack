@@ -1,0 +1,8 @@
+FROM docker.io/library/nginx:1.30.5-alpine@sha256:8f84ed99befc3891b8f329c5c202785278a2cfb7c25107d57fb2a134a3117433
+RUN rm /etc/nginx/conf.d/default.conf
+COPY containers/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY containers/nginx/templates/ /etc/nginx/templates/
+COPY containers/nginx/entrypoint.d/ /docker-entrypoint.d/
+# Placeholder until the Quasar bundle exists (ADR 0014); the built bundle
+# replaces this directory.
+COPY containers/nginx/html/ /usr/share/nginx/html/

@@ -1,0 +1,58 @@
+# The application origin (ADR 0016).
+server {
+  listen 443 ssl;
+  http2 on;
+  server_name ${NGINX_APP_HOST};
+
+  ssl_certificate     ${NGINX_TLS_DIR}/fullchain.crt;
+  ssl_certificate_key ${NGINX_TLS_DIR}/tls.key;
+
+  resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
+  client_max_body_size ${NGINX_BODY_SIZE_LIMIT};
+
+  include /etc/nginx/conf.d/snippets/security-headers.conf;
+
+  set $api_upstream http://${NGINX_API_UPSTREAM};
+
+  location /api/socket.io/ {
+    proxy_pass $api_upstream;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto https;
+    # Longer than Socket.io's ping interval plus timeout (25 s + 20 s).
+    proxy_read_timeout 75s;
+    proxy_send_timeout 75s;
+  }
+
+  location /api/ {
+    proxy_pass $api_upstream;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $http_host;
+    # Replaced, not appended: the client's own X-Forwarded-For is never trusted.
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto https;
+  }
+
+  location = /api {
+    return 404;
+  }
+
+  location /assets/ {
+    root /usr/share/nginx/html;
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+    include /etc/nginx/conf.d/snippets/security-headers.conf;
+    try_files $uri =404;
+  }
+
+  # SPA history fallback; index.html is never cached.
+  location / {
+    root /usr/share/nginx/html;
+    try_files $uri /index.html;
+    add_header Cache-Control "no-store" always;
+    include /etc/nginx/conf.d/snippets/security-headers.conf;
+  }
+}

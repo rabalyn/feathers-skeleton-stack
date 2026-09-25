@@ -1,0 +1,25 @@
+# Local and CI only: the browser reaches Keycloak here (ADR 0008, 0016).
+# Removed at startup when NGINX_IDP_HOST is empty, as in production.
+server {
+  listen 443 ssl;
+  http2 on;
+  server_name ${NGINX_IDP_HOST};
+
+  ssl_certificate     ${NGINX_TLS_DIR}/fullchain.crt;
+  ssl_certificate_key ${NGINX_TLS_DIR}/tls.key;
+
+  resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
+  set $idp_upstream http://${NGINX_IDP_UPSTREAM};
+
+  location / {
+    proxy_pass $idp_upstream;
+    proxy_http_version 1.1;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port ${NGINX_PUBLIC_PORT};
+    proxy_buffer_size 16k;
+    proxy_buffers 8 16k;
+  }
+}

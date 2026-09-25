@@ -11,6 +11,7 @@ const port = Type.Integer({ minimum: 1, maximum: 65535 })
 export const configSchema = Type.Object(
   {
     publicOrigin: Type.String({ pattern: '^https://[^/]+$' }),
+    authSigningSecret: Type.String({ minLength: 32 }),
     port,
     internalPort: port,
     logLevel: Type.Union([
@@ -31,6 +32,7 @@ type Source = { env: string; secret?: boolean; type?: 'string' | 'integer'; defa
 
 const sources: Record<keyof Config, Source> = {
   publicOrigin: { env: 'PUBLIC_ORIGIN' },
+  authSigningSecret: { env: 'AUTH_SIGNING_SECRET', secret: true },
   port: { env: 'PORT', type: 'integer', default: '3030' },
   internalPort: { env: 'INTERNAL_PORT', type: 'integer', default: '9090' },
   logLevel: { env: 'LOG_LEVEL', default: 'info' }

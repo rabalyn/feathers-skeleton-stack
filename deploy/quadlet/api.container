@@ -1,0 +1,13 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Container]
+ContainerName=api
+Environment=PUBLIC_ORIGIN=https://app.localhost:8443 AUTH_SIGNING_SECRET_FILE=/run/secrets/auth_signing_secret
+HealthCmd=["node","-e","fetch('http://127.0.0.1:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+HealthInterval=10s
+HealthRetries=3
+HealthTimeout=3s
+Image=localhost/feathers-api:dev
+Network=edge.network
+Volume=api-secrets.volume:/run/secrets:ro
