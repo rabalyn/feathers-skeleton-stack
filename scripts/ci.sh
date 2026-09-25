@@ -10,7 +10,8 @@
 # Static: gitleaks over the whole history, ESLint, the client dependency
 # boundary, typecheck, unit tests that need no stack, pnpm audit, the Quadlet
 # drift check.
-# Stack: up, Vitest, Playwright, then the vulnerability scan of every image
+# Stack: up, Vitest, Playwright, the alert delivery check, then the
+# vulnerability scan of every image
 # compose.yaml names.
 #
 # Blocking thresholds (ADR 0018): pnpm audit at high and above; Trivy on
@@ -96,6 +97,7 @@ fi
 if [[ $mode != --static ]]; then
   check "Vitest" "$ROOT/scripts/stack.sh" test
   check "Playwright" "$ROOT/scripts/stack.sh" e2e
+  check "Alert delivery" "$ROOT/scripts/stack.sh" alerts
   # The dev server image is never started here but ships to developers, so
   # it is built for the scan like every other image compose.yaml names.
   step "building the dev server image"

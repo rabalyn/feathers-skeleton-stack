@@ -1,0 +1,21 @@
+# Alert delivery by email (ADR 0022). The recipient is deployment
+# configuration, ALERT_EMAIL in Grafana's environment, and may be a list.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: operators
+    receivers:
+      - uid: operators-email
+        type: email
+        settings:
+          addresses: $ALERT_EMAIL
+          singleEmail: true
+
+policies:
+  - orgId: 1
+    receiver: operators
+    group_by: [alertname]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h

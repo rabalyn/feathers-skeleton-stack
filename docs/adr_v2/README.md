@@ -84,7 +84,9 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 - The contract step of refresh rotation: `auth_sessions.refresh_token_hash`, `rotated_at` and `family_id` are dropped ([0003](0003-postgresql-and-knex.md) expand and contract)
 - The worker container and BullMQ ([0024](0024-background-jobs-bullmq.md)), which the GDPR export and uploads build on: its own database login and Valkey user (every service now has one), the maintenance queue with retention cleanup daily at 03:30, and `/health/live`. Export expiry and object purge arrive with their features
 
-**Later.** Object storage and uploads, observability, backups, and the break-glass account with the bootstrap command. The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
+**Slice 4 — observability** ([0021](0021-structured-logging.md), [0022](0022-observability-and-alerting.md)): request ids and one line per request, rotated JSON log files, metrics from the API and the worker; Prometheus, Loki, Grafana Alloy (Promtail is end of life), Grafana with dashboards and alert rules as code, Mailpit, the exporters, and blackbox_exporter as the uptime check (Uptime Kuma cannot be provisioned from files); TLS on every observability hop; the alert delivery check in CI. The newest Grafana and four exporter images carry HIGH findings fixed upstream but not yet released; they are accepted in `.trivyignore.yaml` until 2026-10-25, before the first production release ([0018](0018-owasp-security-baseline.md)).
+
+**Later.** Object storage and uploads, backups, and the break-glass account with the bootstrap command. The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
 
 ## Status of this set
 

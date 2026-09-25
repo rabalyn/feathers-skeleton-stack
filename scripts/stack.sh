@@ -23,6 +23,9 @@
 #   scripts/stack.sh e2e [playwright args]
 #                            run the Playwright suite in the `e2e` container
 #                            against the running stack (ADR 0015)
+#   scripts/stack.sh alerts  prove the alert path end to end (ADR 0022): make
+#                            the worker log errors, then wait for Grafana's
+#                            mail about them to arrive in Mailpit
 #
 # The OpenBao unseal key lives in a local-only podman volume that no compose
 # service mounts. Production never runs this script: an administrator unseals
@@ -430,6 +433,39 @@ INSERT INTO users (tu_id, given_name, surname, role, enabled, auth_source) VALUE
 ON CONFLICT (tu_id) DO UPDATE SET role = excluded.role, enabled = excluded.enabled;
 SQL
     compose --profile test run --rm -T e2e pnpm exec playwright test "$@"
+    ;;
+  alerts)
+    # Unknown jobs fail at once and log at `error`: Alloy ships the lines to
+    # Loki, the "Application errors in logs" rule fires, Grafana mails.
+    # Runs inside the worker, which reaches Valkey and Mailpit.
+    log "logging errors in the worker, then waiting for the alert mail"
+    podman exec -i -w /repo/apps/api -e NODE_EXTRA_CA_CERTS=/trust/ca.crt worker \
+      node --input-type=module <<'JS' || die "no alert mail arrived; see Grafana's alert rules and: podman logs grafana"
+import { readFileSync } from 'node:fs'
+import { Queue } from 'bullmq'
+const connection = {
+  host: 'valkey', port: 6379, username: 'worker',
+  password: readFileSync('/run/secrets/valkey_password', 'utf8'),
+  tls: { ca: readFileSync('/trust/ca.crt', 'utf8'), servername: 'valkey' }
+}
+const since = new Date().toISOString()
+const queue = new Queue('maintenance', { prefix: 'bull', connection })
+for (let i = 0; i < 8; i++) await queue.add('alert-check', {}, { attempts: 1, removeOnFail: true })
+await queue.close()
+const query = encodeURIComponent('subject:"Application errors in logs"')
+const deadline = Date.now() + 5 * 60_000
+while (Date.now() < deadline) {
+  const response = await fetch(`https://mail:8025/api/v1/search?query=${query}`)
+  const { messages = [] } = await response.json()
+  const arrived = messages.find((message) => message.Created > since)
+  if (arrived) {
+    console.log(`alert mail arrived: ${arrived.Subject}`)
+    process.exit(0)
+  }
+  await new Promise((resolve) => setTimeout(resolve, 5000))
+}
+process.exit(1)
+JS
     ;;
   down) compose --profile test --profile dev down ;;
   reset)

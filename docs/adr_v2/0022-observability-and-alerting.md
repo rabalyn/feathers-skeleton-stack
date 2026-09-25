@@ -19,12 +19,12 @@ The deployment needs metrics, searchable logs, dashboards, and an alert that act
 | `prometheus` | Scrapes and stores metrics, 14-day retention |
 | `loki` | Stores logs from Promtail, 14-day retention enforced by the compactor |
 | `grafana` | Dashboards, alert rules, and alert delivery |
-| `promtail` | Ships log files to Loki ([0021](0021-structured-logging.md)) |
+| `alloy` | Grafana Alloy: ships log files and container output to Loki ([0021](0021-structured-logging.md)); replaced Promtail, end of life since 2026-03 |
 | `postgres-exporter` | PostgreSQL metrics |
 | `pgbouncer-exporter` | PgBouncer pool metrics |
 | `valkey-exporter` | Valkey memory, keys and queue metrics |
 | `node-exporter` | Host CPU, memory and volume usage |
-| `uptime` | Uptime Kuma, checking the public endpoint from outside |
+| `blackbox` | blackbox_exporter, probing the public endpoint for the uptime check |
 | `mail` | Mailpit locally and in CI; university SMTP relay in production |
 
 All run as containers in every environment ([0001](0001-one-stack-every-environment.md)).
@@ -36,7 +36,7 @@ The local stack additionally runs Dozzle ([0002](0002-service-inventory-and-netw
 - The API and the worker expose `GET /metrics` in Prometheus format, and the API exposes health and readiness endpoints, on an **internal port** reachable only on the `observability` network. Nginx never routes them, and they sit outside the Feathers authentication pipeline. Container health checks call them from inside the container.
 - **Every observability hop uses TLS**, verified against the CA root like the data hops ([0004](0004-pgbouncer-pools.md), [0016](0016-nginx-and-tls-everywhere.md)): scrapes of the internal ports and every exporter, the log push to Loki, Grafana's queries to Prometheus and Loki, mail to Mailpit, and Nginx to Grafana and Mailpit. Each listener has a certificate for its own service name; the API's and the worker's also name `localhost`, for the container healthcheck. Locally the `certs` job issues them; production's source is the private CA still open in [0016](0016-nginx-and-tls-everywhere.md).
 - The only public liveness signal is `GET /api/ping` through Nginx. It returns a constant and says nothing about internal state; it exists for the uptime check.
-- Observability for people is Grafana: dashboards and alerts, not raw endpoints.
+- Observability for people is Grafana: dashboards and alerts, not raw endpoints. Nginx serves it under its own host name (`grafana.localhost` locally), and people log in with Grafana's own admin account, whose password comes from OpenBao ([0023](0023-secrets-management.md)). Locally Nginx also serves Mailpit's inbox (`mail.localhost`), where alert mail lands ([0016](0016-nginx-and-tls-everywhere.md)).
 
 ### Metrics
 
@@ -70,21 +70,25 @@ Rules, contact points and dashboards are **provisioned as code** from files in t
 | Database connections | `postgres-exporter`, `pgbouncer-exporter` | Server connections approaching `max_connections`, or clients waiting in PgBouncer |
 | Volume capacity | `node-exporter` | Any data, log or backup volume above 80% |
 
+As built (`containers/grafana/provisioning/alerting/rules.yaml`), with first-guess thresholds: more than 5 error lines in 5 minutes; more than 20 rate-limit rejections in 10 minutes; 5xx above 5% or p95 above 1 s for 10 minutes; server connections above 80% of `max_connections` for 5 minutes, or any client waiting in PgBouncer for 2 minutes; any filesystem above 80% for 10 minutes. "API down" covers every scrape target, not only the API. "Database storage" is the volume rule: the database's volume lives on a host filesystem node-exporter reports. Two rows wait for their source: the backup alert for the backup service ([0017](0017-nfs-backup-storage.md)), and failed break-glass logins for that account ([0008](0008-authentication-saml2-ldap.md)). The uptime check adds two rules: the public endpoint failing for 2 minutes, and its certificate expiring within 14 days.
+
 Valkey memory is shown on a dashboard without an alert. The job volume in scope is small; the dashboard shows whether the host needs more memory ([0010](0010-sessions-postgres-ratelimits-valkey.md)).
 
 The backup alert's 26-hour window assumes the default daily schedule. The backup schedule is a runtime setting while alert rules are code, so changing the schedule means changing this rule too.
 
 ### Uptime check
 
-Uptime Kuma checks `GET /api/ping` over the public host name and the TLS certificate's expiry, and notifies by email. **It is in the stack for now so the check exists from the start, but it must move to a different machine for production**: running on the monitored host, it goes silent exactly when the host fails, which is the one failure it exists to report.
+`blackbox_exporter` fetches `GET /api/ping` over the public host name, expects its constant body over a certificate the CA root verifies, and reports the certificate's expiry; Prometheus scrapes it and Grafana alerts by email like every other rule. The probed URLs are deployment configuration (`containers/prometheus/targets/uptime.yml`). Uptime Kuma was the original choice, but its checks live in its own database and cannot be provisioned from files, against the rule above. **It is in the stack for now so the check exists from the start, but it must move to a different machine for production**: running on the monitored host, it goes silent exactly when the host fails, which is the one failure it exists to report. On that machine it needs a Prometheus of its own, or it must be scraped from there.
 
 ### Mail in every environment
 
-Locally and in CI the `mail` container (Mailpit) captures alert email, so the delivery path — rule fires, notification renders, SMTP send succeeds — is testable without sending real mail. An alert that has never been seen to arrive is not an alert.
+Locally and in CI the `mail` container (Mailpit) captures alert email, so the delivery path — rule fires, notification renders, SMTP send succeeds — is testable without sending real mail. An alert that has never been seen to arrive is not an alert. `scripts/stack.sh alerts`, part of the CI gate, proves it end to end: it makes the worker log errors, and waits for Grafana's mail about them — through Alloy, Loki, the rule, and SMTP — to arrive in Mailpit.
 
 ### Retention and budget
 
-Observability data is retained **14 days**, matching the log retention in [0013](0013-gdpr-export-and-retention.md). Prometheus, Loki and Grafana each get a bounded persistent volume with hard CPU and memory limits, so monitoring cannot starve the application on a shared host.
+Observability data is retained **14 days**, matching the log retention in [0013](0013-gdpr-export-and-retention.md). Prometheus, Loki and Grafana each get a bounded persistent volume with hard CPU and memory limits, so monitoring cannot starve the application on a shared host: one CPU each, 1 GB for Prometheus and Loki, 512 MB for Grafana, to be revisited with the production host.
+
+Dashboards are provisioned from `containers/grafana/dashboards/`; the first, "Application overview", covers the public endpoint, the API, jobs, the data tier, the host and the application's error lines.
 
 Distributed tracing is deferred. Request correlation uses `request_id` ([0021](0021-structured-logging.md)); its format should be compatible with W3C `traceparent` so adopting tracing later does not break correlation.
 
