@@ -10,8 +10,10 @@ import type { Logger } from 'pino'
 
 const INTERNAL = 'Internal error'
 
+// 503 is expected too: a dependency is down and the client should retry
+// (the fail-closed rate limiter, ADR 0010).
 const isExpected = (error: unknown): boolean =>
-  error instanceof FeathersError && error.code >= 400 && error.code < 500
+  error instanceof FeathersError && ((error.code >= 400 && error.code < 500) || error.code === 503)
 
 // For service calls, whatever the transport (REST and WebSocket alike).
 export const sanitizeServiceErrors =

@@ -1,0 +1,17 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Container]
+ContainerName=valkey
+Exec=valkey-server /etc/valkey/valkey.conf
+HealthCmd=REDISCLI_AUTH="$$(cat /run/secrets/password)" valkey-cli --tls --cacert /trust/ca.crt -h valkey ping | grep -q PONG
+HealthInterval=5s
+HealthRetries=10
+HealthTimeout=3s
+Image=docker.io/valkey/valkey@sha256:3b83b0b6a598bb390c8186a408a69949772f439548a81c5ea0ab7ccf102c248d
+Network=app-data.network
+Volume=../../containers/valkey/valkey.conf:/etc/valkey/valkey.conf:ro,Z
+Volume=valkey-data:/data
+Volume=valkey-secrets.volume:/run/secrets:ro
+Volume=tls-valkey:/tls:ro
+Volume=trust:/trust:ro

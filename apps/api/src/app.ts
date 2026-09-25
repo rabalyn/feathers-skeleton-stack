@@ -3,12 +3,15 @@ import { koa, rest, bodyParser, errorHandler, type Application as KoaApplication
 import socketio from '@feathersjs/socketio'
 import type { Logger } from 'pino'
 import type { Knex } from 'knex'
+import type { Redis } from 'ioredis'
 import type { ApiConfig } from './config.js'
 import { authentication, samlRoutes } from './auth/authentication.js'
 import type { ServiceProvider } from './auth/saml.js'
 import type { SessionStore } from './auth/sessions.js'
+import { TrustedProxy } from './client-ip.js'
 import { defaultDeny } from './hooks/default-deny.js'
 import { sanitizeHttpErrors, sanitizeServiceErrors } from './hooks/errors.js'
+import { RateLimiter } from './rate-limit.js'
 import { services } from './services/index.js'
 import { SettingsStore } from './settings/store.js'
 
@@ -25,21 +28,34 @@ export interface AppSettings {
   sessions: SessionStore
   serviceProvider: ServiceProvider
   settings: SettingsStore
+  valkey: Redis
+  rateLimiter: RateLimiter
 }
 
 export interface AppOptions {
   // How long runtime settings are cached in process (ADR 0025).
   settingsTtlMs?: number
+  // Namespace of rate-limit keys in Valkey.
+  rateLimitPrefix?: string
 }
 
 export type Application = KoaApplication<ServiceTypes, AppSettings>
 
-export const createApp = (config: ApiConfig, logger: Logger, knex: Knex, options: AppOptions = {}): Application => {
+export const createApp = (
+  config: ApiConfig,
+  logger: Logger,
+  knex: Knex,
+  valkey: Redis,
+  options: AppOptions = {}
+): Application => {
   const app: Application = koa(feathers())
   app.set('config', config)
   app.set('logger', logger)
   app.set('knex', knex)
   app.set('settings', new SettingsStore(knex, options.settingsTtlMs))
+  app.set('valkey', valkey)
+  app.set('rateLimiter', new RateLimiter(valkey, app.get('settings'), options.rateLimitPrefix))
+  const proxy = new TrustedProxy(config.trustedProxyHost)
 
   app.use(errorHandler())
   app.use(sanitizeHttpErrors(() => app.get('logger')))
@@ -65,6 +81,15 @@ export const createApp = (config: ApiConfig, logger: Logger, knex: Knex, options
     return next()
   })
 
+  // The client address, for rate limits and security events (ADR 0010,
+  // 0021). Service calls over REST receive it as params.clientIp.
+  app.use(async (ctx, next) => {
+    const clientIp = await proxy.clientIp(ctx.req.socket.remoteAddress, ctx.req.headers['x-forwarded-for'])
+    ctx.state.clientIp = clientIp
+    ctx.feathers = { ...ctx.feathers, clientIp }
+    return next()
+  })
+
   app.use(bodyParser())
   // SAML needs real HTTP routes the IdP redirects browsers to (ADR 0006).
   samlRoutes(app)
@@ -81,6 +106,7 @@ export const createApp = (config: ApiConfig, logger: Logger, knex: Knex, options
       async (_context: HookContext<Application>, next: NextFunction) => {
         await next()
         await knex.destroy()
+        valkey.disconnect()
       }
     ]
   })

@@ -29,6 +29,9 @@ Every operational policy the application or its own services enforce is a runtim
 | Storage quota total | `totalQuotaBytes` | 5 GB | API |
 | Backup schedule | `backupSchedule` | Daily, as the cron expression `0 3 * * *` | Backup service ([0017](0017-nfs-backup-storage.md)) |
 | Backup retention | `backupRetentionDailySnapshots` | 31 daily snapshots | Backup service |
+| Rate limit, SAML login start | `rateLimitSamlLoginPerMinute` | 60 per client IP and minute | API ([0010](0010-sessions-postgres-ratelimits-valkey.md)) |
+| Rate limit, SAML ACS | `rateLimitSamlAcsPerMinute` | 60 per client IP and minute | API |
+| Rate limit, refresh | `rateLimitRefreshPerMinute` | 600 per client IP and minute | API |
 | Feature flags | `featureFlags` | None (an empty map of name to boolean) | API |
 | Maintenance mode | `maintenanceMode` | Off | API |
 

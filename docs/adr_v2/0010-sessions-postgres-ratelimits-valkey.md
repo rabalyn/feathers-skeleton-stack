@@ -39,11 +39,15 @@ A JWT that is only checked by signature stays valid until it expires, so logout,
 ### Valkey holds rate-limit state and job queues
 
 - Rate limits cover login attempts, superadmin password attempts and SAML ACS abuse. Password logins are keyed by **account identifier and client IP together** rather than either alone, so a third party cannot lock out a known account by failing its logins. The SAML ACS is keyed by **client IP only**, because no account is known before the assertion has been validated.
+- Limited today, each per client IP: the SAML login start (every call stores an authentication request), the ACS, and refresh. Each is a fixed one-minute window whose limit is a runtime setting ([0025](0025-runtime-settings.md)), so an admin can tighten it during an incident. Over the limit the answer is **429**, with `Retry-After` on the SAML routes. The break-glass password login gets its account-and-IP limit when it is built.
+- The limits are generous by default (60, 60 and 600 per minute) because a university network puts many people behind few addresses. They start as guesses and are tuned after observing normal traffic.
 - Valkey also holds the BullMQ job queues ([0024](0024-background-jobs-bullmq.md)). One instance serves both.
 - Valkey **persists to disk** (AOF, plus periodic RDB snapshots). The RDB snapshot is included in the restic backup ([0017](0017-nfs-backup-storage.md)).
-- If Valkey is unreachable, affected authentication attempts are **rejected** (fail closed).
+- If Valkey is unreachable, affected authentication attempts are **rejected** (fail closed) with **503**, which the client treats as a transient error rather than a logout ([0014](0014-frontend-quasar-vue.md)). The API never queues commands while disconnected, so a refusal is immediate rather than a hung request, and it keeps running and reconnecting.
+- Valkey listens on **TLS only**, with a certificate from the same CA as the database hops, and clients verify it ([0004](0004-pgbouncer-pools.md)); it requires a password delivered from OpenBao ([0023](0023-secrets-management.md)). Rate-limit keys contain client addresses, and queued jobs will carry more.
+- Its memory is capped (256 MB to start) so that it fails writes, and thereby refuses attempts, rather than exhausting the host.
 - `maxmemory-policy noeviction`. An evicting policy would silently drop limiter keys and queued jobs. BullMQ requires this setting as well.
-- The client IP is taken from the proxy headers set by Nginx and trusted only from the proxy's address ([0016](0016-nginx-and-tls-everywhere.md)). Without that, every request appears to come from one address and an IP limit locks out everyone at once.
+- The client IP is taken from the proxy headers set by Nginx and trusted only from the proxy's address ([0016](0016-nginx-and-tls-everywhere.md)). Without that, every request appears to come from one address and an IP limit locks out everyone at once. The API recognises the proxy by resolving its container name (`TRUSTED_PROXY_HOST`, cached briefly), since container addresses are assigned dynamically; a connection from anywhere else is keyed by its own address whatever headers it sends.
 
 Sessions stay in PostgreSQL rather than Valkey because they must be SQL-queryable for the account screen and the GDPR export, and because the per-request check belongs next to the user record it compares against.
 

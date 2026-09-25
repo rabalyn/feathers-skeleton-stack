@@ -10,6 +10,7 @@ import {
 import type { HookContext, Params } from '@feathersjs/feathers'
 import type { Application } from '../app.js'
 import { recordAudit } from '../audit.js'
+import { RateLimitUnavailable, TooManyRequests, type RateLimitBucket } from '../rate-limit.js'
 import { SamlRejected, ServiceProvider } from './saml.js'
 import { SessionStore, isActive, type AuthSession } from './sessions.js'
 
@@ -50,6 +51,21 @@ export const clearedRefreshCookie = (): string =>
 
 const sessions = (app: Application): SessionStore => app.get('sessions')
 
+// Counts an attempt against its fail-closed limit (ADR 0010). A refusal is a
+// security event and names the client address (ADR 0021).
+const limit = async (app: Application, bucket: RateLimitBucket, clientIp: string | undefined) => {
+  try {
+    await app.get('rateLimiter').hit(bucket, clientIp ?? 'unknown')
+  } catch (error) {
+    if (error instanceof TooManyRequests) {
+      app.get('logger').warn({ bucket, client_ip: clientIp }, 'rate limit exceeded')
+    } else if (error instanceof RateLimitUnavailable) {
+      app.get('logger').error({ bucket, client_ip: clientIp }, 'rate limit unavailable: attempt refused')
+    }
+    throw error
+  }
+}
+
 // Refresh and logout carry a cookie, so they additionally require the
 // request to come from the application's own origin (ADR 0018).
 const assertSameOrigin = (app: Application, params: Params) => {
@@ -85,6 +101,7 @@ class RefreshStrategy extends AuthenticationBaseStrategy {
 
   async authenticate(_authentication: AuthenticationRequest, params: AuthenticationParams) {
     assertSameOrigin(this.app, params)
+    await limit(this.app, 'refresh', params.clientIp)
     const token = readCookie(params.headers?.cookie, REFRESH_COOKIE)
     const outcome = token ? await sessions(this.app).refresh(token) : ({ status: 'rejected' } as const)
     if (outcome.status === 'reuse') {
@@ -207,11 +224,13 @@ export const samlRoutes = (app: Application) => {
           return
 
         case 'GET /auth/saml/login':
+          await limit(app, 'samlLogin', ctx.state.clientIp)
           ctx.status = 302
           ctx.redirect(await sp().loginUrl(ctx.query.returnTo))
           return
 
         case 'POST /auth/saml/acs': {
+          await limit(app, 'samlAcs', ctx.state.clientIp)
           const identity = await sp().consume(ctx.request.body as Record<string, string>)
           const users = app.get('knex')('users')
           // Just-in-time provisioning keyed by TU-ID; directory fields are
@@ -273,6 +292,17 @@ export const samlRoutes = (app: Application) => {
         }
       }
     } catch (error) {
+      if (error instanceof TooManyRequests) {
+        ctx.status = 429
+        ctx.set('Retry-After', String((error.data as { retryAfterSeconds: number }).retryAfterSeconds))
+        ctx.body = 'Too many requests'
+        return
+      }
+      if (error instanceof RateLimitUnavailable) {
+        ctx.status = 503
+        ctx.body = 'Service unavailable'
+        return
+      }
       if (error instanceof SamlRejected) {
         // Generic answer to the client, the reason only in the log (ADR 0018).
         logger().warn({ route, reason: error.message }, 'SAML rejected')

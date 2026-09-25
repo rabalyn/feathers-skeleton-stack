@@ -65,6 +65,14 @@ const fields = {
     env: 'BODY_SIZE_CEILING_BYTES',
     integer: true
   },
+  // Valkey (ADR 0010), over TLS verified against the CA root like the
+  // database hops (ADR 0004).
+  valkeyHost: { schema: Type.String({ minLength: 1 }), env: 'VALKEY_HOST' },
+  valkeyPort: { schema: port, env: 'VALKEY_PORT', integer: true, default: '6379' },
+  valkeyPassword: { schema: Type.String({ minLength: 16 }), env: 'VALKEY_PASSWORD', secret: true },
+  valkeyCaFile: { schema: Type.String({ minLength: 1 }), env: 'VALKEY_CA_FILE' },
+  // X-Forwarded-For is believed only from this host's addresses (ADR 0016).
+  trustedProxyHost: { schema: Type.String({ minLength: 1 }), env: 'TRUSTED_PROXY_HOST' },
   databasePoolMax: {
     schema: Type.Integer({ minimum: 1, maximum: 50 }),
     env: 'DATABASE_POOL_MAX',
@@ -96,6 +104,8 @@ export const SAML_KEYS = [
   'samlIdpSloUrl'
 ] as const satisfies readonly ConfigKey[]
 
+export const VALKEY_KEYS = ['valkeyHost', 'valkeyPort', 'valkeyPassword', 'valkeyCaFile'] as const satisfies readonly ConfigKey[]
+
 export const API_KEYS = [
   'publicOrigin',
   'authSigningSecret',
@@ -105,6 +115,8 @@ export const API_KEYS = [
   'internalPort',
   'logLevel',
   'bodySizeCeilingBytes',
+  'trustedProxyHost',
+  ...VALKEY_KEYS,
   ...DATABASE_KEYS
 ] as const satisfies readonly ConfigKey[]
 
@@ -170,3 +182,4 @@ export const loadConfig = async <K extends ConfigKey>(
 
 export type ApiConfig = Pick<Config, (typeof API_KEYS)[number]>
 export type DatabaseConfig = Pick<Config, (typeof DATABASE_KEYS)[number]>
+export type ValkeyConfig = Pick<Config, (typeof VALKEY_KEYS)[number]>

@@ -54,3 +54,9 @@ template {
   destination = "/run/secrets/saml_idp_cert"
   perms       = "0440"
 }
+
+template {
+  contents    = "{{ with secret \"kv/data/api\" }}{{ .Data.data.valkey_password }}{{ end }}"
+  destination = "/run/secrets/valkey_password"
+  perms       = "0440"
+}

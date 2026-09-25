@@ -10,5 +10,7 @@ declare module '@feathersjs/feathers' {
     // Set by authentication for external calls; absent for internal ones.
     user?: User
     ability?: AppAbility
+    // The client address as established from the proxy headers (ADR 0010).
+    clientIp?: string
   }
 }

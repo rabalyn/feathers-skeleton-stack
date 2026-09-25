@@ -32,6 +32,12 @@ export const SETTINGS = {
   // Five-field cron expression, interpreted by the backup service.
   backupSchedule: define(Type.String({ pattern: '^\\S+( \\S+){4}$', maxLength: 128 }), '0 3 * * *'),
   backupRetentionDailySnapshots: define(Type.Integer({ minimum: 1, maximum: 3650 }), 31),
+  // Fail-closed rate limits (ADR 0010), attempts per client IP and minute.
+  // Generous, because a university network puts many people behind few
+  // addresses; tightened by an admin during an incident.
+  rateLimitSamlLoginPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 60),
+  rateLimitSamlAcsPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 60),
+  rateLimitRefreshPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 600),
   featureFlags: define(Type.Record(Type.String({ pattern: '^[a-zA-Z][a-zA-Z0-9]*$' }), Type.Boolean()), {}),
   maintenanceMode: define(Type.Boolean(), false)
 }
@@ -52,6 +58,9 @@ export const API_SETTINGS = [
   'maxUploadBytes',
   'userQuotaBytes',
   'totalQuotaBytes',
+  'rateLimitSamlLoginPerMinute',
+  'rateLimitSamlAcsPerMinute',
+  'rateLimitRefreshPerMinute',
   'featureFlags',
   'maintenanceMode'
 ] as const satisfies readonly SettingKey[]

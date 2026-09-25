@@ -29,6 +29,7 @@
     "@node-saml/node-saml": "5.1.0",
     "@xmldom/xmldom": "0.8.10",
     "feathers-casl": "3.0.0",
+    "ioredis": "6.0.0",
     "knex": "3.3.0",
     "pg": "8.23.0",
     "pino": "10.3.1",

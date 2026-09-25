@@ -10,6 +10,7 @@
 #   /tls/postgres       PostgreSQL leaf (ADR 0004)
 #   /tls/pgbouncer      PgBouncer leaf (ADR 0004)
 #   /tls/ldap           OpenLDAP leaf, local test directory (ADR 0008)
+#   /tls/valkey         Valkey leaf (ADR 0010)
 #
 # Each leaf is owned by the uid:gid of the process that reads its key.
 #
@@ -24,6 +25,7 @@ OPENBAO_OWNER="${OPENBAO_OWNER:-100:1000}"
 POSTGRES_OWNER="${POSTGRES_OWNER:-70:70}"
 PGBOUNCER_OWNER="${PGBOUNCER_OWNER:-101:101}"
 LDAP_OWNER="${LDAP_OWNER:-100:101}"
+VALKEY_OWNER="${VALKEY_OWNER:-999:1000}"
 
 umask 077
 
@@ -84,4 +86,5 @@ issue /tls/openbao "openbao,127.0.0.1" "$OPENBAO_OWNER"
 issue /tls/postgres "postgres" "$POSTGRES_OWNER"
 issue /tls/pgbouncer "pgbouncer" "$PGBOUNCER_OWNER"
 issue /tls/ldap "ldap" "$LDAP_OWNER"
+issue /tls/valkey "valkey" "$VALKEY_OWNER"
 echo "certs: done"

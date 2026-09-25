@@ -24,3 +24,9 @@ template {
   destination = "/run/secrets/database_password"
   perms       = "0440"
 }
+
+template {
+  contents    = "{{ with secret \"kv/data/test\" }}{{ .Data.data.valkey_password }}{{ end }}"
+  destination = "/run/secrets/valkey_password"
+  perms       = "0440"
+}

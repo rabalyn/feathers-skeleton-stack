@@ -34,6 +34,7 @@ services:
       - tls-postgres:/tls/postgres
       - tls-pgbouncer:/tls/pgbouncer
       - tls-ldap:/tls/ldap
+      - tls-valkey:/tls/valkey
 
   nginx:
     build:
@@ -94,6 +95,11 @@ services:
       DATABASE_CA_FILE: /trust/ca.crt
       # Nginx's NGINX_BODY_SIZE_LIMIT (10m) in bytes.
       BODY_SIZE_CEILING_BYTES: "10485760"
+      VALKEY_HOST: valkey
+      VALKEY_PASSWORD_FILE: /run/secrets/valkey_password
+      VALKEY_CA_FILE: /trust/ca.crt
+      # X-Forwarded-For is believed only from this container (ADR 0016).
+      TRUSTED_PROXY_HOST: nginx
     networks: [edge, app-data, identity]
     volumes:
       - api-secrets:/run/secrets:ro
@@ -177,6 +183,26 @@ services:
       - tls-pgbouncer:/tls:ro
       - trust:/trust:ro
 
+  valkey:
+    image: docker.io/valkey/valkey@sha256:3b83b0b6a598bb390c8186a408a69949772f439548a81c5ea0ab7ccf102c248d # 9.1.2-alpine
+    container_name: valkey
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+    command: ["valkey-server", "/etc/valkey/valkey.conf"]
+    networks: [app-data]
+    volumes:
+      - ./containers/valkey/valkey.conf:/etc/valkey/valkey.conf:ro,Z
+      - valkey-data:/data
+      - valkey-secrets:/run/secrets:ro
+      - tls-valkey:/tls:ro
+      - trust:/trust:ro
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/secrets/password)\" valkey-cli --tls --cacert /trust/ca.crt -h valkey ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   test:
     build:
       context: .
@@ -193,6 +219,9 @@ services:
       DATABASE_PASSWORD_FILE: /run/secrets/database_password
       DATABASE_CA_FILE: /trust/ca.crt
       DATABASE_POOL_MAX: "2"
+      VALKEY_HOST: valkey
+      VALKEY_PASSWORD_FILE: /run/secrets/valkey_password
+      VALKEY_CA_FILE: /trust/ca.crt
     networks: [app-data]
     volumes:
       - test-secrets:/run/secrets:ro
@@ -282,6 +311,13 @@ services:
       # Chromium resolves *.localhost to loopback; map the public names to
       # nginx instead (ADR 0015).
       E2E_HOST_RESOLVER_RULES: MAP app.localhost nginx, MAP idp.localhost nginx
+    # The container networks are IPv4 only. Link-local IPv6 addresses still
+    # appear, and settle, just after start; Chromium reports that as a
+    # network change and aborts the request in flight (ERR_NETWORK_CHANGED),
+    # which failed the first test of a run intermittently.
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
     networks: [edge, idp-edge]
     volumes:
       - trust:/trust:ro
@@ -407,6 +443,26 @@ services:
       - test-secrets:/run/secrets
       - test-agent-cred:/run/agent
 
+  valkey-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: valkey-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:1000"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/valkey.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/valkey.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - valkey-secrets:/run/secrets
+      - valkey-agent-cred:/run/agent
+
   ldap-agent:
     image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
     container_name: ldap-agent
@@ -466,10 +522,12 @@ volumes:
   tls-postgres: {}
   tls-pgbouncer: {}
   tls-ldap: {}
+  tls-valkey: {}
   openbao-data: {}
   postgres-data: {}
   ldap-data: {}
   idp-data: {}
+  valkey-data: {}
   # Secret delivery (ADR 0023): tmpfs only. <service>-secrets is shared with
   # the service; <service>-agent-cred holds the agent's secret_id and is seen
   # by the agent alone.
@@ -509,6 +567,12 @@ volumes:
   ldap-agent-cred:
     driver: local
     driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=101,mode=0700" }
+  valkey-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1000,mode=0750" }
+  valkey-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1000,mode=0700" }
   idp-secrets:
     driver: local
     driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=0,mode=0750" }
