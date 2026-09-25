@@ -3,8 +3,7 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
-  # Expanded from the container's environment
-  # (--enable-feature=expand-external-labels).
+  # Expanded from the container's environment (always, since Prometheus 3).
   external_labels:
     environment: ${ENVIRONMENT}
 

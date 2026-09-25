@@ -686,7 +686,6 @@ services:
       - --web.config.file=/etc/observability/web-config.yml
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=14d
-      - --enable-feature=expand-external-labels
     environment:
       ENVIRONMENT: local
     mem_limit: 1g
