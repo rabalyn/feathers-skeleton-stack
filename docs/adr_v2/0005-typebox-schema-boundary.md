@@ -17,6 +17,8 @@ Requests arrive over REST and over WebSocket. Both must be validated identically
 - TypeScript types are derived with `Static<>`. There is no code generation step.
 - `additionalProperties: false` is the default on every data and patch schema. Unknown fields are rejected rather than ignored, which is the mass-assignment defence.
 - Query schemas declare their operators explicitly and enable coercion for REST query strings, so `?limit=10` validates as a number.
+- Field names are **camelCase** at the API boundary — schemas, payloads, the typed client — and **snake_case** in PostgreSQL. The conversion happens in exactly one place, the Knex instance (`wrapIdentifier` / `postProcessResponse`), so services and schemas never see snake_case. Raw SQL written in a service uses the database names.
+- Every `find` is **paginated**: 25 items by default, at most 100 per request. A service may lower these; none may disable pagination, so no request can read a whole table.
 - Four resolver kinds are used with a fixed division of labour:
   - **data resolvers** set server-controlled fields (timestamps, owner id) and must never take those values from the request,
   - **query resolvers** apply mandatory scoping the client cannot remove,

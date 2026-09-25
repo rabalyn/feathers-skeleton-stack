@@ -51,6 +51,7 @@ The dividing line for `operator` is deliberate and worth stating plainly: an ope
   - the `/api/authentication` endpoint for refresh, logout and the break-glass password login.
 - Health, readiness and metrics are not on the public port at all ([0022](0022-observability-and-alerting.md)), so they need no allowlist entry.
 - For `find` and `get`, CASL conditions are translated into Knex query conditions, so a `user` role query is scoped to owned rows by the authorization layer rather than by each service remembering to filter.
+- A read the caller is not permitted is answered exactly like a read of a record that does not exist — **404** — so a response never confirms that a record exists. A denied write on a record the caller may read is a **403**. Lists are scoped silently, as above.
 - Field-level restrictions are enforced by the external resolver ([0005](0005-typebox-schema-boundary.md)), so a permitted read cannot leak a forbidden field.
 - Because sessions are validated per request ([0010](0010-sessions-postgres-ratelimits-valkey.md)), a role change applies on the user's very next request. No token lifetime delay.
 - The frontend imports the same ability definitions through the client export ([0007](0007-typed-client-from-api.md)) to hide actions the user may not take. This is presentation only; the server remains the only enforcement point.
