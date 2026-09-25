@@ -419,6 +419,10 @@ services:
       # Chromium resolves *.localhost to loopback; map the public names to
       # nginx instead (ADR 0015).
       E2E_HOST_RESOLVER_RULES: MAP app.localhost nginx, MAP idp.localhost nginx
+      # The local break-glass account (ADR 0008), handed over by
+      # `stack.sh e2e` from OpenBao; a local test value, never a real one.
+      E2E_BREAKGLASS_EMAIL: breakglass@app.localhost
+      E2E_BREAKGLASS_PASSWORD: ${E2E_BREAKGLASS_PASSWORD:-}
     # The container networks are IPv4 only. Link-local IPv6 addresses still
     # appear, and settle, just after start; Chromium reports that as a
     # network change and aborts the request in flight (ERR_NETWORK_CHANGED),

@@ -32,6 +32,7 @@ Every operational policy the application or its own services enforce is a runtim
 | Rate limit, SAML login start | `rateLimitSamlLoginPerMinute` | 60 per client IP and minute | API ([0010](0010-sessions-postgres-ratelimits-valkey.md)) |
 | Rate limit, SAML ACS | `rateLimitSamlAcsPerMinute` | 60 per client IP and minute | API |
 | Rate limit, refresh | `rateLimitRefreshPerMinute` | 600 per client IP and minute | API |
+| Rate limit, break-glass password login | `rateLimitPasswordLoginPerMinute` | 5 per account, client IP and minute | API ([0008](0008-authentication-saml2-ldap.md)) |
 | Feature flags | `featureFlags` | None (an empty map of name to boolean) | API |
 | Maintenance mode | `maintenanceMode` | Off | API |
 

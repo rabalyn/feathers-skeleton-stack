@@ -51,10 +51,17 @@ The API never uses LDAP to authenticate a user. Login is SAML2 only.
 
 One local account, authenticated by email and password, exists so the system is administrable when SAML2 is unavailable or before any user has logged in.
 
-- Password hashed with **argon2id**.
-- Created only by the one-time bootstrap command, never automatically at startup.
+- Password hashed with **argon2id** (Node's built-in implementation; 64 MiB, three passes, four lanes, RFC 9106's second recommended option), stored as a PHC string in `local_credentials`, a table of its own that nothing reading `users` touches. A unique index allows at most one local account.
+- Created only by the bootstrap command, never automatically at startup. The command runs inside the api container with the api's own configuration and database login, so it needs no credentials of its own:
+  - `podman exec api node dist/bootstrap.js --email <address>` creates the account. It refuses when a local account exists or the address belongs to another account.
+  - `podman exec api node dist/bootstrap.js --rotate` gives the existing account a new password and revokes all of its sessions. It is the recovery path for a lost or leaked password.
+  - The password is **generated** (192 random bits) and printed to stdout **once**, for the administrator to store in KeePass next to the OpenBao unseal shares. It is never an argument, an environment variable or a log line, and it is deliberately not kept in OpenBao: the account must work when OpenBao does not. Creation and rotation are audit events without an actor.
+  - Runtime settings are not the bootstrap's concern: `migrate` seeds them ([0025](0025-runtime-settings.md)).
 - Holds the `admin` role ([0011](0011-casl-role-authorization.md)).
-- Subject to the same rate limits as every other login, and every authentication attempt against it — successful or not — is recorded as an audit event.
+- Logs in with the `password` strategy of `/api/authentication` (email and password), over REST only and from the application's own origin, like refresh. A successful login opens a session exactly as the ACS does ([0010](0010-sessions-postgres-ratelimits-valkey.md)). Wrong password, unknown address and disabled account get the same 401; an unknown address is verified against a decoy hash, so it takes as long.
+- Subject to the same rate limits as every other login, and every authentication attempt against it — successful or not — is recorded as an audit event. Every attempt is also logged at `warn`, and repeated failures alert ([0022](0022-observability-and-alerting.md)).
+- The UI offers the login on a route of its own, `/break-glass`, which the normal login page does not link to ([0014](0014-frontend-quasar-vue.md)).
+- Locally and in CI, `scripts/stack.sh up` runs the same bootstrap command for `breakglass@app.localhost` and keeps that password in OpenBao, for the end-to-end test only.
 - This is the only password the application stores.
 
 ### Assertion validation
@@ -97,4 +104,5 @@ SP-initiated logout is supported. IdP-initiated single logout is out of scope in
 - Keycloak is a heavy container (slowest service to become healthy in the stack), which lengthens cold CI startup.
 - The realm import file and LDAP seed are test fixtures that must be kept in step with the attribute mapping as it changes. The seeded test users' passwords are the only credentials committed to the repository; Keycloak's admin password and LDAP bind credential are generated at setup and delivered through OpenBao ([0023](0023-secrets-management.md)).
 - A break-glass password exists and is therefore a target; its audit trail and rate limiting are not optional.
+- `--rotate` revokes the account's sessions in the database, which ends access at the next request. An api process holding a WebSocket of that account closes it only on restart, because the command runs as a process of its own.
 - The API holds an LDAP service credential, delivered like every other secret ([0023](0023-secrets-management.md)).

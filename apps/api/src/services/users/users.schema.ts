@@ -35,8 +35,8 @@ export const userResolver = resolve<User, HookContext>({
   updatedAt: virtual(async (user) => toIso(user.updatedAt))
 })
 
-// The single place that redacts (ADR 0005). Users carry nothing secret yet;
-// password material for the break-glass account will be stripped here.
+// The single place that redacts (ADR 0005). Users carry nothing secret: the
+// break-glass password hash lives in local_credentials (ADR 0008).
 export const userExternalResolver = resolve<User, HookContext>({})
 
 // Created only by just-in-time provisioning on login (ADR 0008), never by an

@@ -13,14 +13,17 @@ import { recordAudit } from '../audit.js'
 import { endSessionConnections } from '../channels.js'
 import { AUTHENTICATION_URL } from '../paths.js'
 import type { User } from '../services/users/users.schema.js'
+import { decoyHash, MAX_PASSWORD_LENGTH, verifyPassword } from './password.js'
 import { RateLimitUnavailable, TooManyRequests, type RateLimitBucket } from '../rate-limit.js'
 import { SamlRejected, ServiceProvider } from './saml.js'
 import { SessionStore, isActive, type AuthSession } from './sessions.js'
 
-// Authentication (ADR 0008, 0010). Three strategies behind one Feathers
+// Authentication (ADR 0008, 0010). Four strategies behind one Feathers
 // authentication service at /api/authentication:
 //   jwt      the 15-minute access token; every use re-checks the session row
 //   refresh  the HttpOnly cookie; rotates it and issues a fresh access token
+//   password the break-glass account's email and password; opens a session
+//            like the ACS does
 //   (SAML)   the ACS route validates an assertion and opens the session; the
 //            browser then calls refresh, as on every page load (ADR 0014).
 
@@ -125,6 +128,67 @@ class RefreshStrategy extends AuthenticationBaseStrategy {
   }
 }
 
+// The break-glass login (ADR 0008). Over REST only, since it answers with
+// the refresh cookie, and from the application's own origin. Every attempt,
+// successful or not, is an audit event; the answer never says which part
+// was wrong.
+class PasswordStrategy extends AuthenticationBaseStrategy {
+  declare app: Application
+
+  async authenticate(authentication: AuthenticationRequest, params: AuthenticationParams) {
+    if (params.provider !== 'rest') throw new NotAuthenticated('Not authenticated')
+    assertSameOrigin(this.app, params)
+    const { email, password } = authentication as { email?: unknown; password?: unknown }
+    if (
+      typeof email !== 'string' ||
+      typeof password !== 'string' ||
+      email.length > 254 ||
+      password.length > MAX_PASSWORD_LENGTH
+    ) {
+      throw new NotAuthenticated('Invalid login')
+    }
+    await limit(this.app, 'passwordLogin', `${email.toLowerCase()}|${params.clientIp ?? 'unknown'}`)
+
+    const knex = this.app.get('knex')
+    const account = await knex('users')
+      .join('localCredentials', 'localCredentials.userId', 'users.id')
+      .where('users.authSource', 'local')
+      .whereRaw('lower(users.email) = lower(?)', [email])
+      .first<{ id: string; enabled: boolean; passwordHash: string } | undefined>('users.id', 'users.enabled', 'localCredentials.passwordHash')
+    const valid = await verifyPassword(password, account?.passwordHash ?? (await decoyHash()))
+
+    if (!account || !valid || !account.enabled) {
+      const reason = !account ? 'unknown account' : !valid ? 'wrong password' : 'account disabled'
+      this.app.get('logger').warn({ user_ref: account?.id, client_ip: params.clientIp, reason }, 'break-glass login refused')
+      await recordAudit(knex, {
+        actorId: account?.id ?? null,
+        action: 'login.refused',
+        resourceType: 'users',
+        resourceId: account?.id ?? null,
+        detail: { method: 'password', reason }
+      })
+      throw new NotAuthenticated('Invalid login')
+    }
+
+    const { session, refreshToken } = await sessions(this.app).issue(account.id, {
+      userAgent: typeof params.headers?.['user-agent'] === 'string' ? params.headers['user-agent'] : undefined
+    })
+    this.app.get('logger').warn({ user_ref: account.id, client_ip: params.clientIp }, 'break-glass login')
+    await recordAudit(knex, {
+      actorId: account.id,
+      action: 'login',
+      resourceType: 'authSessions',
+      resourceId: session.id,
+      detail: { method: 'password' }
+    })
+    const user = await this.app.service('users').get(account.id)
+    return {
+      authentication: { strategy: 'password', sessionId: session.id, refreshToken, familyExpiresAt: session.familyExpiresAt },
+      user
+    }
+  }
+}
+
 class AppAuthenticationService extends AuthenticationService {
   declare app: Application
 
@@ -193,7 +257,7 @@ export const authentication = (app: Application) => {
     secret: authSigningSecret,
     entity: 'user',
     service: 'users',
-    authStrategies: ['jwt', 'refresh'],
+    authStrategies: ['jwt', 'refresh', 'password'],
     jwtOptions: {
       header: { typ: 'access' },
       audience: publicOrigin,
@@ -213,6 +277,7 @@ export const authentication = (app: Application) => {
   const service = new AppAuthenticationService(app)
   service.register('jwt', new SessionJwtStrategy())
   service.register('refresh', new RefreshStrategy())
+  service.register('password', new PasswordStrategy())
   app.use(AUTH_PATH, service, { methods: ['create', 'remove'] })
   app.service(AUTH_PATH).hooks({ after: { create: [setRotatedCookie], remove: [clearCookieOnLogout] } })
 }

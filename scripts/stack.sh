@@ -339,6 +339,28 @@ idp_setup() {
   log "api restarted with the IdP certificate"
 }
 
+# The local break-glass account (ADR 0008), made by the same bootstrap command
+# an administrator runs in production. Its password is kept in OpenBao for the
+# e2e suite only; an account without a stored password gets a new one.
+BREAKGLASS_EMAIL=breakglass@app.localhost
+ensure_breakglass() {
+  local count password
+  count=$(podman exec -u postgres postgres psql -tAq -d app -c "SELECT count(*) FROM users WHERE auth_source = 'local'")
+  wait_for_openbao
+  init_or_unseal
+  if [[ $count == 0 ]]; then
+    password=$(podman exec api node dist/bootstrap.js --email "$BREAKGLASS_EMAIL" 2>/dev/null) ||
+      die "bootstrap failed; see: podman exec api node dist/bootstrap.js --email $BREAKGLASS_EMAIL"
+    log "created the break-glass account $BREAKGLASS_EMAIL"
+  elif [[ -z $(kv_get e2e breakglass_password) ]]; then
+    password=$(podman exec api node dist/bootstrap.js --rotate 2>/dev/null) || die "bootstrap --rotate failed"
+    log "rotated the break-glass password"
+  fi
+  [[ -z ${password:-} ]] || printf '%s' "$password" | kv_set e2e breakglass_password
+  bao token revoke -self >/dev/null
+  TOKEN=
+}
+
 setup() {
   wait_for_openbao
   init_or_unseal
@@ -402,6 +424,7 @@ case $cmd in
     compose up -d --force-recreate --no-deps worker >/dev/null 2>&1
     wait_healthy worker 60
     idp_setup
+    ensure_breakglass
     ;;
   setup) setup ;;
   idp) idp_setup ;;
@@ -432,7 +455,13 @@ INSERT INTO users (tu_id, given_name, surname, role, enabled, auth_source) VALUE
   ('us02othr', 'Olaf', 'Other', 'user', true, 'saml')
 ON CONFLICT (tu_id) DO UPDATE SET role = excluded.role, enabled = excluded.enabled;
 SQL
-    compose --profile test run --rm -T e2e pnpm exec playwright test "$@"
+    wait_for_openbao
+    init_or_unseal
+    breakglass_password=$(kv_get e2e breakglass_password)
+    bao token revoke -self >/dev/null
+    TOKEN=
+    [[ -n $breakglass_password ]] || die "no local break-glass password; run '$0 up'"
+    E2E_BREAKGLASS_PASSWORD=$breakglass_password compose --profile test run --rm -T e2e pnpm exec playwright test "$@"
     ;;
   alerts)
     # Unknown jobs fail at once and log at `error`: Alloy ships the lines to

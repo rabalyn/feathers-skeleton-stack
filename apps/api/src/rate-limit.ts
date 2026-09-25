@@ -14,7 +14,10 @@ export const RATE_LIMITS = {
   samlLogin: 'rateLimitSamlLoginPerMinute',
   // POST /auth/saml/acs: keyed by IP, no account is known yet.
   samlAcs: 'rateLimitSamlAcsPerMinute',
-  refresh: 'rateLimitRefreshPerMinute'
+  refresh: 'rateLimitRefreshPerMinute',
+  // The break-glass password login: keyed by account and IP together, so a
+  // third party cannot lock the account out (ADR 0010).
+  passwordLogin: 'rateLimitPasswordLoginPerMinute'
 } as const satisfies Record<string, SettingKey>
 
 export type RateLimitBucket = keyof typeof RATE_LIMITS

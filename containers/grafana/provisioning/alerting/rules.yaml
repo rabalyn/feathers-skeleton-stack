@@ -84,6 +84,44 @@ groups:
       severity: critical
     annotations:
       summary: More than 20 rate-limit rejections in 10 minutes
+  - uid: breakglass-refused
+    title: Failed break-glass logins
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: loki
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(count_over_time({service="api"} |= "break-glass login refused" [10m]))
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+        queryType: instant
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 3
+    for: 0s
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: More than 3 refused break-glass logins in 10 minutes
   - uid: target-down
     title: Scrape target down
     condition: C

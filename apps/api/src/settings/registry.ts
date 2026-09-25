@@ -38,6 +38,8 @@ export const SETTINGS = {
   rateLimitSamlLoginPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 60),
   rateLimitSamlAcsPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 60),
   rateLimitRefreshPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 600),
+  // Per account and client IP; one person, so not generous.
+  rateLimitPasswordLoginPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 5),
   featureFlags: define(Type.Record(Type.String({ pattern: '^[a-zA-Z][a-zA-Z0-9]*$' }), Type.Boolean()), {}),
   maintenanceMode: define(Type.Boolean(), false)
 }
@@ -61,6 +63,7 @@ export const API_SETTINGS = [
   'rateLimitSamlLoginPerMinute',
   'rateLimitSamlAcsPerMinute',
   'rateLimitRefreshPerMinute',
+  'rateLimitPasswordLoginPerMinute',
   'featureFlags',
   'maintenanceMode'
 ] as const satisfies readonly SettingKey[]

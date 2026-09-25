@@ -9,6 +9,8 @@ import { currentRequest } from './request-context.js'
 // request bodies, credentials or assertion contents.
 
 export type AuditAction =
+  | 'breakglass.create'
+  | 'breakglass.rotate'
   | 'login'
   | 'login.refused'
   | 'logout'
