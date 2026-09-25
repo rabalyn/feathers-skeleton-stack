@@ -48,6 +48,11 @@ agents() {
   for f in "$OPENBAO_DIR"/agents/*.hcl; do basename "$f" .hcl; done
 }
 
+# Every agent exists locally; see openbao-lib.sh.
+AGENTS=$(agents | tr '\n' ' ')
+# shellcheck source=scripts/openbao-lib.sh
+source "$ROOT/scripts/openbao-lib.sh"
+
 # Agents of the always-on stack; test-profile agents start with `test`.
 TEST_AGENTS=" test "
 stack_agents() {
@@ -60,7 +65,6 @@ app_services() {
   compose config --services 2>/dev/null | grep -vxE 'certs|openbao|.*-agent'
 }
 
-running() { [[ $(podman container inspect -f '{{.State.Running}}' "$1" 2>/dev/null) == true ]]; }
 
 # --- local unseal material -------------------------------------------------
 
@@ -75,39 +79,6 @@ unseal_read() { # <file>
   podman run --rm --network none -v "$UNSEAL_VOLUME:/u:ro" "$HELPER_IMAGE" \
     sh -c "cat /u/$1 2>/dev/null || true"
 }
-
-# --- OpenBao access --------------------------------------------------------
-
-# Unauthenticated call inside the openbao container.
-bao_plain() { podman exec -i openbao bao "$@"; }
-
-# Authenticated call as <token>. The token travels on stdin's first line,
-# never in argv or the environment of a host process; the rest of stdin goes
-# to bao.
-bao_as() {
-  local token=$1; shift
-  { printf '%s\n' "$token"; cat; } | podman exec -i openbao \
-    sh -c 'IFS= read -r BAO_TOKEN; export BAO_TOKEN; exec bao "$@"' sh "$@"
-}
-
-# TOKEN is a root token for the duration of one run, revoked at its end.
-TOKEN=
-bao_auth() { bao_as "$TOKEN" "$@"; }
-bao() { bao_auth "$@" </dev/null; }
-
-wait_for_openbao() {
-  local i rc
-  for i in $(seq 60); do
-    rc=0; bao_plain status >/dev/null 2>&1 || rc=$?
-    # 0 = unsealed, 2 = sealed; both mean the listener answers.
-    [[ $rc == 0 || $rc == 2 ]] && return 0
-    sleep 1
-  done
-  die "OpenBao did not come up"
-}
-
-# `bao status` exits 2 while sealed; the JSON is what matters.
-status_field() { { bao_plain status -format=json 2>/dev/null || true; } | jq -r ".$1"; }
 
 init_or_unseal() {
   local key init admin
@@ -162,80 +133,7 @@ ensure_admin_token() {
     -field=token | unseal_store admin_token
 }
 
-# --- configuration (idempotent) --------------------------------------------
-
-configure() {
-  bao secrets list -format=json | jq -e '."kv/"' >/dev/null ||
-    bao secrets enable -path=kv kv-v2 >/dev/null
-  bao auth list -format=json | jq -e '."approle/"' >/dev/null ||
-    bao auth enable approle >/dev/null
-  bao_auth policy write admin - <"$OPENBAO_DIR/admin.hcl" >/dev/null
-
-  local svc
-  for svc in $(agents); do
-    [[ -f $OPENBAO_DIR/policies/$svc.hcl ]] || die "missing policy for $svc"
-    bao_auth policy write "$svc" - <"$OPENBAO_DIR/policies/$svc.hcl" >/dev/null
-    bao write "auth/approle/role/$svc" token_policies="$svc" \
-      token_ttl=1h token_max_ttl=24h secret_id_num_uses=0 secret_id_ttl=0 >/dev/null
-    bao write "auth/approle/role/$svc/role-id" role_id="$(cat "$OPENBAO_DIR/agents/$svc.role_id")" >/dev/null
-  done
-}
-
-generate() { # <generator>
-  case $1 in
-    random) head -c 36 /dev/urandom | base64 | tr '+/' '-_' ;;
-    *) die "unknown generator $1" ;;
-  esac
-}
-
-kv_get() { # <service> <key>
-  { bao kv get -format=json "kv/$1" 2>/dev/null || echo '{}'; } |
-    jq -r --arg k "$2" '.data.data[$k] // empty'
-}
-
-kv_set() { # <service> <key> ; value on stdin
-  if bao kv get "kv/$1" >/dev/null 2>&1; then
-    bao_auth kv patch "kv/$1" "$2=-" >/dev/null
-  else
-    bao_auth kv put "kv/$1" "$2=-" >/dev/null
-  fi
-}
-
-fill_secrets() {
-  local name gen targets target value svc key
-  while read -r name gen targets; do
-    [[ -z $name || $name == \#* ]] && continue
-    value=
-    for target in $targets; do
-      value=$(kv_get "${target%%:*}" "${target#*:}")
-      [[ -n $value ]] && break
-    done
-    [[ -n $value ]] || { log "generating $name"; value=$(generate "$gen"); }
-    for target in $targets; do
-      svc=${target%%:*} key=${target#*:}
-      [[ -n $(kv_get "$svc" "$key") ]] || printf '%s' "$value" | kv_set "$svc" "$key"
-    done
-  done <"$OPENBAO_DIR/secrets.conf"
-}
-
-# Destroy the previous secret_ids, issue a new one response-wrapped, and
-# unwrap it inside the agent container into the agent's own tmpfs.
-issue_secret_ids() {
-  local svc accessor wrap
-  for svc in $(agents); do
-    running "$svc-agent" || continue
-    for accessor in $({ bao list -format=json "auth/approle/role/$svc/secret-id" 2>/dev/null || echo '[]'; } | jq -r '.[]'); do
-      bao write "auth/approle/role/$svc/secret-id-accessor/destroy" secret_id_accessor="$accessor" >/dev/null
-    done
-    wrap=$(bao write -wrap-ttl=2m -field=wrapping_token -f "auth/approle/role/$svc/secret-id")
-    printf '%s\n' "$wrap" | podman exec -i "$svc-agent" sh -c '
-      set -e; umask 077
-      IFS= read -r BAO_TOKEN; export BAO_TOKEN
-      bao unwrap -field=secret_id > /run/agent/secret_id.new
-      mv /run/agent/secret_id.new /run/agent/secret_id'
-    log "issued secret_id for $svc-agent"
-  done
-}
+# --- agents ----------------------------------------------------------------
 
 wait_for_rendered() {
   local svc i
@@ -365,7 +263,7 @@ setup() {
   wait_for_openbao
   init_or_unseal
   configure
-  fill_secrets
+  fill_secrets local
   ensure_sp_keypair
   issue_secret_ids
   bao token revoke -self >/dev/null

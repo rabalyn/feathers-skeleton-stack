@@ -58,7 +58,6 @@ Covered in v1 but not carried forward, or deliberately deferred. Listed so nothi
 | Health and readiness endpoint contents | Placement is decided (internal port, [0022](0022-observability-and-alerting.md)); which dependencies readiness checks needs a short ADR before production |
 | Release procedure, rollback, image build and registry | Deferred. Needed before the first production deployment |
 | Production host, firewall | Deferred until a host exists. Must publish Nginx so that client source addresses survive, which rootless Podman's default port publishing does not ([0016](0016-nginx-and-tls-everywhere.md)) |
-| Production bootstrap command | Creates the break-glass account ([0008](0008-authentication-saml2-ldap.md)), seeds runtime settings ([0025](0025-runtime-settings.md)) and initialises OpenBao ([0023](0023-secrets-management.md)); not yet specified |
 | Off-site backup copy | Accepted risk for now ([0017](0017-nfs-backup-storage.md)) |
 | Distributed tracing | Deferred; `request_id` correlation is in place and should stay `traceparent`-compatible ([0021](0021-structured-logging.md)) |
 | Multi-host scale-out | Deferred, as in v1 |
@@ -86,7 +85,9 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 
 **Slice 4 — observability** ([0021](0021-structured-logging.md), [0022](0022-observability-and-alerting.md)): request ids and one line per request, rotated JSON log files, metrics from the API and the worker; Prometheus, Loki, Grafana Alloy (Promtail is end of life), Grafana with dashboards and alert rules as code, Mailpit, the exporters, and blackbox_exporter as the uptime check (Uptime Kuma cannot be provisioned from files); TLS on every observability hop; the alert delivery check in CI. The newest Grafana and four exporter images carry HIGH findings fixed upstream but not yet released; they are accepted in `.trivyignore.yaml` until 2026-10-25, before the first production release ([0018](0018-owasp-security-baseline.md)).
 
-**Later.** Object storage and uploads, backups, and the break-glass account with the bootstrap command. The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
+**Slice 5 — break-glass and bootstrap** ([0008](0008-authentication-saml2-ldap.md), [0023](0023-secrets-management.md)): the break-glass account with its argon2id password, the `password` login limited per account and client IP, its audit events and alert, and the unlinked `/break-glass` page; the bootstrap command in the api container that creates the account or rotates its password; and `scripts/openbao.sh`, the production OpenBao procedure (init with one key share, userpass administrators, generated internal values, `set` for external ones, unseal and re-issue), tested in CI against a throwaway OpenBao. Runtime settings stay seeded by `migrate` ([0025](0025-runtime-settings.md)). A first production start is: OpenBao `init`, the external values with `set`, `migrate`, then the bootstrap command.
+
+**Later.** Object storage and uploads, and backups. The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
 
 ## Status of this set
 

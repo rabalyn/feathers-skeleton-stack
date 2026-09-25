@@ -9,7 +9,7 @@
 #
 # Static: gitleaks over the whole history, ESLint, the client dependency
 # boundary, typecheck, unit tests that need no stack, pnpm audit, the Quadlet
-# drift check.
+# drift check, the production OpenBao procedure against a throwaway OpenBao.
 # Stack: up, Vitest, Playwright, the alert delivery check, then the
 # vulnerability scan of every image
 # compose.yaml names.
@@ -79,6 +79,7 @@ check "typecheck" in_ci_image pnpm typecheck
 check "unit tests" in_ci_image pnpm test:unit
 check "pnpm audit (high and above)" in_ci_image pnpm audit --audit-level=high
 check "Quadlet units match compose.yaml" "$ROOT/scripts/quadlet.sh" --check
+check "production OpenBao procedure" "$ROOT/scripts/openbao-test.sh"
 
 # --- stack ---------------------------------------------------------------
 
