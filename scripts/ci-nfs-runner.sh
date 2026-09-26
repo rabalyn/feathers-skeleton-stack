@@ -19,7 +19,7 @@ EXPORTS_FILE=/etc/exports.d/feathers-ci.exports
 # The backup container's user (containers/api/Containerfile).
 BACKUP_UID=1100
 
-log() { printf '\033[1mci-nfs:\033[0m %s\n' "$*" >&2; }
+log() { printf '\033[1mci-nfs:\033[0m %s %s\n' "$(date +%T)" "$*" >&2; }
 die() { log "$*"; exit 1; }
 
 [[ $EUID == 0 ]] || die "run with sudo"
@@ -51,15 +51,24 @@ host_id() { # <uid_map|gid_map> <container id>
     awk -v id="$2" '$1 <= id && id < $1 + $3 { print $2 + id - $1; exit }'
 }
 
+# Unmounts within a minute, or detaches the mount lazily: a hard NFS mount
+# can block an unmount for a long time.
+unmount() {
+  mountpoint -q "$MOUNT" || return 0
+  timeout 60 umount "$MOUNT" 2>/dev/null || { log "unmount timed out; detaching lazily"; umount -l "$MOUNT"; }
+}
+
 cleanup() {
   set +e
-  log "cleaning up"
-  # Off the mount before unmounting: back on the named volume.
-  (cd "$ROOT" && as_user podman-compose --profile local up -d --force-recreate --no-deps backup >/dev/null 2>&1)
-  umount "$MOUNT" 2>/dev/null || umount -l "$MOUNT"
+  log "cleanup: moving the backup container back to its named volume"
+  (cd "$ROOT" && as_user timeout 300 podman-compose --profile local up -d --force-recreate --no-deps backup >/dev/null 2>&1)
+  log "cleanup: unmounting $MOUNT"
+  unmount
+  log "cleanup: removing the export"
   rm -f "$EXPORTS_FILE"
   exportfs -ra
   rm -rf "$EXPORT" "$MOUNT"
+  log "cleanup: done"
 }
 
 log "installing and starting the NFS server"
@@ -67,6 +76,14 @@ install_server
 uid=$(host_id uid_map "$BACKUP_UID")
 gid=$(host_id gid_map "$BACKUP_UID")
 [[ -n $uid && -n $gid ]] || die "no subordinate ID for $BACKUP_UID; see /etc/subuid of $USER_NAME"
+
+# Every run starts on an empty export, as on a fresh runner: repositories an
+# interrupted run left behind may be half deleted.
+unmount
+if [[ -e $EXPORT ]]; then
+  log "removing the export an earlier run left behind"
+  rm -rf "$EXPORT"
+fi
 
 trap cleanup EXIT
 mkdir -p "$EXPORT" "$MOUNT"
