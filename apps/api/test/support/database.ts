@@ -11,8 +11,8 @@ export const WORKER_PREFIX = 'test_w'
 export const loadTestDatabaseConfig = () => loadConfig(DATABASE_KEYS)
 
 // The maintenance connection used to create and drop worker databases.
-export const maintenanceKnex = async (): Promise<Knex> =>
-  createKnex({ ...(await loadTestDatabaseConfig()), databaseName: 'postgres', databasePoolMax: 1 })
+export const maintenanceKnex = async (poolMax = 1): Promise<Knex> =>
+  createKnex({ ...(await loadTestDatabaseConfig()), databaseName: 'postgres', databasePoolMax: poolMax })
 
 export const workerDatabaseName = (): string => {
   const id = process.env.VITEST_POOL_ID ?? process.env.VITEST_WORKER_ID
