@@ -48,7 +48,7 @@
       "id": 2,
       "gridPos": {
         "h": 4,
-        "w": 6,
+        "w": 5,
         "x": 0,
         "y": 1
       }
@@ -75,8 +75,8 @@
       "id": 3,
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 6,
+        "w": 5,
+        "x": 5,
         "y": 1
       }
     },
@@ -102,8 +102,35 @@
       "id": 4,
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 12,
+        "w": 5,
+        "x": 10,
+        "y": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "API dependencies down",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(dependency_up{service=\"api\"} == 0) or vector(0)"
+        }
+      ],
+      "id": 24,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 15,
         "y": 1
       }
     },
@@ -129,8 +156,8 @@
       "id": 5,
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 18,
+        "w": 5,
+        "x": 19,
         "y": 1
       }
     },

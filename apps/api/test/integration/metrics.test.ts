@@ -46,17 +46,20 @@ describe('api metrics', () => {
     }
     expect(text).toMatch(/websocket_connections\{service="api"\} 0/)
     expect(text).toContain('process_cpu_seconds_total')
+    expect(text).toMatch(/dependency_up\{dependency="postgres",service="api"\} 1/)
+    expect(text).toMatch(/dependency_up\{dependency="valkey",service="api"\} 1/)
   })
 })
 
 describe('internal listener', () => {
-  it('serves liveness and metrics over TLS', async () => {
+  it('serves liveness, readiness and metrics over TLS', async () => {
     const { certificate, privateKey } = await keyPair('localhost')
     const dir = await mkdtemp(join(tmpdir(), 'internal-'))
     await writeFile(join(dir, 'tls.crt'), certificate)
     await writeFile(join(dir, 'tls.key'), privateKey)
     const server = createInternalServer({
       metrics: app.get('metrics'),
+      ready: app.get('readiness'),
       tls: { certFile: join(dir, 'tls.crt'), keyFile: join(dir, 'tls.key') }
     }).listen(0)
     try {
@@ -73,6 +76,9 @@ describe('internal listener', () => {
             .end()
         })
       expect(await get('/health/live')).toEqual({ status: 200, body: '{"status":"ok"}' })
+      const ready = await get('/health/ready')
+      expect(ready.status).toBe(200)
+      expect(JSON.parse(ready.body)).toEqual({ status: 'ok', checks: { postgres: 'ok', valkey: 'ok' } })
       const metrics = await get('/metrics')
       expect(metrics.status).toBe(200)
       expect(metrics.body).toContain('http_requests_total')

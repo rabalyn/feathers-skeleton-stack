@@ -159,6 +159,43 @@ groups:
       severity: critical
     annotations:
       summary: Prometheus cannot scrape {{ .Labels.job }}
+  - uid: api-not-ready
+    title: API not ready
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: prometheus
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: min by (dependency) (dependency_up{service="api"})
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    for: 2m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: The API cannot reach {{ .Labels.dependency }}
   - uid: api-error-rate
     title: API error rate
     condition: C

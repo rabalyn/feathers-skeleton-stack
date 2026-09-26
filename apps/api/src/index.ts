@@ -45,6 +45,7 @@ const main = async () => {
   await app.listen(config.port)
   const internal = createInternalServer({
     metrics: app.get('metrics'),
+    ready: app.get('readiness'),
     tls: { certFile: config.internalTlsCertFile, keyFile: config.internalTlsKeyFile }
   }).listen(config.internalPort)
   logger.info({ port: config.port, internalPort: config.internalPort }, 'api listening')

@@ -17,7 +17,7 @@ The deployment needs metrics, searchable logs, dashboards, and an alert that act
 | Service | Role |
 | --- | --- |
 | `prometheus` | Scrapes and stores metrics, 14-day retention |
-| `loki` | Stores logs from Promtail, 14-day retention enforced by the compactor |
+| `loki` | Stores logs from Alloy, 14-day retention enforced by the compactor |
 | `grafana` | Dashboards, alert rules, and alert delivery |
 | `alloy` | Grafana Alloy: ships log files and container output to Loki ([0021](0021-structured-logging.md)); replaced Promtail, end of life since 2026-03 |
 | `postgres-exporter` | PostgreSQL metrics |
@@ -34,6 +34,8 @@ The local stack additionally runs Dozzle ([0002](0002-service-inventory-and-netw
 ### Internal and public endpoints
 
 - The API and the worker expose `GET /metrics` in Prometheus format, and the API exposes health and readiness endpoints, on an **internal port** reachable only on the `observability` network. Nginx never routes them, and they sit outside the Feathers authentication pipeline. Container health checks call them from inside the container.
+- **Readiness** (`GET /health/ready`) checks what the API needs to serve an authenticated request: PostgreSQL through PgBouncer (`select 1`) and Valkey (`PING`), each bounded to 1 second. It answers 200, or 503 while either is down, with each check's state (`{"status":"down","checks":{"postgres":"ok","valkey":"down"}}`). The IdP and LDAP are deliberately left out: a university outage must not mark the API unready while existing sessions keep working. The worker has liveness only.
+- The container healthcheck stays on **liveness**, so a database or Valkey outage never makes Podman restart the API. Readiness reaches Prometheus as `dependency_up{dependency}`, the same checks run at scrape time, and alerts from there.
 - **Every observability hop uses TLS**, verified against the CA root like the data hops ([0004](0004-pgbouncer-pools.md), [0016](0016-nginx-and-tls-everywhere.md)): scrapes of the internal ports and every exporter, the log push to Loki, Grafana's queries to Prometheus and Loki, mail to Mailpit, and Nginx to Grafana and Mailpit. Each listener has a certificate for its own service name; the API's and the worker's also name `localhost`, for the container healthcheck. Locally the `certs` job issues them; production's source is the private CA still open in [0016](0016-nginx-and-tls-everywhere.md).
 - The only public liveness signal is `GET /api/ping` through Nginx. It returns a constant and says nothing about internal state; it exists for the uptime check.
 - Observability for people is Grafana: dashboards and alerts, not raw endpoints. Nginx serves it under its own host name (`grafana.localhost` locally), and people log in with Grafana's own admin account, whose password comes from OpenBao ([0023](0023-secrets-management.md)). Locally Nginx also serves Mailpit's inbox (`mail.localhost`), where alert mail lands ([0016](0016-nginx-and-tls-everywhere.md)).
@@ -42,7 +44,7 @@ The local stack additionally runs Dozzle ([0002](0002-service-inventory-and-netw
 
 Baseline series from the API: request count, error count, request duration histogram, active WebSocket connections, **Knex pool usage** (in use, idle, waiting). From the worker: job outcomes and durations per queue.
 
-- In Prometheus terms: `http_requests_total{route,method,status_code}` (errors are its 5xx), `http_request_duration_seconds{route,method}`, `websocket_connections`, `knex_pool_connections{state}`; `bullmq_jobs_total{queue,outcome}` (`completed`, `retried`, `failed`), `bullmq_job_duration_seconds{queue}` and `bullmq_queue_jobs{queue,state}`; plus Node's process metrics. HTTP requests and WebSocket calls are counted alike, the `method` telling them apart as in the request log ([0021](0021-structured-logging.md)). Every series carries `service`. PgBouncer's own view of pool saturation comes from `pgbouncer-exporter`, so pool pressure is visible from both sides of the pooler.
+- In Prometheus terms: `http_requests_total{route,method,status_code}` (errors are its 5xx), `http_request_duration_seconds{route,method}`, `websocket_connections`, `knex_pool_connections{state}`, `dependency_up{dependency}` (readiness, above); `bullmq_jobs_total{queue,outcome}` (`completed`, `retried`, `failed`), `bullmq_job_duration_seconds{queue}` and `bullmq_queue_jobs{queue,state}`; plus Node's process metrics. HTTP requests and WebSocket calls are counted alike, the `method` telling them apart as in the request log ([0021](0021-structured-logging.md)). Every series carries `service`. PgBouncer's own view of pool saturation comes from `pgbouncer-exporter`, so pool pressure is visible from both sides of the pooler.
 
 Labels are low-cardinality — `service`, `route` (as route template, never a path containing an id), `method`, `status_code`, `queue`, `environment`. Never labelled by user, session or request id.
 
@@ -64,13 +66,14 @@ Rules, contact points and dashboards are **provisioned as code** from files in t
 | Authentication anomaly | Loki | Sustained rate-limit rejections or repeated failed break-glass logins |
 | Backup failure | Loki | An error line from the backup service, or no success line within 26 hours ([0017](0017-nfs-backup-storage.md)) |
 | API down | Prometheus | Scrape target unreachable |
+| API not ready | Prometheus | A dependency of readiness down |
 | API error rate | Prometheus | Sustained 5xx ratio above threshold |
 | API latency | Prometheus | p95 request duration above threshold |
 | Database storage | `postgres-exporter` | Volume above 80% |
 | Database connections | `postgres-exporter`, `pgbouncer-exporter` | Server connections approaching `max_connections`, or clients waiting in PgBouncer |
 | Volume capacity | `node-exporter` | Any data, log or backup volume above 80% |
 
-As built (`containers/grafana/provisioning/alerting/rules.yaml`), with first-guess thresholds: more than 5 error lines in 5 minutes; more than 20 rate-limit rejections in 10 minutes, or more than 3 refused break-glass logins in 10 minutes (a rule of its own); 5xx above 5% or p95 above 1 s for 10 minutes; server connections above 80% of `max_connections` for 5 minutes, or any client waiting in PgBouncer for 2 minutes; any filesystem above 80% for 10 minutes. "API down" covers every scrape target, not only the API. "Database storage" is the volume rule: the database's volume lives on a host filesystem node-exporter reports. One row waits for its source: the backup alert for the backup service ([0017](0017-nfs-backup-storage.md)). The uptime check adds two rules: the public endpoint failing for 2 minutes, and its certificate expiring within 14 days.
+As built (`containers/grafana/provisioning/alerting/rules.yaml`), with first-guess thresholds: more than 5 error lines in 5 minutes; more than 20 rate-limit rejections in 10 minutes, or more than 3 refused break-glass logins in 10 minutes (a rule of its own); 5xx above 5% or p95 above 1 s for 10 minutes; a readiness dependency down for 2 minutes; server connections above 80% of `max_connections` for 5 minutes, or any client waiting in PgBouncer for 2 minutes; any filesystem above 80% for 10 minutes. "API down" covers every scrape target, not only the API. "Database storage" is the volume rule: the database's volume lives on a host filesystem node-exporter reports. One row waits for its source: the backup alert for the backup service ([0017](0017-nfs-backup-storage.md)). The uptime check adds two rules: the public endpoint failing for 2 minutes, and its certificate expiring within 14 days.
 
 Valkey memory is shown on a dashboard without an alert. The job volume in scope is small; the dashboard shows whether the host needs more memory ([0010](0010-sessions-postgres-ratelimits-valkey.md)).
 
@@ -96,7 +99,7 @@ Distributed tracing is deferred. Request correlation uses `request_id` ([0021](0
 
 - Every alert listed has a scrape target or log stream behind it, so the alert set is deliverable rather than aspirational.
 - About ten observability containers run in every environment, including on developer machines.
-- Until Uptime Kuma runs elsewhere, a host outage silences all monitoring.
+- Until the uptime check runs elsewhere, a host outage silences all monitoring.
 
 ## Open questions
 

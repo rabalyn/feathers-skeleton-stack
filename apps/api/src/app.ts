@@ -18,6 +18,7 @@ import { sanitizeHttpErrors, sanitizeServiceErrors } from './hooks/errors.js'
 import { API_PREFIX, SOCKET_PATH } from './paths.js'
 import { RateLimiter } from './rate-limit.js'
 import { createRegistry, observeKnexPool, requestMetrics, websocketConnections } from './metrics.js'
+import { createReadiness, observeReadiness, type Readiness } from './readiness.js'
 import { httpRequests, socketCalls } from './request-log.js'
 import { services } from './services/index.js'
 import { SHUTDOWN_GRACE_MS, trackConnections, withDeadline } from './shutdown.js'
@@ -38,6 +39,7 @@ export interface AppSettings {
   rateLimiter: RateLimiter
   directory: Directory
   metrics: Registry
+  readiness: Readiness
 }
 
 export interface AppOptions {
@@ -72,6 +74,8 @@ export const createApp = (
   observeKnexPool(metrics, knex)
   websocketConnections(metrics, () => (app as { io?: { engine: { clientsCount: number } } }).io?.engine.clientsCount ?? 0)
   const observeRequest = requestMetrics(metrics)
+  app.set('readiness', createReadiness(knex, valkey))
+  observeReadiness(metrics, app.get('readiness'))
 
   // Outermost, so it sees the status the error handler settled on.
   app.use(httpRequests(app, proxy, observeRequest))
