@@ -173,10 +173,12 @@ ensure_sp_keypair() {
 
 pem_body() { sed '/-----/d' | tr -d '\n'; }
 
+# Runs the healthcheck itself rather than waiting for podman's timer, whose
+# first run comes one full interval (10s for the api) after the start.
 wait_healthy() { # <container> <seconds>
   local i
   for i in $(seq "$2"); do
-    [[ $(podman inspect -f '{{.State.Health.Status}}' "$1" 2>/dev/null) == healthy ]] && return 0
+    podman healthcheck run "$1" >/dev/null 2>&1 && return 0
     sleep 1
   done
   die "$1 did not become healthy; see: podman logs $1"
