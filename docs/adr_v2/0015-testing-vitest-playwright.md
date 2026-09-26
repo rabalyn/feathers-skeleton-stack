@@ -55,6 +55,7 @@ Two CI-specific points:
 
 - **Real NFS for the backup test.** The runner is a disposable VM with root, so the job installs an NFS server on the runner, mounts its export, and bind-mounts it into the `backup` container at `/srv/backups`. Local development uses a named volume instead, because rootless Podman can neither mount NFS nor run an NFS server.
 - **Secrets are random per run.** CI initialises its own OpenBao and fills it with generated values ([0023](0023-secrets-management.md)). No real secret or decryption key exists in GitHub Actions.
+- **Test objects go with test databases.** The integration tests and the end-to-end api each have their own uploads bucket; the Vitest global setup and `scripts/stack.sh e2e` empty it at the start and end of a run, as they drop their databases ([0020](0020-object-storage-uploads.md)). `empty-bucket.js` refuses the production buckets whatever its configuration says.
 
 ## Consequences
 

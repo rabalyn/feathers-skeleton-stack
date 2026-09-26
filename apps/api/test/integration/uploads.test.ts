@@ -5,7 +5,6 @@ import type { Application } from '../../src/app.js'
 import type { Document } from '../../src/services/documents/documents.schema.js'
 import type { File } from '../../src/services/files/files.schema.js'
 import type { User } from '../../src/services/users/users.schema.js'
-import { UPLOADS_BUCKET } from '../../src/storage.js'
 import { createTestApp } from '../support/app.js'
 import { db } from '../support/worker-database.js'
 
@@ -108,7 +107,7 @@ describe('files: upload', () => {
       // Bookkeeping stays internal.
       expect(file).not.toHaveProperty('state')
       expect(file).not.toHaveProperty('deletedAt')
-      const stored = await app.get('storage').get(UPLOADS_BUCKET, file.id)
+      const stored = await app.get('storage').get(file.id)
       const chunks: Buffer[] = []
       for await (const chunk of stored!.body as AsyncIterable<Buffer>) chunks.push(chunk)
       const bytes = Buffer.concat(chunks)
@@ -268,7 +267,7 @@ describe('documents', () => {
     await app.service('documents').remove(document.id, as(member))
     expect(await db()('files').where({ id: replacement.id }).first()).toMatchObject({ deleted_at: expect.any(Date) })
     // The object stays until the purge job, past backup retention.
-    expect(await app.get('storage').get(UPLOADS_BUCKET, replacement.id)).toBeDefined()
+    expect(await app.get('storage').get(replacement.id)).toBeDefined()
   })
 })
 

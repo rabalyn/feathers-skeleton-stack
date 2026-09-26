@@ -67,7 +67,12 @@ describe('maintenance queue', () => {
   it('runs the object purge when the job arrives', async () => {
     const job = await maintenance.queue.add(OBJECT_PURGE, {})
     const result = await job.waitUntilFinished(events, 10_000)
-    expect(result).toEqual({ purged: expect.any(Number), abandoned: expect.any(Number), unfinished: expect.any(Number) })
+    expect(result).toEqual({
+      purged: expect.any(Number),
+      abandoned: expect.any(Number),
+      unfinished: expect.any(Number),
+      orphans: expect.any(Number)
+    })
   })
 
   it('reports job outcomes, durations and queue depth (ADR 0022)', async () => {

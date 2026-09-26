@@ -77,7 +77,7 @@ export const createApp = (
   observeKnexPool(metrics, knex)
   websocketConnections(metrics, () => (app as { io?: { engine: { clientsCount: number } } }).io?.engine.clientsCount ?? 0)
   const observeRequest = requestMetrics(metrics)
-  app.set('readiness', createReadiness(knex, valkey))
+  app.set('readiness', createReadiness(knex, valkey, app.get('storage')))
   observeReadiness(metrics, app.get('readiness'))
 
   // Outermost, so it sees the status the error handler settled on.

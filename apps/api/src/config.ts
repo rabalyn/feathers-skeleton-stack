@@ -101,6 +101,9 @@ const fields = {
   s3KeyId: { schema: Type.String({ minLength: 8 }), env: 'S3_KEY_ID', secret: true },
   s3SecretKey: { schema: Type.String({ minLength: 16 }), env: 'S3_SECRET_KEY', secret: true },
   s3CaFile: { schema: Type.String({ minLength: 1 }), env: 'S3_CA_FILE' },
+  // The deployment's bucket for uploads; locally the tests and the e2e api
+  // use their own, which their runs empty.
+  s3UploadsBucket: { schema: Type.String({ pattern: '^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$' }), env: 'S3_UPLOADS_BUCKET', default: 'uploads' },
   databasePoolMax: {
     schema: Type.Integer({ minimum: 1, maximum: 50 }),
     env: 'DATABASE_POOL_MAX',
@@ -142,7 +145,7 @@ export const VALKEY_KEYS = [
 
 export const LDAP_KEYS = ['ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapBaseDn', 'ldapCaFile'] as const satisfies readonly ConfigKey[]
 
-export const S3_KEYS = ['s3Endpoint', 's3KeyId', 's3SecretKey', 's3CaFile'] as const satisfies readonly ConfigKey[]
+export const S3_KEYS = ['s3Endpoint', 's3KeyId', 's3SecretKey', 's3CaFile', 's3UploadsBucket'] as const satisfies readonly ConfigKey[]
 
 export const API_KEYS = [
   'publicOrigin',

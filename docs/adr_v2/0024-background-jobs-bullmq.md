@@ -30,7 +30,7 @@ The alternatives considered were in-process cron in a worker (simplest, but no r
 | --- | --- | --- |
 | Retention cleanup | Daily | Deletes audit events and expired sessions past their retention ([0013](0013-gdpr-export-and-retention.md)) |
 | Export expiry | Daily | Deletes generated exports past their retention |
-| Object purge | Daily | Purges soft-deleted objects past the purge delay, object first, then its row; soft-deletes stored files nobody attached within 24 hours; removes uploads that never finished (`pending` for over an hour) ([0020](0020-object-storage-uploads.md)) |
+| Object purge | Daily | Purges soft-deleted objects past the purge delay, object first, then its row; soft-deletes stored files nobody attached within 24 hours; removes uploads that never finished (`pending` for over an hour); removes objects older than a day that no row describes, which only a failure or a restore to an earlier database state leaves behind ([0020](0020-object-storage-uploads.md)) |
 | Data export | On request | Builds a GDPR export into the `exports` bucket |
 
 Backups are not BullMQ jobs: the backup service is isolated from Valkey and schedules itself ([0017](0017-nfs-backup-storage.md)).

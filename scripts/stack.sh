@@ -460,9 +460,11 @@ case $cmd in
       sed -n 's/^NGINX_WEB_UPSTREAM=//p') ]] ||
       die "nginx serves the Vite dev server; run '$0 up' (without --dev) first"
     compose --profile test build e2e
-    # api-e2e and its database exist for the run only.
-    trap 'podman rm -f api-e2e >/dev/null 2>&1 || true' EXIT
+    # api-e2e, its database and its bucket's contents exist for the run
+    # only: the bucket is emptied before the run and after it.
+    trap 'podman exec api-e2e node dist/empty-bucket.js >/dev/null 2>&1 || true; podman rm -f api-e2e >/dev/null 2>&1 || true' EXIT
     start_e2e_api
+    podman exec api-e2e node dist/empty-bucket.js >/dev/null || die "could not empty the e2e bucket"
     compose --profile test run --rm -T e2e pnpm exec playwright test "$@"
     ;;
   breakglass)

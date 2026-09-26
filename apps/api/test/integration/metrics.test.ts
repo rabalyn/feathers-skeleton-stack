@@ -48,6 +48,7 @@ describe('api metrics', () => {
     expect(text).toContain('process_cpu_seconds_total')
     expect(text).toMatch(/dependency_up\{dependency="postgres",service="api"\} 1/)
     expect(text).toMatch(/dependency_up\{dependency="valkey",service="api"\} 1/)
+    expect(text).toMatch(/dependency_up\{dependency="s3",service="api"\} 1/)
   })
 })
 
@@ -78,7 +79,7 @@ describe('internal listener', () => {
       expect(await get('/health/live')).toEqual({ status: 200, body: '{"status":"ok"}' })
       const ready = await get('/health/ready')
       expect(ready.status).toBe(200)
-      expect(JSON.parse(ready.body)).toEqual({ status: 'ok', checks: { postgres: 'ok', valkey: 'ok' } })
+      expect(JSON.parse(ready.body)).toEqual({ status: 'ok', checks: { postgres: 'ok', valkey: 'ok', s3: 'ok' } })
       const metrics = await get('/metrics')
       expect(metrics.status).toBe(200)
       expect(metrics.body).toContain('http_requests_total')

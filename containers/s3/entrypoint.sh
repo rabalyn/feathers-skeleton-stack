@@ -25,10 +25,13 @@ api     uploads  write
 api     exports  write
 worker  uploads  write
 worker  exports  write
-test    uploads  write
-test    exports  write
 '
-BUCKETS='uploads exports'
+# Locally, the buckets of test runs, as <client>:<bucket>:<access> ...
+# (compose.yaml); unset in production.
+for grant in ${S3_LOCAL_GRANTS:-}; do
+  GRANTS+="${grant//:/ }"$'\n'
+done
+BUCKETS=$(awk 'NF { print $2 }' <<<"$GRANTS" | sort -u | tr '\n' ' ')
 
 log() { printf 's3: %s\n' "$*"; }
 
@@ -81,6 +84,22 @@ while read -r client bucket access; do
     '{bucketId: $b, accessKeyId: $k, permissions: {read: true, write: ($a == "write"), owner: false}}' |
     api AllowBucketKey >/dev/null
 done <<<"$GRANTS"
+
+# The table is the whole truth: a grant it no longer lists is revoked.
+for client in $(awk 'NF { print $1 }' <<<"$GRANTS" | sort -u); do
+  [[ -s $SECRETS/${client}_key_id ]] || continue
+  wanted=" $(awk -v c="$client" '$1 == c { printf "%s ", $2 }' <<<"$GRANTS")"
+  key_id=$(<"$SECRETS/${client}_key_id")
+  jq -n --arg id "$key_id" '{id: $id}' | api GetKeyInfo |
+    jq -r '.buckets[] | [.id, (.globalAliases[0] // "")] | @tsv' |
+    while IFS=$'\t' read -r bucket_id alias; do
+      [[ $wanted == *" $alias "* ]] && continue
+      jq -n --arg b "$bucket_id" --arg k "$key_id" \
+        '{bucketId: $b, accessKeyId: $k, permissions: {read: true, write: true, owner: true}}' |
+        api DenyBucketKey >/dev/null
+      log "revoked $client on ${alias:-$bucket_id}"
+    done
+done
 
 touch "$READY"
 log "ready"

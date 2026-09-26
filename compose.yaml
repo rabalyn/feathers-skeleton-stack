@@ -201,6 +201,8 @@ services:
       PUBLIC_ORIGIN: https://e2e.localhost:8443
       DATABASE_NAME: app_e2e
       RATE_LIMIT_PREFIX: rl:e2e
+      # Emptied by every `stack.sh e2e`, as app_e2e is recreated.
+      S3_UPLOADS_BUCKET: e2e-uploads
       # Stdout only: its lines stay out of Loki and the alert rules.
       LOG_FILE: ""
     networks: [edge, app-data, identity, object]
@@ -362,6 +364,10 @@ services:
     depends_on:
       certs:
         condition: service_completed_successfully
+    environment:
+      # Local only (interpolated, so never in the generated units): the
+      # buckets of the test runs, emptied by each run (ADR 0015, 0020).
+      S3_LOCAL_GRANTS: ${S3_LOCAL_GRANTS:-api:e2e-uploads:write test:test-uploads:write test:test-purge:write}
     networks: [object, observability]
     volumes:
       - s3-data:/var/lib/garage
@@ -403,6 +409,7 @@ services:
       S3_KEY_ID_FILE: /run/secrets/s3_key_id
       S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
       S3_CA_FILE: /trust/ca.crt
+      S3_UPLOADS_BUCKET: test-uploads
     networks: [app-data, identity, object]
     volumes:
       - test-secrets:/run/secrets:ro

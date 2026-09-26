@@ -5,7 +5,7 @@ import { BadRequest, FeathersError, LengthRequired } from '@feathersjs/errors'
 import { fileTypeFromBuffer } from 'file-type'
 import type { Knex } from 'knex'
 import type { SettingsStore } from '../../settings/store.js'
-import { UPLOADS_BUCKET, type Storage } from '../../storage.js'
+import type { Storage } from '../../storage.js'
 import { ALLOWED_CONTENT_TYPES, type AllowedContentType } from './files.schema.js'
 
 // Receiving an upload (ADR 0020). The body is the file itself, streamed
@@ -174,13 +174,13 @@ export const receive = async ({ knex, settings, storage, ownerId, filename, uplo
   if (upload.stream.readableEnded) counter.end()
   else upload.stream.pipe(counter)
   try {
-    await storage.put(UPLOADS_BUCKET, id, counter, length, contentType, abort.signal)
+    await storage.put(id, counter, length, contentType, abort.signal)
     await knex('files').where({ id }).update({ state: 'stored', sha256: counter.sha256 })
     return { id }
   } catch (error) {
     upload.stream.unpipe(counter)
     upload.stream.resume()
-    await storage.delete(UPLOADS_BUCKET, id).catch(() => undefined)
+    await storage.delete(id).catch(() => undefined)
     await knex('files').where({ id }).delete()
     throw counter.errored ?? error
   }

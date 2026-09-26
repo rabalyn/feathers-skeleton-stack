@@ -3,12 +3,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Application } from '../../src/app.js'
 import { objectPurge } from '../../src/jobs/object-purge.js'
 import type { User } from '../../src/services/users/users.schema.js'
-import { UPLOADS_BUCKET } from '../../src/storage.js'
 import { createTestApp } from '../support/app.js'
+import { PURGE_TEST_BUCKET } from '../support/global-setup.js'
 import { db } from '../support/worker-database.js'
 
 // ADR 0020, 0024: what the daily object purge removes, and what it leaves
-// alone, against the stack's Garage.
+// alone, against the stack's Garage, in a bucket no other test file uses:
+// the orphan sweep would take their objects for its own.
 
 let app: Application
 let owner: User
@@ -29,17 +30,17 @@ const file = async (row: { state?: 'pending' | 'stored'; created_at?: Date; atta
       ...row
     })
     .returning<{ id: string }[]>('id')
-  await app.get('storage').put(UPLOADS_BUCKET, inserted!.id, Readable.from(BODY), BODY.length, 'application/pdf')
+  await app.get('storage').put(inserted!.id, Readable.from(BODY), BODY.length, 'application/pdf')
   return inserted!.id
 }
 
 const exists = async (id: string) => ({
   row: Boolean(await db()('files').where({ id }).first()),
-  object: Boolean(await app.get('storage').get(UPLOADS_BUCKET, id))
+  object: Boolean(await app.get('storage').get(id))
 })
 
 beforeAll(async () => {
-  ;({ app } = await createTestApp())
+  ;({ app } = await createTestApp({ s3: { s3UploadsBucket: PURGE_TEST_BUCKET } }))
   owner = await app.service('users').create({ tuId: 'pu01purg', authSource: 'saml', givenName: 'p', surname: 'p', email: null })
 })
 
@@ -78,12 +79,29 @@ describe('object purge', () => {
     expect(await exists(inFlight)).toEqual({ row: true, object: true })
   })
 
+  it('removes objects that have no row once they are old enough, and keeps those that have one', async () => {
+    const orphan = '01a0d950-4ccc-71d2-bc85-40a1a963e526'
+    await app.get('storage').put(orphan, Readable.from(BODY), BODY.length, 'application/pdf')
+    const stray = 'not-a-file-id'
+    await app.get('storage').put(stray, Readable.from(BODY), BODY.length, 'application/pdf')
+    const kept = await file({ attached_at: new Date() })
+    // Young orphans are left: their row may be on its way.
+    expect((await objectPurge(app.get('knex'), app.get('settings'), app.get('storage'))).orphans).toBe(0)
+    expect(await app.get('storage').get(orphan)).toBeDefined()
+
+    const result = await objectPurge(app.get('knex'), app.get('settings'), app.get('storage'), { orphanGraceHours: 0 })
+    expect(result.orphans).toBe(2)
+    expect(await app.get('storage').get(orphan)).toBeUndefined()
+    expect(await app.get('storage').get(stray)).toBeUndefined()
+    expect(await exists(kept)).toEqual({ row: true, object: true })
+  })
+
   it('works through more files than one batch', async () => {
     const delay = await app.get('settings').get('objectPurgeDelayDays')
     const ids = await Promise.all(
       Array.from({ length: 5 }, () => file({ attached_at: hoursAgo(24 * (delay + 2)), deleted_at: hoursAgo(24 * (delay + 1)) }))
     )
-    await objectPurge(app.get('knex'), app.get('settings'), app.get('storage'), 2)
+    await objectPurge(app.get('knex'), app.get('settings'), app.get('storage'), { batchSize: 2 })
     for (const id of ids) expect(await exists(id)).toEqual({ row: false, object: false })
   })
 })

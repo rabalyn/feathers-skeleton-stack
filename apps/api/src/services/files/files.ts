@@ -7,7 +7,6 @@ import { hooks as schemaHooks } from '@feathersjs/schema'
 import { subject } from '@casl/ability'
 import type { Application } from '../../app.js'
 import type { HookContext } from '../../declarations.js'
-import { UPLOADS_BUCKET } from '../../storage.js'
 import {
   FILENAME_HEADER,
   fileDataValidator,
@@ -116,7 +115,7 @@ export class FileContentService {
     if (!file || (params?.provider && !ability?.can('read', subject(FILES_PATH, { ...file })))) {
       throw new NotFound(`No record found for id '${id}'`)
     }
-    const stored = await this.app.get('storage').get(UPLOADS_BUCKET, id)
+    const stored = await this.app.get('storage').get(id)
     if (!stored) {
       this.app.get('logger').error({ fileId: id }, 'object missing for a stored file')
       throw new NotFound(`No record found for id '${id}'`)
