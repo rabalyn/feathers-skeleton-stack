@@ -5,6 +5,8 @@ import type { Logger } from 'pino'
 import { Counter, Gauge, Histogram, type Registry } from 'prom-client'
 import type { ValkeyConfig } from '../config.js'
 import type { SettingsStore } from '../settings/store.js'
+import type { Storage } from '../storage.js'
+import { objectPurge } from './object-purge.js'
 import { retentionCleanup } from './retention.js'
 
 // The maintenance queue and its worker (ADR 0024). Recurring jobs are job
@@ -16,6 +18,7 @@ export const MAINTENANCE_QUEUE = 'maintenance'
 export const QUEUE_PREFIX = 'bull'
 
 export const RETENTION_CLEANUP = 'retention-cleanup'
+export const OBJECT_PURGE = 'object-purge'
 
 // Daily jobs run at night, local time (ADR 0024).
 export const DAILY = { pattern: '30 3 * * *', tz: 'Europe/Berlin' }
@@ -45,6 +48,7 @@ export interface MaintenanceOptions {
   connection: RedisOptions
   knex: Knex
   settings: SettingsStore
+  storage: Storage
   logger: Logger
   // Tests keep their queues apart.
   prefix?: string
@@ -56,6 +60,7 @@ export const startMaintenance = ({
   connection,
   knex,
   settings,
+  storage,
   logger,
   prefix = QUEUE_PREFIX,
   metrics
@@ -98,6 +103,8 @@ export const startMaintenance = ({
       switch (job.name) {
         case RETENTION_CLEANUP:
           return retentionCleanup(knex, settings)
+        case OBJECT_PURGE:
+          return objectPurge(knex, settings, storage)
         default:
           throw new UnrecoverableError(`unknown job ${job.name}`)
       }
@@ -123,8 +130,10 @@ export const startMaintenance = ({
     queue,
     worker,
     // Creates or updates the schedules; safe to run on every start.
-    schedule: () =>
-      queue.upsertJobScheduler(RETENTION_CLEANUP, DAILY, { name: RETENTION_CLEANUP, opts: JOB_OPTIONS }),
+    schedule: async () => {
+      await queue.upsertJobScheduler(RETENTION_CLEANUP, DAILY, { name: RETENTION_CLEANUP, opts: JOB_OPTIONS })
+      await queue.upsertJobScheduler(OBJECT_PURGE, DAILY, { name: OBJECT_PURGE, opts: JOB_OPTIONS })
+    },
     isRunning: () => worker.isRunning(),
     close: async () => {
       await worker.close()

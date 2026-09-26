@@ -7,6 +7,7 @@ import { createRegistry, observeKnexPool } from './metrics.js'
 import { SHUTDOWN_GRACE_MS, closeServer, withDeadline } from './shutdown.js'
 import { WORKER_SETTINGS } from './settings/registry.js'
 import { SettingsError, SettingsStore } from './settings/store.js'
+import { Storage } from './storage.js'
 
 // The worker container (ADR 0024): the api's image, this entry point. It runs
 // the jobs; the api only enqueues.
@@ -26,6 +27,7 @@ const main = async () => {
   const logger = await createLogger('worker', config.logLevel, config.logFile)
   const knex = createKnex(config, { camelCase: true })
   const settings = new SettingsStore(knex)
+  const storage = new Storage(config)
 
   // An environment never runs with a policy silently absent (ADR 0025).
   try {
@@ -41,7 +43,14 @@ const main = async () => {
 
   const metrics = createRegistry('worker')
   observeKnexPool(metrics, knex)
-  const maintenance = startMaintenance({ connection: queueConnection(config), knex, settings, logger, metrics })
+  const maintenance = startMaintenance({
+    connection: queueConnection(config),
+    knex,
+    settings,
+    storage,
+    logger,
+    metrics
+  })
   await maintenance.schedule()
   const internal = createInternalServer({
     metrics,
@@ -69,6 +78,7 @@ const main = async () => {
     ])
     // A job cut off still holds its connection, which destroy would wait for.
     if (drained) await knex.destroy()
+    storage.close()
     process.exit(0)
   }
   process.once('SIGTERM', () => void shutdown('SIGTERM'))

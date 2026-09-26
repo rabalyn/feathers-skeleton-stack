@@ -70,7 +70,8 @@ export const API_SETTINGS = [
 
 export const WORKER_SETTINGS = [
   'auditRetentionDays',
-  'expiredSessionRetentionDays'
+  'expiredSessionRetentionDays',
+  'objectPurgeDelayDays'
 ] as const satisfies readonly SettingKey[]
 
 // Rules that span two settings, or a setting and deployment configuration.

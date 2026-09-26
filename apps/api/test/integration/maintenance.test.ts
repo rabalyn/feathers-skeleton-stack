@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Application } from '../../src/app.js'
 import {
   DAILY,
+  OBJECT_PURGE,
   RETENTION_CLEANUP,
   queueConnection,
   startMaintenance,
@@ -30,6 +31,7 @@ beforeAll(async () => {
     connection,
     knex: app.get('knex'),
     settings: app.get('settings'),
+    storage: app.get('storage'),
     logger: pino({ level: 'silent' }),
     prefix,
     metrics
@@ -46,18 +48,26 @@ afterAll(async () => {
 })
 
 describe('maintenance queue', () => {
-  it('schedules retention cleanup daily at 03:30 Berlin time, once however often it starts', async () => {
+  it('schedules retention cleanup and the object purge daily at 03:30 Berlin time, once however often it starts', async () => {
     await maintenance.schedule()
     await maintenance.schedule()
     const schedulers = await maintenance.queue.getJobSchedulers()
-    expect(schedulers).toHaveLength(1)
-    expect(schedulers[0]).toMatchObject({ key: RETENTION_CLEANUP, pattern: DAILY.pattern, tz: DAILY.tz })
+    expect(schedulers).toHaveLength(2)
+    for (const key of [RETENTION_CLEANUP, OBJECT_PURGE]) {
+      expect(schedulers).toContainEqual(expect.objectContaining({ key, pattern: DAILY.pattern, tz: DAILY.tz }))
+    }
   })
 
   it('runs retention cleanup when the job arrives', async () => {
     const job = await maintenance.queue.add(RETENTION_CLEANUP, {})
     const result = await job.waitUntilFinished(events, 10_000)
     expect(result).toEqual({ auditEvents: expect.any(Number), sessions: expect.any(Number) })
+  })
+
+  it('runs the object purge when the job arrives', async () => {
+    const job = await maintenance.queue.add(OBJECT_PURGE, {})
+    const result = await job.waitUntilFinished(events, 10_000)
+    expect(result).toEqual({ purged: expect.any(Number), abandoned: expect.any(Number), unfinished: expect.any(Number) })
   })
 
   it('reports job outcomes, durations and queue depth (ADR 0022)', async () => {
