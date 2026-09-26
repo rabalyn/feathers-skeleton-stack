@@ -14,7 +14,8 @@
     "users": "Users",
     "settings": "Settings",
     "directory": "Directory",
-    "menu": "Menu"
+    "menu": "Menu",
+    "documents": "Documents"
   },
   "auth": {
     "login": "Log in",
@@ -76,6 +77,35 @@
     "home": "Go to the start page",
     "forbidden": "You are not allowed to do that.",
     "unavailable": "The service cannot be reached right now. Please try again later.",
-    "generic": "Something went wrong."
+    "generic": "Something went wrong.",
+    "tooLarge": "The file is too large.",
+    "quota": "Your storage space is used up.",
+    "totalQuota": "The storage space of this system is used up.",
+    "unsupportedType": "This file type is not accepted, or the file is not what its type says."
+  },
+  "avatar": {
+    "title": "Picture",
+    "upload": "Upload a picture",
+    "remove": "Remove",
+    "saved": "Picture saved",
+    "removed": "Picture removed",
+    "hint": "PNG, JPEG or WebP"
+  },
+  "documents": {
+    "title": "Title",
+    "file": "File",
+    "size": "Size",
+    "owner": "Owner",
+    "updatedAt": "Changed",
+    "new": "New document",
+    "create": "Upload",
+    "download": "Download",
+    "remove": "Delete",
+    "confirmRemove": "Delete “{title}”?",
+    "created": "Document uploaded",
+    "removed": "Document deleted",
+    "empty": "No documents yet",
+    "hint": "PDF, PNG, JPEG or WebP",
+    "cancel": "Cancel"
   }
 }

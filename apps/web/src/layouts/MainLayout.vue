@@ -58,6 +58,7 @@ const displayName = computed(() => {
 const links = computed(() =>
   [
     { name: 'profile', icon: 'person', label: 'nav.profile' },
+    { name: 'documents', icon: 'description', label: 'nav.documents' },
     { name: 'users', icon: 'group', label: 'nav.users', requires: ['read', 'users'] },
     { name: 'settings', icon: 'tune', label: 'nav.settings', requires: ['read', 'settings'] },
     { name: 'directory', icon: 'contact_page', label: 'nav.directory', requires: ['read', 'directory'] }

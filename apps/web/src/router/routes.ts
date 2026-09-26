@@ -30,6 +30,8 @@ const routes: RouteRecordRaw[] = [
     children: [
       { path: '', redirect: { name: 'profile' } },
       { path: 'profile', name: 'profile', component: () => import('@/pages/ProfilePage.vue') },
+      // Every role has documents, if only their own (ADR 0011).
+      { path: 'documents', name: 'documents', component: () => import('@/pages/DocumentsPage.vue') },
       {
         path: 'users',
         name: 'users',

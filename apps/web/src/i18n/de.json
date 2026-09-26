@@ -14,7 +14,8 @@
     "users": "Benutzer",
     "settings": "Einstellungen",
     "directory": "Verzeichnis",
-    "menu": "Menü"
+    "menu": "Menü",
+    "documents": "Dokumente"
   },
   "auth": {
     "login": "Anmelden",
@@ -76,6 +77,35 @@
     "home": "Zur Startseite",
     "forbidden": "Dafür fehlt Ihnen die Berechtigung.",
     "unavailable": "Der Dienst ist gerade nicht erreichbar. Bitte später erneut versuchen.",
-    "generic": "Etwas ist schiefgegangen."
+    "generic": "Etwas ist schiefgegangen.",
+    "tooLarge": "Die Datei ist zu groß.",
+    "quota": "Ihr Speicherplatz ist aufgebraucht.",
+    "totalQuota": "Der Speicherplatz dieses Systems ist aufgebraucht.",
+    "unsupportedType": "Dieser Dateityp wird nicht angenommen, oder die Datei entspricht nicht ihrem Typ."
+  },
+  "avatar": {
+    "title": "Bild",
+    "upload": "Bild hochladen",
+    "remove": "Entfernen",
+    "saved": "Bild gespeichert",
+    "removed": "Bild entfernt",
+    "hint": "PNG, JPEG oder WebP"
+  },
+  "documents": {
+    "title": "Titel",
+    "file": "Datei",
+    "size": "Größe",
+    "owner": "Eigentümer",
+    "updatedAt": "Geändert",
+    "new": "Neues Dokument",
+    "create": "Hochladen",
+    "download": "Herunterladen",
+    "remove": "Löschen",
+    "confirmRemove": "„{title}“ löschen?",
+    "created": "Dokument hochgeladen",
+    "removed": "Dokument gelöscht",
+    "empty": "Noch keine Dokumente",
+    "hint": "PDF, PNG, JPEG oder WebP",
+    "cancel": "Abbrechen"
   }
 }

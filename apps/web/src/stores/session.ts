@@ -137,6 +137,12 @@ export const useSessionStore = defineStore('session', () => {
     })
   })
 
+  // The user's own record changes elsewhere too (an avatar set in another
+  // tab, a role assigned by an admin): its event keeps this copy current.
+  client.service('users').on('patched', (next: User) => {
+    if (status.value === 'authenticated' && next.id === user.value?.id) setUser(next)
+  })
+
   // A call refused as unauthenticated means the session changed under us
   // (revoked, role changed, disabled): find out which.
   client.hooks({
