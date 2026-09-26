@@ -32,6 +32,7 @@ export interface StoredObject {
 export interface ListedObject {
   key: string
   lastModified: Date
+  size: number
 }
 
 export class Storage {
@@ -88,7 +89,7 @@ export class Storage {
       const page = await this.client.send(
         new ListObjectsV2Command({ Bucket: this.bucket, ContinuationToken: token, MaxKeys: 1000 })
       )
-      yield (page.Contents ?? []).map((object) => ({ key: object.Key!, lastModified: object.LastModified! }))
+      yield (page.Contents ?? []).map((object) => ({ key: object.Key!, lastModified: object.LastModified!, size: object.Size ?? 0 }))
       token = page.IsTruncated ? page.NextContinuationToken : undefined
     } while (token)
   }

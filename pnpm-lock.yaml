@@ -87,6 +87,9 @@ importers:
       bullmq:
         specifier: 6.3.8
         version: 6.3.8(ioredis@6.0.0(supports-color@8.1.1))(pg@8.23.0)
+      cron-parser:
+        specifier: 5.10.1
+        version: 5.10.1
       feathers-casl:
         specifier: 3.0.0
         version: 3.0.0(@casl/ability@6.8.1)(@feathersjs/feathers@5.0.50)

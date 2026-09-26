@@ -3,6 +3,7 @@
 
 [Container]
 ContainerName=valkey
+Entrypoint=["sh","-c","umask 0027 && exec docker-entrypoint.sh \"$$@\"","valkey"]
 Exec=valkey-server /etc/valkey/valkey.conf
 HealthCmd=REDISCLI_AUTH="$$(cat /run/secrets/probe_password)" valkey-cli --user probe --tls --cacert /trust/ca.crt -h valkey ping | grep -q PONG
 HealthInterval=5s

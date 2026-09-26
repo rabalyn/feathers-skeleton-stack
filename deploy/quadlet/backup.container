@@ -1,0 +1,22 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Unit]
+RequiresMountsFor=/srv/backups
+Requires=migrate.service
+After=migrate.service
+
+[Container]
+ContainerName=backup
+Environment=LOG_FILE=/var/log/app/backup/backup DATABASE_HOST=postgres DATABASE_PORT=5432 DATABASE_NAME=app DATABASE_USER=backup DATABASE_PASSWORD_FILE=/run/secrets/database_password DATABASE_CA_FILE=/trust/ca.crt S3_ENDPOINT=https://s3:3900 S3_KEY_ID_FILE=/run/secrets/s3_key_id S3_SECRET_KEY_FILE=/run/secrets/s3_secret_key S3_CA_FILE=/trust/ca.crt RESTIC_PASSWORD_FILE=/run/secrets/restic_password OPENBAO_ADDR=https://openbao:8200 OPENBAO_TOKEN_FILE=/run/secrets/openbao_token OPENBAO_CA_FILE=/trust/ca.crt
+HostName=backup
+Image=localhost/feathers-backup:dev
+Network=db.network
+Network=object.network
+Network=secrets.network
+Volume=/srv/backups:/srv/backups
+Volume=backup-data.volume:/var/lib/backup
+Volume=valkey-data:/var/lib/valkey:ro
+Volume=backup-secrets.volume:/run/secrets:ro
+Volume=trust:/trust:ro
+Volume=logs.volume:/var/log/app

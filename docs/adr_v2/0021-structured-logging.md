@@ -18,7 +18,7 @@ The API, the worker and the backup service write **newline-delimited JSON** to l
 
 - The file is what the collector reads. Making it a file rather than container output is deliberate: it keeps the application's structured lines independent of how the container runtime handles output, and reading a mounted file is identical in every environment. The parity rule in [0001](0001-one-stack-every-environment.md) is only real if the collection path is the same everywhere. (This ADR first assumed Compose and Quadlet differ in log driver; under Podman both log to journald, which is what makes the collection of third-party output below uniform too.)
 - Stdout remains for interactive use during development.
-- Files are rotated by size with a bounded number of kept files, so a log volume cannot fill the host: `<service>.<n>.log` on the `logs` volume, 10 MB each, the current one and five more per service.
+- Files are rotated by size with a bounded number of kept files, so a log volume cannot fill the host: `<service>.<n>.log` on the `logs` volume, 10 MB each, the current one and five more per service. The volume belongs to the api's user; the backup service, which runs under a UID of its own ([0017](0017-nfs-backup-storage.md)), writes into a directory `backup/` on it, which its container creates as root at start before dropping to that UID.
 
 Logger: **pino**, for JSON output and a redaction mechanism that is configured once rather than remembered at each call site.
 

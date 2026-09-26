@@ -455,3 +455,83 @@ groups:
       severity: warning
     annotations:
       summary: The certificate of {{ .Labels.instance }} expires within 14 days
+  # Backups (ADR 0017): any error line of the backup service, and a missing
+  # success line. The 26 hours assume the default daily schedule, a runtime
+  # setting: changing the schedule means changing this rule (ADR 0025).
+  - uid: backup-failed
+    title: Backup failed
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: loki
+      relativeTimeRange:
+        from: 3600
+        to: 0
+      model:
+        refId: A
+        expr: sum(count_over_time({service="backup", level=~"error|fatal"}[1h]))
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+        queryType: instant
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    for: 0s
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: The backup service logged an error in the last hour
+  - uid: backup-missing
+    title: Backup missing
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: loki
+      relativeTimeRange:
+        from: 93600
+        to: 0
+      model:
+        refId: A
+        expr: sum(count_over_time({service="backup"} |= "backup completed" [26h]))
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+        queryType: instant
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    for: 0s
+    # No success line at all is exactly the case this rule is for.
+    noDataState: Alerting
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: No backup has completed in the last 26 hours

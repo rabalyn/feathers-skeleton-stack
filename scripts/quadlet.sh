@@ -25,6 +25,10 @@
 # likewise becomes a plain dependency on a `Type=oneshot` unit with
 # `RemainAfterExit=yes`, which systemd considers started once it has exited
 # successfully.
+# The backup target, `${BACKUP_TARGET:-backups}` (ADR 0017), becomes the host
+# path /srv/backups, where production mounts the NFS export with a systemd
+# mount unit; the unit gets RequiresMountsFor=, so the mount is a dependency
+# of the backup service alone.
 # After generation, bind-mount sources relative to the repository root are
 # rewritten relative to deploy/quadlet/, which is how Quadlet resolves them.
 set -euo pipefail
@@ -45,6 +49,7 @@ generate() { # <dir>
     | del(.services[].build)
     | del(.services[] | select((.profiles // []) | any_c(. == "local" or . == "test" or . == "dev")))
     | .services[] |= (select(has("environment")).environment |= with_entries(select(.value | tostring | test("\\$\\{") | not)))
+    | .services[] |= (select(has("volumes")).volumes |= map(sub("^\\$\\{BACKUP_TARGET:-[^}]*\\}:"; "/srv/backups:")))
     | (.services | keys) as $names
     | .services[] |= (
         select(has("depends_on")).depends_on |= with_entries(select(.key as $k | $names | any_c(. == $k)))
@@ -75,6 +80,14 @@ generate() { # <dir>
   while read -r svc; do
     [[ -n $svc ]] && printf '\n[Service]\nType=oneshot\nRemainAfterExit=yes\n' >>"$dir/units/$svc.container"
   done <"$dir/oneshot.txt"
+  for f in "$dir"/units/*.container; do
+    grep -q '^Volume=/srv/backups:' "$f" || continue
+    if grep -q '^\[Unit\]$' "$f"; then
+      sed -i '/^\[Unit\]$/a RequiresMountsFor=/srv/backups' "$f"
+    else
+      { printf '[Unit]\nRequiresMountsFor=/srv/backups\n\n'; cat "$f"; } >"$f.tmp" && mv "$f.tmp" "$f"
+    fi
+  done
   for f in "$dir"/units/*; do
     # A network mapped without options comes out as `name.network:`.
     sed -i -e 's#^Volume=\./#Volume=../../#' -e 's#^\(Network=[^:]*\):$#\1#' "$f"

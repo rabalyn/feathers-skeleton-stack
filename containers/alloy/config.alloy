@@ -2,9 +2,13 @@
 // low-cardinality: service, level (the application's lines only) and
 // environment. request_id and user_ref stay inside the line.
 
-// The api's and the worker's JSON log files on the shared volume.
+// The JSON log files on the shared volume: the api's and the worker's at its
+// root, the backup service's in a directory of its own (ADR 0017).
 local.file_match "app" {
-  path_targets = [{"__path__" = "/var/log/app/*.log"}]
+  path_targets = [
+    {"__path__" = "/var/log/app/*.log"},
+    {"__path__" = "/var/log/app/backup/*.log"},
+  ]
 }
 
 loki.source.file "app" {
@@ -36,13 +40,14 @@ loki.process "labels" {
 // What the stack's other containers print, as plain text labelled by
 // service: Podman logs to the journal, under Compose and Quadlet alike. The
 // journal is the host user's, so only this stack's services are kept, by
-// name; the api and the worker come from their files instead.
+// name; the api, the worker and the backup service come from their files
+// instead.
 loki.relabel "journal" {
   forward_to = []
 
   rule {
     source_labels = ["__journal_container_name"]
-    regex         = "nginx|postgres|pgbouncer|valkey|openbao|idp|ldap|migrate|s3|backup|prometheus|loki|alloy|grafana|mail|blackbox|.+-exporter|.+-agent"
+    regex         = "nginx|postgres|pgbouncer|valkey|openbao|idp|ldap|migrate|s3|prometheus|loki|alloy|grafana|mail|blackbox|.+-exporter|.+-agent"
     action        = "keep"
   }
 

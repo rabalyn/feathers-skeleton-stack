@@ -74,6 +74,8 @@ export const WORKER_SETTINGS = [
   'objectPurgeDelayDays'
 ] as const satisfies readonly SettingKey[]
 
+export const BACKUP_SETTINGS = ['backupSchedule', 'backupRetentionDailySnapshots'] as const satisfies readonly SettingKey[]
+
 // Rules that span two settings, or a setting and deployment configuration.
 // Checked on every write against the settings as they would be afterwards;
 // each returns a message when violated.

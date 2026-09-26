@@ -50,6 +50,18 @@ template {
   perms       = "0440"
 }
 
+template {
+  contents    = "{{ with secret \"kv/data/s3\" }}{{ .Data.data.backup_key_id }}{{ end }}"
+  destination = "/run/secrets/backup_key_id"
+  perms       = "0440"
+}
+
+template {
+  contents    = "{{ with secret \"kv/data/s3\" }}{{ .Data.data.backup_secret_key }}{{ end }}"
+  destination = "/run/secrets/backup_secret_key"
+  perms       = "0440"
+}
+
 # Local only (secrets.conf): absent in production, where this renders empty
 # and the container skips the client.
 template {

@@ -427,7 +427,7 @@ case $cmd in
     setup
     log "starting the stack"
     # shellcheck disable=SC2046
-    compose up -d --force-recreate --no-deps $(app_services | grep -vxE 'migrate|worker') >/dev/null 2>&1
+    compose up -d --force-recreate --no-deps $(app_services | grep -vxE 'migrate|worker|backup') >/dev/null 2>&1
     # --no-deps drops depends_on conditions, so migrate waits here explicitly.
     wait_healthy postgres 120
     compose up -d --force-recreate --no-deps migrate >/dev/null 2>&1
@@ -435,8 +435,11 @@ case $cmd in
     [[ $(podman inspect -f '{{.State.ExitCode}}' migrate) == 0 ]] || die "migrate failed; see: podman logs migrate"
     # The worker refuses to start without its runtime settings (ADR 0025),
     # which migrate has just seeded.
-    compose up -d --force-recreate --no-deps worker >/dev/null 2>&1
+    compose up -d --force-recreate --no-deps worker backup >/dev/null 2>&1
     wait_healthy worker 60
+    # The local target is ours to initialise (ADR 0017); a run never does.
+    podman exec -u backup backup node dist/backup.js init >/dev/null ||
+      die "initialising the backup target failed; see: podman logs backup"
     idp_setup
     ensure_breakglass
     ;;

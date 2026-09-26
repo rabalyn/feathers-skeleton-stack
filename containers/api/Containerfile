@@ -1,5 +1,9 @@
 # Build context: repository root.
 ARG NODE_IMAGE=docker.io/library/node:24.21.0-trixie-slim@sha256:b64fccfbcd1ae10d11b969a868b50e1c2530a7054813d5cdea04ac3bce551697
+# restic 0.19.1, a static binary (ADR 0017).
+ARG RESTIC_IMAGE=docker.io/restic/restic@sha256:136600b6ff6843d61d355f7f71f460a166429f35de6fd11b568fece3c9a4d510
+
+FROM ${RESTIC_IMAGE} AS restic
 
 FROM ${NODE_IMAGE} AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH COREPACK_ENABLE_DOWNLOAD_PROMPT=0
@@ -42,3 +46,27 @@ WORKDIR /repo/apps/api
 USER node
 EXPOSE 3030 9090
 CMD ["node", "dist/index.js"]
+
+# The backup service (ADR 0017): the runtime, plus restic and the pg_dump of
+# PostgreSQL 18 from the PostgreSQL project's Debian repository (Debian 13
+# ships 17, which refuses to dump an 18 server). Its own user and group:
+# Debian's system user `backup`, moved to an ID of its own, and a member of
+# GID 1000, Valkey's group in its image (ADR 0010), to read Valkey's
+# snapshot file (in this image, 1000 is the group `node`).
+FROM runtime AS backup
+USER root
+RUN export DEBIAN_FRONTEND=noninteractive \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates postgresql-common \
+ && /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y \
+ && apt-get install -y --no-install-recommends postgresql-client-18 \
+ && apt-get purge -y --auto-remove postgresql-common \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupmod -g 1100 backup \
+ && usermod -u 1100 -g 1100 -d /var/lib/backup backup \
+ && usermod -a -G 1000 backup \
+ && install -d -o 1100 -g 1100 -m 0750 /var/lib/backup /srv/backups
+COPY --from=restic /usr/bin/restic /usr/local/bin/restic
+COPY containers/backup/entrypoint.sh /usr/local/bin/backup-entrypoint
+ENTRYPOINT ["sh", "/usr/local/bin/backup-entrypoint"]
+CMD ["node", "dist/backup.js"]

@@ -104,6 +104,21 @@ const fields = {
   // The deployment's bucket for uploads; locally the tests and the e2e api
   // use their own, which their runs empty.
   s3UploadsBucket: { schema: Type.String({ pattern: '^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$' }), env: 'S3_UPLOADS_BUCKET', default: 'uploads' },
+  // The backup service (ADR 0017). The restic password is read by restic
+  // itself from RESTIC_PASSWORD_FILE; it is loaded here only so the service
+  // refuses to start without it.
+  resticPassword: { schema: Type.String({ minLength: 16 }), env: 'RESTIC_PASSWORD', secret: true },
+  // Where the repositories live: the NFS target, or a named volume locally.
+  backupTargetDir: { schema: Type.String({ pattern: '^/' }), env: 'BACKUP_TARGET_DIR', default: '/srv/backups' },
+  // The service's own volume: the bucket mirror, staged files, restic's cache.
+  backupWorkDir: { schema: Type.String({ pattern: '^/' }), env: 'BACKUP_WORK_DIR', default: '/var/lib/backup' },
+  // Valkey's RDB snapshot, from a read-only mount of its volume (ADR 0010).
+  valkeySnapshotFile: { schema: Type.String({ pattern: '^/' }), env: 'VALKEY_SNAPSHOT_FILE', default: '/var/lib/valkey/dump.rdb' },
+  // OpenBao's raft snapshot (ADR 0023), with the token the backup-agent
+  // keeps current in this file; read at every run, as it is renewed.
+  openbaoAddr: { schema: Type.String({ pattern: '^https://' }), env: 'OPENBAO_ADDR' },
+  openbaoTokenFile: { schema: Type.String({ pattern: '^/' }), env: 'OPENBAO_TOKEN_FILE' },
+  openbaoCaFile: { schema: Type.String({ minLength: 1 }), env: 'OPENBAO_CA_FILE' },
   databasePoolMax: {
     schema: Type.Integer({ minimum: 1, maximum: 50 }),
     env: 'DATABASE_POOL_MAX',
@@ -180,6 +195,22 @@ export const WORKER_KEYS = [
   ...DATABASE_KEYS
 ] as const satisfies readonly ConfigKey[]
 
+// The backup service connects directly to PostgreSQL as `backup` (ADR 0004,
+// 0017) and reads the uploads bucket with its own read-only key.
+export const BACKUP_KEYS = [
+  'logLevel',
+  'logFile',
+  'resticPassword',
+  'backupTargetDir',
+  'backupWorkDir',
+  'valkeySnapshotFile',
+  'openbaoAddr',
+  'openbaoTokenFile',
+  'openbaoCaFile',
+  ...S3_KEYS,
+  ...DATABASE_KEYS
+] as const satisfies readonly ConfigKey[]
+
 export class ConfigError extends Error {}
 
 const readSecretFile = (name: string, path: string): string => {
@@ -244,3 +275,4 @@ export type LdapConfig = Pick<Config, (typeof LDAP_KEYS)[number]>
 export type ValkeyConfig = Pick<Config, (typeof VALKEY_KEYS)[number]>
 export type WorkerConfig = Pick<Config, (typeof WORKER_KEYS)[number]>
 export type S3Config = Pick<Config, (typeof S3_KEYS)[number]>
+export type BackupConfig = Pick<Config, (typeof BACKUP_KEYS)[number]>

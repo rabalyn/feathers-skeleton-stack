@@ -255,6 +255,50 @@ services:
       timeout: 3s
       retries: 3
 
+  # Backups (ADR 0017): restic repositories under /srv/backups, which is a
+  # named volume locally and the host's NFS mount when BACKUP_TARGET names
+  # it (CI); the production unit mounts /srv/backups (scripts/quadlet.sh).
+  # Only on db, object and secrets (ADR 0002). Valkey's snapshot is read
+  # from its volume, never over the network.
+  backup:
+    build:
+      context: .
+      dockerfile: containers/api/Containerfile
+      target: backup
+    image: localhost/feathers-backup:dev
+    container_name: backup
+    # restic's locks name the host; a fixed name lets a restarted container
+    # recognise its own stale ones.
+    hostname: backup
+    # It refuses to start without its runtime settings (ADR 0025).
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      LOG_FILE: /var/log/app/backup/backup
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: app
+      DATABASE_USER: backup
+      DATABASE_PASSWORD_FILE: /run/secrets/database_password
+      DATABASE_CA_FILE: /trust/ca.crt
+      S3_ENDPOINT: https://s3:3900
+      S3_KEY_ID_FILE: /run/secrets/s3_key_id
+      S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
+      S3_CA_FILE: /trust/ca.crt
+      RESTIC_PASSWORD_FILE: /run/secrets/restic_password
+      OPENBAO_ADDR: https://openbao:8200
+      OPENBAO_TOKEN_FILE: /run/secrets/openbao_token
+      OPENBAO_CA_FILE: /trust/ca.crt
+    networks: [db, object, secrets]
+    volumes:
+      - ${BACKUP_TARGET:-backups}:/srv/backups
+      - backup-data:/var/lib/backup
+      - valkey-data:/var/lib/valkey:ro
+      - backup-secrets:/run/secrets:ro
+      - trust:/trust:ro
+      - logs:/var/log/app
+
   migrate:
     image: localhost/feathers-api:dev
     container_name: migrate
@@ -342,6 +386,10 @@ services:
     depends_on:
       certs:
         condition: service_completed_successfully
+    # Files group-readable: the backup service reads the RDB snapshot through
+    # Valkey's group (ADR 0017). The image's entry point keeps a umask it
+    # did not default to.
+    entrypoint: ["sh", "-c", "umask 0027 && exec docker-entrypoint.sh \"$$@\"", "valkey"]
     command: ["valkey-server", "/etc/valkey/valkey.conf"]
     networks: [app-data]
     volumes:
@@ -370,8 +418,9 @@ services:
         condition: service_completed_successfully
     environment:
       # Local only (interpolated, so never in the generated units): the
-      # buckets of the test runs, emptied by each run (ADR 0015, 0020).
-      S3_LOCAL_GRANTS: ${S3_LOCAL_GRANTS:-api:e2e-uploads:write test:test-uploads:write test:test-purge:write}
+      # buckets of the test runs, emptied by each run (ADR 0015, 0020), and
+      # the source and target of the backup-and-restore check (ADR 0017).
+      S3_LOCAL_GRANTS: ${S3_LOCAL_GRANTS:-api:e2e-uploads:write test:test-uploads:write test:test-purge:write backup:backup-check:read backup:restore-check:read}
     networks: [object, observability]
     volumes:
       - s3-data:/var/lib/garage
@@ -743,6 +792,26 @@ services:
       - s3-secrets:/run/secrets
       - s3-agent-cred:/run/agent
 
+  backup-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: backup-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:1100"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/backup.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/backup.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - backup-secrets:/run/secrets
+      - backup-agent-cred:/run/agent
+
   # --- observability (ADR 0021, 0022) ---------------------------------------
   # TLS on every hop, each listener with its own leaf at /tls; CPU and
   # memory are capped so monitoring cannot starve the application.
@@ -1075,6 +1144,15 @@ volumes:
   idp-data: {}
   valkey-data: {}
   s3-data: {}
+  # The backup target locally (ADR 0017); BACKUP_TARGET replaces it with a
+  # host directory, the NFS mount in CI.
+  backups:
+    driver: local
+    driver_opts: { o: "uid=1100,gid=1100" }
+  # The backup service's own: the bucket mirror, staged files, restic's cache.
+  backup-data:
+    driver: local
+    driver_opts: { o: "uid=1100,gid=1100" }
   # JSON log files of the api and the worker (ADR 0021), written by uid 1000.
   logs:
     driver: local
@@ -1166,3 +1244,9 @@ volumes:
   valkey-exporter-agent-cred:
     driver: local
     driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=59000,mode=0700" }
+  backup-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1100,mode=0750" }
+  backup-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1100,mode=0700" }

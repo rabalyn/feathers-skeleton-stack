@@ -102,6 +102,8 @@ A value is rotated by writing a new version in OpenBao; the agent re-renders the
 
 OpenBao's storage is backed up as a raft snapshot by the backup service ([0017](0017-nfs-backup-storage.md)). A restored snapshot is unusable without the unseal shares, which is why they live outside the system, in KeePass.
 
+The backup service is the one consumer that talks to OpenBao itself. It does so with its agent's own token, which the `backup-agent` writes next to the rendered files (a file sink, `/run/secrets/openbao_token`, renewed by the agent); the `backup` policy allows reading `kv/data/backup` and `sys/storage/raft/snapshot`, nothing else. The restic password is generated like any internal value; in production an administrator copies it into KeePass after `init` (`bao kv get -field=restic_password kv/backup`, as an administrator).
+
 ## Consequences
 
 - Secrets are encrypted at rest, access-controlled per service, audited, and present in plaintext only in tmpfs while the stack runs.

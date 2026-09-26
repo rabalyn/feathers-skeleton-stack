@@ -11,9 +11,13 @@
 # Static: gitleaks over the whole history, ESLint, the client dependency
 # boundary, typecheck, unit tests that need no stack, pnpm audit, the Quadlet
 # drift check, the production OpenBao procedure against a throwaway OpenBao.
-# Stack: up, Vitest, Playwright, the alert delivery check, then the
-# vulnerability scan of every image
-# compose.yaml names.
+# Stack: up, Vitest, Playwright, the alert delivery check, the backup and
+# restore cycle (scripts/backup-test.sh), then the vulnerability scan of
+# every image compose.yaml names.
+#
+# The backup target is a named volume unless BACKUP_TARGET names a host
+# directory; scripts/ci-nfs-runner.sh runs this script with it on real NFS,
+# as a runner does (ADR 0017).
 #
 # Blocking thresholds (ADR 0018): pnpm audit at high and above; Trivy on
 # HIGH/CRITICAL findings that have a fix. Unfixed findings are reported
@@ -98,6 +102,7 @@ if [[ $mode != --static ]]; then
   check "Vitest" "$ROOT/scripts/stack.sh" test
   check "Playwright" "$ROOT/scripts/stack.sh" e2e
   check "Alert delivery" "$ROOT/scripts/stack.sh" alerts
+  check "Backup and restore" "$ROOT/scripts/backup-test.sh"
   # The dev server image is never started here but ships to developers, so
   # it is built for the scan like every other image compose.yaml names.
   step "building the dev server image"

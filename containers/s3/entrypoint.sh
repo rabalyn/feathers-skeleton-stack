@@ -25,6 +25,7 @@ api     uploads  write
 api     exports  write
 worker  uploads  write
 worker  exports  write
+backup  uploads  read
 '
 # Locally, the buckets of test runs, as <client>:<bucket>:<access> ...
 # (compose.yaml); unset in production.
@@ -83,6 +84,13 @@ while read -r client bucket access; do
   jq -n --arg b "$bucket_id" --arg k "$(<"$SECRETS/${client}_key_id")" --arg a "$access" \
     '{bucketId: $b, accessKeyId: $k, permissions: {read: true, write: ($a == "write"), owner: false}}' |
     api AllowBucketKey >/dev/null
+  # Allowing never takes away: a read grant loses any write access, such as
+  # the one a restore gives the backup key for its duration (ADR 0017).
+  if [[ $access == read ]]; then
+    jq -n --arg b "$bucket_id" --arg k "$(<"$SECRETS/${client}_key_id")" \
+      '{bucketId: $b, accessKeyId: $k, permissions: {read: false, write: true, owner: true}}' |
+      api DenyBucketKey >/dev/null
+  fi
 done <<<"$GRANTS"
 
 # The table is the whole truth: a grant it no longer lists is revoked.

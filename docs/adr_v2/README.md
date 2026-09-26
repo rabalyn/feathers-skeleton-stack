@@ -88,7 +88,9 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 
 **Slice 6 — object storage and uploads** ([0020](0020-object-storage-uploads.md)), chosen before backups so the first backup covers objects too: Garage v2.4.1 behind Nginx for TLS in one `s3` image, with a key per client; the `files` table and `POST /api/files` (allowlist, magic bytes, size and quotas before a byte is stored, streamed and hashed), `file-contents` downloads with `nosniff` and a sandbox CSP, documents with their file, the own avatar through `avatars`; soft deletion and the daily object purge in the worker; the documents page and the profile picture in the UI, with Vitest and Playwright over the real Garage.
 
-**Later.** Backups ([0017](0017-nfs-backup-storage.md)), next. The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
+**Slice 7 — backups** ([0017](0017-nfs-backup-storage.md)): the `backup` container, a Node entry of the api's code base with restic and `pg_dump` 18 in its own image and a UID of its own, scheduled from the runtime settings; the `db`, `objects` (through a mirror of the bucket) and `state` (Valkey's RDB, OpenBao's raft snapshot) repositories with daily retention; repositories made only by an explicit `init`, and every run refused on a missing, empty or read-only target; PostgreSQL roles re-applied on every start, which brought the read-only `backup` role to existing clusters ([0003](0003-postgresql-and-knex.md)); `scripts/backup.sh`, the restore procedure, with the session revocation post-step; `scripts/backup-test.sh`, the backup-and-restore cycle in CI; `scripts/ci-nfs-runner.sh` for the gate on real NFS; the two backup alerts ([0022](0022-observability-and-alerting.md)).
+
+**Later.** The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above. Re-applying erasures after a restore arrives with GDPR erasure ([0013](0013-gdpr-export-and-retention.md)).
 
 ## Status of this set
 
