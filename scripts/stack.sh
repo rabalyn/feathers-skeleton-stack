@@ -25,7 +25,8 @@
 #                            run the Playwright suite in the `e2e` container
 #                            against api-e2e on a fresh database of its own,
 #                            at https://e2e.localhost:8443 (ADR 0015); the
-#                            local app and its data are not touched
+#                            local app and its data are not touched. Needs
+#                            the bundle: refused after `up --dev` (ADR 0014)
 #   scripts/stack.sh breakglass
 #                            print the local app's break-glass email and
 #                            password (ADR 0008)
@@ -402,6 +403,11 @@ case $cmd in
     ;;
   e2e)
     shift
+    # The suite exercises the built bundle (ADR 0014); under --dev nginx
+    # proxies every origin, the e2e one included, to the Vite dev server.
+    [[ -z $(podman inspect -f '{{range .Config.Env}}{{println .}}{{end}}' nginx 2>/dev/null |
+      sed -n 's/^NGINX_WEB_UPSTREAM=//p') ]] ||
+      die "nginx serves the Vite dev server; run '$0 up' (without --dev) first"
     compose --profile test build e2e
     # api-e2e and its database exist for the run only.
     trap 'podman rm -f api-e2e >/dev/null 2>&1 || true' EXIT
