@@ -134,10 +134,10 @@ missing_keys() {
 
 # Destroys the previous secret_ids of every running agent in AGENTS, issues a
 # new one response-wrapped, and unwraps it inside the agent container into
-# the agent's own tmpfs.
-issue_secret_ids() {
+# the agent's own tmpfs. Every running agent, or only those named.
+issue_secret_ids() { # [<service>...]
   local svc accessor wrap
-  for svc in $AGENTS; do
+  for svc in ${*:-$AGENTS}; do
     running "$AGENT_PREFIX$svc-agent" || continue
     for accessor in $({ bao list -format=json "auth/approle/role/$svc/secret-id" 2>/dev/null || echo '[]'; } | jq -r '.[]'); do
       bao write "auth/approle/role/$svc/secret-id-accessor/destroy" secret_id_accessor="$accessor" >/dev/null

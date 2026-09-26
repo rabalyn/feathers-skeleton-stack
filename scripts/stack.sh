@@ -19,8 +19,10 @@
 #   scripts/stack.sh ca      print the local root CA certificate, for a
 #                            one-time import into your browser (ADR 0016)
 #   scripts/stack.sh test [vitest args]
-#                            rebuild test_template and run Vitest in the
-#                            `test` container (ADR 0015); the stack must be up
+#                            run Vitest in the `test` container (ADR 0015);
+#                            the stack must be up. test-agent and
+#                            test_template are reused while the sources they
+#                            were made from are unchanged
 #   scripts/stack.sh e2e [playwright args]
 #                            run the Playwright suite in the `e2e` container
 #                            against api-e2e on a fresh database of its own,
@@ -142,9 +144,9 @@ ensure_admin_token() {
 
 # --- agents ----------------------------------------------------------------
 
-wait_for_rendered() {
+wait_for_rendered() { # [<service>...]
   local svc i
-  for svc in $(agents); do
+  for svc in ${*:-$(agents)}; do
     running "$svc-agent" || continue
     for i in $(seq 60); do
       podman exec "$svc-agent" sh -c 'ls /run/secrets/* >/dev/null 2>&1' && continue 2
@@ -328,6 +330,54 @@ setup() {
   log "secrets delivered"
 }
 
+# `test` reuses what an earlier run left in place (ADR 0015): a running
+# test-agent and a test_template, each while a fingerprint of the sources it
+# was made from still matches. The template's sources are what migrate.ts
+# runs for --test-template; a new import there belongs in this list.
+fingerprint() { # <path>...
+  (cd "$ROOT" && find "$@" -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+}
+TEST_AGENT_SOURCES=(compose.yaml containers/openbao scripts/openbao-lib.sh)
+TEST_TEMPLATE_SOURCES=(apps/api/src/migrate.ts apps/api/src/migration-support.ts
+  apps/api/src/migrations apps/api/src/settings)
+
+# The fingerprint sits in the agent's tmpfs, so it goes with the container.
+ensure_test_agent() {
+  local want
+  want=$(fingerprint "${TEST_AGENT_SOURCES[@]}")
+  if running test-agent &&
+    [[ $(podman exec test-agent cat /run/agent/fingerprint 2>/dev/null) == "$want" ]]; then
+    log "test-agent is current"
+    return 0
+  fi
+  # Recreated: it reads its templates at start, and needs a new secret_id.
+  compose --profile test up -d --force-recreate --no-deps test-agent >/dev/null 2>&1
+  wait_for_openbao
+  init_or_unseal
+  configure
+  fill_secrets local
+  issue_secret_ids test
+  bao token revoke -self >/dev/null
+  TOKEN=
+  wait_for_rendered test
+  printf '%s' "$want" | podman exec -i test-agent sh -c 'cat > /run/agent/fingerprint'
+  log "test-agent started"
+}
+
+# The fingerprint is the template's comment, set once the build succeeded;
+# migrate.ts marks it a template last, so a failed build never matches.
+ensure_test_template() {
+  local want
+  want=$(fingerprint "${TEST_TEMPLATE_SOURCES[@]}")
+  [[ $(podman exec -u postgres postgres psql -tAq -d postgres -c \
+    "SELECT shobj_description(oid, 'pg_database') FROM pg_database
+     WHERE datname = 'test_template' AND datistemplate") == "$want" ]] &&
+    { log "test_template is current"; return 0; }
+  log "rebuilding test_template"
+  compose run --rm migrate node dist/migrate.js --test-template
+  podman exec -u postgres postgres psql -q -d postgres -c "COMMENT ON DATABASE test_template IS '$want'"
+}
+
 # podman-compose stops every container at once on `down`, ignoring
 # depends_on; Alloy goes first so it can ship what it holds while Loki is
 # still there (compose.yaml orders them for the production units).
@@ -396,11 +446,8 @@ case $cmd in
   test)
     shift
     compose --profile test build api test
-    # Recreated like every agent in `up`: it reads its templates at start.
-    compose --profile test up -d --force-recreate --no-deps test-agent >/dev/null 2>&1
-    setup
-    log "rebuilding test_template"
-    compose run --rm migrate node dist/migrate.js --test-template
+    ensure_test_agent
+    ensure_test_template
     compose --profile test run --rm -T test pnpm exec vitest run "$@"
     ;;
   e2e)
