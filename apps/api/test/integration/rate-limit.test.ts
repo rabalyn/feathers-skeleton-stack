@@ -44,9 +44,10 @@ const settingOf = {
 describe('with Valkey available', () => {
   let app: Application
   let base: string
+  let rateLimitPrefix: string
 
   beforeAll(async () => {
-    ;({ app } = await createTestApp())
+    ;({ app, rateLimitPrefix } = await createTestApp())
     base = await listen(app)
   })
   afterAll(async () => {
@@ -86,9 +87,7 @@ describe('with Valkey available', () => {
 
   it('counters expire with their one-minute window', async () => {
     await requests.samlLogin(base, '198.51.100.21')
-    const keys = await app.get('valkey').keys('test:*:samlLogin:198.51.100.21')
-    expect(keys).toHaveLength(1)
-    const ttl = await app.get('valkey').pttl(keys[0] ?? '')
+    const ttl = await app.get('valkey').pttl(`${rateLimitPrefix}:samlLogin:198.51.100.21`)
     expect(ttl).toBeGreaterThan(0)
     expect(ttl).toBeLessThanOrEqual(60_000)
   })

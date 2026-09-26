@@ -18,6 +18,9 @@ export interface TestContext {
   app: Application
   idp: TestIdp
   sp: KeyPair
+  // This app's rate-limit key prefix; keys of other apps and earlier runs
+  // live beside it in the same Valkey.
+  rateLimitPrefix: string
 }
 
 export const loadValkeyConfig = (): Promise<ValkeyConfig> => loadConfig(VALKEY_KEYS)
@@ -41,6 +44,7 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
   const valkeyConfig = await loadValkeyConfig()
   // The stack's test directory, bound with the api's own service account.
   const ldapConfig = await loadConfig(LDAP_KEYS)
+  const rateLimitPrefix = `test:${randomUUID()}`
   const app = createApp(
     {
       ...database,
@@ -75,7 +79,7 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
     options.valkey ?? createValkey(valkeyConfig).on('error', () => {}),
     // Tests change settings in the database directly and expect the next
     // request to see them.
-    { settingsTtlMs: 0, rateLimitPrefix: `test:${randomUUID()}` }
+    { settingsTtlMs: 0, rateLimitPrefix }
   )
-  return { app, idp: new TestIdp(idpKey), sp }
+  return { app, idp: new TestIdp(idpKey), sp, rateLimitPrefix }
 }
