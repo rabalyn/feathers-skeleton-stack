@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { Redis } from 'ioredis'
 import { pino } from 'pino'
 import { createApp, type Application } from '../../src/app.js'
-import { LDAP_KEYS, VALKEY_KEYS, loadConfig, type LdapConfig, type ValkeyConfig } from '../../src/config.js'
+import { LDAP_KEYS, S3_KEYS, VALKEY_KEYS, loadConfig, type LdapConfig, type ValkeyConfig } from '../../src/config.js'
 import { createKnex } from '../../src/db.js'
 import { createValkey } from '../../src/valkey.js'
 import { IDP_ENTITY_ID, IDP_SSO_URL, PUBLIC_ORIGIN, TestIdp, keyPair, type KeyPair } from './saml-idp.js'
@@ -44,6 +44,8 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
   const valkeyConfig = await loadValkeyConfig()
   // The stack's test directory, bound with the api's own service account.
   const ldapConfig = await loadConfig(LDAP_KEYS)
+  // The tests' own S3 key (ADR 0020), on the same buckets as the local app.
+  const s3Config = await loadConfig(S3_KEYS)
   const rateLimitPrefix = `test:${randomUUID()}`
   const app = createApp(
     {
@@ -51,6 +53,7 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
       ...valkeyConfig,
       ...ldapConfig,
       ...options.ldap,
+      ...s3Config,
       publicOrigin: PUBLIC_ORIGIN,
       authSigningSecret: 'test-only-signing-secret-that-is-long-enough',
       refreshTokenKey: 'test-only-refresh-token-key-that-is-long-enough',

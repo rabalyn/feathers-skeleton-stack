@@ -6,6 +6,7 @@ import {
   userDataResolver,
   userDataValidator,
   userExternalResolver,
+  userInternalPatchValidator,
   userPatchResolver,
   userPatchValidator,
   userQueryResolver,
@@ -13,6 +14,7 @@ import {
   userResolver,
   type User,
   type UserData,
+  type UserInternalPatch,
   type UserPatch,
   type UserQuery
 } from './users.schema.js'
@@ -20,6 +22,8 @@ import type { NextFunction, Params } from '@feathersjs/feathers'
 import { recordAudit } from '../../audit.js'
 import { endUserConnections, publishTo, roleChannel, userChannel } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
+import { AVATAR_CONTENT_TYPES } from '../files/files.schema.js'
+import { attachFile, releaseFile } from '../files/attachments.js'
 
 export type UserParams = Params<UserQuery>
 
@@ -33,7 +37,8 @@ export const USER_EXTERNAL_METHODS = ['find', 'get', 'patch'] as const
 // Role changes and enabling or disabling an account are administrative
 // actions and audited (ADR 0018). Internal patches are not user actions.
 const auditPatch = async (context: HookContext<UserService>) => {
-  if (!context.params.provider) return
+  const data = context.data as UserPatch
+  if (!context.params.provider || (data.role === undefined && data.enabled === undefined)) return
   await recordAudit(context.app.get('knex'), {
     actorId: context.params.user?.id ?? null,
     action: 'users.patch',
@@ -62,6 +67,34 @@ const endConnectionsOnAccessChange = async (context: HookContext<UserService>, n
   if (after.role !== before.role || after.enabled !== before.enabled) endUserConnections(context.app, after.id)
 }
 
+// External patches carry role and account state only; the avatar arrives
+// from the avatars service as an internal patch.
+const validateExternalPatch = schemaHooks.validateData(userPatchValidator)
+const validateInternalPatch = schemaHooks.validateData(userInternalPatchValidator)
+const validatePatch = async (context: HookContext<UserService>, next: NextFunction) => {
+  await (context.params.provider ? validateExternalPatch : validateInternalPatch)(context, next)
+}
+
+// A new avatar is attached, and the one it replaces released, in the same
+// transaction as the change (ADR 0020). The file must belong to the user
+// whose avatar it becomes.
+const withAvatar = async (context: HookContext<UserService>, next: NextFunction) => {
+  const data = context.data as UserInternalPatch | undefined
+  if (data?.avatarFileId === undefined || context.id === null || context.id === undefined) {
+    await next()
+    return
+  }
+  const before = await context.service._get(context.id)
+  await context.app.get('knex').transaction(async (trx) => {
+    if (data.avatarFileId && data.avatarFileId !== before.avatarFileId) {
+      await attachFile(trx, data.avatarFileId, { ownerId: String(context.id), allowedTypes: AVATAR_CONTENT_TYPES })
+    }
+    context.params = { ...context.params, transaction: { trx } } as typeof context.params
+    await next()
+    if (before.avatarFileId && before.avatarFileId !== data.avatarFileId) await releaseFile(trx, before.avatarFileId)
+  })
+}
+
 export const users = (app: Application) => {
   app.use(
     USERS_PATH,
@@ -77,12 +110,17 @@ export const users = (app: Application) => {
   app.service(USERS_PATH).hooks({
     around: {
       all: [schemaHooks.resolveExternal(userExternalResolver), schemaHooks.resolveResult(userResolver)],
-      patch: [endConnectionsOnAccessChange]
+      // Validated before an avatar is attached.
+      patch: [
+        endConnectionsOnAccessChange,
+        validatePatch,
+        schemaHooks.resolveData(userPatchResolver),
+        withAvatar
+      ]
     },
     before: {
       all: [schemaHooks.validateQuery(userQueryValidator), schemaHooks.resolveQuery(userQueryResolver)],
-      create: [schemaHooks.validateData(userDataValidator), schemaHooks.resolveData(userDataResolver)],
-      patch: [schemaHooks.validateData(userPatchValidator), schemaHooks.resolveData(userPatchResolver)]
+      create: [schemaHooks.validateData(userDataValidator), schemaHooks.resolveData(userDataResolver)]
     },
     after: {
       patch: [auditPatch]

@@ -8,6 +8,7 @@ import { createClient, SOCKET_PATH, type ClientApplication } from '../../src/cli
 import type { User } from '../../src/services/users/users.schema.js'
 import { hashRefreshToken } from '../../src/auth/sessions.js'
 import { createTestApp } from '../support/app.js'
+import { db } from '../support/worker-database.js'
 import { PUBLIC_ORIGIN } from '../support/saml-idp.js'
 
 // ADR 0012 over real WebSockets through the typed client: which connection
@@ -77,7 +78,7 @@ const connect = async (): Promise<Connection> => {
   // build of socket.io-client, this import the ESM one.
   const client = createClient(socketio.default(socket as never), { Authentication: ManualAuthenticationClient })
   const connection: Connection = { socket, client, events: [], disconnects: [] }
-  for (const path of ['users', 'settings'] as const) {
+  for (const path of ['users', 'settings', 'documents'] as const) {
     for (const event of ['created', 'updated', 'patched', 'removed']) {
       client.service(path).on(event, (data: unknown) => connection.events.push({ path, event, data }))
     }
@@ -134,6 +135,29 @@ describe('who receives an event', () => {
     expect(received(asAdmin, 'users')[0]).toMatchObject({ event: 'patched', data: { id: member.id, tuId: 'us01user' } })
     expect(received(asOther, 'users')).toEqual([])
     expect(anonymous.events).toEqual([])
+  })
+
+  it('a document goes to its owner, admins and operators, and to no other user (ADR 0012)', async () => {
+    const [asAdmin, asOperator, asOwner, asOther] = await Promise.all([
+      connectAs(admin),
+      connectAs(operator),
+      connectAs(member),
+      connectAs(other)
+    ])
+    // A stored file row is all a document needs here; the bytes are the
+    // uploads test's concern.
+    const [file] = await db()('files')
+      .insert({ owner_id: member.id, filename: 'a.pdf', content_type: 'application/pdf', size_bytes: 1, sha256: '0'.repeat(64), state: 'stored' })
+      .returning<{ id: string }[]>('id')
+    const document = await app.service('documents').create({ title: 'Live', fileId: file!.id }, as(member))
+
+    await settle(() => {
+      for (const connection of [asAdmin, asOperator, asOwner]) {
+        expect(received(connection, 'documents')).toHaveLength(1)
+      }
+    })
+    expect(received(asOwner, 'documents')[0]).toMatchObject({ event: 'created', data: { id: document.id, title: 'Live' } })
+    expect(received(asOther, 'documents')).toEqual([])
   })
 
   it('the payload is the one REST returns, not the internal result', async () => {

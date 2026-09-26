@@ -45,16 +45,25 @@ Because of this, the database and the object store can be backed up independentl
 
 The browser never talks to the object store. All access goes through authorized Feathers operations, which check ownership and role ([0011](0011-casl-role-authorization.md)) and then stream bytes to or from Garage. The S3 endpoint is reachable only on the `object` network and is never routed by Nginx. Presigned URLs are deferred until transfer volume makes API-mediated streaming impractical.
 
+As built:
+
+- **One `files` table describes every object** in `uploads`: owner, original filename, verified content type, size, SHA-256, and its bookkeeping (`pending` while an upload is in flight, `stored` once complete; when it was attached; when it was soft-deleted). Its id is the object key. Documents and avatars reference a `files` row; a new kind of attachment in a product does the same, so quota, purge, export and backup checks work on one table.
+- **Upload** is `POST /api/files` with the file as the raw body, its type as `Content-Type` and its name percent-encoded in `X-File-Name`; multipart is not used. It answers with the file's metadata; the uploader then attaches the file by its id (`documents.create({ title, fileId })`, `avatars.create({ fileId })`). Attaching requires a stored, unattached file of the caller's own, of a type the target allows. A file never attached is soft-deleted by the purge job.
+- **Download** is `GET /api/file-contents/<id>`, readable exactly where the file's metadata is. The browser fetches it with its access token, which is held in memory only ([0014](0014-frontend-quasar-vue.md)), so an `<img>` shows an avatar from a blob URL rather than from the API's URL.
+- **Avatars** are set through their own `avatars` service, which acts on the caller's own record only; `users.patch` stays limited to role and account state ([0011](0011-casl-role-authorization.md)). Replacing a document's file or an avatar releases the previous file by soft deletion in the same transaction.
+
 ### Upload validation and limits
 
 - Maximum size per object: a runtime setting, validated to stay below Nginx's body size ceiling ([0016](0016-nginx-and-tls-everywhere.md)).
 - **Quotas** are runtime settings: **100 MB per user** and **5 GB in total** by default. An upload that would exceed either is rejected before any byte is stored.
 - An explicit allowlist of MIME types and extensions. The declared content type is verified against **magic-byte detection**; a mismatch is a rejection, not a correction.
 - Transfers are streamed, never buffered whole in API memory.
+- The allowlist is PDF, PNG, JPEG and WebP (`apps/api/src/uploads.ts`): only formats whose magic bytes identify them. Products extend it there; a format that a signature cannot tell apart from others (ZIP-based office files, plain text) needs more than a signature check before it is added.
+- In order, as built: type on the allowlist, else **415**; `Content-Length` present, else **411** (a chunked upload cannot be checked against quota before it is stored); size within the maximum, else **413**; the first bytes match the declared type, else **415**; then, under a lock that serialises reservations, the quotas, else **413** with the reason, and a `pending` row reserves the space. Only then do bytes go to Garage, hashed and counted; a body shorter or longer than declared aborts the write, and any failure removes the row and the partial object.
 
 ### Serving
 
-- Documents are served with `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`.
+- Documents are served with `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`. Every download also carries the verified type, the filename per RFC 6266, `Content-Security-Policy: default-src 'none'; sandbox` and `Cache-Control: private, no-store`.
 - Avatars are the one case served **inline**, because an `<img>` needs it. Only an allowlist of raster formats — PNG, JPEG, WebP — is accepted for avatars, verified by magic bytes, served with `nosniff` and the verified content type. **SVG is never accepted as an avatar and never served inline**, which is what prevents an upload from becoming stored XSS ([0018](0018-owasp-security-baseline.md)).
 - An avatar is visible to its owner, to `operator` and to `admin` only ([0011](0011-casl-role-authorization.md)).
 

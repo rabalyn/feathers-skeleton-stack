@@ -18,6 +18,7 @@
     "lint:boundary": "depcruise src/client.ts --config .dependency-cruiser.cjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1140.0",
     "@casl/ability": "6.8.1",
     "@feathersjs/authentication": "5.0.50",
     "@feathersjs/authentication-client": "5.0.50",
@@ -29,9 +30,11 @@
     "@feathersjs/socketio": "5.0.50",
     "@feathersjs/typebox": "5.0.50",
     "@node-saml/node-saml": "5.1.0",
+    "@smithy/node-http-handler": "4.12.1",
     "@xmldom/xmldom": "0.8.10",
     "bullmq": "6.3.8",
     "feathers-casl": "3.0.0",
+    "file-type": "22.1.1",
     "ioredis": "6.0.0",
     "knex": "3.3.0",
     "ldapts": "9.2.0",

@@ -96,6 +96,11 @@ const fields = {
   ldapBindPassword: { schema: Type.String({ minLength: 1 }), env: 'LDAP_BIND_PASSWORD', secret: true },
   ldapBaseDn: { schema: Type.String({ minLength: 1 }), env: 'LDAP_BASE_DN' },
   ldapCaFile: { schema: Type.String({ minLength: 1 }), env: 'LDAP_CA_FILE' },
+  // Object storage (ADR 0020): Garage over TLS, each service with its own key.
+  s3Endpoint: { schema: Type.String({ pattern: '^https://' }), env: 'S3_ENDPOINT' },
+  s3KeyId: { schema: Type.String({ minLength: 8 }), env: 'S3_KEY_ID', secret: true },
+  s3SecretKey: { schema: Type.String({ minLength: 16 }), env: 'S3_SECRET_KEY', secret: true },
+  s3CaFile: { schema: Type.String({ minLength: 1 }), env: 'S3_CA_FILE' },
   databasePoolMax: {
     schema: Type.Integer({ minimum: 1, maximum: 50 }),
     env: 'DATABASE_POOL_MAX',
@@ -137,6 +142,8 @@ export const VALKEY_KEYS = [
 
 export const LDAP_KEYS = ['ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapBaseDn', 'ldapCaFile'] as const satisfies readonly ConfigKey[]
 
+export const S3_KEYS = ['s3Endpoint', 's3KeyId', 's3SecretKey', 's3CaFile'] as const satisfies readonly ConfigKey[]
+
 export const API_KEYS = [
   'publicOrigin',
   'authSigningSecret',
@@ -153,6 +160,7 @@ export const API_KEYS = [
   'rateLimitPrefix',
   ...VALKEY_KEYS,
   ...LDAP_KEYS,
+  ...S3_KEYS,
   ...DATABASE_KEYS
 ] as const satisfies readonly ConfigKey[]
 
@@ -165,6 +173,7 @@ export const WORKER_KEYS = [
   'logLevel',
   'logFile',
   ...VALKEY_KEYS,
+  ...S3_KEYS,
   ...DATABASE_KEYS
 ] as const satisfies readonly ConfigKey[]
 
@@ -231,3 +240,4 @@ export type DatabaseConfig = Pick<Config, (typeof DATABASE_KEYS)[number]>
 export type LdapConfig = Pick<Config, (typeof LDAP_KEYS)[number]>
 export type ValkeyConfig = Pick<Config, (typeof VALKEY_KEYS)[number]>
 export type WorkerConfig = Pick<Config, (typeof WORKER_KEYS)[number]>
+export type S3Config = Pick<Config, (typeof S3_KEYS)[number]>

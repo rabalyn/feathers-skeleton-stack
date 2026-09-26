@@ -20,6 +20,9 @@ export const userSchema = Type.Object(
     email: nullableString,
     role: Type.Union([Type.Literal('admin'), Type.Literal('operator'), Type.Literal('user')]),
     enabled: Type.Boolean(),
+    // An uploaded PNG, JPEG or WebP (ADR 0020); its bytes are at
+    // file-contents/:avatarFileId.
+    avatarFileId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]),
     authSource: Type.Union([Type.Literal('saml'), Type.Literal('local')]),
     createdAt: Type.String({ format: 'date-time' }),
     updatedAt: Type.String({ format: 'date-time' })
@@ -50,7 +53,8 @@ export const userDataValidator = getValidator(userDataSchema, dataValidator)
 export const userDataResolver = resolve<User, HookContext>({})
 
 // What an external patch may change: role assignment and enable/disable
-// (ADR 0011). Directory fields are writable by nobody (ADR 0009).
+// (ADR 0011). Directory fields are writable by nobody (ADR 0009). The avatar
+// is set through the avatars service, whose internal patch may carry it.
 export const userPatchSchema = Type.Partial(Type.Pick(userSchema, ['role', 'enabled']), {
   $id: 'UserPatch',
   additionalProperties: false,
@@ -58,6 +62,13 @@ export const userPatchSchema = Type.Partial(Type.Pick(userSchema, ['role', 'enab
 })
 export type UserPatch = Static<typeof userPatchSchema>
 export const userPatchValidator = getValidator(userPatchSchema, dataValidator)
+export const userInternalPatchSchema = Type.Partial(Type.Pick(userSchema, ['role', 'enabled', 'avatarFileId']), {
+  $id: 'UserInternalPatch',
+  additionalProperties: false,
+  minProperties: 1
+})
+export type UserInternalPatch = Static<typeof userInternalPatchSchema>
+export const userInternalPatchValidator = getValidator(userInternalPatchSchema, dataValidator)
 export const userPatchResolver = resolve<User, HookContext>({
   updatedAt: async () => new Date().toISOString()
 })

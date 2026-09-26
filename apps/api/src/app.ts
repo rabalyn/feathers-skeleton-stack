@@ -19,6 +19,7 @@ import { API_PREFIX, SOCKET_PATH } from './paths.js'
 import { RateLimiter } from './rate-limit.js'
 import { createRegistry, observeKnexPool, requestMetrics, websocketConnections } from './metrics.js'
 import { createReadiness, observeReadiness, type Readiness } from './readiness.js'
+import { Storage } from './storage.js'
 import { httpRequests, socketCalls } from './request-log.js'
 import { services } from './services/index.js'
 import { SHUTDOWN_GRACE_MS, trackConnections, withDeadline } from './shutdown.js'
@@ -40,6 +41,7 @@ export interface AppSettings {
   directory: Directory
   metrics: Registry
   readiness: Readiness
+  storage: Storage
 }
 
 export interface AppOptions {
@@ -66,6 +68,7 @@ export const createApp = (
   app.set('valkey', valkey)
   app.set('rateLimiter', new RateLimiter(valkey, app.get('settings'), options.rateLimitPrefix))
   app.set('directory', new Directory(config))
+  app.set('storage', new Storage(config))
   const proxy = new TrustedProxy(config.trustedProxyHost)
 
   // Served by the internal listener (ADR 0022).
@@ -145,6 +148,7 @@ export const createApp = (
         await closing
         await knex.destroy()
         valkey.disconnect()
+        app.get('storage').close()
       }
     ]
   })
