@@ -1,7 +1,7 @@
 import type { Knex } from 'knex'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createKnex } from '../../src/db.js'
-import { TEMPLATE, assertDatabaseName, loadTestDatabaseConfig, maintenanceKnex } from '../support/database.js'
+import { TEMPLATE, assertDatabaseName, loadTestDatabaseConfig } from '../support/database.js'
 
 // ADR 0004 / 0015: a 48-worker run, each worker with a pool of two, queues
 // at PgBouncer instead of exhausting PostgreSQL. Simulated here with 48
@@ -15,19 +15,25 @@ const names = Array.from({ length: WORKERS }, (_, i) => assertDatabaseName(`test
 let admin: Knex
 const pools: Knex[] = []
 
+// Every DROP DATABASE waits for a checkpoint; concurrent drops share one, so
+// the 48 databases are created and dropped in parallel, not one by one.
+const ADMIN_POOL = 8
+
 beforeAll(async () => {
-  admin = await maintenanceKnex()
-  for (const name of names) {
-    await admin.raw(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`)
-    await admin.raw(`CREATE DATABASE ${name} TEMPLATE ${TEMPLATE}`)
-  }
   const config = await loadTestDatabaseConfig()
+  admin = createKnex({ ...config, databaseName: 'postgres', databasePoolMax: ADMIN_POOL })
+  await Promise.all(
+    names.map(async (name) => {
+      await admin.raw(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`)
+      await admin.raw(`CREATE DATABASE ${name} TEMPLATE ${TEMPLATE}`)
+    })
+  )
   for (const name of names) pools.push(createKnex({ ...config, databaseName: name, databasePoolMax: POOL }))
 }, 60_000)
 
 afterAll(async () => {
   await Promise.all(pools.map((p) => p.destroy()))
-  for (const name of names) await admin.raw(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`)
+  await Promise.all(names.map((name) => admin.raw(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`)))
   await admin.destroy()
 }, 60_000)
 
