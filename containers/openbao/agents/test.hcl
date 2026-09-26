@@ -36,3 +36,15 @@ template {
   destination = "/run/secrets/ldap_bind_password"
   perms       = "0440"
 }
+
+template {
+  contents    = "{{ with secret \"kv/data/test\" }}{{ .Data.data.s3_key_id }}{{ end }}"
+  destination = "/run/secrets/s3_key_id"
+  perms       = "0440"
+}
+
+template {
+  contents    = "{{ with secret \"kv/data/test\" }}{{ .Data.data.s3_secret_key }}{{ end }}"
+  destination = "/run/secrets/s3_secret_key"
+  perms       = "0440"
+}

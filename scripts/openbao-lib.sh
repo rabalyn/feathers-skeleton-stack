@@ -76,8 +76,10 @@ configure() {
 # --- secret values -----------------------------------------------------------
 
 generate() { # <generator>
-  case $1 in
+  case ${1#local-only:} in
     random | local) head -c 36 /dev/urandom | base64 | tr '+/' '-_' ;;
+    hex32) od -An -vtx1 -N32 /dev/urandom | tr -d ' \n' ;;
+    garage-key-id) printf 'GK%s' "$(od -An -vtx1 -N12 /dev/urandom | tr -d ' \n')" ;;
     *) die "unknown generator $1" ;;
   esac
 }
@@ -97,7 +99,8 @@ kv_set() { # <service> <key> ; value on stdin
 
 # Fills every missing value of secrets.conf for the agents in AGENTS; values
 # that exist are never regenerated. In production, entries whose generator is
-# `local` are supplied by an administrator instead (see missing_keys).
+# `local` are supplied by an administrator instead (see missing_keys), and
+# `local-only` entries do not exist at all.
 fill_secrets() { # <local|production>
   local mode=$1 name gen targets target wanted value svc key
   while read -r name gen targets; do
@@ -105,7 +108,7 @@ fill_secrets() { # <local|production>
     wanted=
     for target in $targets; do is_agent "${target%%:*}" && wanted+=" $target"; done
     [[ -n $wanted ]] || continue
-    [[ $mode == production && $gen == local ]] && continue
+    [[ $mode == production && ($gen == local || $gen == local-only:*) ]] && continue
     value=
     for target in $wanted; do
       value=$(kv_get "${target%%:*}" "${target#*:}")
@@ -120,11 +123,14 @@ fill_secrets() { # <local|production>
 }
 
 # Every <service>:<key> an agent in AGENTS renders but OpenBao does not hold,
-# read from the agents' own templates.
+# read from the agents' own templates. Targets of `local-only:` entries are
+# not missing anywhere: their templates render nothing without them.
 missing_keys() {
-  local svc key
+  local svc key local_only
+  local_only=" $(awk '$2 ~ /^local-only:/ { for (i = 3; i <= NF; i++) printf "%s ", $i }' "$OPENBAO_DIR/secrets.conf")"
   for svc in $AGENTS; do
     for key in $(grep -o '\.Data\.data\.[a-z_]*' "$OPENBAO_DIR/agents/$svc.hcl" | sed 's/.*\.//' | sort -u); do
+      [[ $local_only == *" $svc:$key "* ]] && continue
       [[ -n $(kv_get "$svc" "$key") ]] || echo "$svc:$key"
     done
   done

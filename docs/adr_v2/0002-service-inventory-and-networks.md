@@ -58,9 +58,9 @@ The stack needs a fixed service list and a network layout where no component can
 | `app-data` | `api`, `worker`, `pgbouncer`, `valkey`, `valkey-exporter`, `test` (test), `api-e2e` (test) | Application data access |
 | `db` | `pgbouncer`, `postgres`, `backup`, `migrate`, `postgres-exporter`, `pgbouncer-exporter` | Direct database access |
 | `identity` | `api`, `idp`, `ldap`, `test` (test), `api-e2e` (test) | Authentication and directory lookup |
-| `object` | `api`, `worker`, `s3`, `backup` | Object storage |
+| `object` | `api`, `worker`, `s3`, `backup`; locally also `api-e2e` and `test` | Object storage |
 | `secrets` | `openbao`, every `*-agent`, `backup` | Secret delivery; `backup` for OpenBao snapshots |
-| `observability` | `api`, `worker`, `prometheus`, `loki`, `alloy`, `grafana`, all exporters, `mail`, `blackbox` | Metrics, logs, alert delivery |
+| `observability` | `api`, `worker`, `s3`, `prometheus`, `loki`, `alloy`, `grafana`, all exporters, `mail`, `blackbox` | Metrics, logs, alert delivery |
 
 Consequences of this layout, all intentional:
 

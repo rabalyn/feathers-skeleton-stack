@@ -16,6 +16,12 @@ Every product built on this skeleton will need to accept files, so the upload me
 
 **Garage** as the S3-compatible service, run as a container in every environment including production. It is a single lightweight binary, designed for self-hosting, actively maintained, and covers the S3 operations this application needs (put, get, list, delete, multipart).
 
+Re-confirmed at implementation (2026-09-26): Garage **v2.4.1**, actively released (2.3 in April 2026 added single-node setup and key import). What running it here looks like:
+
+- **TLS in front, inside the same image.** Garage's S3 endpoint does not speak TLS and its documentation says to put a reverse proxy in front. The `s3` image (`containers/s3/`) is the pinned Garage binary plus Nginx: Garage listens only on **unix sockets** (S3 and admin), Nginx terminates TLS on `:3900` (S3) and `:3903` (only `/metrics` and `/health`, for Prometheus and the healthcheck), with a certificate from the `certs` job like every internal listener ([0016](0016-nginx-and-tls-everywhere.md)). No plaintext leaves the container, and Garage's RPC stays on loopback. Both processes run under one entrypoint; if either exits, the container exits.
+- **One node, one copy** (`replication_factor = 1`, layout set by `--single-node`); durability is the backup's job ([0017](0017-nfs-backup-storage.md)).
+- **Each client has its own key**, generated in OpenBao and rendered both to the client and to the `s3` container ([0023](0023-secrets-management.md)). On every start the container creates missing buckets, imports each client's key (through the admin API on stdin, never in argv) and grants it; a key whose rendered value changed is replaced, which is how a key rotates. The grants live in the entrypoint: `api` and `worker` read and write `uploads` and `exports`; locally the integration tests have a key of their own (`test`), which production never has. There is no admin token: administration is the Garage CLI inside the container.
+
 MinIO is deliberately not chosen: during 2025 it removed administrative features from its community console, stopped publishing prebuilt community images, and moved the repository toward maintenance, which makes a pinnable and security-maintained community image an open risk rather than a given.
 
 ### Buckets
@@ -61,7 +67,3 @@ Uploads are personal data. They appear in the data subject export and are delete
 - Backup gains a second repository but loses all coordination complexity.
 - Soft deletion means storage is reclaimed on a delay, and quota accounting must decide whether soft-deleted objects count. They do not count against the user, but they do count against the total until purged.
 - All object bytes traverse the API, costing API bandwidth and connections. Acceptable at this scale and reversible by adding presigned URLs later.
-
-## Open questions
-
-- Verify Garage's current release and S3 compatibility surface at implementation time; the self-hosted object storage landscape moved considerably in 2025 and this choice should be re-confirmed rather than assumed.

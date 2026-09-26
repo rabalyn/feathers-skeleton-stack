@@ -33,6 +33,11 @@ scrape_configs:
     tls_config: { ca_file: /trust/ca.crt }
     static_configs: [{ targets: ['valkey-exporter:9121'] }]
 
+  - job_name: s3
+    scheme: https
+    tls_config: { ca_file: /trust/ca.crt }
+    static_configs: [{ targets: ['s3:3903'] }]
+
   - job_name: node
     scheme: https
     tls_config: { ca_file: /trust/ca.crt }
