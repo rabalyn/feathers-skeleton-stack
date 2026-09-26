@@ -350,10 +350,12 @@ ensure_test_agent() {
     log "test-agent is current"
     return 0
   fi
-  # Recreated: it reads its templates at start, and needs a new secret_id.
-  compose --profile test up -d --force-recreate --no-deps test-agent >/dev/null 2>&1
+  # OpenBao first: an agent started without a secret_id backs off for
+  # minutes, and would miss the one issued below.
   wait_for_openbao
   init_or_unseal
+  # Recreated: it reads its templates at start, and needs a new secret_id.
+  compose --profile test up -d --force-recreate --no-deps test-agent >/dev/null 2>&1
   configure
   fill_secrets local
   issue_secret_ids test
