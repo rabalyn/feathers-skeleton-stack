@@ -9,7 +9,10 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OPENBAO_IMAGE=$(sed -n 's/^ *image: \(docker.io\/openbao\/openbao@sha256:[0-9a-f]*\).*/\1/p' "$ROOT/compose.yaml" | head -1)
 P=openbao-test
 NET=$P
-BAO=(env OPENBAO_CONTAINER=$P AGENT_PREFIX=$P- "$ROOT/scripts/openbao.sh")
+# Without a controlling terminal: openbao.sh reads passwords and keys from
+# /dev/tty when there is one, which would prompt whoever started CI instead
+# of taking the test's input from stdin.
+BAO=(setsid -w env OPENBAO_CONTAINER=$P AGENT_PREFIX=$P- "$ROOT/scripts/openbao.sh")
 
 failures=0
 check() { # <description> <command...>
