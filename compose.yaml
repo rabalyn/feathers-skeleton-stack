@@ -277,6 +277,8 @@ services:
   postgres:
     image: docker.io/library/postgres@sha256:d8703cd7fba306b9fec9268ecedfa8a966846c053036a60e3635791957eb2f66 # 18.6-alpine
     container_name: postgres
+    # The image's entry point, plus roles.sh on every start (ADR 0003).
+    entrypoint: ["bash", "/usr/local/share/postgres/entrypoint.sh"]
     command:
       - postgres
       - -c
@@ -303,12 +305,14 @@ services:
       - tls-postgres:/tls:ro
       - ./containers/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro,Z
       - ./containers/postgres/initdb:/docker-entrypoint-initdb.d:ro,Z
+      - ./containers/postgres/entrypoint.sh:/usr/local/share/postgres/entrypoint.sh:ro,Z
+      - ./containers/postgres/roles.sh:/usr/local/share/postgres/roles.sh:ro,Z
     healthcheck:
       # Over TCP, the way clients connect: during first initialisation the
       # image runs a temporary server on the Unix socket only, which a socket
       # probe would report as ready (and systemd trusts this via
-      # Notify=healthy).
-      test: ["CMD", "gosu", "postgres", "pg_isready", "-q", "-h", "127.0.0.1"]
+      # Notify=healthy). Healthy only once the roles are applied.
+      test: ["CMD-SHELL", "gosu postgres pg_isready -q -h 127.0.0.1 && test -e /run/postgresql/roles-applied"]
       interval: 5s
       timeout: 3s
       retries: 10

@@ -54,3 +54,9 @@ template {
   destination = "/run/secrets/exporter_password"
   perms       = "0440"
 }
+
+template {
+  contents    = "{{ with secret \"kv/data/postgres\" }}{{ .Data.data.backup_password }}{{ end }}"
+  destination = "/run/secrets/backup_password"
+  perms       = "0440"
+}
