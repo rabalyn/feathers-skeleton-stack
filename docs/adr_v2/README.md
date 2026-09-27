@@ -100,6 +100,6 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 
 ## Status of this set
 
-All twenty-six are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds and Garage's current compatibility surface.
+All twenty-six are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds ([0022](0022-observability-and-alerting.md)), the issuer of production certificates for internal listeners ([0016](0016-nginx-and-tls-everywhere.md)), and which further services need real-time publishers ([0012](0012-role-scoped-channels.md)).
 
 The record of processing activities and the DPIA ([0013](0013-gdpr-export-and-retention.md)) are organisational deliverables to be prepared with the data protection officer before production.
