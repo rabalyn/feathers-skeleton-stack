@@ -51,10 +51,15 @@ host_id() { # <uid_map|gid_map> <container id>
     awk -v id="$2" '$1 <= id && id < $1 + $3 { print $2 + id - $1; exit }'
 }
 
+# Read from /proc/mounts, never by stat(): root cannot stat the root of a
+# root_squash export, nor anyone that of an export that is gone (stale handle), so
+# `mountpoint` reports such a mount as absent.
+mounted() { awk -v m="$MOUNT" '$2 == m { found = 1 } END { exit !found }' /proc/mounts; }
+
 # Unmounts within a minute, or detaches the mount lazily: a hard NFS mount
 # can block an unmount for a long time.
 unmount() {
-  mountpoint -q "$MOUNT" || return 0
+  mounted || return 0
   timeout 60 umount "$MOUNT" 2>/dev/null || { log "unmount timed out; detaching lazily"; umount -l "$MOUNT"; }
 }
 
@@ -70,7 +75,11 @@ cleanup() {
   log "cleanup: removing the export"
   rm -f "$EXPORTS_FILE"
   exportfs -ra
-  rm -rf "$EXPORT" "$MOUNT"
+  # Never recursively: were it still mounted, rm would walk the hard NFS mount
+  # and wait out its retries.
+  mounted && log "cleanup: $MOUNT is still mounted; leaving it"
+  rm -rf "$EXPORT"
+  rmdir "$MOUNT" 2>/dev/null
   log "cleanup: done"
 }
 
@@ -97,7 +106,7 @@ printf '%s 127.0.0.1(rw,sync,root_squash,no_subtree_check)\n' "$EXPORT" >"$EXPOR
 exportfs -ra
 log "mounting 127.0.0.1:$EXPORT at $MOUNT"
 mount -t nfs -o vers=4.2,hard 127.0.0.1:"$EXPORT" "$MOUNT"
-findmnt -n -o FSTYPE "$MOUNT" | grep -q '^nfs' || die "$MOUNT is not an NFS mount"
+mounted || die "$MOUNT is not mounted"
 
 # root_squash: root on this host is nobody on the export.
 if touch "$MOUNT/.root-probe" 2>/dev/null; then
