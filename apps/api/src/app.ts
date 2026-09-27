@@ -2,6 +2,7 @@ import type { Server } from 'node:http'
 import { feathers, type HookContext, type NextFunction } from '@feathersjs/feathers'
 import { koa, rest, bodyParser, errorHandler, type Application as KoaApplication } from '@feathersjs/koa'
 import socketio from '@feathersjs/socketio'
+import { disallow } from 'feathers-utils/hooks'
 import type { Logger } from 'pino'
 import type { Knex } from 'knex'
 import type { Redis } from 'ioredis'
@@ -127,8 +128,15 @@ export const createApp = (
   app.configure(services)
   app.configure(authentication)
 
-  // Service hooks for every service (ADR 0011) ...
-  app.hooks({ around: { all: [socketCalls(observeRequest), sanitizeServiceErrors(() => app.get('logger')), defaultDeny] } })
+  // Service hooks for every service (ADR 0011) ... `update` is rejected for
+  // every caller, server code included: `patch` is the only way to change a
+  // record, so no `updated` event is ever published (ADR 0006).
+  app.hooks({
+    around: {
+      all: [socketCalls(observeRequest), sanitizeServiceErrors(() => app.get('logger')), defaultDeny],
+      update: [disallow()]
+    }
+  })
   // ... and application lifecycle hooks, which Feathers keeps separate.
   // Teardown is the shutdown on SIGTERM (ADR 0006): Feathers closes the
   // server, which waits for every open connection. Socket.IO connections are
