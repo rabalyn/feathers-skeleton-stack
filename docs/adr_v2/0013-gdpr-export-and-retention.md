@@ -18,6 +18,7 @@ The application processes personal data of university members under GDPR. Data s
 - **The minimal export**, common to every product built on this skeleton, is: TU-ID, name, surname and email; the user's sessions; their audit events; and their uploads — avatar and documents with their metadata and files ([0020](0020-object-storage-uploads.md)). Products extend it through the registry below; they never shrink it.
 - A `user` may export their own data. An `admin` may export any user's data. Both are audited.
 - Completeness is enforced by a **personal data registry**: a single module that names every store holding personal data — PostgreSQL tables and object storage buckets alike — and how each contributes to an export. A new table holding personal data must be added to the registry, and a test fails if a table carrying a user foreign key is absent from it.
+- As built, the registry is `apps/api/src/gdpr/registry.ts`. Each table entry names its columns referencing `users(id)`, the export key it fills and the rows it contributes, and its erasure rule (`clear-identifiers`, `delete`, `soft-delete` or `keep`); each bucket entry says whether the export carries its objects. `test/integration/gdpr-registry.test.ts` compares the registry's user columns with the foreign keys of the migrated schema, both ways, and checks that every production bucket is listed and that the erasure function handles every table whose rule is not `keep`. Tables without information about the person (refresh token hashes, the break-glass password hash, the erasure log) are listed with the reason they are not exported.
 - Generated exports are written to the `exports` bucket and deleted when the export retention passes. The `exports` bucket is excluded from backups ([0017](0017-nfs-backup-storage.md)): exports can be regenerated and would otherwise outlive their own retention inside backup snapshots.
 
 ### Retention is a runtime setting
@@ -40,7 +41,11 @@ Maintenance and purge jobs run in the worker ([0024](0024-background-jobs-bullmq
 
 Erasure is an **administrative action only**; there is no self-service erasure.
 
-Erasure clears direct identifiers — TU-ID, name, surname, email, avatar — from the user record and from audit events, while keeping the surrogate key and the rows that reference it. This preserves referential integrity and the accountability value of the audit trail without retaining an identifiable person. It is possible only because the primary key is a surrogate ([0009](0009-tu-id-identity-model.md)).
+Erasure clears direct identifiers — TU-ID, name, surname, email, avatar — from the user record, while keeping the surrogate key and the rows that reference it. This preserves referential integrity and the accountability value of the audit trail without retaining an identifiable person. It is possible only because the primary key is a surrogate ([0009](0009-tu-id-identity-model.md)). Audit events are kept unchanged: they reference accounts by surrogate id and never carry a direct identifier (see *Data minimisation*), so there is nothing in them to clear. The erased account is disabled, and a later login by the same person creates a new account, since nothing links them to the old one any more.
+
+The user's sessions and their refresh tokens are deleted, because they hold the user agent and the IdP's name for the person, and the user's sockets are closed ([0012](0012-role-scoped-channels.md)), so erasure also logs them out everywhere at once.
+
+The erasure is one database function, `erase_user(id, erased_at)`, created by a migration, so the api and the restore procedure apply exactly the same rules, and the restore needs nothing but `psql`. It is idempotent and does nothing for an id no user has. A product whose table needs an erasure rule other than `keep` replaces the function in the migration that adds the table; the registry test fails until it does.
 
 Files uploaded by an erased user are soft-deleted and purged on the normal schedule ([0020](0020-object-storage-uploads.md)), so they leave the object store and fall out of backups within the retention window rather than persisting indefinitely.
 
