@@ -9,11 +9,18 @@
 #   scripts/backup.sh snapshots   list every repository's snapshots
 #
 #   scripts/backup.sh restore-db <database> [--replace] [--snapshot <id>]
+#                                [--erasures-from <database>]
 #       pg_restore of the `db` snapshot into <database>, created fresh, as
 #       the superuser over postgres's socket. --replace drops an existing
 #       database first; refused while the api or the worker runs. Then the
 #       mandatory post-steps: every session revoked (ADR 0010), erasures
-#       re-applied (ADR 0013)
+#       re-applied (ADR 0013). The log of erasures is read, before anything
+#       is dropped, from --erasures-from, else from <database> itself when it
+#       exists, else from `app`; a copy is kept in a file whose path is
+#       printed, for replay-erasures
+#   scripts/backup.sh replay-erasures <database> --erasures-file <file>
+#       re-apply a kept log of erasures to <database>; for a restored schema
+#       too old to have erase_user(), once it is migrated
 #   scripts/backup.sh restore-objects <bucket> [--snapshot <id>] [--empty]
 #       upload the `objects` snapshot into <bucket> with the backup key,
 #       which gets write access to <bucket> for the duration only. --empty
@@ -52,10 +59,14 @@ psql_super() { # <database> [psql options] ; SQL on stdin
 snapshot=latest
 replace=false
 empty=
+erasures_from=
+erasures_file=
 parse_options() {
   while (($#)); do
     case $1 in
       --snapshot) snapshot=${2:?--snapshot needs an id}; shift ;;
+      --erasures-from) erasures_from=${2:?--erasures-from needs a database}; shift ;;
+      --erasures-file) erasures_file=${2:?--erasures-file needs a file}; shift ;;
       --replace) replace=true ;;
       --empty) empty=--empty ;;
       *) die "unknown option $1" ;;
@@ -66,11 +77,39 @@ parse_options() {
 
 valid_name() { [[ $1 =~ ^[a-z_][a-z0-9_]*$ ]] || die "not a database name: $1"; }
 
+db_exists() { [[ -n $(psql_super postgres -tA <<<"SELECT 1 FROM pg_database WHERE datname = '$1'") ]]; }
+
+# The erasure log of a live database (ADR 0013): "<surrogate id>|<erased at>"
+# per line. It lives in the database it protects, so it is read before a
+# restore replaces that database; one without the table has erased nobody.
+read_erasures() { # <database>
+  psql_super "$1" -tA <<'SQL'
+SELECT CASE WHEN to_regclass('public.erasures') IS NULL THEN ''
+  ELSE (SELECT coalesce(string_agg(user_id || '|' || erased_at, E'\n' ORDER BY erased_at), '') FROM erasures) END
+SQL
+}
+
 restore_db() { # <database>
-  local db=$1
+  local db=$1 source=
   valid_name "$db"
   running "$POSTGRES" || die "$POSTGRES is not running"
-  if [[ -n $(psql_super postgres -tA <<<"SELECT 1 FROM pg_database WHERE datname = '$db'") ]]; then
+  if [[ -n $erasures_from ]]; then
+    valid_name "$erasures_from"
+    db_exists "$erasures_from" || die "no database $erasures_from to read erasures from"
+    source=$erasures_from
+  elif db_exists "$db"; then
+    source=$db
+  elif db_exists app; then
+    source=app
+  fi
+  erasures_file=$(mktemp "${TMPDIR:-/tmp}/erasures-$db.XXXXXX")
+  if [[ -n $source ]]; then
+    read_erasures "$source" >"$erasures_file"
+    log "read $(grep -c . "$erasures_file" || true) erasures from $source into $erasures_file"
+  else
+    log "WARNING: no live database to read erasures from; erasures after the backup cannot be re-applied"
+  fi
+  if db_exists "$db"; then
     [[ $replace == true ]] || die "database $db exists; --replace drops it first"
     if running api || running worker; then die "stop the api and the worker before replacing $db"; fi
   fi
@@ -94,10 +133,30 @@ post_restore() { # <database>
   local revoked
   revoked=$(psql_super "$1" -tA <<<"WITH r AS (UPDATE auth_sessions SET revoked_at = now() WHERE revoked_at IS NULL RETURNING 1) SELECT count(*) FROM r")
   log "revoked every session in $1 ($revoked were live at the backup)"
-  # The log of erased surrogate IDs arrives with GDPR erasure (ADR 0013),
-  # which must add its replay here; until then no erasure exists that a
-  # restore could undo.
-  log "erasures: none can exist yet (ADR 0013), nothing to re-apply"
+  replay_erasures "$1"
+}
+
+# Erases again everyone the log names, with the time they were erased at;
+# erase_user() is idempotent and ignores ids the database does not have
+# (ADR 0013).
+replay_erasures() { # <database>
+  local db=$1 applied
+  valid_name "$db"
+  [[ -n $erasures_file && -r $erasures_file ]] || die "no erasure log to replay: --erasures-file <file>"
+  if ! grep -q . "$erasures_file"; then
+    log "erasures: the log is empty, nothing to re-apply"
+    return 0
+  fi
+  if [[ -z $(psql_super "$db" -tA <<<"SELECT to_regprocedure('erase_user(uuid, timestamptz)')") ]]; then
+    die "$db predates erasure (ADR 0013): migrate it, then run: $0 replay-erasures $db --erasures-file $erasures_file"
+  fi
+  applied=$(
+    { printf 'CREATE TEMP TABLE replay (user_id uuid, erased_at timestamptz);\nCOPY replay FROM STDIN (DELIMITER %s);\n' "'|'"
+      grep . "$erasures_file"
+      printf '\\.\nSELECT count(*) FILTER (WHERE erase_user(user_id, erased_at)) FROM replay;\n'
+    } | psql_super "$db" -tA
+  )
+  log "erasures: re-applied $(grep -c . "$erasures_file") from the log, $applied of them to accounts in $db"
 }
 
 # Gives the backup key write access to a bucket, or takes it back; its read
@@ -166,12 +225,12 @@ restore_openbao() { # <container> ; root token on stdin
 cmd=${1:-}
 case $cmd in
   init | run | snapshots) in_backup "$cmd" ;;
-  restore-db | restore-objects | restore-valkey | restore-openbao)
+  restore-db | restore-objects | restore-valkey | restore-openbao | replay-erasures)
     target=${2:-}
     [[ -n $target && $target != --* ]] || die "usage: $0 $cmd <target> [options]"
     shift 2
     parse_options "$@"
     "${cmd//-/_}" "$target"
     ;;
-  *) sed -n '2,38p' "$0"; exit 2 ;;
+  *) sed -n '2,39p' "$0"; exit 2 ;;
 esac

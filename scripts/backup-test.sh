@@ -164,7 +164,9 @@ read -r f1 s1 z1 f2 s2 z2 f3 s3 z3 <<<"$(tr '\n' ' ' <<<"$objects")"
 psql_super "$SOURCE_DB" <<SQL >/dev/null
 INSERT INTO users (id, tu_id, given_name, surname, role, enabled, auth_source, avatar_file_id) VALUES
   ('00000000-0000-7000-8000-000000000001', 'bk01chck', 'Bea', 'Backup', 'user', true, 'saml', NULL),
-  ('00000000-0000-7000-8000-000000000002', 'bk02chck', 'Rolf', 'Restore', 'admin', true, 'saml', NULL);
+  ('00000000-0000-7000-8000-000000000002', 'bk02chck', 'Rolf', 'Restore', 'admin', true, 'saml', NULL),
+  -- Erased after the backup: the restore must erase them again.
+  ('00000000-0000-7000-8000-000000000003', 'bk03chck', 'Erik', 'Erased', 'user', true, 'saml', NULL);
 INSERT INTO files (id, owner_id, filename, content_type, size_bytes, sha256, state, attached_at, deleted_at) VALUES
   ('$f1', '00000000-0000-7000-8000-000000000001', 'a.pdf', 'application/pdf', $z1, '$s1', 'stored', now(), NULL),
   ('$f2', '00000000-0000-7000-8000-000000000001', 'b.png', 'image/png', $z2, '$s2', 'stored', now(), NULL),
@@ -184,21 +186,30 @@ check "init creates the repositories" backup_sh init
 check "init is idempotent" backup_sh init
 check "the run succeeds" backup_sh run
 
-# Changes after the backup, which a restore must not bring back.
-psql_super "$SOURCE_DB" <<<"INSERT INTO documents (owner_id, title, file_id) VALUES ('00000000-0000-7000-8000-000000000002', 'After the backup', '$f3')" >/dev/null
+# Changes after the backup, which a restore must not bring back; and an
+# erasure after the backup, which it must re-apply (ADR 0013).
+psql_super "$SOURCE_DB" <<SQL >/dev/null
+INSERT INTO documents (owner_id, title, file_id) VALUES ('00000000-0000-7000-8000-000000000002', 'After the backup', '$f3');
+SELECT erase_user('00000000-0000-7000-8000-000000000003');
+SQL
 
 # --- restore: database -----------------------------------------------------
 
 log "restoring into $RESTORE_DB"
-check "restore-db into a clean database" backup_sh restore-db "$RESTORE_DB"
+check "restore-db into a clean database" backup_sh restore-db "$RESTORE_DB" --erasures-from "$SOURCE_DB"
 check "restore-db refuses an existing database without --replace" fails backup_sh restore-db "$RESTORE_DB"
 q() { psql_super "$RESTORE_DB" <<<"$1"; }
-check "the rows of the backup are there" test "$(q 'SELECT count(*) FROM users')/$(q 'SELECT count(*) FROM files')" = 2/3
+check "the rows of the backup are there" test "$(q 'SELECT count(*) FROM users')/$(q 'SELECT count(*) FROM files')" = 3/3
 check "the avatar reference survived" test "$(q "SELECT avatar_file_id FROM users WHERE tu_id = 'bk01chck'")" = "$f2"
 check "a change after the backup is not" test "$(q "SELECT string_agg(title, ',') FROM documents")" = "Before the backup"
 check "the runtime settings came with it" test "$(q 'SELECT count(*) FROM settings')" = "$(psql_super "$SOURCE_DB" <<<'SELECT count(*) FROM settings')"
 check "the schema is at the same migration" test "$(q 'SELECT max(name) FROM knex_migrations')" = "$(psql_super "$SOURCE_DB" <<<'SELECT max(name) FROM knex_migrations')"
 check "post-step: every session is revoked" test "$(q 'SELECT count(*) FROM auth_sessions WHERE revoked_at IS NULL')" = 0
+check "post-step: the erasure after the backup is re-applied" \
+  test "$(q "SELECT coalesce(tu_id, '-') || enabled FROM users WHERE id = '00000000-0000-7000-8000-000000000003'")" = -false
+check "... and logged in the restored database, with its time" \
+  test "$(q "SELECT erased_at FROM erasures")" = "$(psql_super "$SOURCE_DB" <<<'SELECT erased_at FROM erasures')"
+check "... and nobody else is erased" test "$(q 'SELECT count(*) FROM users WHERE erased_at IS NULL')" = 2
 check "the application role may use the restored tables" \
   test "$(q "SELECT has_table_privilege('app', 'files', 'SELECT,INSERT,UPDATE,DELETE')")" = t
 

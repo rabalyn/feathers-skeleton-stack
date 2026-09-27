@@ -87,7 +87,7 @@ Every restore has two **mandatory post-steps**:
 1. **Revoke all sessions**, because a restored database reinstates sessions revoked after the backup was taken ([0010](0010-sessions-postgres-ratelimits-valkey.md)).
 2. **Re-apply erasures** from the log of erased surrogate IDs, because a restored database reinstates people erased after the backup was taken ([0013](0013-gdpr-export-and-retention.md)).
 
-`restore-db` does both itself. Erasure does not exist yet, so neither does its log; the GDPR erasure work adds the replay to `restore-db` in the same change.
+`restore-db` does both itself. The log of erasures lives in the database a restore replaces, so `restore-db` reads it before it drops or restores anything: from `--erasures-from <database>`, else from the target database when it exists, else from `app`. It keeps it in a file whose path it prints, and afterwards erases every listed account again with its original time ([0013](0013-gdpr-export-and-retention.md)). `replay-erasures <database> --erasures-file <file>` repeats that step alone, for a restored schema that has to be migrated first. `backup-test.sh` erases an account after its backup and checks that the restore erases it again, with the same time, and nobody else.
 
 ## Consequences
 
