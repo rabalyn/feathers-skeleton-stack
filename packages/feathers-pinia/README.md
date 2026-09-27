@@ -10,7 +10,7 @@ Upstream states "MIT Licensed" on its documentation site. The repository has no 
 
 ## Changes from upstream
 
-Only what the port needed, so that upstream fixes can still be compared:
+What the port needed, and bug fixes this project ran into, each with a test marked "Not upstream"; nothing else, so that upstream fixes can still be compared:
 
 - Dependencies: `vue-demi` and the `@vue/composition-api` peer dropped; peers `pinia` ^4 and `vue` ^3.5; `@vueuse/core` ^15; unused runtime dependencies (`lz-string`, `bson-objectid`, `events`) dropped; `@feathersjs/rest-client` moved from optional to regular dependency; test dependencies updated, including `@faker-js/faker` 10 (8 has a high-severity advisory) and the missing `@feathersjs/errors`, which the fixtures import.
 - `from 'vue-demi'` is now `from 'vue'`. Vue 2's `set` and `del`, which `vue-demi` re-exported, are replaced by `src/utils/vue2-compat.ts`.
@@ -18,5 +18,6 @@ Only what the port needed, so that upstream fixes can still be compared:
 - `moduleResolution: "bundler"`, because TypeScript 6 deprecates `"node"`. The package is built with `tsc` into `dist/` (ESM and declarations) instead of upstream's Vite library build.
 - `src/stores/local-queries.ts`: a dead `|| {}` after an object spread removed, and one cast added in `createInStore`.
 - Tests, for Vitest 5: `mock.results` is now `mock.settledResults` for async mocks, and `tests/localstorage/storage-sync.test.ts` captures the store's module-level storage read before Vitest clears mock history between tests.
+- `useFind` (`src/use-find-get/use-find.ts`): a request it starts by itself, from its params watcher or a service event, keeps a failure in `error` instead of leaving an unhandled promise rejection, as `useGet` already does. A `find()` call still rejects to its caller. Upstream's version showed as an uncaught error whenever such a refetch failed, for instance on a socket whose session had just ended.
 
 As upstream does, only `src/` is typechecked; the tests run under Vitest.
