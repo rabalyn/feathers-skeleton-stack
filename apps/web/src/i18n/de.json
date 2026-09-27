@@ -15,7 +15,9 @@
     "settings": "Einstellungen",
     "directory": "Verzeichnis",
     "menu": "Menü",
-    "documents": "Dokumente"
+    "documents": "Dokumente",
+    "audit": "Aktivitätsprotokoll",
+    "gdpr": "Datenanfragen"
   },
   "auth": {
     "login": "Anmelden",
@@ -53,7 +55,8 @@
     "enable": "Aktivieren",
     "disable": "Deaktivieren",
     "saved": "Gespeichert",
-    "empty": "Keine Benutzer gefunden"
+    "empty": "Keine Benutzer gefunden",
+    "erased": "gelöscht"
   },
   "settings": {
     "key": "Schlüssel",
@@ -107,5 +110,61 @@
     "empty": "Noch keine Dokumente",
     "hint": "PDF, PNG, JPEG oder WebP",
     "cancel": "Abbrechen"
+  },
+  "exports": {
+    "title": "Meine Daten",
+    "explainOwn": "Laden Sie alles herunter, was dieses System über Sie speichert: eine ZIP-Datei mit einem JSON-Dokument und Ihren Dateien. Sie wird im Hintergrund erstellt und einige Tage aufbewahrt.",
+    "requestOwn": "Meine Daten exportieren",
+    "request": "Daten dieser Person exportieren",
+    "pending": "Ein Export wird gerade erstellt.",
+    "pendingHint": "Wird erstellt …",
+    "failedHint": "Dieser Export konnte nicht erstellt werden. Bitte fordern Sie einen neuen an.",
+    "download": "Herunterladen",
+    "expires": "verfügbar bis {date}",
+    "states": {
+      "pending": "In Arbeit",
+      "ready": "Bereit",
+      "failed": "Fehlgeschlagen"
+    }
+  },
+  "audit": {
+    "mine": "Meine Aktivitäten",
+    "empty": "Keine Aktivitäten verzeichnet",
+    "time": "Zeit",
+    "actor": "Konto",
+    "action": "Aktion",
+    "resource": "Ressource",
+    "detail": "Details",
+    "system": "System",
+    "erased": "gelöschtes Konto {id}",
+    "actions": {
+      "login": "Angemeldet",
+      "login_refused": "Anmeldung abgelehnt",
+      "logout": "Abgemeldet",
+      "session_reuse-detected": "Wiederverwendetes Sitzungstoken erkannt",
+      "users_patch": "Konto geändert",
+      "users_erase": "Konto gelöscht",
+      "settings_update": "Einstellung geändert",
+      "breakglass_create": "Notfallkonto angelegt",
+      "breakglass_rotate": "Notfallpasswort geändert",
+      "data-exports_create": "Datenexport angefordert",
+      "data-exports_download": "Datenexport heruntergeladen"
+    }
+  },
+  "gdpr": {
+    "explain": "Anfragen betroffener Personen: Person per TU-ID finden, ihre Daten zur Übergabe exportieren oder sie löschen.",
+    "lookUp": "Suchen",
+    "notFound": "Kein Konto mit dieser TU-ID.",
+    "exportExplain": "Der Export steht nur Ihnen zur Verfügung. Übergeben Sie ihn der Person selbst.",
+    "eraseTitle": "Löschen",
+    "eraseExplain": "Entfernt TU-ID, Name, E-Mail und Bild, löscht die Dokumente und Dateien der Person und meldet sie überall ab. Im Aktivitätsprotokoll bleibt das Konto nur als anonyme Nummer. Das lässt sich nicht rückgängig machen.",
+    "erase": "Diese Person löschen",
+    "confirmTitle": "Endgültig löschen?",
+    "confirmText": "Geben Sie zur Bestätigung die TU-ID {tuId} ein.",
+    "cancel": "Abbrechen",
+    "erased": "Die Person wurde gelöscht",
+    "notSelf": "Sie können Ihr eigenes Konto nicht löschen.",
+    "notBreakGlass": "Das Notfallkonto enthält keine personenbezogenen Daten und kann nicht gelöscht werden.",
+    "exportTitle": "Datenexport"
   }
 }

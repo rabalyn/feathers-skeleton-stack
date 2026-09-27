@@ -311,7 +311,9 @@ INSERT INTO users (tu_id, given_name, surname, role, enabled, auth_source) VALUE
   ('ad01admn', 'Ada', 'Admin', 'admin', true, 'saml'),
   ('op01oper', 'Otto', 'Operator', 'operator', true, 'saml'),
   ('us01user', 'Uma', 'User', 'user', true, 'saml'),
-  ('us02othr', 'Olaf', 'Other', 'user', true, 'saml');
+  ('us02othr', 'Olaf', 'Other', 'user', true, 'saml'),
+  -- Erased by the GDPR spec; never logs in.
+  ('us03gone', 'Greta', 'Gone', 'user', true, 'saml');
 SQL
   E2E_BREAKGLASS_PASSWORD=$(podman exec api-e2e node dist/bootstrap.js --email "$E2E_BREAKGLASS_EMAIL" 2>/dev/null) ||
     die "bootstrap in api-e2e failed"

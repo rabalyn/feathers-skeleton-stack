@@ -251,9 +251,15 @@ importers:
       '@types/node':
         specifier: ^24.13.6
         version: 24.13.6
+      '@types/yauzl':
+        specifier: 3.4.0
+        version: 3.4.0
       typescript:
         specifier: 6.0.3
         version: 6.0.3
+      yauzl:
+        specifier: 3.4.0
+        version: 3.4.0
 
   packages/feathers-pinia:
     dependencies:

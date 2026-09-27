@@ -104,7 +104,15 @@ const onRequest: QTableProps['onRequest'] = ({ pagination: next }) => {
 }
 
 const columns = computed<NonNullable<QTableProps['columns']>>(() => [
-  { name: 'tuId', field: 'tuId', label: t('user.tuId'), align: 'left', sortable: true },
+  {
+    name: 'tuId',
+    field: 'tuId',
+    label: t('user.tuId'),
+    align: 'left',
+    sortable: true,
+    // An erased account has no identifiers left (ADR 0013).
+    format: (value: User['tuId'], row: User) => (row.erasedAt ? t('users.erased') : (value ?? ''))
+  },
   { name: 'givenName', field: 'givenName', label: t('user.givenName'), align: 'left', sortable: true },
   { name: 'surname', field: 'surname', label: t('user.surname'), align: 'left', sortable: true },
   { name: 'email', field: 'email', label: t('user.email'), align: 'left', sortable: true },

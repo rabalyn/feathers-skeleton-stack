@@ -66,7 +66,7 @@ test('login, session restore, profile and immediate logout', async ({ page, cont
 
 test('an operator reads users but changes nothing, and sees no settings', async ({ page }) => {
   await loginAs(page, OPERATOR)
-  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Dokumente', 'Benutzer', 'Verzeichnis'])
+  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Dokumente', 'Benutzer', 'Verzeichnis', 'Aktivitätsprotokoll'])
 
   await nav(page).getByRole('link', { name: 'Benutzer' }).click()
   const row = page.getByRole('row').filter({ hasText: 'us01user' })

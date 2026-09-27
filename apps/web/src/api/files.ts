@@ -1,4 +1,4 @@
-import { FILE_CONTENTS_URL, FILENAME_HEADER, FILES_URL, type File as StoredFile } from '@app/api/client'
+import { DATA_EXPORT_CONTENTS_URL, FILE_CONTENTS_URL, FILENAME_HEADER, FILES_URL, type File as StoredFile } from '@app/api/client'
 import { client } from '@/api/feathers'
 
 // Uploads and downloads are plain HTTP, since the body is the file
@@ -41,16 +41,16 @@ export const uploadFile = async (file: File): Promise<StoredFile> => {
   return (await response.json()) as StoredFile
 }
 
-export const fetchFile = async (id: string): Promise<Blob> => {
-  const response = await fetch(`${FILE_CONTENTS_URL}/${id}`, { headers: await authorization() })
+const fetchBlob = async (url: string): Promise<Blob> => {
+  const response = await fetch(url, { headers: await authorization() })
   if (!response.ok) throw await failed(response)
   return response.blob()
 }
 
-// Saves the file under its original name, as the server's attachment
-// disposition would have.
-export const downloadFile = async (id: string, filename: string) => {
-  const url = URL.createObjectURL(await fetchFile(id))
+export const fetchFile = (id: string): Promise<Blob> => fetchBlob(`${FILE_CONTENTS_URL}/${id}`)
+
+const save = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob)
   try {
     const link = document.createElement('a')
     link.href = url
@@ -60,3 +60,11 @@ export const downloadFile = async (id: string, filename: string) => {
     setTimeout(() => URL.revokeObjectURL(url), 10_000)
   }
 }
+
+// Saves the file under its original name, as the server's attachment
+// disposition would have.
+export const downloadFile = async (id: string, filename: string) => save(await fetchFile(id), filename)
+
+// A ready GDPR export, as the ZIP the server names (ADR 0013).
+export const downloadExport = async (id: string, createdAt: string) =>
+  save(await fetchBlob(`${DATA_EXPORT_CONTENTS_URL}/${id}`), `data-export-${createdAt.slice(0, 10)}.zip`)

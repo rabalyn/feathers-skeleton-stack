@@ -38,6 +38,7 @@ How the frontend implements this:
 - The authentication client's own reconnect handling is switched off: it re-authenticates with the stored token and leaves the failure unhandled once that token has expired. The session store re-authenticates a reconnected socket instead, refreshing first where needed. A service call refused with 401 triggers a refresh, which tells a changed role (new token) from a revoked session (login).
 - Service stores are never synchronised to browser storage: the data is personal, and a shared computer must not keep it. The only thing in `localStorage` is the chosen locale.
 - Actions are hidden with the shared CASL abilities. A page for a whole subject (the users list, the settings editor) requires an unconditional rule, because everybody may read their own user record but only some may list users.
+- GDPR ([0013](0013-gdpr-export-and-retention.md)): the profile has "My data", which requests and downloads the user's own export, and "My activity", the latest audit events they caused. Admins get a data requests page: they look a person up by TU-ID, export the person's data to hand over, or erase them. Erasure is confirmed by typing the TU-ID again, and the page says in advance when the server would refuse it. Admins and operators get the activity log, every audit event with its account shown by TU-ID.
 
 ## Consequences
 

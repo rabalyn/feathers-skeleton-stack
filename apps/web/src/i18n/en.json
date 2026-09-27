@@ -15,7 +15,9 @@
     "settings": "Settings",
     "directory": "Directory",
     "menu": "Menu",
-    "documents": "Documents"
+    "documents": "Documents",
+    "audit": "Activity log",
+    "gdpr": "Data requests"
   },
   "auth": {
     "login": "Log in",
@@ -53,7 +55,8 @@
     "enable": "Enable",
     "disable": "Disable",
     "saved": "Saved",
-    "empty": "No users found"
+    "empty": "No users found",
+    "erased": "erased"
   },
   "settings": {
     "key": "Key",
@@ -107,5 +110,61 @@
     "empty": "No documents yet",
     "hint": "PDF, PNG, JPEG or WebP",
     "cancel": "Cancel"
+  },
+  "exports": {
+    "title": "My data",
+    "explainOwn": "Download everything this system holds about you, as a ZIP file with a JSON document and your files. It is prepared in the background and kept for a few days.",
+    "requestOwn": "Export my data",
+    "request": "Export this person's data",
+    "pending": "An export is being prepared.",
+    "pendingHint": "Being prepared …",
+    "failedHint": "This export could not be prepared. Please request a new one.",
+    "download": "Download",
+    "expires": "available until {date}",
+    "states": {
+      "pending": "In preparation",
+      "ready": "Ready",
+      "failed": "Failed"
+    }
+  },
+  "audit": {
+    "mine": "My activity",
+    "empty": "No activity recorded",
+    "time": "Time",
+    "actor": "Account",
+    "action": "Action",
+    "resource": "Resource",
+    "detail": "Detail",
+    "system": "System",
+    "erased": "erased account {id}",
+    "actions": {
+      "login": "Logged in",
+      "login_refused": "Login refused",
+      "logout": "Logged out",
+      "session_reuse-detected": "Reused session token detected",
+      "users_patch": "Account changed",
+      "users_erase": "Account erased",
+      "settings_update": "Setting changed",
+      "breakglass_create": "Break-glass account created",
+      "breakglass_rotate": "Break-glass password changed",
+      "data-exports_create": "Data export requested",
+      "data-exports_download": "Data export downloaded"
+    }
+  },
+  "gdpr": {
+    "explain": "Requests of data subjects: find the person by TU-ID, export their data to hand it over, or erase them.",
+    "lookUp": "Look up",
+    "notFound": "No account with this TU-ID.",
+    "exportExplain": "The export is available to you only. Hand it over to the person yourself.",
+    "eraseTitle": "Erase",
+    "eraseExplain": "Removes TU-ID, name, email and picture, deletes the person's documents and files and logs them out everywhere. The account remains only as an anonymous number in the activity log. This cannot be undone.",
+    "erase": "Erase this person",
+    "confirmTitle": "Erase for good?",
+    "confirmText": "Type the TU-ID {tuId} to confirm.",
+    "cancel": "Cancel",
+    "erased": "The person was erased",
+    "notSelf": "You cannot erase your own account.",
+    "notBreakGlass": "The break-glass account holds no personal data and cannot be erased.",
+    "exportTitle": "Data export"
   }
 }

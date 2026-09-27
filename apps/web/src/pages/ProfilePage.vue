@@ -40,6 +40,21 @@
           </q-item-section>
         </q-item>
       </q-list>
+      <q-card flat bordered data-test="my-data">
+        <q-card-section>
+          <h2 class="text-h6 q-my-none">{{ t('exports.title') }}</h2>
+          <p class="text-body2 q-mb-none">{{ t('exports.explainOwn') }}</p>
+        </q-card-section>
+        <q-card-section>
+          <DataExports :subject-id="user.id" />
+        </q-card-section>
+      </q-card>
+      <q-card flat bordered data-test="my-activity">
+        <q-card-section>
+          <h2 class="text-h6 q-my-none">{{ t('audit.mine') }}</h2>
+        </q-card-section>
+        <AuditEventList :actor-id="user.id" :limit="10" />
+      </q-card>
     </div>
   </q-page>
 </template>
@@ -50,6 +65,8 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { uploadFile } from '@/api/files'
 import { client } from '@/api/feathers'
+import AuditEventList from '@/components/AuditEventList.vue'
+import DataExports from '@/components/DataExports.vue'
 import { useAvatarUrl } from '@/composables/avatar'
 import { useFormat } from '@/composables/format'
 import { useNotify } from '@/composables/notify'

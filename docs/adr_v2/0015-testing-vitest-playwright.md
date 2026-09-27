@@ -33,7 +33,7 @@ PostgreSQL, Valkey, Garage, LDAP, Keycloak, OpenBao and Nginx all run as contain
 
 ### End-to-end coverage
 
-The first suite covers: SAML2 login through the local IdP, uploading and reading a document, uploading an avatar, a real-time update arriving over the WebSocket, role-based visibility (an `operator` and a `user` seeing different things), logout taking effect immediately, and the GDPR self-export returning the expected shape.
+The first suite covers: SAML2 login through the local IdP, uploading and reading a document, uploading an avatar, a real-time update arriving over the WebSocket, role-based visibility (an `operator` and a `user` seeing different things), logout taking effect immediately, and the GDPR self-export returning the expected shape. It also covers erasure on the admin's data requests page and the activity log that records it.
 
 Playwright trusts the local CA root created by the `certs` job ([0016](0016-nginx-and-tls-everywhere.md)) rather than ignoring certificate errors, so TLS behaviour under test matches production.
 

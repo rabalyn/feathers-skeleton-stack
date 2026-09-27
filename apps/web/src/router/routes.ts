@@ -45,6 +45,19 @@ const routes: RouteRecordRaw[] = [
         meta: { requires: ['read', 'settings'] }
       },
       {
+        path: 'audit',
+        name: 'audit',
+        component: () => import('@/pages/AuditPage.vue'),
+        meta: { requires: ['read', 'audit-events'] }
+      },
+      // Data subject requests (ADR 0013): erasure is the admin's alone.
+      {
+        path: 'gdpr',
+        name: 'gdpr',
+        component: () => import('@/pages/GdprPage.vue'),
+        meta: { requires: ['create', 'erasures'] }
+      },
+      {
         path: 'directory',
         name: 'directory',
         component: () => import('@/pages/DirectoryPage.vue'),
