@@ -959,6 +959,10 @@ services:
       GF_SMTP_STARTTLS_POLICY: MandatoryStartTLS
       # Deployment configuration (ADR 0022); may be a distribution list.
       ALERT_EMAIL: operators@app.localhost
+      # Alertmanager's grouping times, short here so `stack.sh alerts` is
+      # quick; scripts/quadlet.sh writes production's 30s and 5m (ADR 0022).
+      ALERT_GROUP_WAIT: ${ALERT_GROUP_WAIT:-5s}
+      ALERT_GROUP_INTERVAL: ${ALERT_GROUP_INTERVAL:-30s}
     mem_limit: 512m
     cpus: 1.0
     networks: [observability, grafana-edge]

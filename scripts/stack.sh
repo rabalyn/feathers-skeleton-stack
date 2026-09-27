@@ -37,9 +37,9 @@
 #                            the worker log errors, then wait for Grafana's
 #                            mail about them to arrive in Mailpit; then log
 #                            in and out with the local break-glass account
-#                            and wait for that alert's mail. Each waits
-#                            first until an earlier firing of its rule has
-#                            resolved (up to 20 minutes)
+#                            and wait for that alert's mail, both at once.
+#                            Each waits first until an earlier firing of its
+#                            rule has resolved (up to 20 minutes)
 #   scripts/stack.sh mcp     check the coding agents' MCP servers (ADR 0026)
 #                            the way .mcp.json starts them: Quasar's answers
 #                            offline, the browser reaches the local origins
@@ -328,11 +328,14 @@ alert_mails() {
 
 # Waits until a new firing of the rule is sure to be mailed: no instance of
 # it firing, and the last episode's [RESOLVED] mail sent, or the rule Normal
-# for longer than the policy's group_interval (5m), by which Grafana has
-# sent it (a restarted Mailpit forgets mails; Grafana's notification log
-# does not).
+# for longer than the policy's group_interval (30s locally, 5m in
+# production), by which Grafana has sent it (a restarted Mailpit forgets
+# mails; Grafana's notification log does not).
 wait_alert_quiet() {
-  local uid=$1 title=$2 deadline=$((SECONDS + 1200)) normal latest waited=
+  local uid=$1 title=$2 deadline=$((SECONDS + 1200)) interval normal latest waited=
+  interval=$(grafana_get /api/v1/provisioning/policies |
+    jq -r '[.group_interval | scan("([0-9]+)([hms])") | (.[0] | tonumber) * {h: 3600, m: 60, s: 1}[.[1]]] | add') ||
+    die "cannot read Grafana's notification policy; see: podman logs grafana"
   while ((SECONDS < deadline)); do
     normal=$(grafana_get "/api/prometheus/grafana/api/v1/rules?rule_uid=$uid" | jq -r '
       [.data.groups[].rules[].alerts[]?]
@@ -340,7 +343,7 @@ wait_alert_quiet() {
         else [.[].activeAt | sub("\\.[0-9]+"; "") | fromdateiso8601] | max // 0 end') ||
       die "cannot read the state of Grafana's rule $uid; see: podman logs grafana"
     latest=$(alert_mails "$title" | head -n 1)
-    if [[ $normal != firing ]] && [[ $latest == "[RESOLVED]"* || $(($(date +%s) - normal)) -gt 330 ]]; then
+    if [[ $normal != firing ]] && [[ $latest == "[RESOLVED]"* || $(($(date +%s) - normal)) -gt $((interval + 30)) ]]; then
       return
     fi
     [[ -n $waited ]] || log "\"$title\" fired recently; waiting until Grafana has mailed its resolution"
@@ -676,10 +679,15 @@ case $cmd in
     printf '%s\n%s\n' "$BREAKGLASS_EMAIL" "$password"
     ;;
   alerts)
-    log "logging errors in the worker, then waiting for the alert mail"
-    errors_alert_check
-    log "logging in with the break-glass account, then waiting for its alert mail"
-    breakglass_alert_check
+    # The two rules form separate alert groups, so both checks run at once.
+    alert_setup
+    log "logging errors in the worker and in with the break-glass account, then waiting for both alert mails"
+    errors_alert_check & errors=$!
+    breakglass_alert_check & breakglass=$!
+    failed=
+    wait "$errors" || failed=1
+    wait "$breakglass" || failed=1
+    [[ -z $failed ]] || die "an alert check failed; see above"
     ;;
   mcp) mcp_check ;;
   down) stack_down ;;

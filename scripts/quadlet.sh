@@ -25,6 +25,9 @@
 # likewise becomes a plain dependency on a `Type=oneshot` unit with
 # `RemainAfterExit=yes`, which systemd considers started once it has exited
 # successfully.
+# Grafana's alert grouping times (ADR 0022), `${ALERT_GROUP_WAIT:-5s}` and
+# `${ALERT_GROUP_INTERVAL:-30s}` for quick local alert checks, become
+# production's 30s and 5m.
 # The backup target, `${BACKUP_TARGET:-backups}` (ADR 0017), becomes the host
 # path /srv/backups, where production mounts the NFS export with a systemd
 # mount unit; the unit gets RequiresMountsFor=, so the mount is a dependency
@@ -47,6 +50,8 @@ generate() { # <dir>
   podman run --rm -i --network none "$YQ" --yaml-fix-merge-anchor-to-spec=true '
     explode(.)
     | del(.services[].build)
+    | .services.grafana.environment.ALERT_GROUP_WAIT = "30s"
+    | .services.grafana.environment.ALERT_GROUP_INTERVAL = "5m"
     | del(.services[] | select((.profiles // []) | any_c(. == "local" or . == "test" or . == "dev")))
     | .services[] |= (select(has("environment")).environment |= with_entries(select(.value | tostring | test("\\$\\{") | not)))
     | .services[] |= (select(has("volumes")).volumes |= map(sub("^\\$\\{BACKUP_TARGET:-[^}]*\\}:"; "/srv/backups:")))
