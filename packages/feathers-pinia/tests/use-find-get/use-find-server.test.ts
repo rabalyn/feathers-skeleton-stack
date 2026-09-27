@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, effectScope, ref } from 'vue'
 import { api, makeContactsData } from '../fixtures/index.js'
 import { resetService, timeout } from '../test-utils.js'
 
@@ -179,6 +179,115 @@ describe('paginateOn: server', () => {
     finally {
       failing = false
     }
+  })
+})
+
+// Not upstream: with `paginateOn: 'server'`, each useFind listens to the
+// service's created/patched/removed events and re-queries. The listeners live
+// as long as the effect scope (component) that created the useFind. Upstream
+// never removed them.
+describe('paginateOn: server, service event listeners', () => {
+  const events = ['created', 'patched', 'removed'] as const
+  const listenerCounts = () => events.map(event => service.service.listenerCount(event))
+  const params = computed(() => {
+    return { query: { $limit: 3, $skip: 0 } }
+  })
+  const useFindIn = (scope: ReturnType<typeof effectScope>, paginateOn: 'server' | 'client' | 'hybrid' = 'server') =>
+    scope.run(() => service.useFind(params, { paginateOn, debounce: 0 }))!
+
+  test.each(events)('a live useFind re-queries on `%s`', async (event) => {
+    const scope = effectScope()
+    const contacts$ = useFindIn(scope)
+    await contacts$.request
+    expect(contacts$.requestCount).toBe(1)
+
+    service.emit(event, {})
+    await contacts$.request
+    expect(contacts$.requestCount).toBe(2)
+    scope.stop()
+  })
+
+  test('each useFind registers one listener per event, and disposing its scope removes them', async () => {
+    const before = listenerCounts()
+    const scope = effectScope()
+    const contacts$ = useFindIn(scope)
+    await contacts$.request
+    expect(listenerCounts()).toEqual(before.map(count => count + 1))
+
+    scope.stop()
+    expect(listenerCounts()).toEqual(before)
+  })
+
+  test('a disposed useFind no longer re-queries on any event', async () => {
+    const scope = effectScope()
+    const contacts$ = useFindIn(scope)
+    await contacts$.request
+    scope.stop()
+
+    for (const event of events)
+      service.emit(event, {})
+    await timeout(50)
+    expect(contacts$.requestCount).toBe(1)
+  })
+
+  test('remounting does not accumulate listeners', async () => {
+    const before = listenerCounts()
+    for (let i = 0; i < 5; i++) {
+      const scope = effectScope()
+      await useFindIn(scope).request
+      scope.stop()
+    }
+    expect(listenerCounts()).toEqual(before)
+  })
+
+  test('disposing one useFind leaves another on the same service listening', async () => {
+    const disposed = effectScope()
+    const live = effectScope()
+    const disposed$ = useFindIn(disposed)
+    const live$ = useFindIn(live)
+    await Promise.all([disposed$.request, live$.request])
+
+    disposed.stop()
+    service.emit('created', {})
+    await live$.request
+    await timeout(50)
+    expect(live$.requestCount).toBe(2)
+    expect(disposed$.requestCount).toBe(1)
+    live.stop()
+  })
+
+  test('outside an effect scope the listeners stay and work, without a Vue warning', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const before = listenerCounts()
+      const contacts$ = service.useFind(params, { paginateOn: 'server', debounce: 0 })
+      await contacts$.request
+      expect(listenerCounts()).toEqual(before.map(count => count + 1))
+
+      service.emit('created', {})
+      await contacts$.request
+      expect(contacts$.requestCount).toBe(2)
+      expect(warn).not.toHaveBeenCalled()
+
+      // No scope to dispose: remove this test's listeners by hand so they do
+      // not re-query during later tests.
+      for (const event of events) {
+        const listeners = service.service.listeners(event)
+        service.service.removeListener(event, listeners[listeners.length - 1])
+      }
+      expect(listenerCounts()).toEqual(before)
+    }
+    finally {
+      warn.mockRestore()
+    }
+  })
+
+  test.each(['client', 'hybrid'] as const)('paginateOn: %s registers no listeners', async (paginateOn) => {
+    const before = listenerCounts()
+    const scope = effectScope()
+    useFindIn(scope, paginateOn)
+    expect(listenerCounts()).toEqual(before)
+    scope.stop()
   })
 })
 

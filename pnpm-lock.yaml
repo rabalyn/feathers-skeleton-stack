@@ -93,6 +93,9 @@ importers:
       feathers-casl:
         specifier: 3.0.0
         version: 3.0.0(@casl/ability@6.8.1)(@feathersjs/feathers@5.0.50)
+      feathers-utils:
+        specifier: 10.8.3
+        version: 10.8.3(@feathersjs/feathers@5.0.50)
       file-type:
         specifier: 22.1.1
         version: 22.1.1(supports-color@8.1.1)

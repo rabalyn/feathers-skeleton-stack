@@ -35,6 +35,7 @@
     "bullmq": "6.3.8",
     "cron-parser": "5.10.1",
     "feathers-casl": "3.0.0",
+    "feathers-utils": "10.8.3",
     "file-type": "22.1.1",
     "ioredis": "6.0.0",
     "knex": "3.3.0",
