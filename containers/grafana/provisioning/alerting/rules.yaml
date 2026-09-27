@@ -122,6 +122,47 @@ groups:
       severity: critical
     annotations:
       summary: More than 3 refused break-glass logins in 10 minutes
+  # Every successful break-glass login (ADR 0008): either an emergency or a
+  # leaked password, and a human should know either way. The exact message
+  # match leaves out "break-glass login refused".
+  - uid: breakglass-login
+    title: Break-glass login
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: loki
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(count_over_time({service="api"} |= "break-glass login" | json | msg="break-glass login" [10m]))
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+        queryType: instant
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    for: 0s
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: Someone logged in with the break-glass account
   - uid: target-down
     title: Scrape target down
     condition: C
