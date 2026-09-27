@@ -37,7 +37,9 @@
 #                            the worker log errors, then wait for Grafana's
 #                            mail about them to arrive in Mailpit; then log
 #                            in and out with the local break-glass account
-#                            and wait for that alert's mail
+#                            and wait for that alert's mail. Each waits
+#                            first until an earlier firing of its rule has
+#                            resolved (up to 20 minutes)
 #   scripts/stack.sh mcp     check the coding agents' MCP servers (ADR 0026)
 #                            the way .mcp.json starts them: Quasar's answers
 #                            offline, the browser reaches the local origins
@@ -293,10 +295,103 @@ ensure_breakglass() {
   TOKEN=
 }
 
-# The "Break-glass login" rule (ADR 0022), proven like the error rule: one
-# login to the local app through Nginx, as the /break-glass page makes it,
-# then Grafana's mail about it in Mailpit. The session is logged out again;
-# the login and the logout stay in the local app's audit events.
+# Alert checks (ADR 0022). Alertmanager mails an alert group once when it
+# starts firing, then stays quiet while it keeps firing, and for
+# repeat_interval (4h) unless it has mailed the resolution in between. A
+# check that fires a rule again before that gets no mail although delivery
+# works: seen 2026-09-28, when the worker's errors during an `up` fired the
+# error rule shortly before the check. So each check first waits for a
+# clean slate, then fires its rule and waits for the [FIRING] mail.
+alert_setup() {
+  [[ -z ${ALERT_DIR:-} ]] || return 0
+  ALERT_DIR=$(mktemp -d)
+  trap 'rm -rf "$ALERT_DIR"' EXIT
+  podman run --rm --network none -v "${PROJECT}_trust:/t:ro" "$HELPER_IMAGE" cat /t/ca.crt >"$ALERT_DIR/ca.crt"
+}
+
+# Grafana's API as its admin, from inside its container: the password
+# stays there.
+grafana_get() {
+  podman exec grafana sh -c 'printf "user = \"admin:%s\"\n" "$(cat /run/secrets/admin_password)" |
+    curl -sf -K - --cacert /trust/ca.crt --connect-to grafana:3000:127.0.0.1:3000 "https://grafana:3000$1"' sh "$1"
+}
+
+# The subjects of a rule's alert mails in Mailpit created after $2 (default:
+# all), newest first.
+alert_mails() {
+  curl -s --cacert "$ALERT_DIR/ca.crt" -G https://mail.localhost:8443/api/v1/search --data-urlencode "query=subject:\"$1\"" |
+    jq -r --arg title "$1" --arg since "${2:-}" '
+      [.messages[]? | select(.Created > $since)
+        | select((.Subject | startswith("[FIRING:") or startswith("[RESOLVED]")) and (.Subject | contains("] " + $title + " (")))]
+      | sort_by(.Created) | reverse | .[].Subject'
+}
+
+# Waits until a new firing of the rule is sure to be mailed: no instance of
+# it firing, and the last episode's [RESOLVED] mail sent, or the rule Normal
+# for longer than the policy's group_interval (5m), by which Grafana has
+# sent it (a restarted Mailpit forgets mails; Grafana's notification log
+# does not).
+wait_alert_quiet() {
+  local uid=$1 title=$2 deadline=$((SECONDS + 1200)) normal latest waited=
+  while ((SECONDS < deadline)); do
+    normal=$(grafana_get "/api/prometheus/grafana/api/v1/rules?rule_uid=$uid" | jq -r '
+      [.data.groups[].rules[].alerts[]?]
+      | if any(.state | startswith("Normal") | not) then "firing"
+        else [.[].activeAt | sub("\\.[0-9]+"; "") | fromdateiso8601] | max // 0 end') ||
+      die "cannot read the state of Grafana's rule $uid; see: podman logs grafana"
+    latest=$(alert_mails "$title" | head -n 1)
+    if [[ $normal != firing ]] && [[ $latest == "[RESOLVED]"* || $(($(date +%s) - normal)) -gt 330 ]]; then
+      return
+    fi
+    [[ -n $waited ]] || log "\"$title\" fired recently; waiting until Grafana has mailed its resolution"
+    waited=1
+    sleep 10
+  done
+  die "\"$title\" did not resolve within 20 minutes; see Grafana's alert rules"
+}
+
+# Waits for the rule's [FIRING] mail created after $2.
+wait_alert_mail() {
+  local title=$1 since=$2 deadline=$((SECONDS + 300)) subject
+  while ((SECONDS < deadline)); do
+    subject=$(alert_mails "$title" "$since" | grep -m 1 '^\[FIRING:' || true)
+    if [[ -n $subject ]]; then
+      log "alert mail arrived: $subject"
+      return
+    fi
+    sleep 5
+  done
+  die "no \"$title\" mail arrived; see Grafana's alert rules and: podman logs grafana"
+}
+
+# The "Application errors in logs" rule: unknown jobs fail at once and log
+# at `error`; Alloy ships the lines to Loki, the rule fires, Grafana mails.
+# The jobs are enqueued from inside the worker, which reaches Valkey.
+errors_alert_check() {
+  local since
+  alert_setup
+  wait_alert_quiet app-errors "Application errors in logs"
+  since=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+  podman exec -i -w /repo/apps/api -e NODE_EXTRA_CA_CERTS=/trust/ca.crt worker \
+    node --input-type=module <<'JS' || die "enqueueing the failing jobs in the worker failed"
+import { readFileSync } from 'node:fs'
+import { Queue } from 'bullmq'
+const connection = {
+  host: 'valkey', port: 6379, username: 'worker',
+  password: readFileSync('/run/secrets/valkey_password', 'utf8'),
+  tls: { ca: readFileSync('/trust/ca.crt', 'utf8'), servername: 'valkey' }
+}
+const queue = new Queue('maintenance', { prefix: 'bull', connection })
+for (let i = 0; i < 8; i++) await queue.add('alert-check', {}, { attempts: 1, removeOnFail: true })
+await queue.close()
+JS
+  wait_alert_mail "Application errors in logs" "$since"
+}
+
+# The "Break-glass login" rule, proven like the error rule: one login to
+# the local app through Nginx, as the /break-glass page makes it, then
+# Grafana's mail about it in Mailpit. The session is logged out again; the
+# login and the logout stay in the local app's audit events.
 breakglass_alert_check() {
   local password since answer
   wait_for_openbao
@@ -305,9 +400,8 @@ breakglass_alert_check() {
   bao token revoke -self >/dev/null
   TOKEN=
   [[ -n $password ]] || die "no local break-glass password; run '$0 up'"
-  ALERT_DIR=$(mktemp -d)
-  trap 'rm -rf "$ALERT_DIR"' EXIT
-  podman run --rm --network none -v "${PROJECT}_trust:/t:ro" "$HELPER_IMAGE" cat /t/ca.crt >"$ALERT_DIR/ca.crt"
+  alert_setup
+  wait_alert_quiet breakglass-login "Break-glass login"
   local -a request=(curl -s --cacert "$ALERT_DIR/ca.crt" --cookie-jar "$ALERT_DIR/cookies" --cookie "$ALERT_DIR/cookies"
     -H 'Origin: https://app.localhost:8443' -o /dev/null -w '%{http_code}')
   since=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
@@ -318,19 +412,7 @@ breakglass_alert_check() {
   [[ $answer == 201 ]] || die "the break-glass login answered $answer"
   answer=$("${request[@]}" -X DELETE https://app.localhost:8443/api/authentication)
   [[ $answer == 200 ]] || die "the break-glass logout answered $answer"
-  local deadline=$((SECONDS + 300)) subject
-  while ((SECONDS < deadline)); do
-    subject=$(curl -s --cacert "$ALERT_DIR/ca.crt" 'https://mail.localhost:8443/api/v1/search?query=subject:%22Break-glass%20login%22' |
-      jq -r --arg since "$since" '[.messages[]? | select(.Created > $since) | .Subject] | first // empty')
-    if [[ -n $subject ]]; then
-      log "alert mail arrived: $subject"
-      return
-    fi
-    sleep 5
-  done
-  # Grafana mails an alert once when it starts firing: another break-glass
-  # login within the rule's 10 minutes before this one sends no new mail.
-  die "no break-glass alert mail arrived (a login in the last 10 minutes keeps the alert firing without a new mail); see Grafana's alert rules and: podman logs grafana"
+  wait_alert_mail "Break-glass login" "$since"
 }
 
 # The e2e suite's own api, worker and database (ADR 0015), fresh for every
@@ -594,37 +676,8 @@ case $cmd in
     printf '%s\n%s\n' "$BREAKGLASS_EMAIL" "$password"
     ;;
   alerts)
-    # Unknown jobs fail at once and log at `error`: Alloy ships the lines to
-    # Loki, the "Application errors in logs" rule fires, Grafana mails.
-    # Runs inside the worker, which reaches Valkey and Mailpit.
     log "logging errors in the worker, then waiting for the alert mail"
-    podman exec -i -w /repo/apps/api -e NODE_EXTRA_CA_CERTS=/trust/ca.crt worker \
-      node --input-type=module <<'JS' || die "no alert mail arrived; see Grafana's alert rules and: podman logs grafana"
-import { readFileSync } from 'node:fs'
-import { Queue } from 'bullmq'
-const connection = {
-  host: 'valkey', port: 6379, username: 'worker',
-  password: readFileSync('/run/secrets/valkey_password', 'utf8'),
-  tls: { ca: readFileSync('/trust/ca.crt', 'utf8'), servername: 'valkey' }
-}
-const since = new Date().toISOString()
-const queue = new Queue('maintenance', { prefix: 'bull', connection })
-for (let i = 0; i < 8; i++) await queue.add('alert-check', {}, { attempts: 1, removeOnFail: true })
-await queue.close()
-const query = encodeURIComponent('subject:"Application errors in logs"')
-const deadline = Date.now() + 5 * 60_000
-while (Date.now() < deadline) {
-  const response = await fetch(`https://mail:8025/api/v1/search?query=${query}`)
-  const { messages = [] } = await response.json()
-  const arrived = messages.find((message) => message.Created > since)
-  if (arrived) {
-    console.log(`alert mail arrived: ${arrived.Subject}`)
-    process.exit(0)
-  }
-  await new Promise((resolve) => setTimeout(resolve, 5000))
-}
-process.exit(1)
-JS
+    errors_alert_check
     log "logging in with the break-glass account, then waiting for its alert mail"
     breakglass_alert_check
     ;;
@@ -651,5 +704,5 @@ JS
       --keep-data) log "kept the local root CA, the app's database, its objects and OpenBao; '$0 reset' deletes them" ;;
     esac
     ;;
-  *) sed -n '2,42p' "$0"; exit 2 ;;
+  *) sed -n '2,46p' "$0"; exit 2 ;;
 esac

@@ -34,6 +34,15 @@ export const JOB_OPTIONS: JobsOptions = {
   removeOnFail: { count: 500 }
 }
 
+// A lost Valkey connection is transient: the client reconnects, and an
+// outage that lasts alerts as "API not ready" (ADR 0022). At `error` every
+// Valkey restart would fire the Loki error alert, so it logs at `warn`, as
+// the api does.
+const CONNECTION_ERRORS = new Set(['ECONNREFUSED', 'ECONNRESET', 'ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'EHOSTUNREACH', 'EPIPE'])
+// ioredis gives up on a command after its retries while disconnected.
+export const isConnectionError = (error: Error) =>
+  CONNECTION_ERRORS.has((error as NodeJS.ErrnoException).code ?? '') || error.name === 'MaxRetriesPerRequestError'
+
 export interface MaintenanceOptions {
   connection: RedisOptions
   knex: Knex
@@ -116,7 +125,9 @@ export const startMaintenance = ({
         final ? 'job failed' : 'job failed, will retry'
       )
     })
-    worker.on('error', (error) => logger.error({ queue: name, err: { message: error.message } }, 'worker error'))
+    worker.on('error', (error) =>
+      logger[isConnectionError(error) ? 'warn' : 'error']({ queue: name, err: { message: error.message } }, 'worker error')
+    )
     return worker
   }
 
