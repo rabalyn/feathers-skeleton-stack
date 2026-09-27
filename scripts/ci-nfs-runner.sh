@@ -63,11 +63,23 @@ unmount() {
   timeout 60 umount "$MOUNT" 2>/dev/null || { log "unmount timed out; detaching lazily"; umount -l "$MOUNT"; }
 }
 
-# Deleting the export once took 20 minutes on a local SSD. Suspected: nfsd
-# still holds NFSv4 state (delegations) on its files and waits out a recall
-# per deletion. Diagnostics until that is settled: a deletion still running
-# after 30 seconds logs where it waits in the kernel and nfsd's client
-# states, then how many entries remain, every minute.
+# nfsd keeps the NFSv4 state of a client that has unmounted, notably
+# directory delegations on the repositories' directories. Deleting such a
+# directory recalls the delegation from a client that no longer answers,
+# and each recall waits out its timeout: 14 of them took 20 minutes. So the
+# state is revoked first. unlock_filesystem acts on the whole filesystem
+# the export lives on, not only on the export: fine on a runner, whose only
+# export this is.
+revoke_nfs_state() {
+  if [[ -w /proc/fs/nfsd/unlock_filesystem ]]; then
+    printf '%s\n' "$EXPORT" >/proc/fs/nfsd/unlock_filesystem 2>/dev/null ||
+      log "revoking nfsd's state on $EXPORT failed; deleting may be slow"
+  fi
+}
+
+# Should revoking ever not suffice, a deletion still running after 30
+# seconds logs where it waits in the kernel and nfsd's client states, then
+# how many entries remain, every minute.
 delete_export() {
   local pid waited=0 client
   rm -rf "$EXPORT" &
@@ -106,6 +118,8 @@ cleanup() {
   log "cleanup: unexporting"
   rm -f "$EXPORTS_FILE"
   timeout 60 exportfs -ra || log "cleanup: exportfs did not finish within a minute; continuing"
+  log "cleanup: revoking nfsd's state on $EXPORT"
+  revoke_nfs_state
   log "cleanup: deleting $EXPORT"
   delete_export
   log "cleanup: removing the mount point"
@@ -127,7 +141,10 @@ gid=$(host_id gid_map "$BACKUP_UID")
 unmount
 if [[ -e $EXPORT ]]; then
   log "removing the export an earlier run left behind"
-  rm -rf "$EXPORT"
+  rm -f "$EXPORTS_FILE"
+  exportfs -ra
+  revoke_nfs_state
+  delete_export
 fi
 
 trap cleanup EXIT
