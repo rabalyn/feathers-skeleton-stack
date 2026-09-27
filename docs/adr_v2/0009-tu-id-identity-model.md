@@ -26,7 +26,7 @@ This repository is the common base for future products, so it carries only what 
 
 | Entity | Contents | Purpose |
 | --- | --- | --- |
-| User | Surrogate id, TU-ID, name, surname, email, role, enabled flag, optional avatar | Every product has users; this is also the minimal GDPR export ([0013](0013-gdpr-export-and-retention.md)) |
+| User | Surrogate id, TU-ID, name, surname, email, role, enabled flag, locale, optional avatar | Every product has users; this is also the minimal GDPR export ([0013](0013-gdpr-export-and-retention.md)) |
 | Avatar | An image upload attached to the user record; the only field a user edits on their own record | Exercises image upload and inline image serving ([0020](0020-object-storage-uploads.md)) |
 | Document | Owner, title, an uploaded file and its metadata (original filename, size, content type, checksum), timestamps | Exercises file upload, ownership scoping, real-time channels and the export |
 

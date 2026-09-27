@@ -2,7 +2,7 @@
 
 This directory holds the architecture decisions for this project. It supersedes `docs/adr/`, which split a single planning document into seventy files and accumulated 433 open items before any business logic existed. See [0019](0019-adr-convention.md) for what changed and why.
 
-Twenty-six ADRs, each covering a decision with real alternatives. Read [0001](0001-one-stack-every-environment.md) first — the parity rule it sets is the reason several later decisions look the way they do.
+Twenty-seven ADRs, each covering a decision with real alternatives. Read [0001](0001-one-stack-every-environment.md) first — the parity rule it sets is the reason several later decisions look the way they do.
 
 ## Index
 
@@ -25,6 +25,7 @@ Twenty-six ADRs, each covering a decision with real alternatives. Read [0001](00
 - [0014 — Frontend with Vue 3, Quasar and feathers-pinia](0014-frontend-quasar-vue.md)
 - [0024 — Background jobs on BullMQ in a dedicated worker container](0024-background-jobs-bullmq.md)
 - [0025 — Operational settings are runtime settings in PostgreSQL](0025-runtime-settings.md)
+- [0027 — E-mail from code-declared mail kinds, with admin-edited Liquid templates, sent by the worker](0027-email-templates-and-sending.md)
 
 ### Identity, access and privacy
 
@@ -96,10 +97,12 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 
 **Slice 9 — MCP servers for coding agents** ([0026](0026-mcp-development-tooling.md)): scoped down to two servers, because the Grafana, PostgreSQL and Valkey servers' images carried open findings and their access was not worth the surface yet; `@quasar/mcp` as a pinned dev dependency of the web app, offline; the Playwright MCP server that ships in the e2e suite's own `playwright-core`, in `mcp-browser` (the `e2e` image idling) on `mcp-edge`, an internal network holding only Nginx, so the browser reaches the local origins over trusted TLS and not the internet; the committed `.mcp.json` and the `enabledMcpjsonServers` allowlist in `.claude/settings.json`; `scripts/stack.sh mcp`, which starts both as `.mcp.json` does and checks them, run by `scripts/ci.sh`.
 
+**Slice 10 — e-mail, next** ([0027](0027-email-templates-and-sending.md)): `defineMailKind()` and the kind registry; the user's `locale`; template revisions seeded from code defaults, checked against the kind's schema on save; Liquid, Markdown and the MJML layout with escaped output; the `mail_deliveries` outbox and its sweep; the `mail` queue with throttling and retries, sending through Mailpit; campaigns with preview and pinned revisions; the delivery log in the registry and the retention cleanup; the admin pages for templates and mailings; a demo notification and a demo campaign proven end to end in Mailpit.
+
 **Later.** The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
 
 ## Status of this set
 
-All twenty-six are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds ([0022](0022-observability-and-alerting.md)), the issuer of production certificates for internal listeners ([0016](0016-nginx-and-tls-everywhere.md)), and which further services need real-time publishers ([0012](0012-role-scoped-channels.md)).
+All twenty-seven are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds ([0022](0022-observability-and-alerting.md)), the issuer of production certificates for internal listeners ([0016](0016-nginx-and-tls-everywhere.md)), which further services need real-time publishers ([0012](0012-role-scoped-channels.md)), and the university SMTP relay's sending limit ([0027](0027-email-templates-and-sending.md)).
 
 The record of processing activities and the DPIA ([0013](0013-gdpr-export-and-retention.md)) are organisational deliverables to be prepared with the data protection officer before production.

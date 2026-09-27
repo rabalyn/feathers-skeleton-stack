@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADRs 0021, 0063
-- Related: [0005](0005-typebox-schema-boundary.md), [0008](0008-authentication-saml2-ldap.md), [0009](0009-tu-id-identity-model.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0012](0012-role-scoped-channels.md), [0025](0025-runtime-settings.md)
+- Related: [0005](0005-typebox-schema-boundary.md), [0008](0008-authentication-saml2-ldap.md), [0009](0009-tu-id-identity-model.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0012](0012-role-scoped-channels.md), [0025](0025-runtime-settings.md), [0027](0027-email-templates-and-sending.md)
 
 ## Context
 
@@ -37,6 +37,8 @@ Roles are names for sets of CASL rules. A user has exactly one role, stored on t
 | GDPR erasure | trigger | — | — |
 | Runtime settings ([0025](0025-runtime-settings.md)) | read, write | — | — |
 | Feature flags, maintenance mode | read, write | — | — |
+| Own locale ([0027](0027-email-templates-and-sending.md)) | write | write | write |
+| Mail templates, campaigns, delivery log ([0027](0027-email-templates-and-sending.md)) | read, write | — | — |
 
 Directory-sourced user fields are never writable by anyone in the application ([0009](0009-tu-id-identity-model.md)). Backups are not triggered through the application at all: they run on their configured schedule ([0017](0017-nfs-backup-storage.md)), and their schedule and retention are runtime settings covered by the row above.
 

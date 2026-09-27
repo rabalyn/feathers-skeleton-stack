@@ -36,6 +36,7 @@ Retention periods the application enforces are runtime settings in PostgreSQL ([
 | Generated data exports | 7 days | Runtime setting | Maintenance job |
 | Soft-deleted objects | 32 days, validated to exceed backup retention | Runtime setting | Purge job ([0020](0020-object-storage-uploads.md)) |
 | Backups | 31 days | Runtime setting | Backup service ([0017](0017-nfs-backup-storage.md)) |
+| Mail delivery log | 90 days | Runtime setting | Maintenance job ([0027](0027-email-templates-and-sending.md)) |
 
 Maintenance and purge jobs run in the worker ([0024](0024-background-jobs-bullmq.md)) and delete in batches.
 

@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-24
 - Scope: Required (v1)
-- Related: [0002](0002-service-inventory-and-networks.md), [0004](0004-pgbouncer-pools.md), [0006](0006-feathersjs-typescript-api.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0013](0013-gdpr-export-and-retention.md), [0020](0020-object-storage-uploads.md), [0021](0021-structured-logging.md), [0022](0022-observability-and-alerting.md), [0025](0025-runtime-settings.md)
+- Related: [0002](0002-service-inventory-and-networks.md), [0004](0004-pgbouncer-pools.md), [0006](0006-feathersjs-typescript-api.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0013](0013-gdpr-export-and-retention.md), [0020](0020-object-storage-uploads.md), [0021](0021-structured-logging.md), [0022](0022-observability-and-alerting.md), [0025](0025-runtime-settings.md), [0027](0027-email-templates-and-sending.md)
 
 ## Context
 
@@ -31,12 +31,14 @@ The alternatives considered were in-process cron in a worker (simplest, but no r
 | Retention cleanup | Daily | Deletes audit events and expired sessions past their retention ([0013](0013-gdpr-export-and-retention.md)) |
 | Export expiry | Daily | Deletes generated exports past their retention, object first, then its row; marks an export still pending after a day `failed` (its job was lost); removes objects in `exports` older than an hour that no row describes, which erasure leaves behind ([0013](0013-gdpr-export-and-retention.md)) |
 | Object purge | Daily | Purges soft-deleted objects past the purge delay, object first, then its row; soft-deletes stored files nobody attached within 24 hours; removes uploads that never finished (`pending` for over an hour); removes objects older than a day that no row describes, which only a failure or a restore to an earlier database state leaves behind ([0020](0020-object-storage-uploads.md)) |
+| Mail delivery | On a notification's commit, a campaign's send, and a sweep every minute | Renders and sends one mail on a queue of its own, `mail`, throttled to `mailSendPerMinute`; five attempts for temporary SMTP failures ([0027](0027-email-templates-and-sending.md)) |
+| Mail campaign | On an admin's send | Resolves a campaign's recipients into delivery rows and enqueues one mail delivery each ([0027](0027-email-templates-and-sending.md)) |
 | Data export | On request | Builds a GDPR export into the `exports` bucket. Runs on a queue of its own, `data-exports`, one at a time, so a long daily job never delays it; three attempts with a short backoff, since someone is waiting ([0013](0013-gdpr-export-and-retention.md)) |
 
 Backups are not BullMQ jobs: the backup service is isolated from Valkey and schedules itself ([0017](0017-nfs-backup-storage.md)).
 
 ## Consequences
 
-- Retries, job history and queue metrics are available from the first job, and adding bulk mail later is a new queue, not a new mechanism.
-- Enqueueing is not part of the database transaction. A job enqueued after a commit can be lost if the process dies in between; a job enqueued before commit can run for a write that rolled back. Maintenance jobs are unaffected because they are schedules, not consequences of writes. Where a product needs exactly-once hand-off (mail after a write, for example), it adds a transactional outbox table then.
+- Retries, job history and queue metrics are available from the first job, and mail was a new queue, not a new mechanism ([0027](0027-email-templates-and-sending.md)).
+- Enqueueing is not part of the database transaction. A job enqueued after a commit can be lost if the process dies in between; a job enqueued before commit can run for a write that rolled back. Maintenance jobs are unaffected because they are schedules, not consequences of writes. Mail after a write goes through a transactional outbox, the `mail_deliveries` table ([0027](0027-email-templates-and-sending.md)); a product needing the same guarantee for other work follows that pattern.
 - Valkey is now durable state and part of the backup, and its availability affects both logins (fail-closed rate limits) and jobs.
