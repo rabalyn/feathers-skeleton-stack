@@ -1,0 +1,12 @@
+{
+  "browser": {
+    "browserName": "chromium",
+    "isolated": true,
+    "launchOptions": {
+      "channel": "chromium",
+      "headless": true,
+      "args": ["--host-resolver-rules=MAP app.localhost nginx, MAP idp.localhost nginx"]
+    }
+  },
+  "outputDir": "/tmp/playwright-mcp"
+}

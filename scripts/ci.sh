@@ -101,6 +101,7 @@ fi
 if [[ $mode != --static ]]; then
   check "Vitest" "$ROOT/scripts/stack.sh" test
   check "Playwright" "$ROOT/scripts/stack.sh" e2e
+  check "MCP servers" "$ROOT/scripts/stack.sh" mcp
   check "Alert delivery" "$ROOT/scripts/stack.sh" alerts
   check "Backup and restore" "$ROOT/scripts/backup-test.sh"
   # The dev server image is never started here but ships to developers, so

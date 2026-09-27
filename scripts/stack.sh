@@ -36,6 +36,10 @@
 #   scripts/stack.sh alerts  prove the alert path end to end (ADR 0022): make
 #                            the worker log errors, then wait for Grafana's
 #                            mail about them to arrive in Mailpit
+#   scripts/stack.sh mcp     check the coding agents' MCP servers (ADR 0026)
+#                            the way .mcp.json starts them: Quasar's answers
+#                            offline, the browser reaches the local origins
+#                            over trusted TLS and nothing beyond them
 #
 # The OpenBao unseal key lives in a local-only podman volume that no compose
 # service mounts. Production never runs this script: an administrator unseals
@@ -46,6 +50,8 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 PROJECT=feathers
 UNSEAL_VOLUME=${PROJECT}-openbao-local-unseal
 HELPER_IMAGE=docker.io/library/alpine:3.24.2@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
+# The Node the api and the web build run on (containers/api/Containerfile).
+NODE_IMAGE=docker.io/library/node:24.21.0-trixie-slim@sha256:b64fccfbcd1ae10d11b969a868b50e1c2530a7054813d5cdea04ac3bce551697
 OPENBAO_DIR=$ROOT/containers/openbao
 
 PROFILES=(--profile local)
@@ -385,6 +391,65 @@ ensure_test_template() {
   podman exec -u postgres postgres psql -q -d postgres -c "COMMENT ON DATABASE test_template IS '$want'"
 }
 
+# --- MCP servers (ADR 0026) ---------------------------------------------------
+
+# A minimal MCP client over stdio: the server runs as a coprocess, each
+# request waits for the answer with its id. Coprocess descriptors do not
+# reach subshells, so the answer is left in MCP_REPLY.
+MCP_ID=0
+MCP_REPLY=
+mcp_start() { # <command>...
+  coproc MCP { "$@" 2>/dev/null; }
+  MCP_ID=0
+  mcp_request initialize '{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"stack.sh","version":"1"}}'
+  printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}' >&"${MCP[1]}"
+}
+
+mcp_request() { # <method> <params JSON>
+  local line
+  MCP_ID=$((MCP_ID + 1))
+  jq -cn --argjson id "$MCP_ID" --arg method "$1" --argjson params "$2" \
+    '{jsonrpc: "2.0", id: $id, $method, $params}' >&"${MCP[1]}"
+  while IFS= read -r -t 120 line <&"${MCP[0]}"; do
+    [[ $(jq -r '.id // empty' <<<"$line" 2>/dev/null) == "$MCP_ID" ]] && { MCP_REPLY=$line; return 0; }
+  done
+  die "the MCP server gave no answer to $1"
+}
+
+mcp_tool() { # <tool> <arguments JSON>; fails when the tool reports an error
+  mcp_request tools/call "$(jq -cn --arg name "$1" --argjson arguments "$2" '{$name, $arguments}')"
+  [[ $(jq -r '.result.isError // false' <<<"$MCP_REPLY") == false ]]
+}
+
+mcp_stop() {
+  exec {MCP[1]}>&-
+  wait "$MCP_PID" 2>/dev/null || true
+}
+
+mcp_check() {
+  # Quasar's server runs on the host from node_modules; here in the pinned
+  # Node image with no network at all, which shows it needs none.
+  log "quasar: the installed docs, offline"
+  mcp_start podman run --rm -i --network none --security-opt label=disable \
+    -v "$ROOT:/repo:ro" -w /repo -e NO_UPDATE_NOTIFIER=1 "$NODE_IMAGE" \
+    node apps/web/node_modules/@quasar/mcp/src/bin.js --project apps/web
+  mcp_tool get_api '{"name": "QBtn"}' || die "quasar: get_api failed: $MCP_REPLY"
+  mcp_stop
+
+  running mcp-browser || die "mcp-browser is not running; run '$0 up'"
+  log "playwright: the local origins over trusted TLS, nothing beyond"
+  mcp_start podman exec -i mcp-browser node mcp-server.js --config mcp.config.json
+  mcp_tool browser_navigate '{"url": "https://app.localhost:8443/login"}' ||
+    die "playwright: the app did not load: $MCP_REPLY"
+  mcp_tool browser_navigate '{"url": "https://idp.localhost:8443/realms/feathers/"}' ||
+    die "playwright: the IdP did not load: $MCP_REPLY"
+  # By address, so the check does not depend on name resolution.
+  ! mcp_tool browser_navigate '{"url": "https://1.1.1.1/"}' ||
+    die "playwright: the browser reached the internet"
+  mcp_stop
+  log "MCP servers answer as .mcp.json starts them"
+}
+
 # podman-compose stops every container at once on `down`, ignoring
 # depends_on; Alloy goes first so it can ship what it holds while Loki is
 # still there (compose.yaml orders them for the production units).
@@ -519,6 +584,7 @@ while (Date.now() < deadline) {
 process.exit(1)
 JS
     ;;
+  mcp) mcp_check ;;
   down) stack_down ;;
   reset)
     case ${2:-} in
@@ -541,5 +607,5 @@ JS
       --keep-data) log "kept the local root CA, the app's database, its objects and OpenBao; '$0 reset' deletes them" ;;
     esac
     ;;
-  *) sed -n '2,29p' "$0"; exit 2 ;;
+  *) sed -n '2,42p' "$0"; exit 2 ;;
 esac

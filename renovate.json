@@ -37,6 +37,11 @@
       "groupName": "lint tooling"
     },
     {
+      "description": "The Playwright MCP server (e2e/mcp-server.mjs) is playwright-core's own and must match the browsers of @playwright/test's image",
+      "matchPackageNames": ["@playwright/test", "playwright-core", "mcr.microsoft.com/playwright"],
+      "groupName": "playwright"
+    },
+    {
       "description": "The OpenBao server and its agents run one image and must stay on one version",
       "matchPackageNames": ["docker.io/openbao/openbao"],
       "groupName": "openbao"

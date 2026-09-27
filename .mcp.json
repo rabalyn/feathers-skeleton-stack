@@ -3,8 +3,27 @@
     "quasar": {
       "type": "stdio",
       "command": "node",
-      "args": ["apps/web/node_modules/@quasar/mcp/src/bin.js", "--project", "apps/web"],
-      "env": { "NO_UPDATE_NOTIFIER": "1" }
+      "args": [
+        "apps/web/node_modules/@quasar/mcp/src/bin.js",
+        "--project",
+        "apps/web"
+      ],
+      "env": {
+        "NO_UPDATE_NOTIFIER": "1"
+      }
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "podman",
+      "args": [
+        "exec",
+        "-i",
+        "mcp-browser",
+        "node",
+        "mcp-server.js",
+        "--config",
+        "mcp.config.json"
+      ]
     }
   }
 }

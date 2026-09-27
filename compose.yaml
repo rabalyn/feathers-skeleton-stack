@@ -98,6 +98,7 @@ services:
       dozzle-edge: {}
       grafana-edge: {}
       mail-edge: {}
+      mcp-edge: {}
     volumes:
       - tls-nginx:/etc/nginx/tls:ro
       - trust:/trust:ro
@@ -596,6 +597,25 @@ services:
       net.ipv6.conf.all.disable_ipv6: "1"
       net.ipv6.conf.default.disable_ipv6: "1"
     networks: [edge, idp-edge]
+    volumes:
+      - trust:/trust:ro
+
+  # The browser a coding agent drives (ADR 0026): the e2e image, idle until
+  # an agent starts the Playwright MCP server in it with `podman exec -i`
+  # (.mcp.json). Its only network is internal and holds nothing but Nginx,
+  # so the browser reaches the local origins and not the internet.
+  mcp-browser:
+    build:
+      context: .
+      dockerfile: containers/e2e/Containerfile
+    image: localhost/feathers-e2e:dev
+    container_name: mcp-browser
+    profiles: [local]
+    command: ["sh", "-c", "trap 'exit 0' TERM; sleep infinity & wait"]
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks: [mcp-edge]
     volumes:
       - trust:/trust:ro
 
@@ -1143,6 +1163,9 @@ networks:
   observability: {}
   grafana-edge: {}
   mail-edge: {}
+  # No route out of the host (ADR 0026).
+  mcp-edge:
+    internal: true
 
 volumes:
   certs-ca: {}

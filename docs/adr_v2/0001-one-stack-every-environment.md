@@ -32,11 +32,11 @@ Stated here so that nothing claims more parity than exists:
 | OpenBao unseal | Scripted | Scripted | Manual, by an administrator | Local and CI secrets are random throwaway values ([0023](0023-secrets-management.md)) |
 | Uptime check | In the stack | In the stack | Must run on another machine | A check on the same host dies with it ([0022](0022-observability-and-alerting.md)) |
 | Container log viewer | Dozzle | Dozzle, unused; the runner needs the rootless Podman API socket | None | A developer convenience that nothing depends on; production logs are read in Grafana ([0002](0002-service-inventory-and-networks.md), [0022](0022-observability-and-alerting.md)) |
-| MCP servers for coding agents | In the stack | In the stack, unused | None | Development tooling over seeded data only ([0026](0026-mcp-development-tooling.md)) |
+| MCP servers for coding agents | In the stack | In the stack, checked by `stack.sh mcp` | None | Development tooling over seeded data only ([0026](0026-mcp-development-tooling.md)) |
 
 ## Consequences
 
 - Nginx, TLS, SAML2, LDAP, secret delivery and the backup path are exercised from the first day of development rather than first attempted in production.
-- A developer machine runs roughly fifty containers, seven of them MCP tooling ([0026](0026-mcp-development-tooling.md)). This is the deliberate cost of the parity rule.
+- A developer machine runs roughly forty containers, one of them the coding agents' browser ([0026](0026-mcp-development-tooling.md)). This is the deliberate cost of the parity rule.
 - Adding a service means adding it to `compose.yaml` and regenerating; the CI check catches a forgotten regeneration.
 - Generated units depend on `podlet` covering the Compose features used. A feature it cannot translate goes into a drop-in.
