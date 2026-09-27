@@ -86,7 +86,7 @@ The backup alert's 26-hour window assumes the default daily schedule. The backup
 
 ### Mail in every environment
 
-Locally and in CI the `mail` container (Mailpit) captures alert email, so the delivery path — rule fires, notification renders, SMTP send succeeds — is testable without sending real mail. An alert that has never been seen to arrive is not an alert. `scripts/stack.sh alerts`, part of the CI gate, proves it end to end: it makes the worker log errors, and waits for Grafana's mail about them — through Alloy, Loki, the rule, and SMTP — to arrive in Mailpit.
+Locally and in CI the `mail` container (Mailpit) captures alert email, so the delivery path — rule fires, notification renders, SMTP send succeeds — is testable without sending real mail. An alert that has never been seen to arrive is not an alert. `scripts/stack.sh alerts`, part of the CI gate, proves it end to end: it makes the worker log errors, and waits for Grafana's mail about them — through Alloy, Loki, the rule, and SMTP — to arrive in Mailpit. It then logs in and out once with the local break-glass account through Nginx and waits for the "Break-glass login" mail, the one rule that exists to catch a single event. The API's integration tests pin the log messages both break-glass rules match ([0008](0008-authentication-saml2-ldap.md)), since a reworded message would silently disable its alert.
 
 ### Retention and budget
 

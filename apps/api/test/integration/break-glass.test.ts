@@ -1,8 +1,11 @@
 import type { AddressInfo } from 'node:net'
+import { Writable } from 'node:stream'
+import { pino } from 'pino'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Application } from '../../src/app.js'
 import { BreakGlassError, createBreakGlass, rotateBreakGlass } from '../../src/auth/break-glass.js'
 import { verifyPassword } from '../../src/auth/password.js'
+import { loggerOptions } from '../../src/logger.js'
 import { createTestApp } from '../support/app.js'
 import { PUBLIC_ORIGIN } from '../support/saml-idp.js'
 import { db } from '../support/worker-database.js'
@@ -15,9 +18,18 @@ const EMAIL = 'breakglass@example.test'
 let app: Application
 let base: string
 let password: string
+let lines: Record<string, unknown>[] = []
 
 beforeAll(async () => {
   ;({ app } = await createTestApp())
+  // The application's own log format, captured.
+  const sink = new Writable({
+    write(chunk: Buffer, _encoding, done) {
+      for (const line of chunk.toString().split('\n').filter(Boolean)) lines.push(JSON.parse(line) as Record<string, unknown>)
+      done()
+    }
+  })
+  app.set('logger', pino(loggerOptions('api', 'info'), sink))
   const server = await app.listen(0)
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`
   ;({ password } = await createBreakGlass(app.get('knex'), EMAIL))
@@ -117,6 +129,20 @@ describe('the password login', () => {
     // The right password from the same address is refused too, until the window ends.
     expect((await login({ email: EMAIL, password }, { ip: '192.0.2.20' })).status).toBe(429)
     expect((await login({ email: EMAIL, password }, { ip: '192.0.2.21' })).status).toBe(201)
+  })
+
+  // The two break-glass alerts match these lines by message
+  // (containers/grafana/provisioning/alerting/rules.yaml, ADR 0022): changing
+  // a message silently disables its alert.
+  it('logs every attempt at warn, with the messages the alert rules match', async () => {
+    lines = []
+    expect((await login({ email: EMAIL, password }, { ip: '192.0.2.40' })).status).toBe(201)
+    expect((await login({ email: EMAIL, password: 'wrong' }, { ip: '192.0.2.40' })).status).toBe(401)
+    const attempts = lines.filter((line) => typeof line.msg === 'string' && line.msg.startsWith('break-glass'))
+    expect(attempts).toEqual([
+      expect.objectContaining({ service: 'api', level: 'warn', msg: 'break-glass login', client_ip: '192.0.2.40' }),
+      expect.objectContaining({ service: 'api', level: 'warn', msg: 'break-glass login refused', reason: 'wrong password' })
+    ])
   })
 })
 

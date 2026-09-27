@@ -35,7 +35,9 @@
 #                            password (ADR 0008)
 #   scripts/stack.sh alerts  prove the alert path end to end (ADR 0022): make
 #                            the worker log errors, then wait for Grafana's
-#                            mail about them to arrive in Mailpit
+#                            mail about them to arrive in Mailpit; then log
+#                            in and out with the local break-glass account
+#                            and wait for that alert's mail
 #   scripts/stack.sh mcp     check the coding agents' MCP servers (ADR 0026)
 #                            the way .mcp.json starts them: Quasar's answers
 #                            offline, the browser reaches the local origins
@@ -289,6 +291,46 @@ ensure_breakglass() {
   bao kv metadata delete kv/e2e >/dev/null 2>&1 || true
   bao token revoke -self >/dev/null
   TOKEN=
+}
+
+# The "Break-glass login" rule (ADR 0022), proven like the error rule: one
+# login to the local app through Nginx, as the /break-glass page makes it,
+# then Grafana's mail about it in Mailpit. The session is logged out again;
+# the login and the logout stay in the local app's audit events.
+breakglass_alert_check() {
+  local password since answer
+  wait_for_openbao
+  init_or_unseal
+  password=$(kv_get stack breakglass_password)
+  bao token revoke -self >/dev/null
+  TOKEN=
+  [[ -n $password ]] || die "no local break-glass password; run '$0 up'"
+  ALERT_DIR=$(mktemp -d)
+  trap 'rm -rf "$ALERT_DIR"' EXIT
+  podman run --rm --network none -v "${PROJECT}_trust:/t:ro" "$HELPER_IMAGE" cat /t/ca.crt >"$ALERT_DIR/ca.crt"
+  local -a request=(curl -s --cacert "$ALERT_DIR/ca.crt" --cookie-jar "$ALERT_DIR/cookies" --cookie "$ALERT_DIR/cookies"
+    -H 'Origin: https://app.localhost:8443' -o /dev/null -w '%{http_code}')
+  since=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+  # The password goes through stdin, never an argument.
+  answer=$(printf '%s' "$password" |
+    jq -Rs --arg email "$BREAKGLASS_EMAIL" '{strategy: "password", email: $email, password: .}' |
+    "${request[@]}" -H 'Content-Type: application/json' --data-binary @- https://app.localhost:8443/api/authentication)
+  [[ $answer == 201 ]] || die "the break-glass login answered $answer"
+  answer=$("${request[@]}" -X DELETE https://app.localhost:8443/api/authentication)
+  [[ $answer == 200 ]] || die "the break-glass logout answered $answer"
+  local deadline=$((SECONDS + 300)) subject
+  while ((SECONDS < deadline)); do
+    subject=$(curl -s --cacert "$ALERT_DIR/ca.crt" 'https://mail.localhost:8443/api/v1/search?query=subject:%22Break-glass%20login%22' |
+      jq -r --arg since "$since" '[.messages[]? | select(.Created > $since) | .Subject] | first // empty')
+    if [[ -n $subject ]]; then
+      log "alert mail arrived: $subject"
+      return
+    fi
+    sleep 5
+  done
+  # Grafana mails an alert once when it starts firing: another break-glass
+  # login within the rule's 10 minutes before this one sends no new mail.
+  die "no break-glass alert mail arrived (a login in the last 10 minutes keeps the alert firing without a new mail); see Grafana's alert rules and: podman logs grafana"
 }
 
 # The e2e suite's own api, worker and database (ADR 0015), fresh for every
@@ -583,6 +625,8 @@ while (Date.now() < deadline) {
 }
 process.exit(1)
 JS
+    log "logging in with the break-glass account, then waiting for its alert mail"
+    breakglass_alert_check
     ;;
   mcp) mcp_check ;;
   down) stack_down ;;
