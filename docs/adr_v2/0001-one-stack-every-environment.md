@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADRs 0003, 0034, 0037, 0053
-- Related: [0002](0002-service-inventory-and-networks.md), [0016](0016-nginx-and-tls-everywhere.md), [0017](0017-nfs-backup-storage.md), [0023](0023-secrets-management.md), [0026](0026-mcp-development-tooling.md)
+- Related: [0002](0002-service-inventory-and-networks.md), [0016](0016-nginx-and-tls-everywhere.md), [0017](0017-nfs-backup-storage.md), [0023](0023-secrets-management.md), [0026](0026-mcp-development-tooling.md), [0027](0027-email-templates-and-sending.md)
 
 ## Context
 
@@ -19,6 +19,7 @@ One stack. Every service runs as a container in every environment, with the same
 - Local and CI topology is defined in a **Compose file** (`compose.yaml`). Production is defined as **systemd Quadlet units** — `.container`, `.network` and `.volume` files under `deploy/quadlet/`, turned into systemd services by the Quadlet generator and managed with `systemctl --user`.
 - **`compose.yaml` is the single source.** The Quadlet units are generated from it with `podlet` and committed. Production-only settings (restart policy, the NFS mount dependency, secret mounts) live in Quadlet drop-in files next to the generated units, never as edits to them. CI regenerates the units and fails if the result differs from what is committed.
 - Three services are containers locally but **external systems in production**, because their production counterparts belong to the university: the SAML2 identity provider, the LDAP directory, and the SMTP relay. The application speaks the same protocol to both and only the endpoint changes, by configuration. This is why they run as containers locally — it is how the production paths get exercised at all.
+- **Products are self-contained.** Beyond this stack they depend only on the university's own systems above; no SaaS or other third-party hosted service is used for any concern — mail, monitoring, storage, search or anything else. A need that such a service would meet is met by a container in the stack or by a university system.
 - The `api` and `web` containers may additionally run a watch command with the source bind-mounted, under a `dev` Compose profile. CI and production always run the built image. Nothing else about the topology changes between profiles.
 
 ### Where parity is deliberately not kept

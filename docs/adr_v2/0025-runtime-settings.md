@@ -33,7 +33,7 @@ Every operational policy the application or its own services enforce is a runtim
 | Rate limit, SAML ACS | `rateLimitSamlAcsPerMinute` | 60 per client IP and minute | API |
 | Rate limit, refresh | `rateLimitRefreshPerMinute` | 600 per client IP and minute | API |
 | Rate limit, break-glass password login | `rateLimitPasswordLoginPerMinute` | 5 per account, client IP and minute | API ([0008](0008-authentication-saml2-ldap.md)) |
-| Mail sending rate | `mailSendPerMinute` | 60 per minute, across all worker processes | Worker ([0027](0027-email-templates-and-sending.md)) |
+| Mail sending rate | `mailSendPerMinute` | 10 per minute, across all worker processes | Worker ([0027](0027-email-templates-and-sending.md)) |
 | Mail delivery log retention | `mailDeliveryRetentionDays` | 90 days | Worker ([0027](0027-email-templates-and-sending.md)) |
 | Feature flags | `featureFlags` | None (an empty map of name to boolean) | API |
 | Maintenance mode | `maintenanceMode` | Off | API |
