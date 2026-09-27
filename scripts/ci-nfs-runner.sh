@@ -72,13 +72,17 @@ cleanup() {
     log "cleanup: initialising the named volume failed; run scripts/backup.sh init"
   log "cleanup: unmounting $MOUNT"
   unmount
-  log "cleanup: removing the export"
+  # One line per step: the removal once took 17 minutes, and which step
+  # waited was not visible.
+  log "cleanup: unexporting"
   rm -f "$EXPORTS_FILE"
-  exportfs -ra
+  timeout 60 exportfs -ra || log "cleanup: exportfs did not finish within a minute; continuing"
+  log "cleanup: deleting $EXPORT"
+  rm -rf "$EXPORT"
+  log "cleanup: removing the mount point"
   # Never recursively: were it still mounted, rm would walk the hard NFS mount
   # and wait out its retries.
   mounted && log "cleanup: $MOUNT is still mounted; leaving it"
-  rm -rf "$EXPORT"
   rmdir "$MOUNT" 2>/dev/null
   log "cleanup: done"
 }
