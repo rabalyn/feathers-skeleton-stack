@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADRs 0003, 0034, 0037, 0053
-- Related: [0002](0002-service-inventory-and-networks.md), [0016](0016-nginx-and-tls-everywhere.md), [0017](0017-nfs-backup-storage.md), [0023](0023-secrets-management.md)
+- Related: [0002](0002-service-inventory-and-networks.md), [0016](0016-nginx-and-tls-everywhere.md), [0017](0017-nfs-backup-storage.md), [0023](0023-secrets-management.md), [0026](0026-mcp-development-tooling.md)
 
 ## Context
 
@@ -32,10 +32,11 @@ Stated here so that nothing claims more parity than exists:
 | OpenBao unseal | Scripted | Scripted | Manual, by an administrator | Local and CI secrets are random throwaway values ([0023](0023-secrets-management.md)) |
 | Uptime check | In the stack | In the stack | Must run on another machine | A check on the same host dies with it ([0022](0022-observability-and-alerting.md)) |
 | Container log viewer | Dozzle | Dozzle, unused; the runner needs the rootless Podman API socket | None | A developer convenience that nothing depends on; production logs are read in Grafana ([0002](0002-service-inventory-and-networks.md), [0022](0022-observability-and-alerting.md)) |
+| MCP servers for coding agents | In the stack | In the stack, unused | None | Development tooling over seeded data only ([0026](0026-mcp-development-tooling.md)) |
 
 ## Consequences
 
 - Nginx, TLS, SAML2, LDAP, secret delivery and the backup path are exercised from the first day of development rather than first attempted in production.
-- A developer machine runs roughly twenty-five containers. This is the deliberate cost of the parity rule.
+- A developer machine runs roughly fifty containers, nine of them MCP tooling ([0026](0026-mcp-development-tooling.md)). This is the deliberate cost of the parity rule.
 - Adding a service means adding it to `compose.yaml` and regenerating; the CI check catches a forgotten regeneration.
 - Generated units depend on `podlet` covering the Compose features used. A feature it cannot translate goes into a drop-in.

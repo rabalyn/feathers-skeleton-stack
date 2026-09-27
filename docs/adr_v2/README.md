@@ -2,7 +2,7 @@
 
 This directory holds the architecture decisions for this project. It supersedes `docs/adr/`, which split a single planning document into seventy files and accumulated 433 open items before any business logic existed. See [0019](0019-adr-convention.md) for what changed and why.
 
-Twenty-five ADRs, each covering a decision with real alternatives. Read [0001](0001-one-stack-every-environment.md) first — the parity rule it sets is the reason several later decisions look the way they do.
+Twenty-six ADRs, each covering a decision with real alternatives. Read [0001](0001-one-stack-every-environment.md) first — the parity rule it sets is the reason several later decisions look the way they do.
 
 ## Index
 
@@ -44,6 +44,7 @@ Twenty-five ADRs, each covering a decision with real alternatives. Read [0001](0
 - [0021 — Structured JSON log files, GDPR-constrained, shipped to Loki](0021-structured-logging.md)
 - [0022 — Prometheus, Loki and Grafana, with email alerting and an external uptime check](0022-observability-and-alerting.md)
 - [0023 — Secrets in OpenBao, delivered per service as files in tmpfs](0023-secrets-management.md)
+- [0026 — MCP servers as local development tooling, not a product surface](0026-mcp-development-tooling.md)
 
 ### Process
 
@@ -60,6 +61,7 @@ Covered in v1 but not carried forward, or deliberately deferred. Listed so nothi
 | Off-site backup copy | Accepted risk for now ([0017](0017-nfs-backup-storage.md)) |
 | Distributed tracing | Deferred; `request_id` correlation is in place and should stay `traceparent`-compatible ([0021](0021-structured-logging.md)) |
 | Multi-host scale-out | Deferred, as in v1 |
+| Offering a product's own services over MCP | Left to each product; the skeleton uses MCP for local development tooling only ([0026](0026-mcp-development-tooling.md)) |
 
 ## Implementation slices
 
@@ -96,6 +98,6 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 
 ## Status of this set
 
-All twenty-five are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds and Garage's current compatibility surface.
+All twenty-six are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds and Garage's current compatibility surface.
 
 The record of processing activities and the DPIA ([0013](0013-gdpr-export-and-retention.md)) are organisational deliverables to be prepared with the data protection officer before production.
