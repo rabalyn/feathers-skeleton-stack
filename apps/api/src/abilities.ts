@@ -14,9 +14,10 @@ export interface AbilityUser {
 }
 
 // Feathers methods, grouped into the actions the permission matrix uses.
+// No service offers `update` (ADR 0006), so `write` does not cover it.
 const resolveAction = createAliasResolver({
   read: ['get', 'find'],
-  write: ['create', 'update', 'patch'],
+  write: ['create', 'patch'],
   delete: ['remove']
 })
 
