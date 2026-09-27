@@ -27,7 +27,7 @@ describe('useGet', () => {
       expect(contact$.data?._id).toBe('1')
     })
 
-    test.skip('changing id updates data', async () => {
+    test('changing id updates data', async () => {
       const id = ref('1')
       const contact$ = service.useGet(id)
       await contact$.request
@@ -49,7 +49,7 @@ describe('useGet', () => {
       expect(contact$.data).toBe(null)
     })
 
-    test.skip('can show previous record while a new one loads', async () => {
+    test('can show previous record while a new one loads', async () => {
       // A hook to cause a delay so we can check pending state
       let hookRunCount = 0
       const hook = async () => {
@@ -81,7 +81,7 @@ describe('useGet', () => {
       expect(contact$.data?._id).toBe('2')
     })
 
-    test.skip('can prevent a query with queryWhen', async () => {
+    test('can prevent a query with queryWhen', async () => {
       const id = ref('1')
       const contact$ = service.useGet(id, {
         immediate: false,
@@ -112,7 +112,7 @@ describe('useGet', () => {
       expect(queryWhenFn).toHaveBeenCalledTimes(3)
     })
 
-    test.skip('can disable watch', async () => {
+    test('can disable watch', async () => {
       const id = ref('1')
       const contact$ = service.useGet(id, { watch: false })
       expect(contact$.requestCount).toBe(0)
