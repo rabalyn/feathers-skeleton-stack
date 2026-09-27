@@ -15,7 +15,8 @@
 #                            the local unseal material, but keep the local root
 #                            CA so the browser import stays valid (ADR 0016);
 #                            --ca deletes the CA too; --keep-data also keeps the
-#                            database and OpenBao, so local data survives
+#                            database, its objects and OpenBao, so local
+#                            data survives
 #   scripts/stack.sh ca      print the local root CA certificate, for a
 #                            one-time import into your browser (ADR 0016)
 #   scripts/stack.sh test [vitest args]
@@ -527,7 +528,8 @@ JS
       # databases, which are rebuilt anyway) and the OpenBao values and
       # unseal key its roles' passwords depend on. Everything else starts
       # from nothing, as on a fresh runner. `scripts/ci.sh --cold` uses this.
-      --keep-data) keep=" ${PROJECT}_certs-ca ${PROJECT}_postgres-data ${PROJECT}_openbao-data $UNSEAL_VOLUME " ;;
+      # The objects go with the database that references them (ADR 0020).
+      --keep-data) keep=" ${PROJECT}_certs-ca ${PROJECT}_postgres-data ${PROJECT}_s3-data ${PROJECT}_openbao-data $UNSEAL_VOLUME " ;;
       *) die "usage: $0 reset [--ca|--keep-data]" ;;
     esac
     stack_down
@@ -536,7 +538,7 @@ JS
     done
     case ${2:-} in
       "") log "kept the local root CA; '$0 reset --ca' deletes it" ;;
-      --keep-data) log "kept the local root CA, the app's database and OpenBao; '$0 reset' deletes them" ;;
+      --keep-data) log "kept the local root CA, the app's database, its objects and OpenBao; '$0 reset' deletes them" ;;
     esac
     ;;
   *) sed -n '2,29p' "$0"; exit 2 ;;

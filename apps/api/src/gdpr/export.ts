@@ -82,6 +82,11 @@ export const buildExport = async ({ knex, uploads, exports, exportId }: BuildOpt
     }
   })
 
+  // The error surfaces through the upload's reading of the stream; until
+  // that has begun (the multipart upload is still being created), nothing
+  // else listens, and an unheard 'error' would end the process.
+  counted.on('error', () => {})
+
   const zip = new ZipFile()
   zip.on('error', (error: Error) => counted.destroy(error))
   zip.addBuffer(json, 'export.json')

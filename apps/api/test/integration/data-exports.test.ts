@@ -9,6 +9,7 @@ import { buildExport } from '../../src/gdpr/export.js'
 import { exportExpiry } from '../../src/jobs/export-expiry.js'
 import { queueConnection, startMaintenance, type Maintenance } from '../../src/jobs/maintenance.js'
 import type { DataExport } from '../../src/services/data-exports/data-exports.schema.js'
+import type { Storage } from '../../src/storage.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp, loadValkeyConfig } from '../support/app.js'
 
@@ -261,6 +262,28 @@ describe('building and downloading an export', () => {
     ).rejects.toThrow(/object missing/)
     expect(await app.get('exports').get(exportId)).toBeUndefined()
     await knex()('files').where({ id: (file as { id: string }).id }).delete()
+  })
+
+  it('fails cleanly when a file is found missing before the upload reads anything', async () => {
+    const [row] = await knex()('dataExports').insert({ subjectId: other.id, requestedBy: other.id }).returning('id')
+    const [file] = await knex()('files')
+      .insert({ ownerId: other.id, filename: 'gone.pdf', contentType: 'application/pdf', sizeBytes: 10, sha256: 'e'.repeat(64), state: 'stored' })
+      .returning('id')
+    // An exports bucket that is slow to start the upload, as Garage may be.
+    const slow = {
+      putStream: async (_key: string, body: AsyncIterable<Buffer>) => {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        for await (const chunk of body) void chunk
+      },
+      delete: async () => {}
+    } as unknown as Storage
+    try {
+      await expect(
+        buildExport({ knex: knex(), uploads: app.get('storage'), exports: slow, exportId: (row as { id: string }).id })
+      ).rejects.toThrow(/object missing/)
+    } finally {
+      await knex()('files').where({ id: (file as { id: string }).id }).delete()
+    }
   })
 
   it('marks an export failed when its last attempt fails, and relays that', async () => {
