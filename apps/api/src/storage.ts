@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs'
 import { Agent } from 'node:https'
 import type { Readable } from 'node:stream'
 import {
+  AbortMultipartUploadCommand,
+  CompleteMultipartUploadCommand,
+  CreateMultipartUploadCommand,
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
@@ -9,20 +12,25 @@ import {
   ListObjectsV2Command,
   NoSuchKey,
   PutObjectCommand,
-  S3Client
+  S3Client,
+  UploadPartCommand
 } from '@aws-sdk/client-s3'
 import { NodeHttpHandler } from '@smithy/node-http-handler'
 import type { S3Config } from './config.js'
 
 // Object storage (ADR 0020): Garage over TLS verified against the CA root,
-// with this service's own key, on the uploads bucket of this deployment
-// (`uploads`; locally the tests and the e2e api have buckets of their own).
+// with this service's own key, on one bucket: the uploads bucket of this
+// deployment (`uploads`) unless another is named, such as the exports bucket
+// (ADR 0013). Locally the tests and the e2e api have buckets of their own.
 // Object keys are server-generated UUIDs, the id of the `files` row that
 // describes the object; nothing a user supplies is part of a key. Objects
 // are written once and never modified.
 
 // The buckets production has; emptying one is refused (empty-bucket.ts).
 export const PRODUCTION_BUCKETS = ['uploads', 'exports'] as const
+
+// S3 requires at least 5 MiB for every part but the last.
+export const MULTIPART_PART_BYTES = 8 * 1024 * 1024
 
 export interface StoredObject {
   body: Readable
@@ -39,8 +47,8 @@ export class Storage {
   readonly client: S3Client
   readonly bucket: string
 
-  constructor(config: S3Config) {
-    this.bucket = config.s3UploadsBucket
+  constructor(config: S3Config, bucket: string = config.s3UploadsBucket) {
+    this.bucket = bucket
     this.client = new S3Client({
       endpoint: config.s3Endpoint,
       region: 'garage',
@@ -64,6 +72,45 @@ export class Storage {
       new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentLength: length, ContentType: contentType }),
       { abortSignal }
     )
+  }
+
+  // A body of unknown length, such as a zip being written, as a multipart
+  // upload: held in memory one part at a time. An upload that fails is
+  // aborted, so no parts are left behind.
+  async putStream(key: string, body: AsyncIterable<Buffer>, contentType: string): Promise<void> {
+    const { UploadId } = await this.client.send(
+      new CreateMultipartUploadCommand({ Bucket: this.bucket, Key: key, ContentType: contentType })
+    )
+    const parts: { ETag: string; PartNumber: number }[] = []
+    const upload = async (chunks: Buffer[]) => {
+      const PartNumber = parts.length + 1
+      const Body = Buffer.concat(chunks)
+      const { ETag } = await this.client.send(
+        new UploadPartCommand({ Bucket: this.bucket, Key: key, UploadId, PartNumber, Body, ContentLength: Body.length })
+      )
+      parts.push({ ETag: ETag!, PartNumber })
+    }
+    try {
+      let chunks: Buffer[] = []
+      let size = 0
+      for await (const chunk of body) {
+        chunks.push(chunk)
+        size += chunk.length
+        if (size >= MULTIPART_PART_BYTES) {
+          await upload(chunks)
+          chunks = []
+          size = 0
+        }
+      }
+      // The last part may be small, or empty for an empty body.
+      if (size > 0 || parts.length === 0) await upload(chunks)
+      await this.client.send(
+        new CompleteMultipartUploadCommand({ Bucket: this.bucket, Key: key, UploadId, MultipartUpload: { Parts: parts } })
+      )
+    } catch (error) {
+      await this.client.send(new AbortMultipartUploadCommand({ Bucket: this.bucket, Key: key, UploadId })).catch(() => {})
+      throw error
+    }
   }
 
   // Undefined when the object does not exist.

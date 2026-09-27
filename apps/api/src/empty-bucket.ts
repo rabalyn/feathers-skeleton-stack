@@ -1,10 +1,11 @@
 import { ConfigError, S3_KEYS, loadConfig } from './config.js'
 import { PRODUCTION_BUCKETS, Storage } from './storage.js'
 
-// Empties the configured uploads bucket of a test run: `test-uploads` of the
-// integration tests, `e2e-uploads` of the end-to-end api (ADR 0015, 0020).
-// Their databases are dropped between runs; this drops their objects with
-// them. Refuses a bucket production has, whatever the environment says.
+// Empties the configured uploads and exports buckets of a test run:
+// `test-uploads` and `test-exports` of the integration tests, `e2e-uploads`
+// and `e2e-exports` of the end-to-end api (ADR 0013, 0015, 0020). Their
+// databases are dropped between runs; this drops their objects with them.
+// Refuses a bucket production has, whatever the environment says.
 const main = async () => {
   let config
   try {
@@ -16,16 +17,20 @@ const main = async () => {
     }
     throw error
   }
-  if ((PRODUCTION_BUCKETS as readonly string[]).includes(config.s3UploadsBucket)) {
-    process.stderr.write(`refusing to empty ${config.s3UploadsBucket}: a production bucket\n`)
+  const buckets = [config.s3UploadsBucket, config.s3ExportsBucket]
+  const production = buckets.filter((bucket) => (PRODUCTION_BUCKETS as readonly string[]).includes(bucket))
+  if (production.length) {
+    process.stderr.write(`refusing to empty ${production.join(', ')}: production buckets\n`)
     process.exit(1)
   }
-  const storage = new Storage(config)
-  try {
-    const removed = await storage.empty()
-    process.stdout.write(`emptied ${config.s3UploadsBucket}: ${removed} objects\n`)
-  } finally {
-    storage.close()
+  for (const bucket of buckets) {
+    const storage = new Storage(config, bucket)
+    try {
+      const removed = await storage.empty()
+      process.stdout.write(`emptied ${bucket}: ${removed} objects\n`)
+    } finally {
+      storage.close()
+    }
   }
 }
 

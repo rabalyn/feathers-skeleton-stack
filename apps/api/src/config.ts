@@ -88,6 +88,14 @@ const fields = {
     env: 'RATE_LIMIT_PREFIX',
     default: 'rl'
   },
+  // Where BullMQ keeps its queues (ADR 0024). The api's and the worker's
+  // Valkey users may touch `bull:*` only; a second pair on the same Valkey,
+  // the local e2e api and worker (ADR 0015), use a prefix of their own.
+  queuePrefix: {
+    schema: Type.String({ pattern: '^bull(:[a-z0-9-]+)?$' }),
+    env: 'QUEUE_PREFIX',
+    default: 'bull'
+  },
   // X-Forwarded-For is believed only from this host's addresses (ADR 0016).
   trustedProxyHost: { schema: Type.String({ minLength: 1 }), env: 'TRUSTED_PROXY_HOST' },
   // Directory lookup (ADR 0008): LDAPS with a read-only service account.
@@ -104,6 +112,8 @@ const fields = {
   // The deployment's bucket for uploads; locally the tests and the e2e api
   // use their own, which their runs empty.
   s3UploadsBucket: { schema: Type.String({ pattern: '^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$' }), env: 'S3_UPLOADS_BUCKET', default: 'uploads' },
+  // The bucket of generated GDPR exports (ADR 0013), likewise.
+  s3ExportsBucket: { schema: Type.String({ pattern: '^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$' }), env: 'S3_EXPORTS_BUCKET', default: 'exports' },
   // The backup service (ADR 0017). The restic password is read by restic
   // itself from RESTIC_PASSWORD_FILE; it is loaded here only so the service
   // refuses to start without it.
@@ -160,7 +170,14 @@ export const VALKEY_KEYS = [
 
 export const LDAP_KEYS = ['ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapBaseDn', 'ldapCaFile'] as const satisfies readonly ConfigKey[]
 
-export const S3_KEYS = ['s3Endpoint', 's3KeyId', 's3SecretKey', 's3CaFile', 's3UploadsBucket'] as const satisfies readonly ConfigKey[]
+export const S3_KEYS = [
+  's3Endpoint',
+  's3KeyId',
+  's3SecretKey',
+  's3CaFile',
+  's3UploadsBucket',
+  's3ExportsBucket'
+] as const satisfies readonly ConfigKey[]
 
 export const API_KEYS = [
   'publicOrigin',
@@ -176,6 +193,7 @@ export const API_KEYS = [
   'bodySizeCeilingBytes',
   'trustedProxyHost',
   'rateLimitPrefix',
+  'queuePrefix',
   ...VALKEY_KEYS,
   ...LDAP_KEYS,
   ...S3_KEYS,
@@ -190,6 +208,7 @@ export const WORKER_KEYS = [
   'internalTlsKeyFile',
   'logLevel',
   'logFile',
+  'queuePrefix',
   ...VALKEY_KEYS,
   ...S3_KEYS,
   ...DATABASE_KEYS

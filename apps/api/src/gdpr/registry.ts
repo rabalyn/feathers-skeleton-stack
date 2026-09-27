@@ -138,11 +138,13 @@ export const PERSONAL_DATA: readonly RegistryEntry[] = [
     userColumns: ['actor_id'],
     export: {
       key: 'auditEvents',
-      // What the person did, and what was done to their account.
+      // What the person did, what was done to their account, and who
+      // exported their data.
       collect: (knex, userId) =>
         knex('auditEvents')
           .where({ actorId: userId })
           .orWhere({ resourceType: 'users', resourceId: userId })
+          .orWhereRaw(`detail->>'subjectId' = ?`, [userId])
           .orderBy('occurredAt')
           .select('id', 'occurredAt', 'actorId', 'action', 'resourceType', 'resourceId', 'requestId', 'detail')
     },

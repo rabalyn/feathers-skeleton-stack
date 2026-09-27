@@ -1,24 +1,26 @@
-import { readFileSync } from 'node:fs'
 import { Queue, UnrecoverableError, Worker, type JobsOptions, type RedisOptions } from 'bullmq'
 import type { Knex } from 'knex'
 import type { Logger } from 'pino'
 import { Counter, Gauge, Histogram, type Registry } from 'prom-client'
-import type { ValkeyConfig } from '../config.js'
 import type { SettingsStore } from '../settings/store.js'
 import type { Storage } from '../storage.js'
+import { buildExport } from '../gdpr/export.js'
+import { BUILD_EXPORT, DATA_EXPORTS_QUEUE, EXPORT_JOB_OPTIONS, QUEUE_PREFIX, type ExportJob } from './queues.js'
+import { exportExpiry } from './export-expiry.js'
 import { objectPurge } from './object-purge.js'
 import { retentionCleanup } from './retention.js'
 
-// The maintenance queue and its worker (ADR 0024). Recurring jobs are job
-// schedulers, so a schedule exists once in Valkey however many workers run.
+// The worker's queues and their workers (ADR 0024): `maintenance`, whose
+// recurring jobs are job schedulers, so a schedule exists once in Valkey
+// however many workers run; and `data-exports`, filled by the api on request
+// (ADR 0013).
 
 export const MAINTENANCE_QUEUE = 'maintenance'
-// The worker's and the api's Valkey users may reach these keys only
-// (ADR 0010).
-export const QUEUE_PREFIX = 'bull'
+export { BUILD_EXPORT, DATA_EXPORTS_QUEUE, QUEUE_PREFIX, queueConnection } from './queues.js'
 
 export const RETENTION_CLEANUP = 'retention-cleanup'
 export const OBJECT_PURGE = 'object-purge'
+export const EXPORT_EXPIRY = 'export-expiry'
 
 // Daily jobs run at night, local time (ADR 0024).
 export const DAILY = { pattern: '30 3 * * *', tz: 'Europe/Berlin' }
@@ -32,23 +34,13 @@ export const JOB_OPTIONS: JobsOptions = {
   removeOnFail: { count: 500 }
 }
 
-// BullMQ opens its own connections from these options, with the settings
-// blocking commands need; the rate limiter's fail-fast connection would not
-// do (ADR 0010).
-export const queueConnection = (config: ValkeyConfig): RedisOptions => ({
-  host: config.valkeyHost,
-  port: config.valkeyPort,
-  username: config.valkeyUser,
-  password: config.valkeyPassword,
-  tls: { ca: readFileSync(config.valkeyCaFile, 'utf8'), servername: config.valkeyHost },
-  retryStrategy: (attempt: number) => Math.min(attempt * 200, 5000)
-})
-
 export interface MaintenanceOptions {
   connection: RedisOptions
   knex: Knex
   settings: SettingsStore
+  // The uploads bucket, and the exports bucket (ADR 0013, 0020).
   storage: Storage
+  exports: Storage
   logger: Logger
   // Tests keep their queues apart.
   prefix?: string
@@ -61,11 +53,14 @@ export const startMaintenance = ({
   knex,
   settings,
   storage,
+  exports,
   logger,
   prefix = QUEUE_PREFIX,
   metrics
 }: MaintenanceOptions) => {
   const queue = new Queue(MAINTENANCE_QUEUE, { connection, prefix, defaultJobOptions: JOB_OPTIONS })
+  const exportQueue = new Queue<ExportJob>(DATA_EXPORTS_QUEUE, { connection, prefix, defaultJobOptions: EXPORT_JOB_OPTIONS })
+  const queues = [queue, exportQueue] as Queue[]
   const registers = metrics ? [metrics] : []
   const outcomes = new Counter({
     name: 'bullmq_jobs_total',
@@ -86,58 +81,102 @@ export const startMaintenance = ({
     labelNames: ['queue', 'state'],
     registers,
     async collect() {
-      const counts = await queue.getJobCounts('waiting', 'active', 'delayed', 'failed')
-      for (const [state, count] of Object.entries(counts)) this.set({ queue: MAINTENANCE_QUEUE, state }, count)
+      for (const each of queues) {
+        const counts = await each.getJobCounts('waiting', 'active', 'delayed', 'failed')
+        for (const [state, count] of Object.entries(counts)) this.set({ queue: each.name, state }, count)
+      }
     }
   })
-  const finished = (job: { processedOn?: number; finishedOn?: number } | undefined, outcome: string) => {
-    outcomes.inc({ queue: MAINTENANCE_QUEUE, outcome })
-    if (job?.processedOn && job.finishedOn) {
-      durations.observe({ queue: MAINTENANCE_QUEUE }, (job.finishedOn - job.processedOn) / 1000)
+
+  // Logs and counts what a worker's jobs do.
+  const observe = (worker: Worker) => {
+    const name = worker.name
+    const finished = (job: { processedOn?: number; finishedOn?: number } | undefined, outcome: string) => {
+      outcomes.inc({ queue: name, outcome })
+      if (job?.processedOn && job.finishedOn) {
+        durations.observe({ queue: name }, (job.finishedOn - job.processedOn) / 1000)
+      }
     }
+    worker.on('completed', (job, result: unknown) => {
+      finished(job, 'completed')
+      logger.info({ queue: name, job: job.name, job_id: job.id, request_id: (job.data as { requestId?: string } | undefined)?.requestId, result }, 'job completed')
+    })
+    worker.on('failed', (job, error) => {
+      const final = !job || error instanceof UnrecoverableError || job.attemptsMade >= (job.opts.attempts ?? 1)
+      finished(job, final ? 'failed' : 'retried')
+      logger[final ? 'error' : 'warn'](
+        {
+          queue: name,
+          job: job?.name,
+          job_id: job?.id,
+          request_id: (job?.data as { requestId?: string } | undefined)?.requestId,
+          attempt: job?.attemptsMade,
+          err: { message: error.message }
+        },
+        final ? 'job failed' : 'job failed, will retry'
+      )
+    })
+    worker.on('error', (error) => logger.error({ queue: name, err: { message: error.message } }, 'worker error'))
+    return worker
   }
 
-  const worker = new Worker(
-    MAINTENANCE_QUEUE,
-    async (job) => {
-      switch (job.name) {
-        case RETENTION_CLEANUP:
-          return retentionCleanup(knex, settings)
-        case OBJECT_PURGE:
-          return objectPurge(knex, settings, storage)
-        default:
-          throw new UnrecoverableError(`unknown job ${job.name}`)
-      }
-    },
-    { connection, prefix, concurrency: 1 }
+  const worker = observe(
+    new Worker(
+      MAINTENANCE_QUEUE,
+      async (job) => {
+        switch (job.name) {
+          case RETENTION_CLEANUP:
+            return retentionCleanup(knex, settings)
+          case OBJECT_PURGE:
+            return objectPurge(knex, settings, storage)
+          case EXPORT_EXPIRY:
+            return exportExpiry(knex, settings, exports)
+          default:
+            throw new UnrecoverableError(`unknown job ${job.name}`)
+        }
+      },
+      { connection, prefix, concurrency: 1 }
+    )
   )
 
-  worker.on('completed', (job, result: unknown) => {
-    finished(job, 'completed')
-    logger.info({ queue: MAINTENANCE_QUEUE, job: job.name, job_id: job.id, result }, 'job completed')
-  })
-  worker.on('failed', (job, error) => {
-    const final = !job || error instanceof UnrecoverableError || job.attemptsMade >= (job.opts.attempts ?? 1)
-    finished(job, final ? 'failed' : 'retried')
-    logger[final ? 'error' : 'warn'](
-      { queue: MAINTENANCE_QUEUE, job: job?.name, job_id: job?.id, attempt: job?.attemptsMade, err: { message: error.message } },
-      final ? 'job failed' : 'job failed, will retry'
+  // One export at a time: each holds a part of the zip in memory and reads
+  // the uploads bucket. Its last failed attempt marks the export failed, so
+  // the requester sees it and may ask again.
+  const exportWorker = observe(
+    new Worker<ExportJob>(
+      DATA_EXPORTS_QUEUE,
+      async (job) => {
+        if (job.name !== BUILD_EXPORT) throw new UnrecoverableError(`unknown job ${job.name}`)
+        try {
+          return await buildExport({ knex, uploads: storage, exports, exportId: job.data.exportId })
+        } catch (error) {
+          if (job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) {
+            await knex('dataExports')
+              .where({ id: job.data.exportId, state: 'pending' })
+              .update({ state: 'failed', completedAt: knex.fn.now() })
+          }
+          throw error
+        }
+      },
+      { connection, prefix, concurrency: 1 }
     )
-  })
-  worker.on('error', (error) => logger.error({ err: { message: error.message } }, 'worker error'))
+  )
 
   return {
     queue,
     worker,
+    exportQueue,
+    exportWorker,
     // Creates or updates the schedules; safe to run on every start.
     schedule: async () => {
-      await queue.upsertJobScheduler(RETENTION_CLEANUP, DAILY, { name: RETENTION_CLEANUP, opts: JOB_OPTIONS })
-      await queue.upsertJobScheduler(OBJECT_PURGE, DAILY, { name: OBJECT_PURGE, opts: JOB_OPTIONS })
+      for (const name of [RETENTION_CLEANUP, OBJECT_PURGE, EXPORT_EXPIRY]) {
+        await queue.upsertJobScheduler(name, DAILY, { name, opts: JOB_OPTIONS })
+      }
     },
-    isRunning: () => worker.isRunning(),
+    isRunning: () => worker.isRunning() && exportWorker.isRunning(),
     close: async () => {
-      await worker.close()
-      await queue.close()
+      await Promise.all([worker.close(), exportWorker.close()])
+      await Promise.all([queue.close(), exportQueue.close()])
     }
   }
 }

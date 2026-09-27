@@ -43,6 +43,17 @@ export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
   // Documents: the caller always becomes the owner of what they create.
   can('create', 'documents')
 
+  // GDPR export (ADR 0013): every role exports itself, an admin anyone.
+  // An export is seen and fetched by the account that asked for it only.
+  can('create', 'data-exports', { subjectId: user.id })
+  can('read', 'data-exports', { requestedBy: user.id })
+  // Checks the `data-exports` rule on the record itself, like file-contents.
+  can('read', 'data-export-contents')
+
+  // Audit events (ADR 0011, 0013): what the caller did; all of them for
+  // admins and operators below.
+  can('read', 'audit-events', { actorId: user.id })
+
   switch (user.role) {
     case 'admin':
       can('read', 'users')
@@ -57,10 +68,16 @@ export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
       can('patch', 'settings')
       // Directory lookup (ADR 0008).
       can('read', 'directory')
+      can('read', 'audit-events')
+      can('create', 'data-exports')
+      // Erasure (ADR 0013): the admin's alone; `read` for feathers-casl's
+      // check of the create's result.
+      can(['create', 'read'], 'erasures')
       break
     case 'operator':
       can('read', 'users')
       can('read', 'directory')
+      can('read', 'audit-events')
       can('read', 'files')
       can(['read', 'write', 'delete'], 'documents')
       break

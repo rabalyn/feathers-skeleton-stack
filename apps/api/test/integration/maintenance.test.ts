@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Application } from '../../src/app.js'
 import {
   DAILY,
+  EXPORT_EXPIRY,
   OBJECT_PURGE,
   RETENTION_CLEANUP,
   queueConnection,
@@ -32,6 +33,7 @@ beforeAll(async () => {
     knex: app.get('knex'),
     settings: app.get('settings'),
     storage: app.get('storage'),
+    exports: app.get('exports'),
     logger: pino({ level: 'silent' }),
     prefix,
     metrics
@@ -43,17 +45,18 @@ beforeAll(async () => {
 afterAll(async () => {
   await events.close()
   await maintenance.queue.obliterate({ force: true })
+  await maintenance.exportQueue.obliterate({ force: true })
   await maintenance.close()
   await app.teardown()
 })
 
 describe('maintenance queue', () => {
-  it('schedules retention cleanup and the object purge daily at 03:30 Berlin time, once however often it starts', async () => {
+  it('schedules retention cleanup, the object purge and export expiry daily at 03:30 Berlin time, once however often it starts', async () => {
     await maintenance.schedule()
     await maintenance.schedule()
     const schedulers = await maintenance.queue.getJobSchedulers()
-    expect(schedulers).toHaveLength(2)
-    for (const key of [RETENTION_CLEANUP, OBJECT_PURGE]) {
+    expect(schedulers).toHaveLength(3)
+    for (const key of [RETENTION_CLEANUP, OBJECT_PURGE, EXPORT_EXPIRY]) {
       expect(schedulers).toContainEqual(expect.objectContaining({ key, pattern: DAILY.pattern, tz: DAILY.tz }))
     }
   })
@@ -62,6 +65,12 @@ describe('maintenance queue', () => {
     const job = await maintenance.queue.add(RETENTION_CLEANUP, {})
     const result = await job.waitUntilFinished(events, 10_000)
     expect(result).toEqual({ auditEvents: expect.any(Number), sessions: expect.any(Number) })
+  })
+
+  it('runs export expiry when the job arrives', async () => {
+    const job = await maintenance.queue.add(EXPORT_EXPIRY, {})
+    const result = await job.waitUntilFinished(events, 10_000)
+    expect(result).toEqual({ expired: expect.any(Number), stalled: expect.any(Number), orphans: expect.any(Number) })
   })
 
   it('runs the object purge when the job arrives', async () => {

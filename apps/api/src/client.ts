@@ -14,6 +14,10 @@ import type { AvatarData, AVATAR_EXTERNAL_METHODS } from './services/users/avata
 import type { Document, DocumentData, DocumentPatch, DocumentQuery } from './services/documents/documents.schema.js'
 import type { DOCUMENT_EXTERNAL_METHODS } from './services/documents/documents.js'
 import type { File, FileQuery } from './services/files/files.schema.js'
+import type { DataExport, DataExportData, DataExportQuery } from './services/data-exports/data-exports.schema.js'
+import type { DATA_EXPORT_EXTERNAL_METHODS } from './services/data-exports/data-exports.js'
+import type { Erasure, ErasureData, ERASURE_EXTERNAL_METHODS } from './services/erasures/erasures.js'
+import type { AuditEvent, AuditEventQuery, AUDIT_EVENT_EXTERNAL_METHODS } from './services/audit-events/audit-events.js'
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
 export type { Setting, SettingPatch, SettingQuery } from './services/settings/settings.schema.js'
@@ -21,10 +25,21 @@ export type { DirectoryEntry, DirectoryPage, DirectoryQuery } from './services/d
 export type { Document, DocumentData, DocumentPatch, DocumentQuery } from './services/documents/documents.schema.js'
 export type { File } from './services/files/files.schema.js'
 export type { AvatarData } from './services/users/avatars.js'
+export type { DataExport, DataExportData, DataExportQuery } from './services/data-exports/data-exports.schema.js'
+export type { Erasure, ErasureData } from './services/erasures/erasures.js'
+export type { AuditEvent, AuditEventQuery } from './services/audit-events/audit-events.js'
 export { ALLOWED_CONTENT_TYPES, AVATAR_CONTENT_TYPES, FILENAME_HEADER, type AllowedContentType } from './uploads.js'
 export { ROLES, defineAbilitiesFor, type AbilityUser, type AppAbility, type Role } from './abilities.js'
 export { PAGINATE } from './paginate.js'
-export { API_PREFIX, AUTHENTICATION_URL, FILE_CONTENTS_URL, FILES_URL, SAML_LOGIN_URL, SOCKET_PATH } from './paths.js'
+export {
+  API_PREFIX,
+  AUTHENTICATION_URL,
+  DATA_EXPORT_CONTENTS_URL,
+  FILE_CONTENTS_URL,
+  FILES_URL,
+  SAML_LOGIN_URL,
+  SOCKET_PATH
+} from './paths.js'
 export { DIRECTORY_MAX_RESULTS, DIRECTORY_MAX_TERM_LENGTH, DIRECTORY_MIN_TERM_LENGTH } from './limits.js'
 
 type External<S, M extends readonly (keyof S)[]> = Pick<S, M[number]>
@@ -50,6 +65,18 @@ export interface ClientServiceTypes {
   // Metadata only: uploads and downloads are plain HTTP (FILES_URL,
   // FILE_CONTENTS_URL).
   files: Pick<ClientService<File, never, never, never, Params<FileQuery>>, 'get'>
+  // GDPR exports the caller asked for; a ready one is downloaded over plain
+  // HTTP (DATA_EXPORT_CONTENTS_URL).
+  'data-exports': External<
+    ClientService<DataExport, DataExportData, never, Paginated<DataExport>, Params<DataExportQuery>>,
+    typeof DATA_EXPORT_EXTERNAL_METHODS
+  >
+  // Erasing a person (admin only); the result names the surrogate id.
+  erasures: External<ClientService<Erasure, ErasureData, never, never, Params>, typeof ERASURE_EXTERNAL_METHODS>
+  'audit-events': External<
+    ClientService<AuditEvent, never, never, Paginated<AuditEvent>, Params<AuditEventQuery>>,
+    typeof AUDIT_EVENT_EXTERNAL_METHODS
+  >
 }
 
 export type ClientApplication = Application<ClientServiceTypes>

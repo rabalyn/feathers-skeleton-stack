@@ -42,6 +42,8 @@ export interface AppSettings {
   metrics: Registry
   readiness: Readiness
   storage: Storage
+  // The exports bucket (ADR 0013).
+  exports: Storage
 }
 
 export interface AppOptions {
@@ -69,6 +71,7 @@ export const createApp = (
   app.set('rateLimiter', new RateLimiter(valkey, app.get('settings'), options.rateLimitPrefix))
   app.set('directory', new Directory(config))
   app.set('storage', new Storage(config))
+  app.set('exports', new Storage(config, config.s3ExportsBucket))
   const proxy = new TrustedProxy(config.trustedProxyHost)
 
   // Served by the internal listener (ADR 0022).
@@ -149,6 +152,7 @@ export const createApp = (
         await knex.destroy()
         valkey.disconnect()
         app.get('storage').close()
+        app.get('exports').close()
       }
     ]
   })

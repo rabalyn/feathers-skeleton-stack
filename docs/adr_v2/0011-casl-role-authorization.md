@@ -33,7 +33,7 @@ Roles are names for sets of CASL rules. A user has exactly one role, stored on t
 | Documents | read, write, delete | read, write, delete | read, write, delete — own only |
 | Sessions | read, revoke (any) | read | read, revoke — own only |
 | Audit / activity events | read | read | read — own only |
-| GDPR data export | trigger for any user | — | trigger for self |
+| GDPR data export | trigger for any user | trigger for self | trigger for self |
 | GDPR erasure | trigger | — | — |
 | Runtime settings ([0025](0025-runtime-settings.md)) | read, write | — | — |
 | Feature flags, maintenance mode | read, write | — | — |

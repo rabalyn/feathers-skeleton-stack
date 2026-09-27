@@ -27,8 +27,8 @@ const dropWorkerDatabases = async () => {
 // the start of a run and at its end.
 const emptyTestBuckets = async () => {
   const config = await loadConfig(S3_KEYS)
-  for (const bucket of [config.s3UploadsBucket, PURGE_TEST_BUCKET]) {
-    const storage = new Storage({ ...config, s3UploadsBucket: bucket })
+  for (const bucket of [config.s3UploadsBucket, config.s3ExportsBucket, PURGE_TEST_BUCKET]) {
+    const storage = new Storage(config, bucket)
     try {
       await storage.empty()
     } finally {

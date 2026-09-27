@@ -28,6 +28,7 @@ const main = async () => {
   const knex = createKnex(config, { camelCase: true })
   const settings = new SettingsStore(knex)
   const storage = new Storage(config)
+  const exports = new Storage(config, config.s3ExportsBucket)
 
   // An environment never runs with a policy silently absent (ADR 0025).
   try {
@@ -48,7 +49,9 @@ const main = async () => {
     knex,
     settings,
     storage,
+    exports,
     logger,
+    prefix: config.queuePrefix,
     metrics
   })
   await maintenance.schedule()
@@ -79,6 +82,7 @@ const main = async () => {
     // A job cut off still holds its connection, which destroy would wait for.
     if (drained) await knex.destroy()
     storage.close()
+    exports.close()
     process.exit(0)
   }
   process.once('SIGTERM', () => void shutdown('SIGTERM'))

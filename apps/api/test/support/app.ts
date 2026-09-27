@@ -76,7 +76,9 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
       bodySizeCeilingBytes: BODY_SIZE_CEILING_BYTES,
       trustedProxyHost: options.trustedProxyHost ?? TRUSTED_PROXY_HOST,
       // Replaced by the per-app prefix below.
-      rateLimitPrefix: 'rl'
+      rateLimitPrefix: 'rl',
+      // Queues of a test app live under a prefix of their own.
+      queuePrefix: `bull:test-${randomUUID()}`
     },
     pino({ level: 'silent' }),
     createKnex(database, { camelCase: true }),

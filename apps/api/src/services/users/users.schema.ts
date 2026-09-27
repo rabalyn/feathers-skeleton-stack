@@ -24,6 +24,9 @@ export const userSchema = Type.Object(
     // file-contents/:avatarFileId.
     avatarFileId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]),
     authSource: Type.Union([Type.Literal('saml'), Type.Literal('local')]),
+    // Set once the account is erased (ADR 0013): its directory fields and
+    // avatar are gone, the account disabled for good.
+    erasedAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
     createdAt: Type.String({ format: 'date-time' }),
     updatedAt: Type.String({ format: 'date-time' })
   },
@@ -34,6 +37,7 @@ export type User = Static<typeof userSchema>
 const toIso = (value: unknown) => (value instanceof Date ? value.toISOString() : (value as string))
 
 export const userResolver = resolve<User, HookContext>({
+  erasedAt: virtual(async (user) => (user.erasedAt ? toIso(user.erasedAt) : null)),
   createdAt: virtual(async (user) => toIso(user.createdAt)),
   updatedAt: virtual(async (user) => toIso(user.updatedAt))
 })
@@ -82,6 +86,7 @@ export const userQueryProperties = Type.Pick(userSchema, [
   'role',
   'enabled',
   'authSource',
+  'erasedAt',
   'createdAt'
 ])
 export const userQuerySchema = Type.Intersect(

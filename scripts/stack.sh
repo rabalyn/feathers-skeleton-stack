@@ -284,13 +284,14 @@ ensure_breakglass() {
   TOKEN=
 }
 
-# The e2e suite's own api and database (ADR 0015), fresh for every run:
-# `app_e2e` is dropped, created like `app` in containers/postgres/initdb and
-# migrated, then api-e2e starts on it. Nothing of the local `app` is touched.
+# The e2e suite's own api, worker and database (ADR 0015), fresh for every
+# run: `app_e2e` is dropped, created like `app` in containers/postgres/initdb
+# and migrated, then api-e2e and worker-e2e start on it. Nothing of the
+# local `app` is touched.
 E2E_DATABASE=app_e2e
 E2E_BREAKGLASS_EMAIL=breakglass@e2e.localhost
 start_e2e_api() {
-  podman rm -f api-e2e >/dev/null 2>&1 || true
+  podman rm -f api-e2e worker-e2e >/dev/null 2>&1 || true
   podman exec -i -u postgres postgres psql -q -v ON_ERROR_STOP=1 -d postgres <<SQL >/dev/null
 DROP DATABASE IF EXISTS $E2E_DATABASE WITH (FORCE);
 CREATE DATABASE $E2E_DATABASE OWNER migrator;
@@ -299,8 +300,9 @@ GRANT CONNECT, TEMPORARY ON DATABASE $E2E_DATABASE TO app_rw;
 SQL
   compose run --rm -T -e DATABASE_NAME=$E2E_DATABASE migrate >/dev/null 2>&1 ||
     die "migrating $E2E_DATABASE failed; rerun without output: compose run --rm -e DATABASE_NAME=$E2E_DATABASE migrate"
-  compose --profile test up -d --force-recreate --no-deps api-e2e >/dev/null 2>&1
+  compose --profile test up -d --force-recreate --no-deps api-e2e worker-e2e >/dev/null 2>&1
   wait_healthy api-e2e 60
+  wait_healthy worker-e2e 60
   # The test accounts with their roles, as an administrator would assign
   # them; a login refreshes directory fields but never the role (ADR 0009,
   # 0011).
@@ -463,11 +465,12 @@ case $cmd in
       sed -n 's/^NGINX_WEB_UPSTREAM=//p') ]] ||
       die "nginx serves the Vite dev server; run '$0 up' (without --dev) first"
     compose --profile test build e2e
-    # api-e2e, its database and its bucket's contents exist for the run
-    # only: the bucket is emptied before the run and after it.
-    trap 'podman exec api-e2e node dist/empty-bucket.js >/dev/null 2>&1 || true; podman rm -f api-e2e >/dev/null 2>&1 || true' EXIT
+    # api-e2e, worker-e2e, their database and their buckets' contents
+    # exist for the run only: the buckets are emptied before the run and
+    # after it.
+    trap 'podman exec api-e2e node dist/empty-bucket.js >/dev/null 2>&1 || true; podman rm -f api-e2e worker-e2e >/dev/null 2>&1 || true' EXIT
     start_e2e_api
-    podman exec api-e2e node dist/empty-bucket.js >/dev/null || die "could not empty the e2e bucket"
+    podman exec api-e2e node dist/empty-bucket.js >/dev/null || die "could not empty the e2e buckets"
     compose --profile test run --rm -T e2e pnpm exec playwright test "$@"
     ;;
   breakglass)

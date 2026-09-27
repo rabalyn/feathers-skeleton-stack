@@ -11,11 +11,14 @@ import { currentRequest } from './request-context.js'
 export type AuditAction =
   | 'breakglass.create'
   | 'breakglass.rotate'
+  | 'data-exports.create'
+  | 'data-exports.download'
   | 'login'
   | 'login.refused'
   | 'logout'
   | 'session.reuse-detected'
   | 'settings.update'
+  | 'users.erase'
   | 'users.patch'
 
 export interface AuditEvent {

@@ -12,3 +12,5 @@ export const SAML_LOGIN_URL = `${API_PREFIX}/auth/saml/login`
 // file to FILES_URL; GET its bytes at FILE_CONTENTS_URL/<id>.
 export const FILES_URL = `${API_PREFIX}/files`
 export const FILE_CONTENTS_URL = `${API_PREFIX}/file-contents`
+// A ready GDPR export, as a ZIP, at DATA_EXPORT_CONTENTS_URL/<id> (ADR 0013).
+export const DATA_EXPORT_CONTENTS_URL = `${API_PREFIX}/data-export-contents`

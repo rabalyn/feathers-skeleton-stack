@@ -203,6 +203,9 @@ services:
       RATE_LIMIT_PREFIX: rl:e2e
       # Emptied by every `stack.sh e2e`, as app_e2e is recreated.
       S3_UPLOADS_BUCKET: e2e-uploads
+      S3_EXPORTS_BUCKET: e2e-exports
+      # Its exports go to worker-e2e, not to the local worker (ADR 0024).
+      QUEUE_PREFIX: bull:e2e
       # Stdout only: its lines stay out of Loki and the alert rules.
       LOG_FILE: ""
     networks: [edge, app-data, identity, object]
@@ -225,7 +228,7 @@ services:
       migrate:
         condition: service_completed_successfully
     command: ["node", "dist/worker.js"]
-    environment:
+    environment: &worker-environment
       LOG_FILE: /var/log/app/worker
       INTERNAL_TLS_CERT_FILE: /tls/tls.crt
       INTERNAL_TLS_KEY_FILE: /tls/tls.key
@@ -248,6 +251,33 @@ services:
       - worker-secrets:/run/secrets:ro
       - trust:/trust:ro
       - logs:/var/log/app
+      - tls-worker:/tls:ro
+    healthcheck:
+      test: ["CMD-SHELL", "NODE_EXTRA_CA_CERTS=/trust/ca.crt node -e \"fetch('https://localhost:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # The worker of the end-to-end suite (ADR 0015): builds api-e2e's exports
+  # (ADR 0013) from app_e2e and its buckets, under a queue prefix of their
+  # own. `scripts/stack.sh e2e` starts it with api-e2e and removes it after.
+  worker-e2e:
+    image: localhost/feathers-api:dev
+    container_name: worker-e2e
+    profiles: [test]
+    command: ["node", "dist/worker.js"]
+    environment:
+      <<: *worker-environment
+      DATABASE_NAME: app_e2e
+      QUEUE_PREFIX: bull:e2e
+      S3_UPLOADS_BUCKET: e2e-uploads
+      S3_EXPORTS_BUCKET: e2e-exports
+      # Stdout only: its lines stay out of Loki and the alert rules.
+      LOG_FILE: ""
+    networks: [app-data, object]
+    volumes:
+      - worker-secrets:/run/secrets:ro
+      - trust:/trust:ro
       - tls-worker:/tls:ro
     healthcheck:
       test: ["CMD-SHELL", "NODE_EXTRA_CA_CERTS=/trust/ca.crt node -e \"fetch('https://localhost:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))\""]
@@ -420,7 +450,7 @@ services:
       # Local only (interpolated, so never in the generated units): the
       # buckets of the test runs, emptied by each run (ADR 0015, 0020), and
       # the source and target of the backup-and-restore check (ADR 0017).
-      S3_LOCAL_GRANTS: ${S3_LOCAL_GRANTS:-api:e2e-uploads:write test:test-uploads:write test:test-purge:write backup:backup-check:read backup:restore-check:read}
+      S3_LOCAL_GRANTS: ${S3_LOCAL_GRANTS:-api:e2e-uploads:write api:e2e-exports:write worker:e2e-uploads:write worker:e2e-exports:write test:test-uploads:write test:test-purge:write test:test-exports:write backup:backup-check:read backup:restore-check:read}
     networks: [object, observability]
     volumes:
       - s3-data:/var/lib/garage
@@ -463,6 +493,7 @@ services:
       S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
       S3_CA_FILE: /trust/ca.crt
       S3_UPLOADS_BUCKET: test-uploads
+      S3_EXPORTS_BUCKET: test-exports
     networks: [app-data, identity, object]
     volumes:
       - test-secrets:/run/secrets:ro

@@ -1,0 +1,315 @@
+import { createHash, randomUUID } from 'node:crypto'
+import type { AddressInfo } from 'node:net'
+import { Readable } from 'node:stream'
+import { pino } from 'pino'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { fromBufferPromise } from 'yauzl'
+import type { Application } from '../../src/app.js'
+import { buildExport } from '../../src/gdpr/export.js'
+import { exportExpiry } from '../../src/jobs/export-expiry.js'
+import { queueConnection, startMaintenance, type Maintenance } from '../../src/jobs/maintenance.js'
+import type { DataExport } from '../../src/services/data-exports/data-exports.schema.js'
+import type { User } from '../../src/services/users/users.schema.js'
+import { createTestApp, loadValkeyConfig } from '../support/app.js'
+
+// ADR 0013 over HTTP against the stack's Valkey, Garage and a worker of the
+// test's own: who may export whom, the job, the relayed outcome, the ZIP and
+// its download, and export expiry. ADR 0011's export cells.
+
+let app: Application
+let base: string
+let maintenance: Maintenance
+let admin: User
+let operator: User
+let member: User
+let other: User
+const tokens = new Map<string, string>()
+
+const PDF = Buffer.from('%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n')
+const PNG = Buffer.concat([
+  Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489', 'hex'),
+  Buffer.alloc(64, 1)
+])
+
+const knex = () => app.get('knex')
+
+const tokenFor = async (user: User) => {
+  const cached = tokens.get(user.id)
+  if (cached) return cached
+  const { session } = await app.get('sessions').issue(user.id)
+  const token = await app.service('authentication').createAccessToken({ sid: session.id, role: user.role }, { subject: user.id })
+  tokens.set(user.id, token)
+  return token
+}
+
+const call = async (user: User, path: string, init: RequestInit = {}) =>
+  fetch(`${base}${path}`, {
+    ...init,
+    headers: { authorization: `Bearer ${await tokenFor(user)}`, 'content-type': 'application/json', ...init.headers }
+  })
+
+const requestExport = (user: User, subjectId: string) =>
+  call(user, '/data-exports', { method: 'POST', body: JSON.stringify({ subjectId }) })
+
+// Resolves with the relayed event of an export once the worker is done.
+const outcome = (id: string) =>
+  new Promise<DataExport>((resolve) => {
+    const listener = (row: DataExport) => {
+      if (row.id !== id) return
+      app.service('data-exports').off('patched', listener)
+      resolve(row)
+    }
+    app.service('data-exports').on('patched', listener)
+  })
+
+// A stored file of `owner`, with its object, as an upload leaves it.
+const storedFile = async (owner: User, filename: string, body: Buffer, contentType: string) => {
+  const [row] = await knex()('files')
+    .insert({
+      ownerId: owner.id,
+      filename,
+      contentType,
+      sizeBytes: body.length,
+      sha256: createHash('sha256').update(body).digest('hex'),
+      state: 'stored',
+      attachedAt: new Date()
+    })
+    .returning('id')
+  const id = (row as { id: string }).id
+  await app.get('storage').put(id, Readable.from(body), body.length, contentType)
+  return id
+}
+
+const unzip = async (body: Buffer) => {
+  const zip = await fromBufferPromise(body)
+  const entries = new Map<string, Buffer>()
+  for await (const entry of zip.eachEntry()) {
+    const chunks: Buffer[] = []
+    for await (const chunk of await zip.openReadStreamPromise(entry)) chunks.push(chunk as Buffer)
+    entries.set(entry.fileName, Buffer.concat(chunks))
+  }
+  return entries
+}
+
+beforeAll(async () => {
+  ;({ app } = await createTestApp())
+  const server = await app.listen(0)
+  base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`
+  maintenance = startMaintenance({
+    connection: queueConnection(await loadValkeyConfig()),
+    knex: knex(),
+    settings: app.get('settings'),
+    storage: app.get('storage'),
+    exports: app.get('exports'),
+    logger: pino({ level: 'silent' }),
+    prefix: app.get('config').queuePrefix
+  })
+  const users = app.service('users')
+  const make = async (tuId: string, role: User['role']) => {
+    const created = await users.create({ tuId, givenName: 'Given', surname: tuId, email: `${tuId}@example.test`, authSource: 'saml' })
+    return role === 'user' ? created : users.patch(created.id, { role })
+  }
+  admin = await make('ad01admn', 'admin')
+  operator = await make('op01oper', 'operator')
+  member = await make('us01user', 'user')
+  other = await make('us02othr', 'user')
+})
+
+afterAll(async () => {
+  await maintenance.exportQueue.obliterate({ force: true })
+  await maintenance.queue.obliterate({ force: true })
+  await maintenance.close()
+  await app.teardown()
+})
+
+beforeEach(async () => {
+  await knex()('dataExports').delete()
+})
+
+describe('requesting an export (ADR 0011)', () => {
+  it('lets every role export itself, and refuses exporting others to all but admin', async () => {
+    for (const user of [member, operator, admin]) {
+      const response = await requestExport(user, user.id)
+      expect(response.status, user.role).toBe(201)
+      expect(await response.json()).toMatchObject({ subjectId: user.id, requestedBy: user.id, state: 'pending' })
+    }
+    expect((await requestExport(member, other.id)).status).toBe(403)
+    expect((await requestExport(operator, other.id)).status).toBe(403)
+    expect((await requestExport(admin, other.id)).status).toBe(201)
+  })
+
+  it('allows one pending export per person', async () => {
+    await maintenance.exportWorker.pause()
+    try {
+      expect((await requestExport(member, member.id)).status).toBe(201)
+      const second = await requestExport(member, member.id)
+      expect(second.status).toBe(409)
+      expect((await requestExport(admin, member.id)).status).toBe(409)
+    } finally {
+      await maintenance.exportWorker.resume()
+    }
+  })
+
+  it('refuses an unknown or erased subject alike', async () => {
+    const unknown = await requestExport(admin, randomUUID())
+    const erasedUser = await app.service('users').create({ tuId: 'er01gone', givenName: 'E', surname: 'R', email: null, authSource: 'saml' })
+    await knex().raw('SELECT erase_user(?)', [erasedUser.id])
+    const erased = await requestExport(admin, erasedUser.id)
+    expect(unknown.status).toBe(400)
+    expect(erased.status).toBe(400)
+    expect((await erased.json()).message).toBe((await unknown.json()).message)
+  })
+
+  it('shows an export to the account that asked for it only', async () => {
+    const created = (await (await requestExport(admin, member.id)).json()) as DataExport
+    const own = (await (await call(member, '/data-exports')).json()) as { data: DataExport[] }
+    expect(own.data.map((row) => row.id)).not.toContain(created.id)
+    expect((await call(member, `/data-exports/${created.id}`)).status).toBe(404)
+    expect((await call(admin, `/data-exports/${created.id}`)).status).toBe(200)
+    const outsider = (await (await call(operator, '/data-exports')).json()) as { data: DataExport[] }
+    expect(outsider.data).toEqual([])
+  })
+
+  it('audits the request with its subject', async () => {
+    const created = (await (await requestExport(admin, other.id)).json()) as DataExport
+    const event = await knex()('auditEvents').where({ action: 'data-exports.create', resourceId: created.id }).first()
+    expect(event).toMatchObject({ actorId: admin.id, resourceType: 'data-exports', detail: { subjectId: other.id } })
+  })
+})
+
+describe('building and downloading an export', () => {
+  it('builds a ZIP of export.json and the files, relays the outcome and serves it to the requester', async () => {
+    const documentFile = await storedFile(member, 'Bericht ü/../x.pdf', PDF, 'application/pdf')
+    const avatarFile = await storedFile(member, 'me.png', PNG, 'image/png')
+    await knex()('users').where({ id: member.id }).update({ avatarFileId: avatarFile })
+    await knex()('documents').insert({ ownerId: member.id, title: 'Report', fileId: documentFile })
+    // Another person's file stays out.
+    await storedFile(other, 'theirs.pdf', PDF, 'application/pdf')
+
+    const response = await requestExport(member, member.id)
+    const created = (await response.json()) as DataExport
+    const done = await outcome(created.id)
+    expect(done).toMatchObject({ id: created.id, state: 'ready', sizeBytes: expect.any(Number), sha256: expect.stringMatching(/^[0-9a-f]{64}$/) })
+
+    const download = await call(member, `/data-export-contents/${created.id}`)
+    expect(download.status).toBe(200)
+    expect(download.headers.get('content-type')).toBe('application/zip')
+    expect(download.headers.get('content-disposition')).toMatch(/^attachment; filename="data-export-\d{4}-\d{2}-\d{2}\.zip"/)
+    expect(download.headers.get('x-content-type-options')).toBe('nosniff')
+    const body = Buffer.from(await download.arrayBuffer())
+    expect(body.length).toBe(done.sizeBytes)
+    expect(createHash('sha256').update(body).digest('hex')).toBe(done.sha256)
+
+    const entries = await unzip(body)
+    const json = JSON.parse(entries.get('export.json')!.toString('utf8'))
+    expect(json).toMatchObject({
+      format: 'data-export/1',
+      subjectId: member.id,
+      account: { id: member.id, tuId: 'us01user', givenName: 'Given', surname: 'us01user', email: 'us01user@example.test', avatarFileId: avatarFile },
+      documents: [expect.objectContaining({ title: 'Report', fileId: documentFile })],
+      sessions: expect.any(Array),
+      auditEvents: expect.arrayContaining([expect.objectContaining({ action: 'data-exports.create', actorId: member.id })])
+    })
+    expect(json.files.map((file: { id: string }) => file.id).sort()).toEqual([documentFile, avatarFile].sort())
+    // One path segment per name, whatever the name holds.
+    const pdfEntry = json.files.find((file: { id: string }) => file.id === documentFile)
+    expect(pdfEntry.path).toBe(`files/${documentFile}/Bericht ü_.._x.pdf`)
+    expect(entries.get(pdfEntry.path)).toEqual(PDF)
+    expect(entries.get(json.files.find((file: { id: string }) => file.id === avatarFile).path)).toEqual(PNG)
+    expect(entries.size).toBe(3)
+
+    const audited = await knex()('auditEvents').where({ action: 'data-exports.download', resourceId: created.id })
+    expect(audited).toEqual([expect.objectContaining({ actorId: member.id })])
+  })
+
+  it('serves an export to nobody but its requester, and nothing before it is ready', async () => {
+    await maintenance.exportWorker.pause()
+    let created!: DataExport
+    try {
+      created = (await (await requestExport(admin, other.id)).json()) as DataExport
+      expect((await call(admin, `/data-export-contents/${created.id}`)).status).toBe(404)
+    } finally {
+      await maintenance.exportWorker.resume()
+    }
+    await outcome(created.id)
+    expect((await call(admin, `/data-export-contents/${created.id}`)).status).toBe(200)
+    expect((await call(other, `/data-export-contents/${created.id}`)).status).toBe(404)
+    expect((await call(operator, `/data-export-contents/${created.id}`)).status).toBe(404)
+  })
+
+  it("puts an admin's export of a person into that person's own export", async () => {
+    const byAdmin = (await (await requestExport(admin, other.id)).json()) as DataExport
+    await outcome(byAdmin.id)
+    const own = (await (await requestExport(other, other.id)).json()) as DataExport
+    await outcome(own.id)
+    const body = Buffer.from(await (await call(other, `/data-export-contents/${own.id}`)).arrayBuffer())
+    const json = JSON.parse((await unzip(body)).get('export.json')!.toString('utf8'))
+    expect(json.auditEvents).toContainEqual(
+      expect.objectContaining({ action: 'data-exports.create', actorId: admin.id, detail: { subjectId: other.id } })
+    )
+    expect(json.dataExports.map((row: { id: string }) => row.id)).toContain(byAdmin.id)
+  })
+
+  it('fails a build whose file object is missing, leaving no object behind', async () => {
+    const [file] = await knex()('files')
+      .insert({ ownerId: other.id, filename: 'lost.pdf', contentType: 'application/pdf', sizeBytes: 10, sha256: 'b'.repeat(64), state: 'stored' })
+      .returning('id')
+    const [row] = await knex()('dataExports').insert({ subjectId: other.id, requestedBy: other.id }).returning('id')
+    const exportId = (row as { id: string }).id
+    await expect(
+      buildExport({ knex: knex(), uploads: app.get('storage'), exports: app.get('exports'), exportId })
+    ).rejects.toThrow(/object missing/)
+    expect(await app.get('exports').get(exportId)).toBeUndefined()
+    await knex()('files').where({ id: (file as { id: string }).id }).delete()
+  })
+
+  it('marks an export failed when its last attempt fails, and relays that', async () => {
+    const [file] = await knex()('files')
+      .insert({ ownerId: operator.id, filename: 'lost.pdf', contentType: 'application/pdf', sizeBytes: 10, sha256: 'c'.repeat(64), state: 'stored' })
+      .returning('id')
+    try {
+      const [row] = await knex()('dataExports').insert({ subjectId: operator.id, requestedBy: operator.id }).returning('id')
+      const exportId = (row as { id: string }).id
+      const failed = outcome(exportId)
+      await maintenance.exportQueue.add('build-export', { exportId }, { jobId: exportId, attempts: 1 })
+      expect(await failed).toMatchObject({ id: exportId, state: 'failed' })
+    } finally {
+      await knex()('files').where({ id: (file as { id: string }).id }).delete()
+    }
+  })
+})
+
+describe('export expiry', () => {
+  const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000)
+
+  it('removes exports past exportRetentionDays with their object, fails stalled ones and removes orphans', async () => {
+    const exports = app.get('exports')
+    const put = (key: string) => exports.put(key, Readable.from(Buffer.from('zip')), 3, 'application/zip')
+    const insert = async (values: Record<string, unknown>) => {
+      const [row] = await knex()('dataExports')
+        .insert({ subjectId: member.id, requestedBy: member.id, ...values })
+        .returning('id')
+      return (row as { id: string }).id
+    }
+    const ready = { state: 'ready', sizeBytes: 3, sha256: 'd'.repeat(64), completedAt: new Date() }
+    const old = await insert({ ...ready, createdAt: daysAgo(8) })
+    const recent = await insert({ ...ready, createdAt: daysAgo(6) })
+    await insert({ state: 'failed', createdAt: daysAgo(9) })
+    const stalled = await insert({ createdAt: new Date(Date.now() - 25 * 3600_000) })
+    await Promise.all([put(old), put(recent)])
+    const orphan = randomUUID()
+    await put(orphan)
+
+    // A fresh orphan is within the hour's grace; none here. Objects other
+    // test files leave in the tests' exports bucket count as orphans too.
+    const result = await exportExpiry(knex(), app.get('settings'), exports, { orphanGraceHours: 0 })
+
+    expect(result).toEqual({ expired: 2, stalled: 1, orphans: expect.any(Number) })
+    expect(result.orphans).toBeGreaterThanOrEqual(1)
+    expect((await knex()('dataExports').pluck('id')).sort()).toEqual([recent, stalled].sort())
+    expect(await knex()('dataExports').where({ id: stalled }).first()).toMatchObject({ state: 'failed' })
+    expect(await exports.get(old)).toBeUndefined()
+    expect(await exports.get(orphan)).toBeUndefined()
+    expect(await exports.get(recent)).toBeDefined()
+  })
+})
