@@ -264,6 +264,13 @@ export function useFind<M = AnyData>(params: ComputedRef<UseFindParams | null>, 
     updateCachedParams()
   }
 
+  // Requests started from within (the params watcher, service events) have no
+  // caller to reject to: the failure is kept in `error` only, as `useGet`
+  // does, instead of becoming an unhandled rejection.
+  const startRequest = () => {
+    makeRequest().catch(() => {})
+  }
+
   /** Pagination Data */
   const total = computed(() => {
     if (['server', 'hybrid'].includes(paginateOn)) {
@@ -289,7 +296,7 @@ export function useFind<M = AnyData>(params: ComputedRef<UseFindParams | null>, 
   // SSR servers directly make requests
   if (isSsr.value) {
     if (immediate)
-      makeRequest()
+      startRequest()
   }
   // Browsers make requests from the watcher
   else {
@@ -297,13 +304,13 @@ export function useFind<M = AnyData>(params: ComputedRef<UseFindParams | null>, 
       watch(
         paramsWithPagination,
         () => {
-          makeRequest()
+          startRequest()
         },
         { immediate: false, flush: 'sync' },
       )
 
       if (immediate)
-        makeRequest()
+        startRequest()
     }
   }
 
@@ -311,10 +318,10 @@ export function useFind<M = AnyData>(params: ComputedRef<UseFindParams | null>, 
     // watch realtime events and re-query
     // TODO: only re-query when relevant
     service.on('created', () => {
-      makeRequest()
+      startRequest()
     })
     service.on('patched', () => {
-      makeRequest()
+      startRequest()
     })
 
     // if the current list had an item removed, re-query.
@@ -322,7 +329,7 @@ export function useFind<M = AnyData>(params: ComputedRef<UseFindParams | null>, 
       // const id = item[service.store.idField]
       // const currentIds = data.value.map((i: any) => i[service.store.idField])
       // if (currentIds.includes(id))
-      makeRequest()
+      startRequest()
     })
   }
 

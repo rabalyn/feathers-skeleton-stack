@@ -145,6 +145,41 @@ describe('paginateOn: server', () => {
       expect(contacts$.error).toBe(null)
     }
   })
+
+  // Not upstream: a request the watcher or a service event starts has no
+  // caller, so its failure lands in `error` and is not left unhandled.
+  test('failed requests started by the params watcher or an event only populate error', async () => {
+    // Hooks stay on the shared service: this one is switched off at the end.
+    let failing = true
+    const hook = () => {
+      if (failing)
+        throw new Error('fail')
+    }
+    service.hooks({ before: { find: [hook] } })
+
+    try {
+      const skip = ref(0)
+      const params = computed(() => {
+        return { query: { $limit: 3, $skip: skip.value } }
+      })
+      const contacts$ = service.useFind(params, { paginateOn: 'server', debounce: 0 })
+      await timeout(50)
+      expect(contacts$.error.message).toBe('fail')
+
+      contacts$.clearError()
+      skip.value = 3
+      await timeout(50)
+      expect(contacts$.error.message).toBe('fail')
+
+      contacts$.clearError()
+      service.emit('created', {})
+      await timeout(50)
+      expect(contacts$.error.message).toBe('fail')
+    }
+    finally {
+      failing = false
+    }
+  })
 })
 
 describe('latestQuery and previousQuery', () => {
