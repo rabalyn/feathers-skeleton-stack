@@ -26,6 +26,9 @@ export const useSessionStore = defineStore('session', () => {
   let attempt = 0
   let inFlight: Promise<SessionStatus> | null = null
   let settle: (status: SessionStatus) => void = () => {}
+  // Set while this tab logs out: revoking the session closes the socket
+  // (ADR 0012), and that must not be taken for a session to restore.
+  let endingSession = false
   // Resolves once the first refresh has an answer, however long an outage
   // delays it; the router waits on it.
   const settled = new Promise<SessionStatus>((resolve) => (settle = resolve))
@@ -95,8 +98,10 @@ export const useSessionStore = defineStore('session', () => {
     return status.value
   }
 
-  // Concurrent callers share one attempt.
+  // Concurrent callers share one attempt. A logout in progress wants no new
+  // session state: its revocation would read as the session expiring.
   const refresh = (): Promise<SessionStatus> => {
+    if (endingSession) return Promise.resolve(status.value)
     inFlight ??= runRefresh().finally(() => (inFlight = null))
     return inFlight
   }
@@ -112,7 +117,7 @@ export const useSessionStore = defineStore('session', () => {
   // authentication: attach it again, refreshing first if the token expired
   // meanwhile.
   socket.on('connect', () => {
-    if (status.value !== 'authenticated') return
+    if (status.value !== 'authenticated' || endingSession) return
     void client.authentication
       .getAccessToken()
       .then((token) => (token ? authenticateSocket(token) : Promise.reject(new Error('no token'))))
@@ -125,7 +130,7 @@ export const useSessionStore = defineStore('session', () => {
   // connect handler above then re-authenticates, refreshing where the token
   // no longer holds.
   socket.on('disconnect', (reason) => {
-    if (reason === 'io server disconnect') socket.connect()
+    if (reason === 'io server disconnect' && !endingSession) socket.connect()
   })
 
   // Background tabs have their timers throttled; catch up on return.
@@ -195,13 +200,25 @@ export const useSessionStore = defineStore('session', () => {
   // logout where the login came from there (ADR 0008). Throws when the
   // server could not confirm it: the session would still be alive.
   const logout = async () => {
-    const response = await fetch(AUTHENTICATION_URL, { method: 'DELETE', credentials: 'same-origin' })
-    if (!response.ok) throw Object.assign(new Error('Logout failed'), { code: response.status })
-    const { idpLogoutUrl } = (await response.json()) as LogoutResponse
+    endingSession = true
+    let answer: LogoutResponse
+    try {
+      const response = await fetch(AUTHENTICATION_URL, { method: 'DELETE', credentials: 'same-origin' })
+      if (!response.ok) throw Object.assign(new Error('Logout failed'), { code: response.status })
+      answer = (await response.json()) as LogoutResponse
+    } catch (error) {
+      // The session may have ended anyway, and a renewal may have been
+      // skipped meanwhile: re-authenticating finds out, from a reconnect
+      // where the socket was closed.
+      endingSession = false
+      if (socket.disconnected) socket.connect()
+      else void refresh()
+      throw error
+    }
     clearTimeout(timer)
     await client.authentication.removeAccessToken()
     // A full navigation also drops every store and the socket.
-    window.location.assign(idpLogoutUrl ?? '/')
+    window.location.assign(answer.idpLogoutUrl ?? '/')
   }
 
   // Whether the user may do this to any record of the subject at all …
