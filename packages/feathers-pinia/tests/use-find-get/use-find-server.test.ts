@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, effectScope, ref } from 'vue'
 import { api, makeContactsData } from '../fixtures/index.js'
 import { resetService, timeout } from '../test-utils.js'
 
@@ -179,6 +179,34 @@ describe('paginateOn: server', () => {
     finally {
       failing = false
     }
+  })
+
+  // Not upstream: the service event listeners are removed with the scope that
+  // created them, so a disposed useFind stops re-querying and remounts do not
+  // accumulate listeners.
+  test('service event listeners are removed when the scope is disposed', async () => {
+    const listeners = () => service.service.listenerCount('created')
+    const before = listeners()
+    const params = computed(() => {
+      return { query: { $limit: 3, $skip: 0 } }
+    })
+
+    const scope = effectScope()
+    const contacts$ = scope.run(() => service.useFind(params, { paginateOn: 'server', debounce: 0 }))!
+    await contacts$.request
+    expect(listeners()).toBe(before + 1)
+
+    service.emit('created', {})
+    await contacts$.request
+    expect(contacts$.requestCount).toBe(2)
+
+    scope.stop()
+    expect(listeners()).toBe(before)
+
+    for (const event of ['created', 'patched', 'removed'])
+      service.emit(event, {})
+    await timeout(50)
+    expect(contacts$.requestCount).toBe(2)
   })
 })
 

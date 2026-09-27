@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref, UnwrapNestedRefs, WritableComputedRef } from 'vue'
-import { computed, reactive, ref, unref, watch } from 'vue'
+import { computed, getCurrentScope, onScopeDispose, reactive, ref, unref, watch } from 'vue'
 import { _ } from '@feathersjs/commons'
 import { useDebounceFn } from '@vueuse/core'
 import stringify from 'fast-json-stable-stringify'
@@ -317,20 +317,24 @@ export function useFind<M = AnyData>(params: ComputedRef<UseFindParams | null>, 
   if (paginateOn === 'server' && service.on) {
     // watch realtime events and re-query
     // TODO: only re-query when relevant
-    service.on('created', () => {
-      startRequest()
-    })
-    service.on('patched', () => {
-      startRequest()
-    })
+    service.on('created', startRequest)
+    service.on('patched', startRequest)
 
     // if the current list had an item removed, re-query.
-    service.on('removed', () => {
-      // const id = item[service.store.idField]
-      // const currentIds = data.value.map((i: any) => i[service.store.idField])
-      // if (currentIds.includes(id))
-      startRequest()
-    })
+    // const id = item[service.store.idField]
+    // const currentIds = data.value.map((i: any) => i[service.store.idField])
+    // if (currentIds.includes(id))
+    service.on('removed', startRequest)
+
+    // The listeners end with the scope (component) that created them, so a
+    // disposed useFind stops re-querying and remounts do not accumulate them.
+    if (getCurrentScope()) {
+      onScopeDispose(() => {
+        service.removeListener('created', startRequest)
+        service.removeListener('patched', startRequest)
+        service.removeListener('removed', startRequest)
+      })
+    }
   }
 
   const toReturn = reactive({

@@ -19,5 +19,6 @@ What the port needed, and bug fixes this project ran into, each with a test mark
 - `src/stores/local-queries.ts`: a dead `|| {}` after an object spread removed, and one cast added in `createInStore`.
 - Tests, for Vitest 5: `mock.results` is now `mock.settledResults` for async mocks, and `tests/localstorage/storage-sync.test.ts` captures the store's module-level storage read before Vitest clears mock history between tests.
 - `useFind` (`src/use-find-get/use-find.ts`): a request it starts by itself, from its params watcher or a service event, keeps a failure in `error` instead of leaving an unhandled promise rejection, as `useGet` already does. A `find()` call still rejects to its caller. Upstream's version showed as an uncaught error whenever such a refetch failed, for instance on a socket whose session had just ended.
+- `useFind` (`src/use-find-get/use-find.ts`): with `paginateOn: 'server'`, the `created`, `patched` and `removed` listeners it registers on the service are removed when the effect scope that created it (usually a component) is disposed. Upstream never removed them, so every mounted `useFind` kept re-querying after its component was gone, and the listeners accumulated with each remount. Outside an effect scope the listeners stay, as upstream.
 
 As upstream does, only `src/` is typechecked; the tests run under Vitest.
