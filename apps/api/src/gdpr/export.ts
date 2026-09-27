@@ -18,6 +18,8 @@ export interface ExportResult {
   state: 'ready' | 'skipped'
   sizeBytes?: number
   sha256?: string
+  // Files whose object was not in the uploads bucket (an integrity fault).
+  missingFiles?: string[]
 }
 
 interface ExportedFile {
@@ -27,7 +29,8 @@ interface ExportedFile {
   sizeBytes: string | number
   sha256: string
   createdAt: Date
-  path?: string
+  path?: string | null
+  missing?: boolean
 }
 
 // A name that is one path segment in every unzip tool: no separators, no
@@ -47,7 +50,7 @@ export const collectExport = async (knex: Knex, subjectId: string) => {
     sizeBytes: Number(file.sizeBytes),
     path: `files/${file.id}/${zipSegment(file.filename)}`
   }))
-  return data as Record<string, unknown> & { files: (ExportedFile & { path: string; sizeBytes: number })[] }
+  return data as Record<string, unknown> & { files: (ExportedFile & { path: string | null; sizeBytes: number })[] }
 }
 
 export interface BuildOptions {
@@ -59,13 +62,22 @@ export interface BuildOptions {
 
 // Builds the export of one pending row. A row that is gone or no longer
 // pending (erased meanwhile, or finished by an earlier attempt) is skipped.
-// A file whose object is missing fails the build: an export that silently
-// lacks a file would not be complete.
+// A file whose object is missing is still listed, with `missing: true` and
+// no path, and reported in the result: the person gets everything that
+// exists, and the gap is visible rather than silent (ADR 0013). An object
+// that vanishes while the ZIP is written fails the attempt.
 export const buildExport = async ({ knex, uploads, exports, exportId }: BuildOptions): Promise<ExportResult> => {
   const row = await knex('dataExports').where({ id: exportId }).first<{ subjectId: string; state: string } | undefined>()
   if (!row || row.state !== 'pending') return { exportId, state: 'skipped' }
 
   const data = await collectExport(knex, row.subjectId)
+  const missingFiles: string[] = []
+  for (const file of data.files) {
+    if (await uploads.exists(file.id)) continue
+    missingFiles.push(file.id)
+    file.missing = true
+    file.path = null
+  }
   const json = Buffer.from(
     JSON.stringify({ format: EXPORT_FORMAT, generatedAt: new Date().toISOString(), subjectId: row.subjectId, ...data }, null, 2)
   )
@@ -91,9 +103,11 @@ export const buildExport = async ({ knex, uploads, exports, exportId }: BuildOpt
   zip.on('error', (error: Error) => counted.destroy(error))
   zip.addBuffer(json, 'export.json')
   for (const file of data.files) {
+    if (!file.path) continue
+    const path = file.path
     // Opened when yazl reaches the entry, so one object is read at a time.
     // Images and PDFs are compressed already.
-    zip.addReadStreamLazy(file.path, { size: file.sizeBytes, mtime: new Date(file.createdAt), compress: false }, (callback) => {
+    zip.addReadStreamLazy(path, { size: file.sizeBytes, mtime: new Date(file.createdAt), compress: false }, (callback) => {
       uploads.get(file.id).then(
         (stored) => (stored ? callback(null, stored.body) : callback(new Error(`object missing for file ${file.id}`), undefined as never)),
         (error: Error) => callback(error, undefined as never)
@@ -113,5 +127,5 @@ export const buildExport = async ({ knex, uploads, exports, exportId }: BuildOpt
     await exports.delete(exportId)
     return { exportId, state: 'skipped' }
   }
-  return { exportId, state: 'ready', sizeBytes, sha256 }
+  return { exportId, state: 'ready', sizeBytes, sha256, ...(missingFiles.length ? { missingFiles } : {}) }
 }

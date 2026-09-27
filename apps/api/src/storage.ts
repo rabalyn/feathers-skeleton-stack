@@ -9,6 +9,8 @@ import {
   DeleteObjectsCommand,
   GetObjectCommand,
   HeadBucketCommand,
+  HeadObjectCommand,
+  NotFound,
   ListObjectsV2Command,
   NoSuchKey,
   PutObjectCommand,
@@ -120,6 +122,16 @@ export class Storage {
       return { body: result.Body as Readable, length: result.ContentLength ?? 0 }
     } catch (error) {
       if (error instanceof NoSuchKey) return undefined
+      throw error
+    }
+  }
+
+  async exists(key: string): Promise<boolean> {
+    try {
+      await this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }))
+      return true
+    } catch (error) {
+      if (error instanceof NotFound || error instanceof NoSuchKey) return false
       throw error
     }
   }

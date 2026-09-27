@@ -251,20 +251,36 @@ describe('building and downloading an export', () => {
     expect(json.dataExports.map((row: { id: string }) => row.id)).toContain(byAdmin.id)
   })
 
-  it('fails a build whose file object is missing, leaving no object behind', async () => {
-    const [file] = await knex()('files')
+  it('exports a file whose object is missing as missing, and reports it', async () => {
+    const present = await storedFile(other, 'here.pdf', PDF, 'application/pdf')
+    const [lost] = await knex()('files')
       .insert({ ownerId: other.id, filename: 'lost.pdf', contentType: 'application/pdf', sizeBytes: 10, sha256: 'b'.repeat(64), state: 'stored' })
       .returning('id')
-    const [row] = await knex()('dataExports').insert({ subjectId: other.id, requestedBy: other.id }).returning('id')
-    const exportId = (row as { id: string }).id
-    await expect(
-      buildExport({ knex: knex(), uploads: app.get('storage'), exports: app.get('exports'), exportId })
-    ).rejects.toThrow(/object missing/)
-    expect(await app.get('exports').get(exportId)).toBeUndefined()
-    await knex()('files').where({ id: (file as { id: string }).id }).delete()
+    const lostId = (lost as { id: string }).id
+    try {
+      const [row] = await knex()('dataExports').insert({ subjectId: other.id, requestedBy: other.id }).returning('id')
+      const exportId = (row as { id: string }).id
+      const result = await buildExport({ knex: knex(), uploads: app.get('storage'), exports: app.get('exports'), exportId })
+      expect(result).toMatchObject({ state: 'ready', missingFiles: [lostId] })
+
+      const stored = await app.get('exports').get(exportId)
+      const chunks: Buffer[] = []
+      for await (const chunk of stored!.body) chunks.push(chunk as Buffer)
+      const entries = await unzip(Buffer.concat(chunks))
+      const json = JSON.parse(entries.get('export.json')!.toString('utf8'))
+      expect(json.files).toContainEqual(expect.objectContaining({ id: lostId, filename: 'lost.pdf', missing: true, path: null }))
+      const here = json.files.find((file: { id: string }) => file.id === present)
+      expect(here.missing).toBeUndefined()
+      expect(entries.get(here.path)).toEqual(PDF)
+      // Everything with a path, and nothing for the lost file.
+      expect(entries.size).toBe(json.files.filter((file: { path: string | null }) => file.path).length + 1)
+      expect([...entries.keys()].some((name) => name.includes(lostId))).toBe(false)
+    } finally {
+      await knex()('files').whereIn('id', [present, lostId]).delete()
+    }
   })
 
-  it('fails cleanly when a file is found missing before the upload reads anything', async () => {
+  it('fails cleanly when an object vanishes before the upload reads anything', async () => {
     const [row] = await knex()('dataExports').insert({ subjectId: other.id, requestedBy: other.id }).returning('id')
     const [file] = await knex()('files')
       .insert({ ownerId: other.id, filename: 'gone.pdf', contentType: 'application/pdf', sizeBytes: 10, sha256: 'e'.repeat(64), state: 'stored' })
@@ -277,9 +293,11 @@ describe('building and downloading an export', () => {
       },
       delete: async () => {}
     } as unknown as Storage
+    // Present when checked, gone when read.
+    const vanishing = { exists: async () => true, get: async () => undefined } as unknown as Storage
     try {
       await expect(
-        buildExport({ knex: knex(), uploads: app.get('storage'), exports: slow, exportId: (row as { id: string }).id })
+        buildExport({ knex: knex(), uploads: vanishing, exports: slow, exportId: (row as { id: string }).id })
       ).rejects.toThrow(/object missing/)
     } finally {
       await knex()('files').where({ id: (file as { id: string }).id }).delete()
@@ -287,9 +305,9 @@ describe('building and downloading an export', () => {
   })
 
   it('marks an export failed when its last attempt fails, and relays that', async () => {
-    const [file] = await knex()('files')
-      .insert({ ownerId: operator.id, filename: 'lost.pdf', contentType: 'application/pdf', sizeBytes: 10, sha256: 'c'.repeat(64), state: 'stored' })
-      .returning('id')
+    // An object that does not match its row: the ZIP entry fails.
+    const file = await storedFile(operator, 'short.pdf', PDF, 'application/pdf')
+    await knex()('files').where({ id: file }).update({ sizeBytes: PDF.length + 1 })
     try {
       const [row] = await knex()('dataExports').insert({ subjectId: operator.id, requestedBy: operator.id }).returning('id')
       const exportId = (row as { id: string }).id
@@ -297,7 +315,7 @@ describe('building and downloading an export', () => {
       await maintenance.exportQueue.add('build-export', { exportId }, { jobId: exportId, attempts: 1 })
       expect(await failed).toMatchObject({ id: exportId, state: 'failed' })
     } finally {
-      await knex()('files').where({ id: (file as { id: string }).id }).delete()
+      await knex()('files').where({ id: file }).delete()
     }
   })
 })

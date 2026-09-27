@@ -148,7 +148,16 @@ export const startMaintenance = ({
       async (job) => {
         if (job.name !== BUILD_EXPORT) throw new UnrecoverableError(`unknown job ${job.name}`)
         try {
-          return await buildExport({ knex, uploads: storage, exports, exportId: job.data.exportId })
+          const result = await buildExport({ knex, uploads: storage, exports, exportId: job.data.exportId })
+          // Built all the same, but the object store lost data: at `error`,
+          // for the log alert (ADR 0022).
+          if (result.missingFiles) {
+            logger.error(
+              { queue: DATA_EXPORTS_QUEUE, export_id: result.exportId, file_ids: result.missingFiles },
+              'export built without files whose objects are missing'
+            )
+          }
+          return result
         } catch (error) {
           if (job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) {
             await knex('dataExports')
