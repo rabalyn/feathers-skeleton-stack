@@ -63,6 +63,35 @@ unmount() {
   timeout 60 umount "$MOUNT" 2>/dev/null || { log "unmount timed out; detaching lazily"; umount -l "$MOUNT"; }
 }
 
+# Deleting the export once took 20 minutes on a local SSD. Suspected: nfsd
+# still holds NFSv4 state (delegations) on its files and waits out a recall
+# per deletion. Diagnostics until that is settled: a deletion still running
+# after 30 seconds logs where it waits in the kernel and nfsd's client
+# states, then how many entries remain, every minute.
+delete_export() {
+  local pid waited=0 client
+  rm -rf "$EXPORT" &
+  pid=$!
+  while kill -0 "$pid" 2>/dev/null; do
+    sleep 1
+    waited=$((waited + 1))
+    if ((waited == 30)); then
+      log "cleanup: deletion still running after 30s; rm's kernel stack:"
+      sed 's/^/    /' "/proc/$pid/stack" >&2 2>/dev/null || log "    (not readable)"
+      for client in /proc/fs/nfsd/clients/*; do
+        [[ -d $client ]] || continue
+        log "cleanup: nfsd client ${client##*/}:"
+        cat "$client/info" "$client/states" 2>/dev/null | sed 's/^/    /' >&2
+      done
+      [[ -e /proc/fs/nfsd/clients ]] || log "cleanup: /proc/fs/nfsd/clients does not exist"
+    fi
+    if ((waited % 60 == 0)); then
+      log "cleanup: deletion running for ${waited}s, $(find "$EXPORT" 2>/dev/null | wc -l) entries left"
+    fi
+  done
+  wait "$pid"
+}
+
 cleanup() {
   set +e
   log "cleanup: moving the backup container back to its named volume"
@@ -78,7 +107,7 @@ cleanup() {
   rm -f "$EXPORTS_FILE"
   timeout 60 exportfs -ra || log "cleanup: exportfs did not finish within a minute; continuing"
   log "cleanup: deleting $EXPORT"
-  rm -rf "$EXPORT"
+  delete_export
   log "cleanup: removing the mount point"
   # Never recursively: were it still mounted, rm would walk the hard NFS mount
   # and wait out its retries.
