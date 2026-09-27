@@ -65,7 +65,7 @@ On confirmation the API writes a `mail_campaigns` row and an audit event (`mail.
 ### Sending
 
 - The worker sends with **Nodemailer** over SMTP with TLS: Mailpit locally and in CI, the university relay in production ([0022](0022-observability-and-alerting.md)). The worker already reaches `mail` on the `observability` network ([0002](0002-service-inventory-and-networks.md)). Its SMTP login comes from OpenBao through `worker-agent` ([0023](0023-secrets-management.md)). The sender address is deployment configuration. The API never talks SMTP.
-- Deliveries run on a queue of their own, `mail`, so a large campaign never delays the daily jobs or exports. Sending is throttled to the runtime setting `mailSendPerMinute` (default 10), shared by all worker processes.
+- Deliveries run on a queue of their own, `mail`, so a large campaign never delays the daily jobs or exports. Sending is throttled to `mailSendLimitCount` mails per `mailSendLimitWindowSeconds`, runtime settings shared by all worker processes; the default of **10 mails per 5 minutes** is the rate the previous applications sent at. A bulk send of 250, the expected maximum, takes a little over two hours; admins see how long a campaign will take before confirming it.
 - A temporary SMTP failure (4xx, connection error) is retried with backoff, five attempts. A permanent failure (5xx) marks the delivery `failed` at once. A failed delivery logs at `error` with its delivery id, which raises the log alert ([0022](0022-observability-and-alerting.md)).
 - Delivery is **at least once**: a worker that dies after the relay accepted a mail but before recording it sends that mail again. A duplicate reminder is accepted as the price of never silently dropping one.
 - The worker exports counters of sent, failed and skipped mail per kind ([0022](0022-observability-and-alerting.md)).
@@ -92,4 +92,4 @@ Templates, campaigns and the delivery log are **admin only**: the wording of the
 
 ## Open questions
 
-- The university relay's sending limit, which `mailSendPerMinute` must stay below. The default of 10 per minute is deliberately conservative until the relay's operators confirm it.
+- The university relay's actual sending limit. The default of 10 mails per 5 minutes worked for the previous applications; whether the relay allows more is unconfirmed.
