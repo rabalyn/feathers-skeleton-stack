@@ -31,7 +31,7 @@ The stack needs a fixed service list and a network layout where no component can
 | `mail` | Mailpit, SMTP capture | university SMTP relay (external) |
 | `certs` | One-shot job creating the local CA and certificates | ACME client (see [0016](0016-nginx-and-tls-everywhere.md)) |
 | `dozzle` | Dozzle, a live browser view of container output; local only, a developer convenience | — |
-| `mcp-grafana`, `mcp-postgres`, `mcp-valkey`, `mcp-browser`, `mcp-idp` | MCP servers for a developer's coding agent; local only ([0026](0026-mcp-development-tooling.md)) | — |
+| `mcp-grafana`, `mcp-postgres`, `mcp-valkey`, `mcp-browser` | MCP servers for a developer's coding agent; local only ([0026](0026-mcp-development-tooling.md)) | — |
 | `prometheus` | Metrics store | same |
 | `loki` | Log store | same |
 | `alloy` | Grafana Alloy, log shipper; replaced Promtail, end of life since 2026-03 ([0021](0021-structured-logging.md)) | same |
@@ -52,7 +52,7 @@ The stack needs a fixed service list and a network layout where no component can
 | Network | Members | Purpose |
 | --- | --- | --- |
 | `edge` | `nginx`, `api`, `web` (dev), `blackbox`, `e2e` (test), `api-e2e` (test), `mcp-browser` (local) | Public request path; Nginx is also `app.localhost` here locally, so clients inside the stack reach the public origin |
-| `idp-edge` | `nginx`, `idp`, `e2e` (test), `mcp-browser` and `mcp-idp` (local) | Browser access to the local IdP; local and CI only |
+| `idp-edge` | `nginx`, `idp`, `e2e` (test), `mcp-browser` (local) | Browser access to the local IdP; local and CI only |
 | `dozzle-edge` | `nginx`, `dozzle` | Browser access to Dozzle; local only |
 | `grafana-edge` | `nginx`, `grafana`, `mcp-grafana` (local) | Browser access to Grafana ([0022](0022-observability-and-alerting.md)) |
 | `mail-edge` | `nginx`, `mail` | Browser access to Mailpit's inbox; local only |
@@ -76,7 +76,7 @@ Consequences of this layout, all intentional:
 - The API's metrics and health listener is a separate port reachable only on `observability` ([0022](0022-observability-and-alerting.md)).
 - `grafana` and, locally, `mail` are reachable by Nginx under their own host names, each on a network of its own like `dozzle` ([0016](0016-nginx-and-tls-everywhere.md)). Prometheus, Loki and the exporters have no browser route; people use Grafana.
 - `node-exporter` shares the host's process namespace and reads the host's root read-only, and `alloy` reads the host's journal read-only: host metrics and third-party container output ([0021](0021-structured-logging.md)) have no other source.
-- The MCP servers sit where their natural user sits, with read-only logins of their own ([0026](0026-mcp-development-tooling.md)): `mcp-grafana` beside Nginx on `grafana-edge`, as a person using Grafana; `mcp-postgres` and `mcp-valkey` on `app-data`, so the database is reached through PgBouncer as the api reaches it; `mcp-browser` where `e2e` is; `mcp-idp` on `idp-edge`. None is on `db`, `object` or `secrets`, and none publishes a port.
+- The MCP servers sit where their natural user sits, with read-only logins of their own ([0026](0026-mcp-development-tooling.md)): `mcp-grafana` beside Nginx on `grafana-edge`, as a person using Grafana; `mcp-postgres` and `mcp-valkey` on `app-data`, so the database is reached through PgBouncer as the api reaches it; `mcp-browser` where `e2e` is. None is on `db`, `object` or `secrets`, and none publishes a port.
 - The test runners sit where the code they test sits. `test` is on `app-data` and `identity`, like the API, so integration tests reach PostgreSQL through PgBouncer and cannot bypass it, and reach the test directory as the API's directory lookup does; the migration into `test_template` is done by the `migrate` job. `e2e` is on `edge` and `idp-edge`, like a browser, and reaches nothing else. Neither exists in production.
 
 Only `nginx` publishes ports to the host. Every other service is reachable only on its private networks.

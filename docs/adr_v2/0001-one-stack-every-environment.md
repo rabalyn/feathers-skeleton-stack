@@ -37,6 +37,6 @@ Stated here so that nothing claims more parity than exists:
 ## Consequences
 
 - Nginx, TLS, SAML2, LDAP, secret delivery and the backup path are exercised from the first day of development rather than first attempted in production.
-- A developer machine runs roughly fifty containers, nine of them MCP tooling ([0026](0026-mcp-development-tooling.md)). This is the deliberate cost of the parity rule.
+- A developer machine runs roughly fifty containers, seven of them MCP tooling ([0026](0026-mcp-development-tooling.md)). This is the deliberate cost of the parity rule.
 - Adding a service means adding it to `compose.yaml` and regenerating; the CI check catches a forgotten regeneration.
 - Generated units depend on `podlet` covering the Compose features used. A feature it cannot translate goes into a drop-in.

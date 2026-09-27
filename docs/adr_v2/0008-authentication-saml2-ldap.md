@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADRs 0022, 0026
-- Related: [0002](0002-service-inventory-and-networks.md), [0004](0004-pgbouncer-pools.md), [0006](0006-feathersjs-typescript-api.md), [0009](0009-tu-id-identity-model.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0011](0011-casl-role-authorization.md), [0018](0018-owasp-security-baseline.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md), [0026](0026-mcp-development-tooling.md)
+- Related: [0002](0002-service-inventory-and-networks.md), [0004](0004-pgbouncer-pools.md), [0006](0006-feathersjs-typescript-api.md), [0009](0009-tu-id-identity-model.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0011](0011-casl-role-authorization.md), [0018](0018-owasp-security-baseline.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md)
 
 ## Context
 
@@ -102,7 +102,7 @@ SP-initiated logout is supported. IdP-initiated single logout is out of scope in
 
 - The production login flow — redirects, assertion validation, attribute mapping, JIT provisioning — is exercised by every local run and every CI run.
 - Keycloak is a heavy container (slowest service to become healthy in the stack), which lengthens cold CI startup.
-- The realm import file and LDAP seed are test fixtures that must be kept in step with the attribute mapping as it changes. The realm file stays the source of truth even though the local Keycloak can be reconfigured live through its MCP server: a change is finished only once it is in the file and survives a `reset` ([0026](0026-mcp-development-tooling.md)). The seeded test users' passwords are the only credentials committed to the repository; Keycloak's admin password and LDAP bind credential are generated at setup and delivered through OpenBao ([0023](0023-secrets-management.md)).
+- The realm import file and LDAP seed are test fixtures that must be kept in step with the attribute mapping as it changes. The seeded test users' passwords are the only credentials committed to the repository; Keycloak's admin password and LDAP bind credential are generated at setup and delivered through OpenBao ([0023](0023-secrets-management.md)).
 - A break-glass password exists and is therefore a target; its audit trail and rate limiting are not optional.
 - `--rotate` revokes the account's sessions in the database, which ends access at the next request. An api process holding a WebSocket of that account closes it only on restart, because the command runs as a process of its own.
 - The API holds an LDAP service credential, delivered like every other secret ([0023](0023-secrets-management.md)).
