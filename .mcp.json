@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "quasar": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["apps/web/node_modules/@quasar/mcp/src/bin.js", "--project", "apps/web"],
+      "env": { "NO_UPDATE_NOTIFIER": "1" }
+    }
+  }
+}
