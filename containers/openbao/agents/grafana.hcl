@@ -1,5 +1,5 @@
 # OpenBao Agent for `grafana` (ADR 0022, 0023): the admin password, the
-# key Grafana encrypts its stored secrets with, and the SMTP login.
+# and the key Grafana encrypts its stored secrets with.
 vault {
   address = "https://openbao:8200"
   ca_cert = "/openbao/trust/ca.crt"
@@ -28,11 +28,5 @@ template {
 template {
   contents    = "{{ with secret \"kv/data/grafana\" }}{{ .Data.data.secret_key }}{{ end }}"
   destination = "/run/secrets/secret_key"
-  perms       = "0440"
-}
-
-template {
-  contents    = "{{ with secret \"kv/data/grafana\" }}{{ .Data.data.smtp_password }}{{ end }}"
-  destination = "/run/secrets/smtp_password"
   perms       = "0440"
 }

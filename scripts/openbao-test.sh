@@ -79,7 +79,7 @@ check "init refuses a second time" bash -c "! $(printf '%q ' "${BAO[@]}") init -
 echo "openbao-test: values"
 m=$(missing)
 check "internal values are generated" bash -c "! grep -qE 'api:(auth_signing_secret|database_password|saml_sp_key)' <<<'$m'"
-check "external values are listed as missing" bash -c "grep -q 'api:ldap_bind_password' <<<'$m' && grep -q 'api:saml_idp_cert' <<<'$m' && grep -q 'grafana:smtp_password' <<<'$m'"
+check "external values are listed as missing" bash -c "grep -q 'api:ldap_bind_password' <<<'$m' && grep -q 'api:saml_idp_cert' <<<'$m'"
 check "values can be read back (the checks below mean something)" test -n "$(kv api database_password)"
 check "local-only services get nothing" test -z "$(kv ldap admin_password)$(kv idp admin_password)$(kv test database_password)"
 check "local-only values are neither generated nor missing" bash -c "[[ -z '$(kv s3 test_key_id)' ]] && ! grep -q 's3:test_' <<<'$m'"

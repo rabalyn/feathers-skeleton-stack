@@ -54,7 +54,7 @@ Prometheus scrapes every target every 15 seconds.
 
 Grafana's unified alerting evaluates rules against **both** Prometheus and Loki and delivers notifications itself. This replaces the usual Loki-ruler-plus-Alertmanager pair with one component, which is the right trade for a deployment with one operator.
 
-The recipient address is deployment configuration and may be a distribution list. SMTP credentials come from OpenBao ([0023](0023-secrets-management.md)).
+The recipient address is deployment configuration and may be a distribution list. Grafana sends through the same SMTP server, port and TLS rule as the application's mail, from the same deployment configuration ([0027](0027-email-templates-and-sending.md)); it reads them from its environment rather than from the application, so alert mail works when the application does not. There is no SMTP login: the university relay accepts mail from the stack's hosts by their DNS names, without authentication.
 
 Rules, contact points and dashboards are **provisioned as code** from files in the repository. Nothing important is created by clicking in the UI, because that is state nobody backs up. For the same reason alerting is not part of the application's runtime settings.
 

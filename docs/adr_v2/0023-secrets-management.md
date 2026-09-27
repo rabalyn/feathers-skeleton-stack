@@ -8,7 +8,7 @@
 
 ## Context
 
-The stack needs many credentials: database roles, the authentication signing secret, the refresh token key, the SAML SP private key, the LDAP service account, object storage keys, the Valkey password, the restic repository password, SMTP credentials, and the Grafana admin password.
+The stack needs many credentials: database roles, the authentication signing secret, the refresh token key, the SAML SP private key, the LDAP service account, object storage keys, the Valkey password, the restic repository password, and the Grafana admin password. SMTP needs none: the relay accepts mail without authentication ([0027](0027-email-templates-and-sending.md)).
 
 Three constraints shape the design:
 
@@ -48,7 +48,7 @@ A single share suits a team of one or two administrators: any copy unseals on it
 
 - `init --admin <name>`, once: initialises with one share and prints it once, unseals, writes the policies and AppRoles, creates the first administrator's account, generates every value the stack only shares with itself, issues the running agents' `secret_id`s, lists what is still missing, and revokes the root token.
 - `unseal` after every start, `reissue` after an agent restarted on its own, `set <service> <key>` for one value from stdin (a whole PEM file may be piped in), `missing`, and `add-admin <name>` for a colleague's account. All but `init` log in as an administrator.
-- Values follow the same manifest as locally, `containers/openbao/secrets.conf`, restricted to the services that have an agent in production (a Quadlet unit). Values the stack only shares with itself are generated, the SAML SP key pair included ([0008](0008-authentication-saml2-ldap.md)). Values that come from outside (generator `local`: the university LDAP service account's password, the SMTP relay's) and the IdP's certificate are written by an administrator with `set`. Values of local test clients (generator `local-only:<generator>`, e.g. the integration tests' S3 key) do not exist in production at all, even where their target is a production agent; `missing` compares the agents' templates with what OpenBao holds.
+- Values follow the same manifest as locally, `containers/openbao/secrets.conf`, restricted to the services that have an agent in production (a Quadlet unit). Values the stack only shares with itself are generated, the SAML SP key pair included ([0008](0008-authentication-saml2-ldap.md)). Values that come from outside (generator `local`: the university LDAP service account's password) and the IdP's certificate are written by an administrator with `set`. Values of local test clients (generator `local-only:<generator>`, e.g. the integration tests' S3 key) do not exist in production at all, even where their target is a production agent; `missing` compares the agents' templates with what OpenBao holds.
 - `scripts/openbao-test.sh` runs the whole procedure in CI against a throwaway OpenBao and a stand-in agent ([0015](0015-testing-vitest-playwright.md)): init, the generated and missing values, `set`, a second administrator, a restart, a wrong key and the unseal that re-issues the agent's credential.
 
 ### Delivery: one OpenBao Agent per service, files in tmpfs

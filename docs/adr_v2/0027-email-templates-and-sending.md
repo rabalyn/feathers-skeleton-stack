@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-27
 - Scope: Required (v1)
-- Related: [0001](0001-one-stack-every-environment.md), [0003](0003-postgresql-and-knex.md), [0005](0005-typebox-schema-boundary.md), [0009](0009-tu-id-identity-model.md), [0011](0011-casl-role-authorization.md), [0013](0013-gdpr-export-and-retention.md), [0014](0014-frontend-quasar-vue.md), [0018](0018-owasp-security-baseline.md), [0021](0021-structured-logging.md), [0022](0022-observability-and-alerting.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md), [0025](0025-runtime-settings.md)
+- Related: [0001](0001-one-stack-every-environment.md), [0003](0003-postgresql-and-knex.md), [0005](0005-typebox-schema-boundary.md), [0009](0009-tu-id-identity-model.md), [0011](0011-casl-role-authorization.md), [0013](0013-gdpr-export-and-retention.md), [0014](0014-frontend-quasar-vue.md), [0016](0016-nginx-and-tls-everywhere.md), [0018](0018-owasp-security-baseline.md), [0021](0021-structured-logging.md), [0022](0022-observability-and-alerting.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md), [0025](0025-runtime-settings.md)
 
 ## Context
 
@@ -64,7 +64,10 @@ On confirmation the API writes a `mail_campaigns` row and an audit event (`mail.
 
 ### Sending
 
-- The worker sends with **Nodemailer** over SMTP with TLS: Mailpit locally and in CI, the university relay in production ([0022](0022-observability-and-alerting.md)). The worker already reaches `mail` on the `observability` network ([0002](0002-service-inventory-and-networks.md)). Its SMTP login comes from OpenBao through `worker-agent` ([0023](0023-secrets-management.md)). The sender address is deployment configuration. The API never talks SMTP.
+- The worker sends with **Nodemailer**: Mailpit locally and in CI, the university's internal SMTP server in production ([0022](0022-observability-and-alerting.md)). The worker already reaches `mail` on the `observability` network ([0002](0002-service-inventory-and-networks.md)). The API never talks SMTP.
+- The SMTP server is **deployment configuration**, like the IdP and LDAP endpoints ([0025](0025-runtime-settings.md)), not a runtime setting: `SMTP_HOST`, `SMTP_PORT` and `MAIL_FROM`, the sender address. Grafana's alert mail uses the same values ([0022](0022-observability-and-alerting.md)).
+- **There is no SMTP authentication.** The internal server accepts mail from the stack's hosts by their DNS names, so there is no SMTP secret in OpenBao ([0023](0023-secrets-management.md)).
+- **TLS is always enforced**, and how follows from the port: `465` is implicit TLS; any other port requires STARTTLS, and a server that does not offer it fails the delivery. Nothing is ever sent in plaintext. The server's certificate is verified against the system roots and the CA root, like every other hop ([0016](0016-nginx-and-tls-everywhere.md)); `worker` refuses to start without the three values.
 - Deliveries run on a queue of their own, `mail`, so a large campaign never delays the daily jobs or exports. Sending is throttled to `mailSendLimitCount` mails per `mailSendLimitWindowSeconds`, runtime settings shared by all worker processes; the default of **10 mails per 5 minutes** is the rate the previous applications sent at. A bulk send of 250, the expected maximum, takes a little over two hours; admins see how long a campaign will take before confirming it.
 - A temporary SMTP failure (4xx, connection error) is retried with backoff, five attempts. A permanent failure (5xx) marks the delivery `failed` at once. A failed delivery logs at `error` with its delivery id, which raises the log alert ([0022](0022-observability-and-alerting.md)).
 - Delivery is **at least once**: a worker that dies after the relay accepted a mail but before recording it sends that mail again. A duplicate reminder is accepted as the price of never silently dropping one.

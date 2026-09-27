@@ -950,10 +950,10 @@ services:
       # The CA root beside the system roots: Prometheus, Loki and Mailpit
       # locally, a public relay in production.
       SSL_CERT_DIR: /etc/ssl/certs:/trust
+      # No SMTP login: the university relay accepts mail by the sender's
+      # host name, without authentication (ADR 0022); TLS is mandatory.
       GF_SMTP_ENABLED: "true"
       GF_SMTP_HOST: mail:1025
-      GF_SMTP_USER: grafana
-      GF_SMTP_PASSWORD__FILE: /run/secrets/smtp_password
       GF_SMTP_FROM_ADDRESS: grafana@app.localhost
       GF_SMTP_FROM_NAME: claude-feathers alerts
       GF_SMTP_STARTTLS_POLICY: MandatoryStartTLS
@@ -981,7 +981,6 @@ services:
       - --smtp-tls-cert=/tls/tls.crt
       - --smtp-tls-key=/tls/tls.key
       - --smtp-require-starttls
-      - --smtp-auth-accept-any
       - --listen=0.0.0.0:8025
       - --ui-tls-cert=/tls/tls.crt
       - --ui-tls-key=/tls/tls.key
