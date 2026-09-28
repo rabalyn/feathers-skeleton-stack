@@ -45,6 +45,8 @@ import type {
 } from './services/mail/mail-templates.js'
 import type { MAIL_CAMPAIGN_EXTERNAL_METHODS, MAIL_CAMPAIGN_PREVIEW_EXTERNAL_METHODS } from './services/mail/mail-campaigns.js'
 import type { MAIL_DELIVERY_EXTERNAL_METHODS } from './services/mail/mail-deliveries.js'
+import type { QueueStatus } from './services/queues/queues.schema.js'
+import type { QUEUE_EXTERNAL_METHODS } from './services/queues/queues.js'
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
 export type { Setting, SettingPatch, SettingQuery } from './services/settings/settings.schema.js'
@@ -75,6 +77,7 @@ export type {
   MailTemplateRevisionData,
   MailTemplateRevisionQuery
 } from './services/mail/mail.schema.js'
+export type { QueueJob, QueueJobState, QueueScheduler, QueueStatus } from './services/queues/queues.schema.js'
 export { ALLOWED_CONTENT_TYPES, AVATAR_CONTENT_TYPES, FILENAME_HEADER, type AllowedContentType } from './uploads.js'
 export { ROLES, defineAbilitiesFor, type AbilityUser, type AppAbility, type Role } from './abilities.js'
 export { PAGINATE } from './paginate.js'
@@ -154,6 +157,9 @@ export interface ClientServiceTypes {
     ClientService<MailDelivery, never, never, Paginated<MailDelivery>, Params<MailDeliveryQuery>>,
     typeof MAIL_DELIVERY_EXTERNAL_METHODS
   >
+  // The job queues, admins only (ADR 0024), with a `status` event carrying
+  // a queue's new state whenever it changes.
+  queues: External<ClientService<QueueStatus, never, never, QueueStatus[], Params>, typeof QUEUE_EXTERNAL_METHODS>
 }
 
 export type ClientApplication = Application<ClientServiceTypes>

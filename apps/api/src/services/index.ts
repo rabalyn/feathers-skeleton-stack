@@ -11,6 +11,7 @@ import { locales } from './users/locales.js'
 import { mailCampaigns } from './mail/mail-campaigns.js'
 import { mailDeliveries } from './mail/mail-deliveries.js'
 import { mailTemplates } from './mail/mail-templates.js'
+import { queues } from './queues/queues.js'
 import { users } from './users/users.js'
 
 export const services = (app: Application) => {
@@ -27,4 +28,5 @@ export const services = (app: Application) => {
   app.configure(mailTemplates)
   app.configure(mailCampaigns)
   app.configure(mailDeliveries)
+  app.configure(queues)
 }

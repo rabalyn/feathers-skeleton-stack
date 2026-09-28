@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-24
 - Scope: Required (v1)
-- Related: [0002](0002-service-inventory-and-networks.md), [0004](0004-pgbouncer-pools.md), [0006](0006-feathersjs-typescript-api.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0013](0013-gdpr-export-and-retention.md), [0020](0020-object-storage-uploads.md), [0021](0021-structured-logging.md), [0022](0022-observability-and-alerting.md), [0025](0025-runtime-settings.md), [0027](0027-email-templates-and-sending.md)
+- Related: [0002](0002-service-inventory-and-networks.md), [0004](0004-pgbouncer-pools.md), [0006](0006-feathersjs-typescript-api.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0011](0011-casl-role-authorization.md), [0012](0012-role-scoped-channels.md), [0013](0013-gdpr-export-and-retention.md), [0020](0020-object-storage-uploads.md), [0021](0021-structured-logging.md), [0022](0022-observability-and-alerting.md), [0025](0025-runtime-settings.md), [0027](0027-email-templates-and-sending.md)
 
 ## Context
 
@@ -24,6 +24,8 @@ The alternatives considered were in-process cron in a worker (simplest, but no r
 - On SIGTERM the worker stops taking jobs and gives a running job the API's **5-second** grace period ([0006](0006-feathersjs-typescript-api.md)). A job cut off keeps its lock until the lock expires; BullMQ then finds it stalled and runs it again, which maintenance jobs tolerate: each batch commits on its own, and a rerun deletes what is still due.
 - The worker has the API's internal listener ([0022](0022-observability-and-alerting.md)): `/health/live` answers while its BullMQ worker runs, and the container healthcheck calls it. `/metrics` joins it with observability. The worker refuses to start without the runtime settings its jobs read.
 
+- **Admins see the queues in the application**, read-only, on a page updated live ([0011](0011-casl-role-authorization.md), [0012](0012-role-scoped-channels.md)). The api's `queues` service reads each queue from Valkey: whether it is paused, its counts per state, its global rate limit and whether that is holding jobs back, its job schedulers with their next run, and its running, waiting, delayed and failed jobs, at most 50 per state, with name, id, attempts and times. Job payloads and failure messages are not shown: payloads are surrogate ids, and an error text can carry an address ([0021](0021-structured-logging.md)); the logs and the delivery log have both. The page cannot retry, remove or pause anything: retries and the outbox sweep recover work by themselves ([0027](0027-email-templates-and-sending.md)). Every queue is listed in `QUEUE_NAMES`, where a product adds its own. Trends and alerting stay with the queue metrics in Grafana ([0022](0022-observability-and-alerting.md)).
+
 ### Jobs in the skeleton
 
 | Job | Trigger | Does |
@@ -41,4 +43,5 @@ Backups are not BullMQ jobs: the backup service is isolated from Valkey and sche
 
 - Retries, job history and queue metrics are available from the first job, and mail was a new queue, not a new mechanism ([0027](0027-email-templates-and-sending.md)).
 - Enqueueing is not part of the database transaction. A job enqueued after a commit can be lost if the process dies in between; a job enqueued before commit can run for a write that rolled back. Maintenance jobs are unaffected because they are schedules, not consequences of writes. Mail after a write goes through a transactional outbox, the `mail_deliveries` table ([0027](0027-email-templates-and-sending.md)); a product needing the same guarantee for other work follows that pattern.
+- Once an admin has first opened the queue view, the api holds two more Valkey connections per queue, one reading and one blocked on its events, until it stops.
 - Valkey is now durable state and part of the backup, and its availability affects both logins (fail-closed rate limits) and jobs.

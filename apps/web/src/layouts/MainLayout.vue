@@ -65,7 +65,8 @@ const links = computed(() =>
     { name: 'audit', icon: 'history', label: 'nav.audit', requires: ['read', 'audit-events'] },
     { name: 'gdpr', icon: 'privacy_tip', label: 'nav.gdpr', requires: ['create', 'erasures'] },
     { name: 'mail-templates', icon: 'mail', label: 'nav.mailTemplates', requires: ['read', 'mail-templates'] },
-    { name: 'mailings', icon: 'campaign', label: 'nav.mailings', requires: ['create', 'mail-campaigns'] }
+    { name: 'mailings', icon: 'campaign', label: 'nav.mailings', requires: ['create', 'mail-campaigns'] },
+    { name: 'queues', icon: 'pending_actions', label: 'nav.queues', requires: ['read', 'queues'] }
   ].filter((link) => !link.requires || session.canAll(link.requires[0]!, link.requires[1]!))
 )
 </script>

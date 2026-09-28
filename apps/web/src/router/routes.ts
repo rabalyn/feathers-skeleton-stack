@@ -70,6 +70,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/MailingsPage.vue'),
         meta: { requires: ['create', 'mail-campaigns'] }
       },
+      // The job queues (ADR 0024): runtime state, the admin's alone.
+      {
+        path: 'queues',
+        name: 'queues',
+        component: () => import('@/pages/QueuesPage.vue'),
+        meta: { requires: ['read', 'queues'] }
+      },
       {
         path: 'directory',
         name: 'directory',
