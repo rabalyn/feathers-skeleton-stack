@@ -5,8 +5,10 @@ import { Counter, Gauge, Histogram, type Registry } from 'prom-client'
 import type { SettingsStore } from '../settings/store.js'
 import type { Storage } from '../storage.js'
 import { buildExport } from '../gdpr/export.js'
+import { PermanentMailFailure, deliver } from '../mail/deliver.js'
 import { MailOutbox } from '../mail/outbox.js'
-import { BUILD_EXPORT, DATA_EXPORTS_QUEUE, EXPORT_JOB_OPTIONS, QUEUE_PREFIX, type ExportJob } from './queues.js'
+import type { MailSender } from '../mail/sender.js'
+import { BUILD_EXPORT, DATA_EXPORTS_QUEUE, EXPORT_JOB_OPTIONS, MAIL_QUEUE, QUEUE_PREFIX, SEND_MAIL, type ExportJob, type MailJob } from './queues.js'
 import { exportExpiry } from './export-expiry.js'
 import { objectPurge } from './object-purge.js'
 import { retentionCleanup } from './retention.js'
@@ -61,7 +63,15 @@ export interface MaintenanceOptions {
   prefix?: string
   // Job outcomes, durations and queue depth (ADR 0022).
   metrics?: Registry
+  // Sending mail (ADR 0027): the SMTP server and the origin links start
+  // with. Without it, deliveries wait in the mail queue for a worker that
+  // has one.
+  mail?: { sender: MailSender; publicOrigin: string }
 }
+
+// How often the worker re-reads the sending limit; a change applies to
+// every worker process at once, since the limit lives in the queue.
+export const MAIL_LIMIT_REFRESH_MS = 30_000
 
 export const startMaintenance = ({
   connection,
@@ -71,13 +81,14 @@ export const startMaintenance = ({
   exports,
   logger,
   prefix = QUEUE_PREFIX,
-  metrics
+  metrics,
+  mail: sending
 }: MaintenanceOptions) => {
   const queue = new Queue(MAINTENANCE_QUEUE, { connection, prefix, defaultJobOptions: JOB_OPTIONS })
   const exportQueue = new Queue<ExportJob>(DATA_EXPORTS_QUEUE, { connection, prefix, defaultJobOptions: EXPORT_JOB_OPTIONS })
   // Notifications the worker causes, and the sweep.
   const mail = new MailOutbox(connection, logger, prefix)
-  const queues = [queue, exportQueue] as Queue[]
+  const queues = [queue, exportQueue, mail.queue] as Queue[]
   const registers = metrics ? [metrics] : []
   const outcomes = new Counter({
     name: 'bullmq_jobs_total',
@@ -194,22 +205,89 @@ export const startMaintenance = ({
     )
   )
 
+  // Mail (ADR 0027): one delivery per job, one at a time per process,
+  // throttled across all processes by the queue's global rate limit, which
+  // follows the runtime settings. A skipped delivery takes its slot too.
+  const mailed = new Counter({
+    name: 'mail_deliveries_total',
+    help: 'Finished mail deliveries by kind and outcome',
+    labelNames: ['kind', 'outcome'],
+    registers
+  })
+  let limit = ''
+  const applyMailLimit = async () => {
+    const [count, windowSeconds] = await Promise.all([
+      settings.get('mailSendLimitCount'),
+      settings.get('mailSendLimitWindowSeconds')
+    ])
+    if (limit === `${count}/${windowSeconds}`) return
+    await mail.queue.setGlobalRateLimit(count, windowSeconds * 1000)
+    limit = `${count}/${windowSeconds}`
+    logger.info({ queue: MAIL_QUEUE, count, window_seconds: windowSeconds }, 'mail sending limit applied')
+  }
+  let limitTimer: NodeJS.Timeout | undefined
+  const mailWorker = sending
+    ? observe(
+        new Worker<MailJob>(
+          MAIL_QUEUE,
+          async (job) => {
+            if (job.name !== SEND_MAIL) throw new UnrecoverableError(`unknown job ${job.name}`)
+            try {
+              const outcome = await deliver({
+                knex,
+                sender: sending.sender,
+                publicOrigin: sending.publicOrigin,
+                logger,
+                deliveryId: job.data.deliveryId,
+                attempt: job.attemptsMade + 1,
+                attempts: job.opts.attempts ?? 1
+              })
+              if (outcome.status !== 'done') mailed.inc({ kind: outcome.kind, outcome: outcome.status })
+              return outcome
+            } catch (error) {
+              if (!(error instanceof PermanentMailFailure)) throw error
+              mailed.inc({ kind: error.kind, outcome: 'failed' })
+              throw new UnrecoverableError(error.message)
+            }
+          },
+          { connection, prefix, concurrency: 1, autorun: false }
+        )
+      )
+    : undefined
+
   return {
     queue,
     worker,
     exportQueue,
     exportWorker,
     mail,
+    mailWorker,
+    applyMailLimit,
     // Creates or updates the schedules; safe to run on every start.
     schedule: async () => {
       for (const name of [RETENTION_CLEANUP, OBJECT_PURGE, EXPORT_EXPIRY]) {
         await queue.upsertJobScheduler(name, DAILY, { name, opts: JOB_OPTIONS })
       }
       await queue.upsertJobScheduler(MAIL_SWEEP, MAIL_SWEEP_EVERY, { name: MAIL_SWEEP, opts: MAIL_SWEEP_OPTIONS })
+      if (mailWorker) {
+        // The limit is in place before the first mail goes.
+        await applyMailLimit()
+        limitTimer = setInterval(() => {
+          applyMailLimit().catch((error: Error) =>
+            logger.warn({ queue: MAIL_QUEUE, err: { message: error.message } }, 'mail sending limit not refreshed')
+          )
+        }, MAIL_LIMIT_REFRESH_MS)
+        limitTimer.unref()
+        mailWorker.run().catch((error: Error) =>
+          logger.error({ queue: MAIL_QUEUE, err: { message: error.message } }, 'mail worker stopped')
+        )
+      }
     },
-    isRunning: () => worker.isRunning() && exportWorker.isRunning(),
+    isRunning: () => worker.isRunning() && exportWorker.isRunning() && (!mailWorker || mailWorker.isRunning()),
     close: async () => {
-      await Promise.all([worker.close(), exportWorker.close()])
+      clearInterval(limitTimer)
+      await Promise.all([worker.close(), exportWorker.close(), mailWorker?.close()])
+      sending?.sender.close()
       await Promise.all([queue.close(), exportQueue.close(), mail.close()])
     }
   }

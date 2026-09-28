@@ -129,6 +129,15 @@ const fields = {
   openbaoAddr: { schema: Type.String({ pattern: '^https://' }), env: 'OPENBAO_ADDR' },
   openbaoTokenFile: { schema: Type.String({ pattern: '^/' }), env: 'OPENBAO_TOKEN_FILE' },
   openbaoCaFile: { schema: Type.String({ minLength: 1 }), env: 'OPENBAO_CA_FILE' },
+  // Mail (ADR 0027): the SMTP server, Mailpit locally and the university's
+  // relay in production. No login: the relay accepts the stack's hosts by
+  // their names. TLS always: implicit on 465, STARTTLS required on any other
+  // port, the certificate verified against the system roots and the CA root.
+  smtpHost: { schema: Type.String({ minLength: 1 }), env: 'SMTP_HOST' },
+  smtpPort: { schema: port, env: 'SMTP_PORT', integer: true },
+  smtpCaFile: { schema: Type.String({ minLength: 1 }), env: 'SMTP_CA_FILE' },
+  // The sender address; the product's name is its display name.
+  mailFrom: { schema: Type.String({ pattern: '^[^@\\s<>]+@[^@\\s<>]+$' }), env: 'MAIL_FROM' },
   databasePoolMax: {
     schema: Type.Integer({ minimum: 1, maximum: 50 }),
     env: 'DATABASE_POOL_MAX',
@@ -202,7 +211,12 @@ export const API_KEYS = [
 
 export const MIGRATE_KEYS = ['logLevel', ...DATABASE_KEYS] as const satisfies readonly ConfigKey[]
 
+export const SMTP_KEYS = ['smtpHost', 'smtpPort', 'smtpCaFile', 'mailFrom'] as const satisfies readonly ConfigKey[]
+
 export const WORKER_KEYS = [
+  // Every link in a mail starts with it (ADR 0027).
+  'publicOrigin',
+  ...SMTP_KEYS,
   'internalPort',
   'internalTlsCertFile',
   'internalTlsKeyFile',
@@ -294,4 +308,5 @@ export type LdapConfig = Pick<Config, (typeof LDAP_KEYS)[number]>
 export type ValkeyConfig = Pick<Config, (typeof VALKEY_KEYS)[number]>
 export type WorkerConfig = Pick<Config, (typeof WORKER_KEYS)[number]>
 export type S3Config = Pick<Config, (typeof S3_KEYS)[number]>
+export type SmtpConfig = Pick<Config, (typeof SMTP_KEYS)[number]>
 export type BackupConfig = Pick<Config, (typeof BACKUP_KEYS)[number]>

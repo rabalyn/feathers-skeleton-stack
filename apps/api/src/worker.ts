@@ -3,6 +3,7 @@ import { createKnex } from './db.js'
 import { createInternalServer } from './internal.js'
 import { startMaintenance, queueConnection } from './jobs/maintenance.js'
 import { createLogger } from './logger.js'
+import { createSender } from './mail/sender.js'
 import { createRegistry, observeKnexPool } from './metrics.js'
 import { SHUTDOWN_GRACE_MS, closeServer, withDeadline } from './shutdown.js'
 import { WORKER_SETTINGS } from './settings/registry.js'
@@ -52,7 +53,8 @@ const main = async () => {
     exports,
     logger,
     prefix: config.queuePrefix,
-    metrics
+    metrics,
+    mail: { sender: createSender(config), publicOrigin: config.publicOrigin }
   })
   await maintenance.schedule()
   const internal = createInternalServer({

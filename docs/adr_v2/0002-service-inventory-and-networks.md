@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADRs 0035, 0037
-- Related: [0001](0001-one-stack-every-environment.md), [0004](0004-pgbouncer-pools.md), [0008](0008-authentication-saml2-ldap.md), [0015](0015-testing-vitest-playwright.md), [0017](0017-nfs-backup-storage.md), [0020](0020-object-storage-uploads.md), [0022](0022-observability-and-alerting.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md), [0026](0026-mcp-development-tooling.md)
+- Related: [0001](0001-one-stack-every-environment.md), [0004](0004-pgbouncer-pools.md), [0008](0008-authentication-saml2-ldap.md), [0015](0015-testing-vitest-playwright.md), [0017](0017-nfs-backup-storage.md), [0020](0020-object-storage-uploads.md), [0022](0022-observability-and-alerting.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md), [0026](0026-mcp-development-tooling.md), [0027](0027-email-templates-and-sending.md)
 
 ## Context
 
@@ -62,7 +62,7 @@ The stack needs a fixed service list and a network layout where no component can
 | `identity` | `api`, `idp`, `ldap`, `test` (test), `api-e2e` (test) | Authentication and directory lookup |
 | `object` | `api`, `worker`, `s3`, `backup`; locally also `api-e2e` and `test` | Object storage |
 | `secrets` | `openbao`, every `*-agent`, `backup` | Secret delivery; `backup` for OpenBao snapshots |
-| `observability` | `api`, `worker`, `s3`, `prometheus`, `loki`, `alloy`, `grafana`, all exporters, `mail`, `blackbox` | Metrics, logs, alert delivery |
+| `observability` | `api`, `worker`, `s3`, `prometheus`, `loki`, `alloy`, `grafana`, all exporters, `mail`, `blackbox`; locally also `worker-e2e` and `test` | Metrics, logs, alert and application mail ([0027](0027-email-templates-and-sending.md)) |
 
 Consequences of this layout, all intentional:
 

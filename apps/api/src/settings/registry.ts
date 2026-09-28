@@ -40,6 +40,10 @@ export const SETTINGS = {
   rateLimitRefreshPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 600),
   // Per account and client IP; one person, so not generous.
   rateLimitPasswordLoginPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 5),
+  // Mail sending (ADR 0027): at most this many mails per window, across all
+  // worker processes; the rate the previous applications sent at.
+  mailSendLimitCount: define(Type.Integer({ minimum: 1, maximum: 10_000 }), 10),
+  mailSendLimitWindowSeconds: define(seconds(DAY), 300),
   featureFlags: define(Type.Record(Type.String({ pattern: '^[a-zA-Z][a-zA-Z0-9]*$' }), Type.Boolean()), {}),
   maintenanceMode: define(Type.Boolean(), false)
 }
@@ -71,7 +75,9 @@ export const API_SETTINGS = [
 export const WORKER_SETTINGS = [
   'auditRetentionDays',
   'expiredSessionRetentionDays',
-  'objectPurgeDelayDays'
+  'objectPurgeDelayDays',
+  'mailSendLimitCount',
+  'mailSendLimitWindowSeconds'
 ] as const satisfies readonly SettingKey[]
 
 export const BACKUP_SETTINGS = ['backupSchedule', 'backupRetentionDailySnapshots'] as const satisfies readonly SettingKey[]

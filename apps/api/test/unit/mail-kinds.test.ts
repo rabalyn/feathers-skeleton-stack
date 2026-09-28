@@ -1,11 +1,11 @@
 import { Type } from '@feathersjs/typebox'
-import { Ajv } from '@feathersjs/schema'
 import { describe, expect, it } from 'vitest'
 import { LOCALES } from '../../src/locales.js'
 import { MailKindError, defineMailKind, templateVariables } from '../../src/mail/kind.js'
 import { MAIL_KINDS } from '../../src/mail/registry.js'
+import { dataValidator } from '../../src/validators.js'
 
-const ajv = new Ajv({ allErrors: true, strict: false })
+const ajv = dataValidator
 
 const notification = {
   key: 'test.kind',

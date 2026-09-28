@@ -247,6 +247,13 @@ services:
       S3_KEY_ID_FILE: /run/secrets/s3_key_id
       S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
       S3_CA_FILE: /trust/ca.crt
+      # Mail (ADR 0027): Mailpit locally, the university relay in production;
+      # links in mail start with the public origin.
+      PUBLIC_ORIGIN: https://app.localhost:8443
+      SMTP_HOST: mail
+      SMTP_PORT: "1025"
+      SMTP_CA_FILE: /trust/ca.crt
+      MAIL_FROM: noreply@app.localhost
     networks: [app-data, object, observability]
     volumes:
       - worker-secrets:/run/secrets:ro
@@ -273,9 +280,11 @@ services:
       QUEUE_PREFIX: bull:e2e
       S3_UPLOADS_BUCKET: e2e-uploads
       S3_EXPORTS_BUCKET: e2e-exports
+      PUBLIC_ORIGIN: https://e2e.localhost:8443
       # Stdout only: its lines stay out of Loki and the alert rules.
       LOG_FILE: ""
-    networks: [app-data, object]
+    # `observability` for Mailpit, where the suite finds its mail (ADR 0027).
+    networks: [app-data, object, observability]
     volumes:
       - worker-secrets:/run/secrets:ro
       - trust:/trust:ro
@@ -495,7 +504,12 @@ services:
       S3_CA_FILE: /trust/ca.crt
       S3_UPLOADS_BUCKET: test-uploads
       S3_EXPORTS_BUCKET: test-exports
-    networks: [app-data, identity, object]
+      # Sending through Mailpit (ADR 0027).
+      SMTP_HOST: mail
+      SMTP_PORT: "1025"
+      SMTP_CA_FILE: /trust/ca.crt
+      MAIL_FROM: noreply@test.localhost
+    networks: [app-data, identity, object, observability]
     volumes:
       - test-secrets:/run/secrets:ro
       - trust:/trust:ro
