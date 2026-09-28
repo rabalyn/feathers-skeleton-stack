@@ -156,10 +156,12 @@ export const templateVariablePaths = (locale: Locale, part: 'subject' | 'body', 
 // into the application.
 const markdown = new MarkdownIt('commonmark', { html: false, linkify: false, typographer: false }).disable(['image'])
 
-const checkLinks = (tokens: Token[], appUrl: string) => {
+// Lines are those of the rendered Markdown, which match the template's
+// unless Liquid added or removed some before the link.
+const checkLinks = (tokens: Token[], appUrl: string, line?: number) => {
   const origin = new URL(appUrl).origin
   for (const token of tokens) {
-    if (token.children) checkLinks(token.children, appUrl)
+    if (token.children) checkLinks(token.children, appUrl, token.map ? token.map[0] + 1 : line)
     if (token.type !== 'link_open') continue
     const href = String(token.attrGet('href') ?? '')
     let target: URL | undefined
@@ -169,7 +171,7 @@ const checkLinks = (tokens: Token[], appUrl: string) => {
       target = undefined
     }
     if (!target || target.origin !== origin || target.username || target.password) {
-      throw new TemplateError(`body: links must point into the application (${origin}), not ${href}`, token.map ? token.map[0] + 1 : undefined)
+      throw new TemplateError(`body: links must point into the application (${origin}), not ${href}`, line)
     }
   }
 }

@@ -1,6 +1,7 @@
 import { ConfigError, MIGRATE_KEYS, loadConfig } from './config.js'
 import { createKnex } from './db.js'
 import { createLogger } from './logger.js'
+import { seedMailTemplates } from './mail/templates.js'
 import { seedSettings } from './settings/store.js'
 
 // One-shot migration job (ADR 0003). Connects directly to PostgreSQL as the
@@ -77,6 +78,10 @@ const main = async () => {
     // are never overwritten (ADR 0025).
     const seeded = await seedSettings(knex)
     if (seeded.length) logger.info({ database, seeded }, 'runtime settings seeded')
+    // Likewise each mail kind's default wording, where a kind and locale has
+    // no template yet (ADR 0027).
+    const templates = await seedMailTemplates(knex)
+    if (templates.length) logger.info({ database, templates }, 'mail templates seeded')
   } finally {
     await knex.destroy()
   }

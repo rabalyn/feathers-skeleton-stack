@@ -16,6 +16,8 @@ export type AuditAction =
   | 'login'
   | 'login.refused'
   | 'logout'
+  | 'mail.template.activate'
+  | 'mail.template.save'
   | 'session.reuse-detected'
   | 'settings.update'
   | 'users.erase'

@@ -189,6 +189,18 @@ export const PERSONAL_DATA: readonly RegistryEntry[] = [
   },
   {
     kind: 'table',
+    table: 'mail_template_revisions',
+    userColumns: ['author_id'],
+    export: {
+      key: 'mailTemplateRevisions',
+      collect: (knex, userId) =>
+        knex('mailTemplateRevisions').where({ authorId: userId }).orderBy('createdAt').select('id', 'kind', 'locale', 'createdAt')
+    },
+    erasure: 'keep',
+    note: 'Mail wording an admin saved (ADR 0027), by surrogate id; the wording itself is not about the person'
+  },
+  {
+    kind: 'table',
     table: 'erasures',
     userColumns: [],
     erasure: 'keep',

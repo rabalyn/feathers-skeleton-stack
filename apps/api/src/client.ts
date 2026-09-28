@@ -19,6 +19,23 @@ import type { DataExport, DataExportData, DataExportQuery } from './services/dat
 import type { DATA_EXPORT_EXTERNAL_METHODS } from './services/data-exports/data-exports.js'
 import type { Erasure, ErasureData, ERASURE_EXTERNAL_METHODS } from './services/erasures/erasures.js'
 import type { AuditEvent, AuditEventQuery, AUDIT_EVENT_EXTERNAL_METHODS } from './services/audit-events/audit-events.js'
+import type {
+  MailKindInfo,
+  MailPreview,
+  MailPreviewData,
+  MailTemplate,
+  MailTemplatePatch,
+  MailTemplateQuery,
+  MailTemplateRevision,
+  MailTemplateRevisionData,
+  MailTemplateRevisionQuery
+} from './services/mail/mail.schema.js'
+import type {
+  MAIL_KIND_EXTERNAL_METHODS,
+  MAIL_PREVIEW_EXTERNAL_METHODS,
+  MAIL_TEMPLATE_EXTERNAL_METHODS,
+  MAIL_TEMPLATE_REVISION_EXTERNAL_METHODS
+} from './services/mail/mail-templates.js'
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
 export type { Setting, SettingPatch, SettingQuery } from './services/settings/settings.schema.js'
@@ -31,6 +48,17 @@ export { DEFAULT_LOCALE, LOCALES, type Locale } from './locales.js'
 export type { DataExport, DataExportData, DataExportQuery } from './services/data-exports/data-exports.schema.js'
 export type { Erasure, ErasureData } from './services/erasures/erasures.js'
 export type { AuditEvent, AuditEventQuery } from './services/audit-events/audit-events.js'
+export type {
+  MailKindInfo,
+  MailPreview,
+  MailPreviewData,
+  MailTemplate,
+  MailTemplatePatch,
+  MailTemplateQuery,
+  MailTemplateRevision,
+  MailTemplateRevisionData,
+  MailTemplateRevisionQuery
+} from './services/mail/mail.schema.js'
 export { ALLOWED_CONTENT_TYPES, AVATAR_CONTENT_TYPES, FILENAME_HEADER, type AllowedContentType } from './uploads.js'
 export { ROLES, defineAbilitiesFor, type AbilityUser, type AppAbility, type Role } from './abilities.js'
 export { PAGINATE } from './paginate.js'
@@ -83,6 +111,19 @@ export interface ClientServiceTypes {
     ClientService<AuditEvent, never, never, Paginated<AuditEvent>, Params<AuditEventQuery>>,
     typeof AUDIT_EVENT_EXTERNAL_METHODS
   >
+  // Mail (ADR 0027), admins only: the kinds code declares, the active
+  // wording per kind and locale, its revisions, and previews of unsaved
+  // wording rendered against the kind's sample.
+  'mail-kinds': External<ClientService<MailKindInfo, never, never, MailKindInfo[], Params>, typeof MAIL_KIND_EXTERNAL_METHODS>
+  'mail-templates': External<
+    ClientService<MailTemplate, never, MailTemplatePatch, MailTemplate[], Params<MailTemplateQuery>>,
+    typeof MAIL_TEMPLATE_EXTERNAL_METHODS
+  >
+  'mail-template-revisions': External<
+    ClientService<MailTemplateRevision, MailTemplateRevisionData, never, Paginated<MailTemplateRevision>, Params<MailTemplateRevisionQuery>>,
+    typeof MAIL_TEMPLATE_REVISION_EXTERNAL_METHODS
+  >
+  'mail-previews': External<ClientService<MailPreview, MailPreviewData, never, never, Params>, typeof MAIL_PREVIEW_EXTERNAL_METHODS>
 }
 
 export type ClientApplication = Application<ClientServiceTypes>

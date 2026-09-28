@@ -76,6 +76,13 @@ export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
       // Erasure (ADR 0013): the admin's alone; `read` for feathers-casl's
       // check of the create's result.
       can(['create', 'read'], 'erasures')
+      // Mail (ADR 0027): the wording of the application's mail is runtime
+      // behaviour, the admin's alone. `read` on previews for feathers-casl's
+      // check of the create's result.
+      can('read', 'mail-kinds')
+      can(['read', 'patch'], 'mail-templates')
+      can(['read', 'create'], 'mail-template-revisions')
+      can(['create', 'read'], 'mail-previews')
       break
     case 'operator':
       can('read', 'users')
