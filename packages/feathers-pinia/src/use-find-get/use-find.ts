@@ -56,6 +56,21 @@ export function useFind<M = AnyData>(params: ComputedRef<UseFindParams | null>, 
   const qid = computed(() => params.value?.qid || 'default')
   const limit = pagination?.limit || ref(params.value?.query?.$limit || store.defaultLimit)
   const skip = pagination?.skip || ref(params.value?.query?.$skip || 0)
+  // Without `pagination` refs, the params own the page: a new $limit or $skip
+  // there moves `limit` and `skip`, which otherwise only seed from the first
+  // params and would pin every request to that page.
+  if (!pagination) {
+    watch(
+      () => [unref(params.value?.query?.$limit), unref(params.value?.query?.$skip)],
+      ([$limit, $skip], [prevLimit, prevSkip]) => {
+        if ($limit != null && $limit !== prevLimit)
+          limit.value = $limit
+        if ($skip != null && $skip !== prevSkip)
+          skip.value = $skip
+      },
+      { flush: 'sync' },
+    )
+  }
 
   const paramsWithPagination = computed<Params<Query>>(() => {
     const query = deepUnref(params.value?.query || {})
@@ -229,6 +244,10 @@ export function useFind<M = AnyData>(params: ComputedRef<UseFindParams | null>, 
         if (queries.value.length > 2)
           queries.value.shift()
       }
+      // The answer to the params still asked for is shown, even an empty one,
+      // which leaves no page in the store.
+      if (stringify(___params) === stringify(paramsWithPagination.value))
+        updateCachedParams()
       haveLoaded.value = true
 
       return response
@@ -260,8 +279,12 @@ export function useFind<M = AnyData>(params: ComputedRef<UseFindParams | null>, 
     request.value = findDebounced(p)
     await request.value
 
-    // cache the params to update the computed `data``
-    updateCachedParams()
+    // cache the params to update the computed `data``, where their page is in
+    // the store; `find` does so for the params it answered. A call cancelled
+    // by the debounce resolves without fetching, and moving to params still
+    // in flight would empty `data` and `total` until they arrive.
+    if (currentQuery.value)
+      updateCachedParams()
   }
 
   // Requests started from within (the params watcher, service events) have no

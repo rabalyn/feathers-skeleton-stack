@@ -291,6 +291,84 @@ describe('paginateOn: server, service event listeners', () => {
   })
 })
 
+// A server-paginated table drives the page through its params: a new $skip or
+// $limit there fetches that page, as next() and toPage() do.
+describe('paginateOn: server follows $limit and $skip in params', () => {
+  test('a new $skip fetches that page', async () => {
+    const paging = ref({ page: 1, rowsPerPage: 3 })
+    const params = computed(() => ({
+      query: { $limit: paging.value.rowsPerPage, $skip: (paging.value.page - 1) * paging.value.rowsPerPage },
+    }))
+    const contacts$ = service.useFind(params, { paginateOn: 'server' })
+    await contacts$.request
+    const firstPage = contacts$.data.map((c: any) => c._id)
+
+    paging.value = { page: 2, rowsPerPage: 3 }
+    await timeout(0)
+    await contacts$.request
+    expect(contacts$.skip).toBe(3)
+    expect(contacts$.currentPage).toBe(2)
+    expect(contacts$.data.length).toBe(3)
+    expect(contacts$.data.map((c: any) => c._id)).not.toEqual(firstPage)
+  })
+
+  test('a new $limit fetches that many', async () => {
+    const paging = ref({ page: 1, rowsPerPage: 3 })
+    const params = computed(() => ({
+      query: { $limit: paging.value.rowsPerPage, $skip: (paging.value.page - 1) * paging.value.rowsPerPage },
+    }))
+    const contacts$ = service.useFind(params, { paginateOn: 'server' })
+    await contacts$.request
+
+    paging.value = { page: 1, rowsPerPage: 5 }
+    await timeout(0)
+    await contacts$.request
+    expect(contacts$.limit).toBe(5)
+    expect(contacts$.data.length).toBe(5)
+  })
+
+  // A page turn within the debounce cancels the one before: that one fetched
+  // nothing, so the loaded page and its total stay until the new one arrives.
+  test('a page turned twice at once keeps its total until the second arrives', async () => {
+    const paging = ref({ page: 1, rowsPerPage: 3 })
+    const params = computed(() => ({
+      query: { $limit: paging.value.rowsPerPage, $skip: (paging.value.page - 1) * paging.value.rowsPerPage },
+    }))
+    const contacts$ = service.useFind(params, { paginateOn: 'server' })
+    await contacts$.request
+    const total = contacts$.total
+
+    paging.value = { page: 2, rowsPerPage: 3 }
+    paging.value = { page: 3, rowsPerPage: 3 }
+    await timeout(0)
+    expect(contacts$.total).toBe(total)
+    expect(contacts$.data.length).toBe(3)
+
+    await contacts$.request
+    await timeout(0)
+    expect(contacts$.skip).toBe(6)
+    expect(contacts$.total).toBe(total)
+    expect(contacts$.data.length).toBe(3)
+  })
+
+  test('a query that matches nothing shows nothing', async () => {
+    const name = ref<string | null>(null)
+    const params = computed(() => ({
+      query: { ...(name.value ? { name: name.value } : {}), $limit: 3, $skip: 0 },
+    }))
+    const contacts$ = service.useFind(params, { paginateOn: 'server' })
+    await contacts$.request
+    expect(contacts$.data.length).toBe(3)
+
+    name.value = 'nobody by this name'
+    await timeout(0)
+    await contacts$.request
+    await timeout(0)
+    expect(contacts$.data.length).toBe(0)
+    expect(contacts$.total).toBe(0)
+  })
+})
+
 describe('latestQuery and previousQuery', () => {
   test('paginateOn: server stores latestQuery and previousQuery', async () => {
     const params = computed(() => {
