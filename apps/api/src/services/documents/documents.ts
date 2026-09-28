@@ -1,3 +1,4 @@
+import { Forbidden } from '@feathersjs/errors'
 import type { NextFunction, Params } from '@feathersjs/feathers'
 import { KnexService } from '@feathersjs/knex'
 import { hooks as schemaHooks } from '@feathersjs/schema'
@@ -44,6 +45,12 @@ const withAttachedFile = async (context: HookContext<DocumentService>, next: Nex
     return
   }
   const before = context.method === 'patch' && context.id !== null && context.id !== undefined ? await context.service._get(context.id) : undefined
+  // Only the owner replaces a document's file (ADR 0011): anyone else would
+  // attach a file of their own to it, and the owner could neither download
+  // it nor find it in their export.
+  if (before && before.ownerId !== callerId(context)) {
+    throw new Forbidden('Only the owner replaces the file of a document')
+  }
   const knex = context.app.get('knex')
   await knex.transaction(async (trx) => {
     await attachFile(trx, fileId, { ownerId: callerId(context), allowedTypes: ALLOWED_CONTENT_TYPES })
