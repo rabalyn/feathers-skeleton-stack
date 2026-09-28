@@ -30,7 +30,7 @@ The alternatives considered were in-process cron in a worker (simplest, but no r
 
 | Job | Trigger | Does |
 | --- | --- | --- |
-| Retention cleanup | Daily | Deletes audit events and expired sessions past their retention ([0013](0013-gdpr-export-and-retention.md)) |
+| Retention cleanup | Daily | Deletes audit events, expired sessions and mail deliveries past their retention ([0013](0013-gdpr-export-and-retention.md), [0027](0027-email-templates-and-sending.md)), and expired SAML requests and replay cache entries ([0008](0008-authentication-saml2-ldap.md)) |
 | Export expiry | Daily | Deletes generated exports past their retention, object first, then its row; marks an export still pending after a day `failed` (its job was lost); removes objects in `exports` older than an hour that no row describes, which erasure leaves behind ([0013](0013-gdpr-export-and-retention.md)) |
 | Object purge | Daily | Purges soft-deleted objects past the purge delay, object first, then its row; soft-deletes stored files nobody attached within 24 hours; removes uploads that never finished (`pending` for over an hour); removes objects older than a day that no row describes, which only a failure or a restore to an earlier database state leaves behind ([0020](0020-object-storage-uploads.md)) |
 | Mail delivery | On a notification's commit, a campaign's send, and a sweep every minute | Renders and sends one mail on a queue of its own, `mail`, throttled to `mailSendLimitCount` per `mailSendLimitWindowSeconds`; five attempts for temporary SMTP failures ([0027](0027-email-templates-and-sending.md)) |

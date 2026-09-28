@@ -50,11 +50,11 @@ A JWT that is only checked by signature stays valid until it expires, so logout,
 - `maxmemory-policy noeviction`. An evicting policy would silently drop limiter keys and queued jobs. BullMQ requires this setting as well.
 - The client IP is taken from the proxy headers set by Nginx and trusted only from the proxy's address ([0016](0016-nginx-and-tls-everywhere.md)). Without that, every request appears to come from one address and an IP limit locks out everyone at once. The API recognises the proxy by resolving its container name (`TRUSTED_PROXY_HOST`, cached briefly), since container addresses are assigned dynamically; a connection from anywhere else is keyed by its own address whatever headers it sends.
 
-Sessions stay in PostgreSQL rather than Valkey because they must be SQL-queryable for the account screen and the GDPR export, and because the per-request check belongs next to the user record it compares against.
+Sessions stay in PostgreSQL rather than Valkey because they must be SQL-queryable for the admins' and operators' Sessions page ([0011](0011-casl-role-authorization.md)) and the GDPR export, and because the per-request check belongs next to the user record it compares against.
 
 ## Consequences
 
 - One indexed primary-key lookup is added to every authenticated request. At the expected user count this is not measurable, and it is the explicit trade that buys immediate revocation.
-- Sessions are SQL-queryable, so "which sessions does this user have" is answerable for both the account screen and the GDPR export.
+- Sessions are SQL-queryable, so "which sessions does this user have" is answerable for the Sessions page and the GDPR export. Users see their own sessions only in their export, not on a screen ([0011](0011-casl-role-authorization.md)).
 - Restoring a database backup restores sessions that were revoked after the backup was taken. Revoking all sessions is therefore a mandatory step after any production restore ([0017](0017-nfs-backup-storage.md)).
 - With rate limits and queues in one Valkey, memory pressure affects both. Memory use is visible in the metrics ([0022](0022-observability-and-alerting.md)); the job volume in scope is small.

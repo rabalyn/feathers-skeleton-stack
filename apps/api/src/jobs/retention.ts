@@ -2,8 +2,9 @@ import type { Knex } from 'knex'
 import type { SettingsStore } from '../settings/store.js'
 
 // Retention cleanup (ADR 0013, 0024): audit events, expired sessions and the
-// mail delivery log (ADR 0027) past their retention, deleted in batches, one transaction per batch, so a large
-// backlog never holds long locks.
+// mail delivery log (ADR 0027) past their retention, and the SAML request
+// state past its expiry (ADR 0008), deleted in batches, one transaction per
+// batch, so a large backlog never holds long locks.
 
 export const RETENTION_BATCH_SIZE = 1000
 
@@ -11,6 +12,8 @@ export interface RetentionResult {
   auditEvents: number
   sessions: number
   mailDeliveries: number
+  samlRequests: number
+  samlAssertions: number
 }
 
 // Runs `batch` until it deletes fewer rows than a full batch.
@@ -71,5 +74,17 @@ export const retentionCleanup = async (
       .delete()
   )
 
-  return { auditEvents, sessions, mailDeliveries }
+  // Outstanding authentication requests and the replay cache (ADR 0008) are
+  // useless once expired: the ACS refuses an expired request, and an
+  // assertion past its replay window fails its own time check.
+  const expired = (table: string) =>
+    inBatches(batchSize, () =>
+      knex(table)
+        .whereIn('id', knex(table).select('id').where('expiresAt', '<', knex.fn.now()).limit(batchSize))
+        .delete()
+    )
+  const samlRequests = await expired('samlRequests')
+  const samlAssertions = await expired('samlAssertions')
+
+  return { auditEvents, sessions, mailDeliveries, samlRequests, samlAssertions }
 }

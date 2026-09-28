@@ -47,6 +47,30 @@ export default tseslint.config(
     }
   },
   {
+    // Transaction-mode pooling (ADR 0004): a session-level SET or advisory
+    // lock stays on a server connection the next transaction may belong to
+    // someone else. `migrate` connects directly and is the one exception.
+    files: ['apps/api/**/*.{ts,js}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        ...['Literal', 'TemplateElement'].flatMap((node) => {
+          const value = node === 'Literal' ? 'value' : 'value.raw'
+          return [
+            {
+              selector: `${node}[${value}=/(^|;)\\s*SET\\s+(?!LOCAL\\b|TRANSACTION\\b|CONSTRAINTS\\b)/i]`,
+              message: 'Session-level SET outlives the transaction under PgBouncer; use SET LOCAL inside a transaction (ADR 0004).'
+            },
+            {
+              selector: `${node}[${value}=/pg_(try_)?advisory_(un)?lock/i]`,
+              message: 'Session advisory locks break under transaction pooling; use pg_advisory_xact_lock (ADR 0004).'
+            }
+          ]
+        })
+      ]
+    }
+  },
+  {
     files: ['**/*.js', '**/*.cjs'],
     ...tseslint.configs.disableTypeChecked
   },

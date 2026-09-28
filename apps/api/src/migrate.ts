@@ -66,7 +66,10 @@ const main = async () => {
           afterCreate: (
             conn: { query: (sql: string, cb: (err: Error | null) => void) => void },
             done: (err: Error | null, conn: unknown) => void
-          ) => conn.query("SET lock_timeout = '10s'", (err) => done(err, conn))
+          ) =>
+            // A direct connection, not PgBouncer (ADR 0003), so a session SET is right here.
+            // eslint-disable-next-line no-restricted-syntax
+            conn.query("SET lock_timeout = '10s'", (err) => done(err, conn))
         }
       }
     }

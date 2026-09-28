@@ -119,7 +119,6 @@ export class ServiceProvider {
   // Issues a signed AuthnRequest and remembers its ID, with the return path.
   async loginUrl(returnTo: unknown): Promise<string> {
     const id = `_${randomUUID()}`
-    await this.knex('samlRequests').where('expiresAt', '<', this.knex.fn.now()).delete()
     await this.knex('samlRequests').insert({
       id,
       returnTo: safeReturnTo(returnTo),
@@ -191,7 +190,6 @@ export class ServiceProvider {
         .returning(['returnTo'])
       if (!request) throw new SamlRejected('InResponseTo unknown, expired or already used')
 
-      await trx('samlAssertions').where('expiresAt', '<', trx.fn.now()).delete()
       const inserted = await trx('samlAssertions')
         .insert({ id: assertionId, expiresAt: replayUntil })
         .onConflict('id')

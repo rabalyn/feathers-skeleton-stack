@@ -34,7 +34,7 @@ Set by Nginx ([0016](0016-nginx-and-tls-everywhere.md)) so they apply to every r
 
 ### Cross-origin and CSRF
 
-Frontend and API share one origin behind Nginx, so CORS is not needed in production. The refresh cookie is `SameSite=Strict` and the refresh endpoint additionally validates the `Origin` header against the configured frontend origin and rejects requests without one. Allowed origins are an explicit per-environment list shared between the CORS configuration and that check.
+Frontend and API share one origin behind Nginx, so there is no CORS configuration in any environment. The refresh cookie is `SameSite=Strict`, and refresh, logout and the break-glass password login additionally require the `Origin` header to equal the api's configured public origin (`PUBLIC_ORIGIN`) and reject requests without one. Each api process serves exactly one origin: locally `api-e2e` has `e2e.localhost` as its own ([0015](0015-testing-vitest-playwright.md)), so one value per process is the whole list. Serving the API to another origin would need a decision first.
 
 ### Practices
 
