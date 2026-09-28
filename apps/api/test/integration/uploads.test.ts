@@ -250,6 +250,20 @@ describe('documents', () => {
     await expect(app.service('documents').patch(own.id, { title: 'renamed' }, as(member))).resolves.toMatchObject({ title: 'renamed' })
   })
 
+  it("cannot widen a user's list to others' documents by the query", async () => {
+    const theirs = await createDocument(other, 'theirs')
+    for (const query of [
+      { ownerId: other.id },
+      { $or: [{ ownerId: other.id }, { ownerId: member.id }] },
+      { ownerId: { $ne: member.id } },
+      { id: theirs.id },
+      { $or: [{ title: 'theirs' }] }
+    ]) {
+      const { data } = (await app.service('documents').find({ ...as(member), query })) as { data: Document[] }
+      expect(data.every((d) => d.ownerId === member.id), JSON.stringify(query)).toBe(true)
+    }
+  })
+
   it('lets operators and admins read, change and remove any document', async () => {
     const document = await createDocument(member)
     for (const user of [operator, admin]) {
@@ -257,6 +271,19 @@ describe('documents', () => {
       await expect(app.service('documents').patch(document.id, { title: user.role }, as(user))).resolves.toMatchObject({ title: user.role })
     }
     await app.service('documents').remove(document.id, as(operator))
+  })
+
+  it("lets only the owner replace a document's file (ADR 0011)", async () => {
+    const document = await createDocument(member)
+    for (const user of [operator, admin]) {
+      const theirs = await uploaded(user, PDF, 'application/pdf')
+      await expect(app.service('documents').patch(document.id, { fileId: theirs.id }, as(user))).rejects.toMatchObject({ code: 403 })
+      // Nothing changed: the owner's file stays attached, theirs unattached.
+      expect(await db()('files').where({ id: theirs.id }).first()).toMatchObject({ attached_at: null })
+    }
+    expect(await db()('documents').where({ id: document.id }).first()).toMatchObject({ file_id: document.fileId })
+    expect(await db()('files').where({ id: document.fileId }).first()).toMatchObject({ deleted_at: null })
+    expect((await download(member, document.fileId)).status).toBe(200)
   })
 
   it('releases the file on removal and on replacement, by soft deletion', async () => {

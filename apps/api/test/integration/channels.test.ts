@@ -78,7 +78,7 @@ const connect = async (): Promise<Connection> => {
   // build of socket.io-client, this import the ESM one.
   const client = createClient(socketio.default(socket as never), { Authentication: ManualAuthenticationClient })
   const connection: Connection = { socket, client, events: [], disconnects: [] }
-  for (const path of ['users', 'settings', 'documents'] as const) {
+  for (const path of ['users', 'settings', 'documents', 'data-exports'] as const) {
     for (const event of ['created', 'updated', 'patched', 'removed']) {
       client.service(path).on(event, (data: unknown) => connection.events.push({ path, event, data }))
     }
@@ -158,6 +158,23 @@ describe('who receives an event', () => {
     })
     expect(received(asOwner, 'documents')[0]).toMatchObject({ event: 'created', data: { id: document.id, title: 'Live' } })
     expect(received(asOther, 'documents')).toEqual([])
+  })
+
+  it("an export goes to the account that asked for it only, not to its subject (ADR 0013)", async () => {
+    const [asAdmin, asOperator, asSubject, asOther] = await Promise.all([
+      connectAs(admin),
+      connectAs(operator),
+      connectAs(member),
+      connectAs(other)
+    ])
+    // The row as a request leaves it; the worker's outcome arrives as the
+    // relay's internal patch.
+    const [row] = await db()('data_exports').insert({ subject_id: member.id, requested_by: admin.id }).returning<{ id: string }[]>('id')
+    await app.service('data-exports').patch(row!.id, { state: 'failed', completedAt: new Date().toISOString() })
+
+    await settle(() => expect(received(asAdmin, 'data-exports')).toHaveLength(1))
+    expect(received(asAdmin, 'data-exports')[0]).toMatchObject({ event: 'patched', data: { id: row!.id, subjectId: member.id } })
+    for (const connection of [asOperator, asSubject, asOther]) expect(received(connection, 'data-exports')).toEqual([])
   })
 
   it('the payload is the one REST returns, not the internal result', async () => {

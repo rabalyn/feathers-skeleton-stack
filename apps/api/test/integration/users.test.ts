@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Application } from '../../src/app.js'
-import type { User } from '../../src/services/users/users.schema.js'
+import type { User, UserQuery } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
 
 // ADR 0011's permission matrix is the specification: each `users` cell has a
@@ -117,6 +117,14 @@ describe('users: all user records — read for admin and operator only', () => {
   it('user cannot find another user by querying for them', async () => {
     const page = await app.service('users').find({ ...as(member), query: { tuId: 'us02othr' } })
     expect(page.total).toBe(0)
+  })
+
+  it('user cannot widen their scope with $or or $ne', async () => {
+    const queries: UserQuery[] = [{ $or: [{ id: other.id }, { id: member.id }] }, { id: { $ne: member.id } }, { $or: [{ role: 'admin' }] }]
+    for (const query of queries) {
+      const page = await app.service('users').find({ ...as(member), query })
+      expect(page.data.every((u) => u.id === member.id), JSON.stringify(query)).toBe(true)
+    }
   })
 
   it('user reading another user gets 404, exactly like a missing record', async () => {

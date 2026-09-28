@@ -460,7 +460,7 @@ services:
       # Local only (interpolated, so never in the generated units): the
       # buckets of the test runs, emptied by each run (ADR 0015, 0020), and
       # the source and target of the backup-and-restore check (ADR 0017).
-      S3_LOCAL_GRANTS: ${S3_LOCAL_GRANTS:-api:e2e-uploads:write api:e2e-exports:write worker:e2e-uploads:write worker:e2e-exports:write test:test-uploads:write test:test-purge:write test:test-exports:write backup:backup-check:read backup:restore-check:read}
+      S3_LOCAL_GRANTS: ${S3_LOCAL_GRANTS:-api:e2e-uploads:write api:e2e-exports:write worker:e2e-uploads:write worker:e2e-exports:write test:test-uploads:write test:test-purge:write test:test-exports:write test:test-data-exports:write backup:backup-check:read backup:restore-check:read}
     networks: [object, observability]
     volumes:
       - s3-data:/var/lib/garage

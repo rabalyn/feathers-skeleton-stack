@@ -5,6 +5,9 @@ import { WORKER_PREFIX, assertDatabaseName, maintenanceKnex } from './database.j
 // The object purge tests' own bucket: its orphan sweep sees every object in
 // it, so no other test file may write there (object-purge.test.ts).
 export const PURGE_TEST_BUCKET = 'test-purge'
+// Likewise the data export tests' exports bucket, for the export expiry's
+// orphan sweep (data-exports.test.ts).
+export const DATA_EXPORTS_TEST_BUCKET = 'test-data-exports'
 
 // A crashed run must not leak state into the next one (ADR 0015).
 const dropWorkerDatabases = async () => {
@@ -27,7 +30,7 @@ const dropWorkerDatabases = async () => {
 // the start of a run and at its end.
 const emptyTestBuckets = async () => {
   const config = await loadConfig(S3_KEYS)
-  for (const bucket of [config.s3UploadsBucket, config.s3ExportsBucket, PURGE_TEST_BUCKET]) {
+  for (const bucket of [config.s3UploadsBucket, config.s3ExportsBucket, PURGE_TEST_BUCKET, DATA_EXPORTS_TEST_BUCKET]) {
     const storage = new Storage(config, bucket)
     try {
       await storage.empty()

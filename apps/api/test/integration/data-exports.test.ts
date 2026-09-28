@@ -12,10 +12,13 @@ import type { DataExport } from '../../src/services/data-exports/data-exports.sc
 import type { Storage } from '../../src/storage.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp, loadValkeyConfig } from '../support/app.js'
+import { DATA_EXPORTS_TEST_BUCKET } from '../support/global-setup.js'
 
 // ADR 0013 over HTTP against the stack's Valkey, Garage and a worker of the
 // test's own: who may export whom, the job, the relayed outcome, the ZIP and
-// its download, and export expiry. ADR 0011's export cells.
+// its download, and export expiry. ADR 0011's export cells. Exports go to a
+// bucket of this file's own, since the expiry's orphan sweep removes every
+// object it has no row for.
 
 let app: Application
 let base: string
@@ -93,7 +96,7 @@ const unzip = async (body: Buffer) => {
 }
 
 beforeAll(async () => {
-  ;({ app } = await createTestApp())
+  ;({ app } = await createTestApp({ s3: { s3ExportsBucket: DATA_EXPORTS_TEST_BUCKET } }))
   const server = await app.listen(0)
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`
   maintenance = startMaintenance({
@@ -321,6 +324,183 @@ describe('building and downloading an export', () => {
   })
 })
 
+// Two people with the same kinds of data, all of it created over HTTP as the
+// web app does: each export holds exactly its subject's data, and nothing of
+// the other's, and neither reaches the other's exports (ADR 0011, 0013).
+describe("two people's exports", () => {
+  const JPEG = Buffer.concat([Buffer.from('ffd8ffe000104a46494600010100000100010000', 'hex'), Buffer.alloc(64, 2)])
+  const WEBP = Buffer.concat([Buffer.from('RIFF'), Buffer.from([0x24, 0, 0, 0]), Buffer.from('WEBPVP8 '), Buffer.alloc(32, 3)])
+  // Distinct bytes per file, so a stray file shows by its content too.
+  const pdf = (label: string) => Buffer.concat([PDF, Buffer.from(`%${label}\n`)])
+
+  interface Person {
+    user: User
+    sessionIds: string[]
+    // Everything the person uploaded, by file id.
+    uploads: Map<string, Buffer>
+    documentIds: string[]
+    avatarId: string
+    exportIds: string[]
+  }
+
+  const upload = async (user: User, body: Buffer, contentType: string, filename: string) => {
+    const response = await fetch(`${base}/files`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${await tokenFor(user)}`, 'content-type': contentType, 'x-file-name': encodeURIComponent(filename) },
+      body: new Uint8Array(body)
+    })
+    expect(response.status).toBe(201)
+    return ((await response.json()) as { id: string }).id
+  }
+
+  const setAvatar = async (user: User, fileId: string) =>
+    expect((await call(user, '/avatars', { method: 'POST', body: JSON.stringify({ fileId }) })).status).toBe(201)
+
+  // A person with `sessions` logins; their calls use the first.
+  const person = async (tuId: string, sessions: number): Promise<Person> => {
+    const user = await app.service('users').create({ tuId, givenName: tuId, surname: 'Test', email: `${tuId}@example.test`, authSource: 'saml' })
+    const sessionIds: string[] = []
+    for (let i = 0; i < sessions; i++) {
+      const { session } = await app.get('sessions').issue(user.id)
+      sessionIds.push(session.id)
+      if (i === 0) tokens.set(user.id, await app.service('authentication').createAccessToken({ sid: session.id, role: user.role }, { subject: user.id }))
+    }
+    return { user, sessionIds, uploads: new Map(), documentIds: [], avatarId: '', exportIds: [] }
+  }
+
+  const addDocument = async (someone: Person, title: string, body: Buffer) => {
+    const fileId = await upload(someone.user, body, 'application/pdf', `${title}.pdf`)
+    someone.uploads.set(fileId, body)
+    const response = await call(someone.user, '/documents', { method: 'POST', body: JSON.stringify({ title, fileId }) })
+    expect(response.status).toBe(201)
+    someone.documentIds.push(((await response.json()) as { id: string }).id)
+  }
+
+  const addAvatar = async (someone: Person, body: Buffer, contentType: string) => {
+    const fileId = await upload(someone.user, body, contentType, 'me')
+    await setAvatar(someone.user, fileId)
+    // A replaced avatar is released, and no longer the person's data.
+    if (someone.avatarId) someone.uploads.delete(someone.avatarId)
+    someone.uploads.set(fileId, body)
+    someone.avatarId = fileId
+  }
+
+  const exportOf = async (requester: User, subject: Person) => {
+    const created = (await (await requestExport(requester, subject.user.id)).json()) as DataExport
+    expect(await outcome(created.id)).toMatchObject({ state: 'ready' })
+    subject.exportIds.push(created.id)
+    return created.id
+  }
+
+  const download = async (user: User, exportId: string) => {
+    const response = await call(user, `/data-export-contents/${exportId}`)
+    expect(response.status).toBe(200)
+    const entries = await unzip(Buffer.from(await response.arrayBuffer()))
+    return { entries, json: JSON.parse(entries.get('export.json')!.toString('utf8')) }
+  }
+
+  // Every identifier of a person that must not appear in anyone else's export.
+  const identifiers = (someone: Person) => [
+    someone.user.id,
+    someone.user.tuId!,
+    someone.user.email!,
+    ...someone.sessionIds,
+    ...someone.uploads.keys(),
+    ...someone.documentIds,
+    ...someone.exportIds
+  ]
+
+  const expectOnly = async (
+    { entries, json }: Awaited<ReturnType<typeof download>>,
+    owner: Person,
+    stranger: Person,
+    expectedExports: string[]
+  ) => {
+    expect(json.subjectId).toBe(owner.user.id)
+    expect(json.account).toMatchObject({ id: owner.user.id, tuId: owner.user.tuId, avatarFileId: owner.avatarId })
+    expect(json.documents.map((d: { id: string }) => d.id).sort()).toEqual([...owner.documentIds].sort())
+    expect(json.sessions.map((s: { id: string }) => s.id).sort()).toEqual([...owner.sessionIds].sort())
+    expect(json.dataExports.map((e: { id: string }) => e.id).sort()).toEqual([...expectedExports].sort())
+    // Their files, bytes and all, and nothing else in the ZIP.
+    expect(json.files.map((f: { id: string }) => f.id).sort()).toEqual([...owner.uploads.keys()].sort())
+    for (const file of json.files as { id: string; path: string }[]) expect(entries.get(file.path)).toEqual(owner.uploads.get(file.id))
+    expect([...entries.keys()].sort()).toEqual(['export.json', ...json.files.map((f: { path: string }) => f.path)].sort())
+    // Every audit event concerns the owner.
+    for (const event of json.auditEvents as { actorId: string; resourceType: string; resourceId: string; detail: { subjectId?: string } | null }[]) {
+      expect(
+        event.actorId === owner.user.id ||
+          (event.resourceType === 'users' && event.resourceId === owner.user.id) ||
+          event.detail?.subjectId === owner.user.id,
+        JSON.stringify(event)
+      ).toBe(true)
+    }
+    // Nothing of the other person, anywhere.
+    const text = entries.get('export.json')!.toString('utf8')
+    for (const id of identifiers(stranger)) expect(text, id).not.toContain(id)
+    for (const bytes of stranger.uploads.values()) expect([...entries.values()].some((entry) => entry.includes(bytes))).toBe(false)
+  }
+
+  it('each holds exactly its own documents, avatar, sessions and exports, and only its requester gets it', async () => {
+    const alice = await person('us05alic', 3)
+    const bob = await person('us06bobb', 2)
+    await addDocument(alice, 'alice-1', pdf('alice-1'))
+    await addDocument(alice, 'alice-2', pdf('alice-2'))
+    await addDocument(bob, 'bob-1', pdf('bob-1'))
+    await addAvatar(alice, PNG, 'image/png')
+    await addAvatar(alice, WEBP, 'image/webp')
+    await addAvatar(bob, JPEG, 'image/jpeg')
+
+    const aliceFirst = await exportOf(alice.user, alice)
+    const aliceSecond = await exportOf(alice.user, alice)
+    const byAdmin = await exportOf(admin, bob)
+    const bobOwn = await exportOf(bob.user, bob)
+
+    // An export lists every export of its subject, itself included.
+    await expectOnly(await download(alice.user, aliceFirst), alice, bob, [aliceFirst])
+    await expectOnly(await download(alice.user, aliceSecond), alice, bob, [aliceFirst, aliceSecond])
+    await expectOnly(await download(bob.user, bobOwn), bob, alice, [byAdmin, bobOwn])
+    await expectOnly(await download(admin, byAdmin), bob, alice, [byAdmin])
+
+    // Each lists and fetches the exports they asked for, and nothing else,
+    // however the query is put.
+    const listed = async (user: User, query = '') =>
+      ((await (await call(user, `/data-exports${query}`)).json()) as { data: DataExport[] }).data.map((row) => row.id).sort()
+    expect(await listed(alice.user)).toEqual([aliceFirst, aliceSecond].sort())
+    expect(await listed(bob.user)).toEqual([bobOwn])
+    for (const query of [`?subjectId=${bob.user.id}`, `?$or[0][requestedBy]=${admin.id}`, `?requestedBy[$ne]=${alice.user.id}`]) {
+      expect(await listed(alice.user, query), query).toEqual([])
+    }
+    for (const [user, exportId] of [
+      [alice.user, bobOwn],
+      [alice.user, byAdmin],
+      [bob.user, aliceFirst],
+      [bob.user, byAdmin],
+      [operator, aliceFirst],
+      [operator, bobOwn],
+      [admin, bobOwn]
+    ] as const) {
+      expect((await call(user, `/data-exports/${exportId}`)).status, `${user.tuId} ${exportId}`).toBe(404)
+      expect((await call(user, `/data-export-contents/${exportId}`)).status, `${user.tuId} ${exportId}`).toBe(404)
+    }
+
+    // Neither reaches the other's documents, files or avatar.
+    for (const [user, stranger] of [
+      [alice.user, bob],
+      [bob.user, alice]
+    ] as const) {
+      const documents = ((await (await call(user, '/documents')).json()) as { data: { ownerId: string }[] }).data
+      expect(documents.length).toBeGreaterThan(0)
+      expect(documents.every((d) => d.ownerId === user.id)).toBe(true)
+      for (const id of stranger.documentIds) expect((await call(user, `/documents/${id}`)).status).toBe(404)
+      for (const id of stranger.uploads.keys()) {
+        expect((await call(user, `/files/${id}`)).status).toBe(404)
+        expect((await call(user, `/file-contents/${id}`)).status).toBe(404)
+      }
+      expect((await call(user, `/users/${stranger.user.id}`)).status).toBe(404)
+    }
+  })
+})
+
 describe('export expiry', () => {
   const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000)
 
@@ -342,12 +522,15 @@ describe('export expiry', () => {
     const orphan = randomUUID()
     await put(orphan)
 
-    // A fresh orphan is within the hour's grace; none here. Objects other
-    // test files leave in the tests' exports bucket count as orphans too.
+    // A fresh orphan is within the hour's grace; none here. The earlier
+    // tests' exports lost their rows to beforeEach, so they are orphans too.
+    const before = await knex()('dataExports').pluck('id')
+    let objects = 0
+    for await (const page of exports.list()) objects += page.filter((object) => !before.includes(object.key)).length
     const result = await exportExpiry(knex(), app.get('settings'), exports, { orphanGraceHours: 0 })
 
-    expect(result).toEqual({ expired: 2, stalled: 1, orphans: expect.any(Number) })
-    expect(result.orphans).toBeGreaterThanOrEqual(1)
+    expect(result).toEqual({ expired: 2, stalled: 1, orphans: objects })
+    expect(objects).toBeGreaterThanOrEqual(1)
     expect((await knex()('dataExports').pluck('id')).sort()).toEqual([recent, stalled].sort())
     expect(await knex()('dataExports').where({ id: stalled }).first()).toMatchObject({ state: 'failed' })
     expect(await exports.get(old)).toBeUndefined()
