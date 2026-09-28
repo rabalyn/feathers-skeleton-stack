@@ -31,7 +31,7 @@
     "@feathersjs/typebox": "5.0.50",
     "@node-saml/node-saml": "5.1.0",
     "@smithy/node-http-handler": "4.12.1",
-    "@xmldom/xmldom": "0.8.10",
+    "@xmldom/xmldom": "0.8.15",
     "bullmq": "6.3.8",
     "cron-parser": "5.10.1",
     "feathers-casl": "3.0.0",
