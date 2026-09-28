@@ -23,6 +23,10 @@ const resolveAction = createAliasResolver({
 
 export type AppAbility = MongoAbility
 
+// What an operator reads of someone else's session: everything but the
+// user agent (decided 2026-09-28, ADR 0011).
+const OPERATOR_SESSION_FIELDS = ['id', 'userId', 'issuedAt', 'lastUsedAt', 'idleExpiresAt', 'familyExpiresAt', 'revokedAt']
+
 export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
   const { can, build } = new AbilityBuilder<AppAbility>(createMongoAbility)
 
@@ -57,6 +61,9 @@ export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
   // admins and operators below.
   can('read', 'audit-events', { actorId: user.id })
 
+  // Sessions (ADR 0010, 0011): everyone sees and revokes their own logins.
+  can(['read', 'delete'], 'sessions', { userId: user.id })
+
   switch (user.role) {
     case 'admin':
       can('read', 'users')
@@ -88,6 +95,7 @@ export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
       can('read', 'mail-deliveries')
       // The queue view (ADR 0024): runtime state, read-only.
       can('read', 'queues')
+      can(['read', 'delete'], 'sessions')
       break
     case 'operator':
       can('read', 'users')
@@ -95,6 +103,8 @@ export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
       can('read', 'audit-events')
       can('read', 'files')
       can(['read', 'write', 'delete'], 'documents')
+      // Every session, but not the browser it was opened in.
+      can('read', 'sessions', OPERATOR_SESSION_FIELDS)
       break
     case 'user':
       // Their own documents only; lists are scoped by the same condition.

@@ -78,7 +78,7 @@ const connect = async (): Promise<Connection> => {
   // build of socket.io-client, this import the ESM one.
   const client = createClient(socketio.default(socket as never), { Authentication: ManualAuthenticationClient })
   const connection: Connection = { socket, client, events: [], disconnects: [] }
-  for (const path of ['users', 'settings', 'documents', 'data-exports'] as const) {
+  for (const path of ['users', 'settings', 'documents', 'data-exports', 'sessions'] as const) {
     for (const event of ['created', 'updated', 'patched', 'removed']) {
       client.service(path).on(event, (data: unknown) => connection.events.push({ path, event, data }))
     }
@@ -175,6 +175,30 @@ describe('who receives an event', () => {
     await settle(() => expect(received(asAdmin, 'data-exports')).toHaveLength(1))
     expect(received(asAdmin, 'data-exports')[0]).toMatchObject({ event: 'patched', data: { id: row!.id, subjectId: member.id } })
     for (const connection of [asOperator, asSubject, asOther]) expect(received(connection, 'data-exports')).toEqual([])
+  })
+
+  it("a revoked session goes to its owner, admins and operators, operators without its browser (ADR 0011)", async () => {
+    const [asAdmin, asOperator, asOwner, asOther] = await Promise.all([
+      connectAs(admin),
+      connectAs(operator),
+      connectAs(member),
+      connectAs(other)
+    ])
+    const { session } = await app.get('sessions').issue(member.id, { userAgent: 'Firefox' })
+    await app.service('sessions').remove(session.id, as(admin))
+
+    await settle(() => {
+      for (const connection of [asAdmin, asOperator, asOwner]) {
+        expect(received(connection, 'sessions')).toHaveLength(1)
+      }
+    })
+    for (const connection of [asAdmin, asOwner]) {
+      expect(received(connection, 'sessions')[0]).toMatchObject({ event: 'removed', data: { id: session.id, userAgent: 'Firefox' } })
+    }
+    const toOperator = received(asOperator, 'sessions')[0]
+    expect(toOperator).toMatchObject({ event: 'removed', data: { id: session.id, userId: member.id } })
+    expect(toOperator?.data).not.toHaveProperty('userAgent')
+    expect(received(asOther, 'sessions')).toEqual([])
   })
 
   it('the payload is the one REST returns, not the internal result', async () => {

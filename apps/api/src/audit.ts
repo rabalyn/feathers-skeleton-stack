@@ -20,6 +20,7 @@ export type AuditAction =
   | 'mail.template.activate'
   | 'mail.template.save'
   | 'session.reuse-detected'
+  | 'sessions.revoke'
   | 'settings.update'
   | 'users.erase'
   | 'users.patch'
