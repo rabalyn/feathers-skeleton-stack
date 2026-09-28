@@ -78,6 +78,7 @@ describe('deliver', () => {
     expect(to).toEqual({ name: `Erika ${user.surname}`, address: user.email })
     expect(mail.subject).toBe('Your data export is ready')
     expect(mail.text).toContain(`Hello Erika ${user.surname}`)
+    expect(mail.text).toContain(`the data export for the TU-ID ${user.tuId} you requested`)
     expect(mail.text).toContain(`${PUBLIC_ORIGIN}/profile`)
     const active = await knex()('mailTemplates').where({ kind: 'gdpr.export-ready', locale: 'en' }).first()
     expect(await row(id)).toMatchObject({ status: 'sent', revisionId: active.revisionId, attempts: 1, completedAt: expect.any(Date) })

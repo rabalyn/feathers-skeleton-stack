@@ -14,25 +14,29 @@ export const exportReady = defineMailKind({
       requestedAt: Type.String({ format: 'date-time' }),
       // An export of the recipient themselves, fetched from their profile;
       // otherwise one an admin asked for, fetched from the data requests page.
-      ownData: Type.Boolean()
+      ownData: Type.Boolean(),
+      // Whose data it holds; null for the break-glass account, which has
+      // no TU-ID.
+      subjectTuId: Type.Union([Type.String(), Type.Null()])
     },
     { additionalProperties: false }
   ),
   build: async (db, userId, { exportId }) => {
-    const row = await db('dataExports')
-      .where({ id: exportId, requestedBy: userId, state: 'ready' })
-      .first<{ subjectId: string; createdAt: Date } | undefined>('subjectId', 'createdAt')
+    const row = await db('dataExports as e')
+      .join('users as u', 'u.id', 'e.subjectId')
+      .where({ 'e.id': exportId, 'e.requestedBy': userId, 'e.state': 'ready' })
+      .first<{ subjectId: string; createdAt: Date; tuId: string | null } | undefined>('e.subjectId', 'e.createdAt', 'u.tuId')
     // Gone (expired, erased) or not ready: nothing to tell.
     if (!row) return null
-    return { requestedAt: row.createdAt.toISOString(), ownData: row.subjectId === userId }
+    return { requestedAt: row.createdAt.toISOString(), ownData: row.subjectId === userId, subjectTuId: row.tuId }
   },
-  sample: { requestedAt: '2026-09-28T09:30:00.000Z', ownData: true },
+  sample: { requestedAt: '2026-09-28T09:30:00.000Z', ownData: true, subjectTuId: 'ab12cdef' },
   defaults: {
     de: {
       subject: 'Ihr Datenexport ist bereit',
       body: `Hallo {{ recipient.givenName }} {{ recipient.surname }},
 
-der Datenexport, den Sie am {{ requestedAt | datetime }} angefordert haben, steht zum Herunterladen bereit.
+der Datenexport{% if subjectTuId %} für die TU-ID {{ subjectTuId }}{% endif %}, den Sie am {{ requestedAt | datetime }} angefordert haben, steht zum Herunterladen bereit.
 
 {% if ownData %}[Zum Export in Ihrem Profil]({{ app.url }}/profile){% else %}[Zum Export unter Datenanfragen]({{ app.url }}/gdpr){% endif %}
 
@@ -42,7 +46,7 @@ Der Export wird nach einigen Tagen automatisch gelöscht.`
       subject: 'Your data export is ready',
       body: `Hello {{ recipient.givenName }} {{ recipient.surname }},
 
-the data export you requested on {{ requestedAt | datetime }} is ready to download.
+the data export{% if subjectTuId %} for the TU-ID {{ subjectTuId }}{% endif %} you requested on {{ requestedAt | datetime }} is ready to download.
 
 {% if ownData %}[Go to the export in your profile]({{ app.url }}/profile){% else %}[Go to the export under data requests]({{ app.url }}/gdpr){% endif %}
 

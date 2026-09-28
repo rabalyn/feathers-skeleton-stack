@@ -60,6 +60,7 @@ test('a user asks for their data in English, and the ready notification arrives 
 
   const text = await arrived(inbox, UMA, 'Your data export is ready', since)
   expect(text).toContain('Hello Uma User')
+  expect(text).toContain('the data export for the TU-ID us01user you requested')
   expect(text).toContain('https://e2e.localhost:8443/profile')
 
   await setLanguage(page, 'English', 'Deutsch')
