@@ -1,22 +1,24 @@
 import { subject } from '@casl/ability'
-import { Forbidden, MethodNotAllowed, NotFound } from '@feathersjs/errors'
+import { MethodNotAllowed } from '@feathersjs/errors'
 import type { Id, NullableId, Params } from '@feathersjs/feathers'
+import type { AuthSession } from '../../auth/sessions.js'
 import { KnexService } from '@feathersjs/knex'
 import { hooks as schemaHooks, resolve, virtual } from '@feathersjs/schema'
 import { Type, getValidator, querySyntax, type Static } from '@feathersjs/typebox'
 import type { Application } from '../../app.js'
 import { recordAudit } from '../../audit.js'
-import { publishTo, roleChannel, userChannel } from '../../channels.js'
+import { publishTo, roleChannel } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
 import { PAGINATE } from '../../paginate.js'
 import { queryValidator } from '../../validators.js'
 
-// Sessions (ADR 0010, 0011): the caller's own logins, every login for
-// admins and operators. Only active sessions are listed; revoked and expired
-// ones are in the audit log, not here. Revoking is `remove`, which sets
-// revoked_at and ends the session's sockets but keeps the row, since reuse
-// detection needs it until the family expires. Sessions are created by
-// logging in, never through this service.
+// Sessions (ADR 0010, 0011): who is logged in, for admins and operators.
+// Only active sessions are listed; revoked and expired ones are in the audit
+// log, not here. Revoking is `remove`, which sets revoked_at and ends the
+// session's sockets but keeps the row, since reuse detection needs it until
+// the family expires. Sessions are created by logging in, never through this
+// service, so its events come from the session store: a login is `created`,
+// a refresh `patched`, any revocation `removed` (publishSession below).
 
 export const SESSIONS_PATH = 'sessions'
 export const SESSION_EXTERNAL_METHODS = ['find', 'get', 'remove'] as const
@@ -35,7 +37,7 @@ export const sessionSchema = Type.Object(
     familyExpiresAt: Type.String({ format: 'date-time' }),
     // Set only on the result of a revocation.
     revokedAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
-    // Absent where the caller may not see it: operators, on others' sessions.
+    // Absent where the caller may not see it: for operators.
     userAgent: Type.Optional(Type.Union([Type.String(), Type.Null()]))
   },
   { $id: 'Session', additionalProperties: false }
@@ -84,24 +86,12 @@ export class SessionService extends KnexService<Session, never, SessionParams> {
     super(options)
   }
 
-  // Revocation, one session at a time. The lookup carries the caller's
-  // query, into which feathers-casl has put the revoke conditions.
+  // Revocation, one session at a time; one no longer active is a 404.
   async _remove(id: null, params?: SessionParams): Promise<Session[]>
   async _remove(id: Id, params?: SessionParams): Promise<Session>
   async _remove(id: NullableId, params?: SessionParams): Promise<Session | Session[]> {
     if (id === null) throw new MethodNotAllowed('Sessions are revoked one at a time')
-    const session = await this._get(id, params).catch(async (error: unknown) => {
-      // A session the caller may read but not revoke is a 403, one they
-      // may not read or that is no longer active a 404 (ADR 0011).
-      const ability = params?.ability
-      if (error instanceof NotFound && ability) {
-        const readable = await this._get(id, { query: activeQuery() }).catch(() => undefined)
-        if (readable && ability.can('read', subject(SESSIONS_PATH, { ...readable }))) {
-          throw new Forbidden('Only its owner or an admin revokes a session')
-        }
-      }
-      throw error
-    })
+    const session = await this._get(id, params)
     await this.application.get('sessions').revoke(String(id))
     await recordAudit(this.application.get('knex'), {
       actorId: (params?.user as { id: string } | undefined)?.id ?? null,
@@ -116,12 +106,39 @@ export class SessionService extends KnexService<Session, never, SessionParams> {
 
 // Active only, whatever the caller asks for, and never more than the
 // columns above.
-const activeQuery = () => {
-  const now = new Date().toISOString()
-  return { $select: SESSION_COLUMNS, revokedAt: null, idleExpiresAt: { $gt: now }, familyExpiresAt: { $gt: now } } as SessionQuery
-}
 const activeOnly = async (context: HookContext<SessionService>) => {
-  context.params.query = { ...context.params.query, ...activeQuery() }
+  const now = new Date().toISOString()
+  context.params.query = {
+    ...context.params.query,
+    $select: SESSION_COLUMNS,
+    revokedAt: null,
+    idleExpiresAt: { $gt: now },
+    familyExpiresAt: { $gt: now }
+  } as SessionQuery
+}
+
+// The session store publishes the revocation, as it does every other one.
+const noEvent = async (context: HookContext<SessionService>) => {
+  context.event = null
+}
+
+// Publishes a change the session store made, in the external form a `get`
+// would return. The channel filter drops what a connection may not read
+// (ADR 0012), so the payload carries every field.
+export const publishSession = (app: Application, event: 'created' | 'patched' | 'removed', session: AuthSession) => {
+  const record: Session = {
+    id: session.id,
+    userId: session.userId,
+    issuedAt: toIso(session.issuedAt),
+    lastUsedAt: toIso(session.lastUsedAt),
+    idleExpiresAt: toIso(session.idleExpiresAt),
+    familyExpiresAt: toIso(session.familyExpiresAt),
+    revokedAt: session.revokedAt ? toIso(session.revokedAt) : null,
+    userAgent: session.userAgent
+  }
+  const method = { created: 'create', patched: 'patch', removed: 'remove' }[event]
+  const service = app.service(SESSIONS_PATH)
+  service.emit(event, record, { app, service, path: SESSIONS_PATH, method, params: {}, result: record, dispatch: record })
 }
 
 // Newest first unless the caller sorts.
@@ -143,16 +160,14 @@ export const sessions = (app: Application) => {
     before: {
       all: [schemaHooks.validateQuery(sessionQueryValidator), activeOnly],
       find: [newestFirst]
+    },
+    after: {
+      remove: [noEvent]
     }
   })
 
-  // A revocation concerns the session's owner, and the admins and operators
-  // who see all sessions (ADR 0011, 0012).
-  app.service(SESSIONS_PATH).publish(
-    publishTo(app, (session) => [userChannel(String(session.userId)), roleChannel('admin'), roleChannel('operator')], {
-      availableFields: SESSION_COLUMNS
-    })
-  )
+  // Sessions concern the admins and operators who see them (ADR 0011, 0012).
+  app.service(SESSIONS_PATH).publish(publishTo(app, () => [roleChannel('admin'), roleChannel('operator')]))
 }
 
 declare module '../../app.js' {

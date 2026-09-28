@@ -32,6 +32,7 @@
             no-caps
             :label="accountLabel(props.row.userId)"
             :title="t('sessions.filterBy')"
+            :data-session="props.row.id"
             @click="filterBy(props.row.userId)"
           />
         </q-td>
@@ -48,7 +49,6 @@
             icon="block"
             :label="t('sessions.revoke')"
             :loading="revoking === props.row.id"
-            :data-session="props.row.id"
             data-test="session-revoke"
             @click="revoke(props.row)"
           />
@@ -70,10 +70,11 @@ import { useFormat } from '@/composables/format'
 import { useNotify } from '@/composables/notify'
 import { useSessionStore } from '@/stores/session'
 
-// Every active session, for admins and operators (ADR 0010, 0011), most
-// recently used first; filtered by person through `?userId=`, which a click
-// on a person sets and the Users page links to. Admins revoke; operators do
-// not see the browser of other people's sessions.
+// Who is logged in, for admins and operators (ADR 0010, 0011): every active
+// session, most recently used first, following logins, refreshes and
+// revocations live (ADR 0012); filtered by person through `?userId=`, which
+// a click on a person sets and the Users page links to. Admins end
+// sessions; operators see no browser and end none.
 
 const api = useApi()
 const session = useSessionStore()
@@ -142,7 +143,7 @@ const columns = computed<NonNullable<QTableProps['columns']>>(() => [
   { name: 'user', field: 'userId', label: t('sessions.person'), align: 'left' },
   {
     name: 'browser',
-    // Absent for operators on other people's sessions (ADR 0011).
+    // Absent for operators (ADR 0011).
     field: (row: Session) => (row.userAgent === undefined ? '—' : (describeUserAgent(row.userAgent) ?? t('sessions.unknownBrowser'))),
     label: t('sessions.browser'),
     align: 'left'

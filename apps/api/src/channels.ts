@@ -78,14 +78,9 @@ const dispatched = (data: unknown, context: HookContext): unknown => {
 
 // Builds a service publisher from the candidate channels of an event. The
 // per-connection filter runs on the resolved payload, and whatever it cannot
-// place goes nowhere. A service whose rules restrict fields names all of its
-// fields, so that a rule without a field list grants them all.
+// place goes nowhere.
 export const publishTo =
-  (
-    app: Application,
-    candidates: (payload: Record<string, unknown>, context: HookContext) => string[],
-    { availableFields }: { availableFields?: string[] } = {}
-  ) =>
+  (app: Application, candidates: (payload: Record<string, unknown>, context: HookContext) => string[]) =>
   (data: unknown, context: HookContext): ReturnType<typeof getChannelsWithReadAbility> => {
     const payload = dispatched(data, context)
     if (!payload || typeof payload !== 'object') {
@@ -97,11 +92,7 @@ export const publishTo =
     const names = candidates(payload as Record<string, unknown>, context).filter((name) => app.channels.includes(name))
     if (!names.length) return undefined
     const channels = app.channel(names)
-    return getChannelsWithReadAbility(app, payload, context, {
-      channels,
-      channelOnError: [],
-      ...(availableFields ? { availableFields } : {})
-    })
+    return getChannelsWithReadAbility(app, payload, context, { channels, channelOnError: [] })
   }
 
 export const channels = (app: Application) => {

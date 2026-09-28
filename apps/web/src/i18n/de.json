@@ -311,10 +311,7 @@
     }
   },
   "sessions": {
-    "mine": "Wo ich angemeldet bin",
     "current": "Dieser Browser",
-    "since": "angemeldet {date}",
-    "lastUsed": "zuletzt aktiv {date}",
     "revoke": "Sitzung beenden",
     "revoked": "Sitzung beendet",
     "empty": "Keine aktiven Sitzungen",

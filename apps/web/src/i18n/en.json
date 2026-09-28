@@ -311,10 +311,7 @@
     }
   },
   "sessions": {
-    "mine": "Where I am logged in",
     "current": "This browser",
-    "since": "logged in {date}",
-    "lastUsed": "last active {date}",
     "revoke": "End session",
     "revoked": "Session ended",
     "empty": "No active sessions",
