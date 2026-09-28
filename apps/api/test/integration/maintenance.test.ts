@@ -68,7 +68,13 @@ describe('maintenance queue', () => {
   it('runs retention cleanup when the job arrives', async () => {
     const job = await maintenance.queue.add(RETENTION_CLEANUP, {})
     const result = await job.waitUntilFinished(events, 10_000)
-    expect(result).toEqual({ auditEvents: expect.any(Number), sessions: expect.any(Number), mailDeliveries: expect.any(Number) })
+    expect(result).toEqual({
+      auditEvents: expect.any(Number),
+      sessions: expect.any(Number),
+      mailDeliveries: expect.any(Number),
+      samlRequests: expect.any(Number),
+      samlAssertions: expect.any(Number)
+    })
   })
 
   it('runs export expiry when the job arrives', async () => {

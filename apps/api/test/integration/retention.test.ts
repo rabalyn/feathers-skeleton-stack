@@ -31,6 +31,8 @@ beforeEach(async () => {
   await knex()('authSessions').delete()
   await knex()('auditEvents').delete()
   await knex()('mailDeliveries').delete()
+  await knex()('samlRequests').delete()
+  await knex()('samlAssertions').delete()
 })
 
 const auditEvent = (occurredAt: Date, action: string) =>
@@ -98,11 +100,29 @@ describe('retention cleanup', () => {
     expect(await knex()('mailDeliveries').pluck('status')).toEqual(['skipped'])
   })
 
+  it('deletes expired SAML requests and replay cache entries, keeps the live ones (ADR 0008)', async () => {
+    const past = new Date(Date.now() - 60_000)
+    const future = new Date(Date.now() + 60_000)
+    await knex()('samlRequests').insert([
+      { id: '_expired-1', expiresAt: past },
+      { id: '_expired-2', expiresAt: past },
+      { id: '_live', expiresAt: future }
+    ])
+    await knex()('samlAssertions').insert([
+      { id: '_used-1', expiresAt: past },
+      { id: '_used-2', expiresAt: future }
+    ])
+    const result = await retentionCleanup(knex(), app.get('settings'), 1)
+    expect(result).toMatchObject({ samlRequests: 2, samlAssertions: 1 })
+    expect(await knex()('samlRequests').pluck('id')).toEqual(['_live'])
+    expect(await knex()('samlAssertions').pluck('id')).toEqual(['_used-2'])
+  })
+
   it('follows the runtime settings', async () => {
     await auditEvent(daysAgo(10), 'ten days')
     await knex()('settings').where({ key: 'auditRetentionDays' }).update({ value: JSON.stringify(7) })
     try {
-      expect(await retentionCleanup(knex(), app.get('settings'))).toEqual({ auditEvents: 1, sessions: 0, mailDeliveries: 0 })
+      expect(await retentionCleanup(knex(), app.get('settings'))).toEqual({ auditEvents: 1, sessions: 0, mailDeliveries: 0, samlRequests: 0, samlAssertions: 0 })
     } finally {
       await knex()('settings').where({ key: 'auditRetentionDays' }).update({ value: JSON.stringify(90) })
     }
@@ -110,6 +130,6 @@ describe('retention cleanup', () => {
 
   it('does nothing when nothing is due', async () => {
     await auditEvent(new Date(), 'now')
-    expect(await retentionCleanup(knex(), app.get('settings'))).toEqual({ auditEvents: 0, sessions: 0, mailDeliveries: 0 })
+    expect(await retentionCleanup(knex(), app.get('settings'))).toEqual({ auditEvents: 0, sessions: 0, mailDeliveries: 0, samlRequests: 0, samlAssertions: 0 })
   })
 })
