@@ -30,6 +30,11 @@ A **mail kind** is declared in code with `defineMailKind()` and registered in on
 
 Admins cannot create kinds: a template nothing sends and nothing supplies variables to is useless, and a recipient query is code, not configuration. Admins never write queries.
 
+The skeleton registers two kinds of its own (`apps/api/src/mail/registry.ts`), which the end-to-end suite proves arrive:
+
+- **`gdpr.export-ready`**, a notification: the worker sends it in the transaction that marks a GDPR export ready ([0013](0013-gdpr-export-and-retention.md)), to the account that asked for it, with a link to where that account fetches it. It is a feature of the skeleton; products keep it.
+- **`documents.stale-reminder`**, a campaign on the example documents: every owner of documents unchanged for `olderThanDays` gets one mail listing them. It has the shape a product's campaign will have (the admin's choice as a parameter, a list per recipient built at send time), and a product replaces it with its own.
+
 ### Recipients are accounts
 
 A mail always goes to a user id. The address is the user's directory email and the language is the user's `locale` ([0009](0009-tu-id-identity-model.md)). There are no free-form addresses, so export, erasure and the registry cover mail without anything new ([0013](0013-gdpr-export-and-retention.md)). At send time a recipient that is disabled, erased or without an email is skipped and recorded as such. The break-glass account is never a recipient.
@@ -38,7 +43,7 @@ The user record gains a **`locale`** column (`de` or `en`, default `de`, the UI'
 
 ### Templates: Liquid in Markdown, inside a layout owned by code
 
-- A template is a **subject and a Markdown body per kind and locale**, written in **LiquidJS** with `strictVariables` and `strictFilters`, and a fixed filter set (dates and numbers formatted for the locale, among others). Liquid has no access to anything except the variables it is given, so an admin cannot reach server state through a template.
+- A template is a **subject and a Markdown body per kind and locale**, written in **LiquidJS** with `strictVariables` and `strictFilters`, and a fixed filter set: `date`, `datetime` and `number`, formatted for the recipient's locale, and of LiquidJS's built-ins only `default`, `upcase`, `downcase`, `capitalize`, `size`, `first`, `last`, `join`, `plus`, `minus` and `round`. Any other filter fails the check on save. The set is small on purpose: every filter is one more thing to reason about next to the output escaping below. Liquid has no access to anything except the variables it is given, so an admin cannot reach server state through a template.
 - On save, a template is checked against the kind's `variables` schema: every variable path it uses must exist, which LiquidJS's static analysis reports; it must then render against `sample` without error. A template that fails is refused with the offending line. Both locales must exist for every kind, as the i18n lint requires for the UI ([0014](0014-frontend-quasar-vue.md)).
 - Rendering is Liquid, then Markdown (`markdown-it` with raw HTML disabled), then the **MJML layout in code**, which carries the product's name and the footer. The same Markdown is rendered to the plain-text part. Admins edit content, never the HTML frame, so they cannot break how the mail renders across clients.
 - **Every value a template outputs is escaped for Markdown and HTML** (LiquidJS `outputEscape`). A person whose name contains `[x](https://…)` or `<img>` gets it shown as text, never as a link or markup.
