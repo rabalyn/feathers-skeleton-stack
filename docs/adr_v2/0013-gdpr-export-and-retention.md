@@ -25,7 +25,7 @@ The application processes personal data of university members under GDPR. Data s
 
 ### Retention is a runtime setting
 
-Retention periods the application enforces are runtime settings in PostgreSQL ([0025](0025-runtime-settings.md)), seeded with defaults by the bootstrap and editable by `admin`. Retention enforced by Loki and Prometheus is deployment configuration, because those stores read their own configuration files; it is also a GDPR guarantee that is better kept out of a UI.
+Retention periods the application enforces are runtime settings in PostgreSQL ([0025](0025-runtime-settings.md)), seeded with defaults by the `migrate` job and editable by `admin`. Retention enforced by Loki and Prometheus is deployment configuration, because those stores read their own configuration files; it is also a GDPR guarantee that is better kept out of a UI.
 
 | Data | Default | Kind | Enforced by |
 | --- | --- | --- | --- |
@@ -77,6 +77,6 @@ A **record of processing activities** (Art. 30 GDPR) and a **data protection imp
 ## Consequences
 
 - Export completeness is a maintained invariant with a test behind it, rather than a claim.
-- Retention can be changed at runtime without a release; the bootstrap guarantees every setting exists.
+- Retention can be changed at runtime without a release; `migrate` guarantees every setting exists.
 - Erased users remain visible in audit history as a pseudonymous id, which is the intended balance between accountability and erasure.
 - Restores carry two mandatory post-steps (session revocation, erasure replay); skipping either reinstates data or access that was removed.
