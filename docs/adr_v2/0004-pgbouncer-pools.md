@@ -57,5 +57,5 @@ PgBouncer is stopped with **SIGINT**, its safe shutdown: transactions in progres
 ## Consequences
 
 - A parallel test run of any width is bounded by `max_user_connections` rather than by PostgreSQL's `max_connections`.
-- Application code carries a small set of rules that are easy to violate accidentally; a lint rule for session-level `SET` and `pg_advisory_lock` enforces them.
+- Application code carries a small set of rules that are easy to violate accidentally; an ESLint rule over `apps/api` refuses session-level `SET` and session advisory locks (`pg_advisory_lock`, `pg_try_advisory_lock` and their unlocks) in SQL strings. `migrate`, which connects directly, disables it for its one `SET lock_timeout`. `LISTEN`/`NOTIFY` and temp tables are not linted; they have no use here yet.
 - Pool saturation is visible through `pgbouncer-exporter` and the API's own pool metrics ([0022](0022-observability-and-alerting.md)).
