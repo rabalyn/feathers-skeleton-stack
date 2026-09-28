@@ -418,6 +418,23 @@ breakglass_alert_check() {
   wait_alert_mail "Break-glass login" "$since"
 }
 
+# The test directory's accounts (containers/ldap/seed/users.ldif) with
+# their roles, as an administrator would assign them: a login refreshes
+# directory fields but never the role (ADR 0009, 0011). `up` gives them to
+# the local `app` after every start, restoring a role changed by hand; the
+# e2e run to its fresh database.
+seed_test_accounts() { # <database>
+  podman exec -i -u postgres postgres psql -q -v ON_ERROR_STOP=1 -d "$1" <<'SQL' >/dev/null
+INSERT INTO users (tu_id, given_name, surname, email, role, enabled, auth_source) VALUES
+  ('ad01admn', 'Ada', 'Admin', 'ada.admin@example.org', 'admin', true, 'saml'),
+  ('op01oper', 'Otto', 'Operator', 'otto.operator@example.org', 'operator', true, 'saml'),
+  ('us01user', 'Uma', 'User', 'uma.user@example.org', 'user', true, 'saml'),
+  ('us02othr', 'Olaf', 'Other', 'olaf.other@example.org', 'user', true, 'saml')
+ON CONFLICT (tu_id) DO UPDATE SET role = EXCLUDED.role, enabled = true, updated_at = now()
+  WHERE users.role IS DISTINCT FROM EXCLUDED.role OR NOT users.enabled;
+SQL
+}
+
 # The e2e suite's own api, worker and database (ADR 0015), fresh for every
 # run: `app_e2e` is dropped, created like `app` in containers/postgres/initdb
 # and migrated, then api-e2e and worker-e2e start on it. Nothing of the
@@ -437,16 +454,10 @@ SQL
   compose --profile test up -d --force-recreate --no-deps api-e2e worker-e2e >/dev/null 2>&1
   wait_healthy api-e2e 60
   wait_healthy worker-e2e 60
-  # The test accounts with their roles, as an administrator would assign
-  # them; a login refreshes directory fields but never the role (ADR 0009,
-  # 0011).
+  seed_test_accounts "$E2E_DATABASE"
   podman exec -i -u postgres postgres psql -q -v ON_ERROR_STOP=1 -d "$E2E_DATABASE" <<'SQL' >/dev/null
+-- Erased by the GDPR spec; never logs in.
 INSERT INTO users (tu_id, given_name, surname, role, enabled, auth_source) VALUES
-  ('ad01admn', 'Ada', 'Admin', 'admin', true, 'saml'),
-  ('op01oper', 'Otto', 'Operator', 'operator', true, 'saml'),
-  ('us01user', 'Uma', 'User', 'user', true, 'saml'),
-  ('us02othr', 'Olaf', 'Other', 'user', true, 'saml'),
-  -- Erased by the GDPR spec; never logs in.
   ('us03gone', 'Greta', 'Gone', 'user', true, 'saml');
 -- Mail (ADR 0027) is not throttled here: runs follow each other within
 -- the production window, on a queue prefix that outlives the database.
@@ -642,6 +653,8 @@ case $cmd in
       die "initialising the backup target failed; see: podman logs backup"
     idp_setup
     ensure_breakglass
+    seed_test_accounts app
+    log "test accounts have their roles: ad01admn admin, op01oper operator, us01user and us02othr user"
     ;;
   setup) setup ;;
   idp) idp_setup ;;
