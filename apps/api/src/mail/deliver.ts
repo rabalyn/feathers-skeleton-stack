@@ -70,17 +70,10 @@ const skipReason = (user: RecipientRow | undefined): SkipReason | undefined => {
 // The wording: the revision a campaign pinned when it was sent, or the
 // template active now.
 const revisionFor = async (knex: Knex, delivery: DeliveryRow, locale: Locale) => {
-  const revisionId: string | undefined = delivery.campaignId
-    ? ((
-        await knex('mailCampaigns')
-          .where({ id: delivery.campaignId })
-          .first<{ revisions: Record<string, string> } | undefined>('revisions')
-      )?.revisions[locale] ?? undefined)
-    : (
-        await knex('mailTemplates')
-          .where({ kind: delivery.kind, locale })
-          .first<{ revisionId: string } | undefined>('revisionId')
-      )?.revisionId
+  const pinned = delivery.campaignId
+    ? knex('mailCampaignRevisions').where({ campaignId: delivery.campaignId, locale })
+    : knex('mailTemplates').where({ kind: delivery.kind, locale })
+  const revisionId = (await pinned.first<{ revisionId: string } | undefined>('revisionId'))?.revisionId
   if (!revisionId) return undefined
   return knex('mailTemplateRevisions')
     .where({ id: revisionId })

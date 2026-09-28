@@ -28,6 +28,17 @@ export const EXPORT_JOB_OPTIONS: JobsOptions = {
   removeOnFail: { count: 500 }
 }
 
+// The worker's recurring jobs, and resolving a campaign's recipients
+// (ADR 0024, 0027); job schedulers live in jobs/maintenance.ts.
+export const MAINTENANCE_QUEUE = 'maintenance'
+export const RESOLVE_CAMPAIGN = 'resolve-campaign'
+
+// The job id is the campaign's id.
+export interface CampaignJob {
+  campaignId: string
+  requestId?: string
+}
+
 // Mail (ADR 0027): one job per delivery, on a queue of its own so a large
 // campaign never delays the daily jobs or exports. The job id is the
 // delivery's id. A temporary SMTP failure is retried with backoff, five

@@ -20,6 +20,11 @@ import type { DATA_EXPORT_EXTERNAL_METHODS } from './services/data-exports/data-
 import type { Erasure, ErasureData, ERASURE_EXTERNAL_METHODS } from './services/erasures/erasures.js'
 import type { AuditEvent, AuditEventQuery, AUDIT_EVENT_EXTERNAL_METHODS } from './services/audit-events/audit-events.js'
 import type {
+  MailCampaign,
+  MailCampaignData,
+  MailCampaignPreview,
+  MailCampaignPreviewData,
+  MailCampaignQuery,
   MailKindInfo,
   MailPreview,
   MailPreviewData,
@@ -36,6 +41,7 @@ import type {
   MAIL_TEMPLATE_EXTERNAL_METHODS,
   MAIL_TEMPLATE_REVISION_EXTERNAL_METHODS
 } from './services/mail/mail-templates.js'
+import type { MAIL_CAMPAIGN_EXTERNAL_METHODS, MAIL_CAMPAIGN_PREVIEW_EXTERNAL_METHODS } from './services/mail/mail-campaigns.js'
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
 export type { Setting, SettingPatch, SettingQuery } from './services/settings/settings.schema.js'
@@ -49,6 +55,11 @@ export type { DataExport, DataExportData, DataExportQuery } from './services/dat
 export type { Erasure, ErasureData } from './services/erasures/erasures.js'
 export type { AuditEvent, AuditEventQuery } from './services/audit-events/audit-events.js'
 export type {
+  MailCampaign,
+  MailCampaignData,
+  MailCampaignPreview,
+  MailCampaignPreviewData,
+  MailCampaignQuery,
   MailKindInfo,
   MailPreview,
   MailPreviewData,
@@ -124,6 +135,15 @@ export interface ClientServiceTypes {
     typeof MAIL_TEMPLATE_REVISION_EXTERNAL_METHODS
   >
   'mail-previews': External<ClientService<MailPreview, MailPreviewData, never, never, Params>, typeof MAIL_PREVIEW_EXTERNAL_METHODS>
+  // Campaigns, sent by hand after a preview for an actual recipient.
+  'mail-campaigns': External<
+    ClientService<MailCampaign, MailCampaignData, never, Paginated<MailCampaign>, Params<MailCampaignQuery>>,
+    typeof MAIL_CAMPAIGN_EXTERNAL_METHODS
+  >
+  'mail-campaign-previews': External<
+    ClientService<MailCampaignPreview, MailCampaignPreviewData, never, never, Params>,
+    typeof MAIL_CAMPAIGN_PREVIEW_EXTERNAL_METHODS
+  >
 }
 
 export type ClientApplication = Application<ClientServiceTypes>

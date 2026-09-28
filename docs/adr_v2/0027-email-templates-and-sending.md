@@ -61,9 +61,9 @@ Product code calls `mail.notify(trx, kind, userId, params)` **inside the transac
 
 ### Campaigns are sent by an admin, and only by hand
 
-The **Mailings** page lists the campaign kinds. The admin picks one and fills its parameters in a form generated from the `params` schema (strings, numbers, dates, booleans and enums; nothing else is supported). The page shows the number of recipients and a preview rendered for one actual recipient, in each locale.
+The **Mailings** page lists the campaign kinds. The admin picks one and fills its parameters in a form generated from the `params` schema (strings, numbers, dates, booleans and enums; nothing else is supported). The page shows the number of recipients, how long sending them takes at the sending limit, and a preview rendered for one actual recipient, in each locale: the first, by surname, who would get a mail. The count is what `recipients()` yields; accounts skipped at send time (disabled, erased, without email) are counted and then shown as skipped in the campaign's progress.
 
-On confirmation the API writes a `mail_campaigns` row and an audit event (`mail.campaign.send`) in one transaction, pinning the active revision of each locale, so what is sent is what was previewed even if someone edits the template meanwhile. The worker then runs `recipients()`, writes one `mail_deliveries` row per recipient (unique per campaign and user, so a rerun adds no duplicates) and enqueues one job per delivery.
+On confirmation the API writes a `mail_campaigns` row and an audit event (`mail.campaign.send`) in one transaction, pinning the active revision of each locale, so what is sent is what was previewed even if someone edits the template meanwhile. The worker then runs `recipients()`, writes one `mail_deliveries` row per recipient (unique per campaign and user, so a rerun adds no duplicates) and enqueues one job per delivery. That job runs on the `maintenance` queue, whose sweep also re-enqueues a campaign left pending; the pinned revisions are rows of `mail_campaign_revisions`, one per locale.
 
 **There is no scheduled sending**, by decision: every campaign is started by a person, who sees the recipient count and the preview first. A product that wants a weekly reminder has an admin send it weekly.
 

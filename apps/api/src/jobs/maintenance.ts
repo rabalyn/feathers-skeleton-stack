@@ -5,10 +5,23 @@ import { Counter, Gauge, Histogram, type Registry } from 'prom-client'
 import type { SettingsStore } from '../settings/store.js'
 import type { Storage } from '../storage.js'
 import { buildExport } from '../gdpr/export.js'
+import { resolveCampaign } from '../mail/campaigns.js'
 import { PermanentMailFailure, deliver } from '../mail/deliver.js'
 import { MailOutbox } from '../mail/outbox.js'
 import type { MailSender } from '../mail/sender.js'
-import { BUILD_EXPORT, DATA_EXPORTS_QUEUE, EXPORT_JOB_OPTIONS, MAIL_QUEUE, QUEUE_PREFIX, SEND_MAIL, type ExportJob, type MailJob } from './queues.js'
+import {
+  BUILD_EXPORT,
+  DATA_EXPORTS_QUEUE,
+  EXPORT_JOB_OPTIONS,
+  MAIL_QUEUE,
+  MAINTENANCE_QUEUE,
+  QUEUE_PREFIX,
+  RESOLVE_CAMPAIGN,
+  SEND_MAIL,
+  type CampaignJob,
+  type ExportJob,
+  type MailJob
+} from './queues.js'
 import { exportExpiry } from './export-expiry.js'
 import { objectPurge } from './object-purge.js'
 import { retentionCleanup } from './retention.js'
@@ -18,8 +31,7 @@ import { retentionCleanup } from './retention.js'
 // however many workers run; and `data-exports`, filled by the api on request
 // (ADR 0013).
 
-export const MAINTENANCE_QUEUE = 'maintenance'
-export { BUILD_EXPORT, DATA_EXPORTS_QUEUE, QUEUE_PREFIX, queueConnection } from './queues.js'
+export { BUILD_EXPORT, DATA_EXPORTS_QUEUE, MAINTENANCE_QUEUE, QUEUE_PREFIX, queueConnection } from './queues.js'
 
 export const RETENTION_CLEANUP = 'retention-cleanup'
 export const OBJECT_PURGE = 'object-purge'
@@ -165,6 +177,8 @@ export const startMaintenance = ({
             return exportExpiry(knex, settings, exports)
           case MAIL_SWEEP:
             return mail.sweep(knex)
+          case RESOLVE_CAMPAIGN:
+            return resolveCampaign(knex, mail, (job.data as CampaignJob).campaignId)
           default:
             throw new UnrecoverableError(`unknown job ${job.name}`)
         }

@@ -8,6 +8,7 @@ import { files } from './files/files.js'
 import { settings } from './settings/settings.js'
 import { avatars } from './users/avatars.js'
 import { locales } from './users/locales.js'
+import { mailCampaigns } from './mail/mail-campaigns.js'
 import { mailTemplates } from './mail/mail-templates.js'
 import { users } from './users/users.js'
 
@@ -23,4 +24,5 @@ export const services = (app: Application) => {
   app.configure(erasures)
   app.configure(auditEvents)
   app.configure(mailTemplates)
+  app.configure(mailCampaigns)
 }

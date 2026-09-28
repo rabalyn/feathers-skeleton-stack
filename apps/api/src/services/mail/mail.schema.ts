@@ -114,3 +114,77 @@ export interface MailPreview {
   html: string
   text: string
 }
+
+// A campaign as sent (ADR 0027): the admin's choices, the revisions it
+// pinned per locale, and how far its deliveries have got.
+export const mailCampaignSchema = Type.Object(
+  {
+    id: Type.String({ format: 'uuid' }),
+    kind: kindKey,
+    params: Type.Record(Type.String(), Type.Unknown()),
+    sentBy: Type.String({ format: 'uuid' }),
+    // `pending` until the worker has resolved its recipients.
+    status: Type.Union([Type.Literal('pending'), Type.Literal('queued')]),
+    recipientCount: Type.Union([Type.Integer(), Type.Null()]),
+    createdAt: Type.String({ format: 'date-time' }),
+    queuedAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
+    revisions: Type.Record(Type.String(), Type.String({ format: 'uuid' })),
+    progress: Type.Object({ pending: Type.Integer(), sent: Type.Integer(), failed: Type.Integer(), skipped: Type.Integer() })
+  },
+  { $id: 'MailCampaign', additionalProperties: false }
+)
+export type MailCampaign = Static<typeof mailCampaignSchema>
+
+export const mailCampaignResolver = resolve<MailCampaign, HookContext>({
+  createdAt: virtual(async (campaign) => toIso(campaign.createdAt)),
+  queuedAt: virtual(async (campaign) => (campaign.queuedAt ? toIso(campaign.queuedAt) : null)),
+  revisions: virtual(async (campaign, context) => {
+    const rows = await context.app
+      .get('knex')('mailCampaignRevisions')
+      .where({ campaignId: campaign.id })
+      .select<{ locale: string; revisionId: string }[]>('locale', 'revisionId')
+    return Object.fromEntries(rows.map((row) => [row.locale, row.revisionId]))
+  }),
+  progress: virtual(async (campaign, context) => {
+    const rows = await context.app
+      .get('knex')('mailDeliveries')
+      .where({ campaignId: campaign.id })
+      .groupBy('status')
+      .select<{ status: string; count: string }[]>('status', context.app.get('knex').raw('count(*) AS count'))
+    const counts = Object.fromEntries(rows.map((row) => [row.status, Number(row.count)]))
+    return { pending: counts.pending ?? 0, sent: counts.sent ?? 0, failed: counts.failed ?? 0, skipped: counts.skipped ?? 0 }
+  })
+})
+export const mailCampaignExternalResolver = resolve<MailCampaign, HookContext>({})
+
+export const mailCampaignDataSchema = Type.Object(
+  { kind: kindKey, params: Type.Record(Type.String(), Type.Unknown()) },
+  { $id: 'MailCampaignData', additionalProperties: false }
+)
+export type MailCampaignData = Static<typeof mailCampaignDataSchema>
+export const mailCampaignDataValidator = getValidator(mailCampaignDataSchema, dataValidator)
+
+export const mailCampaignQueryProperties = Type.Pick(mailCampaignSchema, ['id', 'kind', 'sentBy', 'status', 'createdAt'])
+export const mailCampaignQuerySchema = Type.Intersect(
+  [querySyntax(mailCampaignQueryProperties), Type.Object({}, { additionalProperties: false })],
+  { additionalProperties: false }
+)
+export type MailCampaignQuery = Static<typeof mailCampaignQuerySchema>
+export const mailCampaignQueryValidator = getValidator(mailCampaignQuerySchema, queryValidator)
+
+// What sending would do: whom it reaches, how long it takes at the sending
+// limit, and how it reads for one of them in each locale.
+export const mailCampaignPreviewDataSchema = Type.Object(
+  { kind: kindKey, params: Type.Record(Type.String(), Type.Unknown()) },
+  { $id: 'MailCampaignPreviewData', additionalProperties: false }
+)
+export type MailCampaignPreviewData = Static<typeof mailCampaignPreviewDataSchema>
+export const mailCampaignPreviewDataValidator = getValidator(mailCampaignPreviewDataSchema, dataValidator)
+
+export interface MailCampaignPreview {
+  kind: string
+  recipientCount: number
+  estimatedSeconds: number
+  recipient: { id: string; givenName: string; surname: string } | null
+  previews: Record<string, MailPreview> | null
+}

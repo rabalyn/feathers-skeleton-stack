@@ -201,6 +201,18 @@ export const PERSONAL_DATA: readonly RegistryEntry[] = [
   },
   {
     kind: 'table',
+    table: 'mail_campaigns',
+    userColumns: ['sent_by'],
+    export: {
+      key: 'mailCampaignsSent',
+      collect: (knex, userId) =>
+        knex('mailCampaigns').where({ sentBy: userId }).orderBy('createdAt').select('id', 'kind', 'params', 'recipientCount', 'createdAt')
+    },
+    erasure: 'keep',
+    note: 'Campaigns an admin sent (ADR 0027), by surrogate id, like audit events'
+  },
+  {
+    kind: 'table',
     table: 'mail_deliveries',
     userColumns: ['user_id'],
     export: {
