@@ -58,6 +58,10 @@ export const MAIL_JOB_OPTIONS: JobsOptions = {
   removeOnFail: { count: 1000 }
 }
 
+// Every queue, in the order the admin's queue view lists them. A product's
+// new queue is added here.
+export const QUEUE_NAMES = [MAINTENANCE_QUEUE, DATA_EXPORTS_QUEUE, MAIL_QUEUE] as const
+
 // BullMQ opens its own connections from these options, with the settings
 // blocking commands need; the rate limiter's fail-fast connection would not
 // do (ADR 0010).

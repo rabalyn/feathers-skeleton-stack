@@ -7,7 +7,7 @@ import { db } from '../support/worker-database.js'
 describe('database access through PgBouncer', () => {
   it('is connected to this worker’s own database', async () => {
     const { rows } = await db().raw<{ rows: { name: string }[] }>('SELECT current_database() AS name')
-    expect(rows[0]?.name).toMatch(/^test_w\d+$/)
+    expect(rows[0]?.name).toMatch(/^test_w\d+_[0-9a-f]{8}$/)
   })
 
   it('has the migrated schema, but not the migration bookkeeping', async () => {

@@ -10,8 +10,9 @@ import {
   workerDatabaseName
 } from './database.js'
 
-// Every test file starts from a fresh clone of test_template. Cloning takes
-// milliseconds and needs no migration run (ADR 0015).
+// Every test file starts from a fresh clone of test_template, under a name
+// of its own. Cloning takes milliseconds and needs no migration run; the
+// clones are dropped by global setup, never during the run (ADR 0015).
 
 let current: Knex | undefined
 let currentConfig: DatabaseConfig | undefined
@@ -32,7 +33,6 @@ beforeAll(async () => {
   const name = assertDatabaseName(workerDatabaseName())
   const admin = await maintenanceKnex()
   try {
-    await admin.raw(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`)
     await admin.raw(`CREATE DATABASE ${name} TEMPLATE ${TEMPLATE}`)
   } finally {
     await admin.destroy()

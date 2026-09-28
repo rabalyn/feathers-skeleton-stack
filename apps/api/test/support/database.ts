@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import type { Knex } from 'knex'
 import { DATABASE_KEYS, loadConfig } from '../../src/config.js'
 import { createKnex } from '../../src/db.js'
@@ -14,15 +15,19 @@ export const loadTestDatabaseConfig = () => loadConfig(DATABASE_KEYS)
 export const maintenanceKnex = async (poolMax = 1): Promise<Knex> =>
   createKnex({ ...(await loadTestDatabaseConfig()), databaseName: 'postgres', databasePoolMax: poolMax })
 
+// A new name for every test file: dropping a database waits for a
+// checkpoint, which with every worker writing can outlast the hook timeout,
+// so no database is dropped during a run. Global setup drops them all, once
+// before the run and once after it (ADR 0015).
 export const workerDatabaseName = (): string => {
   const id = process.env.VITEST_POOL_ID ?? process.env.VITEST_WORKER_ID
   if (!id || !/^\d+$/.test(id)) throw new Error('not running inside a Vitest worker')
-  return `${WORKER_PREFIX}${id}`
+  return `${WORKER_PREFIX}${id}_${randomBytes(4).toString('hex')}`
 }
 
 // Database names cannot be bound as parameters; these are generated above
 // and checked here before being interpolated.
 export const assertDatabaseName = (name: string) => {
-  if (!/^test_(w\d+|template)$/.test(name)) throw new Error(`refusing database name ${name}`)
+  if (!/^test_(w\d+(_[0-9a-f]{8})?|template)$/.test(name)) throw new Error(`refusing database name ${name}`)
   return name
 }

@@ -86,6 +86,8 @@ export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
       can(['read', 'create'], 'mail-campaigns')
       can(['create', 'read'], 'mail-campaign-previews')
       can('read', 'mail-deliveries')
+      // The queue view (ADR 0024): runtime state, read-only.
+      can('read', 'queues')
       break
     case 'operator':
       can('read', 'users')

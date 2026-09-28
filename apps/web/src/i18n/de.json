@@ -19,7 +19,8 @@
     "audit": "Aktivitätsprotokoll",
     "gdpr": "Datenanfragen",
     "mailTemplates": "E-Mail-Vorlagen",
-    "mailings": "Mailings"
+    "mailings": "Mailings",
+    "queues": "Warteschlangen"
   },
   "auth": {
     "login": "Anmelden",
@@ -258,5 +259,52 @@
     "refresh": "Aktualisieren",
     "minutes": "{n} Minuten",
     "hours": "{h} Std. {m} Min."
+  },
+  "queues": {
+    "live": "Live",
+    "offline": "Getrennt",
+    "paused": "Angehalten",
+    "updated": "Stand {time}",
+    "states": {
+      "active": "läuft",
+      "waiting": "wartet",
+      "prioritized": "priorisiert",
+      "delayed": "geplant",
+      "failed": "fehlgeschlagen",
+      "completed": "erledigt"
+    },
+    "rateLimit": "Höchstens {max} Jobs je {window}",
+    "throttled": "gedrosselt, nächster Job in {in}",
+    "schedules": "Zeitpläne",
+    "schedule": "Zeitplan",
+    "nextRun": "Nächster Lauf",
+    "cron": "Cron „{pattern}“ ({tz})",
+    "every": "alle {span}",
+    "jobs": "Jobs",
+    "job": "Job",
+    "state": "Zustand",
+    "id": "ID",
+    "attempts": "Versuche",
+    "createdAt": "Angelegt",
+    "when": "Zeitpunkt",
+    "idle": "Keine laufenden, wartenden oder fehlgeschlagenen Jobs",
+    "truncated": "Je Zustand werden höchstens 50 Jobs angezeigt; die Zahlen oben sind vollständig.",
+    "dueAt": "fällig {time}",
+    "startedAt": "gestartet {time}",
+    "since": "angelegt {time}",
+    "names": {
+      "maintenance": "Wartung",
+      "data-exports": "Datenexporte",
+      "mail": "E-Mail"
+    },
+    "jobNames": {
+      "retention-cleanup": "Aufbewahrungsfristen",
+      "object-purge": "Objekte bereinigen",
+      "export-expiry": "Abgelaufene Exporte",
+      "mail-sweep": "E-Mail-Ausgang prüfen",
+      "resolve-campaign": "Mailing-Empfänger ermitteln",
+      "build-export": "Export erstellen",
+      "send-mail": "E-Mail senden"
+    }
   }
 }

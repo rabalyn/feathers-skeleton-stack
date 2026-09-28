@@ -19,7 +19,8 @@
     "audit": "Activity log",
     "gdpr": "Data requests",
     "mailTemplates": "Mail templates",
-    "mailings": "Mailings"
+    "mailings": "Mailings",
+    "queues": "Queues"
   },
   "auth": {
     "login": "Log in",
@@ -258,5 +259,52 @@
     "refresh": "Refresh",
     "minutes": "{n} minutes",
     "hours": "{h} h {m} min"
+  },
+  "queues": {
+    "live": "Live",
+    "offline": "Disconnected",
+    "paused": "Paused",
+    "updated": "As of {time}",
+    "states": {
+      "active": "running",
+      "waiting": "waiting",
+      "prioritized": "prioritized",
+      "delayed": "scheduled",
+      "failed": "failed",
+      "completed": "completed"
+    },
+    "rateLimit": "At most {max} jobs per {window}",
+    "throttled": "throttled, next job in {in}",
+    "schedules": "Schedules",
+    "schedule": "Schedule",
+    "nextRun": "Next run",
+    "cron": "Cron “{pattern}” ({tz})",
+    "every": "every {span}",
+    "jobs": "Jobs",
+    "job": "Job",
+    "state": "State",
+    "id": "ID",
+    "attempts": "Attempts",
+    "createdAt": "Created",
+    "when": "When",
+    "idle": "No running, waiting or failed jobs",
+    "truncated": "At most 50 jobs are shown per state; the counts above are complete.",
+    "dueAt": "due {time}",
+    "startedAt": "started {time}",
+    "since": "created {time}",
+    "names": {
+      "maintenance": "Maintenance",
+      "data-exports": "Data exports",
+      "mail": "E-mail"
+    },
+    "jobNames": {
+      "retention-cleanup": "Retention cleanup",
+      "object-purge": "Object purge",
+      "export-expiry": "Export expiry",
+      "mail-sweep": "Mail outbox sweep",
+      "resolve-campaign": "Resolve mailing recipients",
+      "build-export": "Build export",
+      "send-mail": "Send e-mail"
+    }
   }
 }
