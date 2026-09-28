@@ -17,7 +17,9 @@
     "menu": "Menü",
     "documents": "Dokumente",
     "audit": "Aktivitätsprotokoll",
-    "gdpr": "Datenanfragen"
+    "gdpr": "Datenanfragen",
+    "mailTemplates": "E-Mail-Vorlagen",
+    "mailings": "Mailings"
   },
   "auth": {
     "login": "Anmelden",
@@ -166,5 +168,95 @@
     "notSelf": "Sie können Ihr eigenes Konto nicht löschen.",
     "notBreakGlass": "Das Notfallkonto enthält keine personenbezogenen Daten und kann nicht gelöscht werden.",
     "exportTitle": "Datenexport"
+  },
+  "mail": {
+    "kinds": {
+      "gdpr": {
+        "export-ready": "Datenexport bereit"
+      },
+      "documents": {
+        "stale-reminder": "Erinnerung an alte Dokumente"
+      }
+    },
+    "params": {
+      "documents": {
+        "stale-reminder": {
+          "olderThanDays": "Nicht geändert seit (Tagen)"
+        }
+      }
+    },
+    "types": {
+      "notification": "Benachrichtigung",
+      "campaign": "Mailing"
+    },
+    "notDeclared": "Nicht mehr im Code",
+    "subject": "Betreff",
+    "body": "Text (Markdown)",
+    "variables": "Verfügbare Variablen",
+    "variablesHint": "Werte werden als Text eingesetzt. Links müssen in die Anwendung zeigen, z. B. {example}.",
+    "preview": "Vorschau",
+    "save": "Als neue Version speichern",
+    "saved": "Vorlage gespeichert",
+    "refused": "Die Vorlage funktioniert so nicht",
+    "refusedAt": "{part}, Zeile {line}: {message}",
+    "refusedPart": "{part}: {message}",
+    "parts": {
+      "subject": "Betreff",
+      "body": "Text"
+    },
+    "history": "Versionen",
+    "active": "Aktiv",
+    "system": "Standardtext",
+    "compare": "Vergleichen",
+    "compareTitle": "Version vom {date} im Vergleich zum Editor",
+    "activate": "Aktivieren",
+    "activated": "Version aktiviert",
+    "load": "In den Editor laden",
+    "close": "Schließen",
+    "html": "HTML",
+    "text": "Nur Text",
+    "previewFrame": "Vorschau der E-Mail",
+    "campaign": "Mailing",
+    "newCampaign": "Neues Mailing",
+    "previewCampaign": "Empfänger und Vorschau",
+    "recipients": "{count} Empfänger:innen",
+    "duration": "Versand dauert etwa {duration}",
+    "durationNow": "Versand sofort",
+    "previewFor": "Vorschau für {name}",
+    "nobody": "Dieses Mailing erreicht niemanden.",
+    "send": "Senden",
+    "confirmTitle": "Mailing senden?",
+    "confirmText": "Es geht an {count} Empfänger:innen und dauert etwa {duration}. Gesendet wird die Vorschau-Fassung; spätere Änderungen an der Vorlage ändern es nicht.",
+    "cancel": "Abbrechen",
+    "sent": "Mailing wird versendet",
+    "campaigns": "Gesendete Mailings",
+    "sentAt": "Gesendet",
+    "sentBy": "Von",
+    "status": "Stand",
+    "statuses": {
+      "pending": "Wird vorbereitet",
+      "queued": "Im Versand",
+      "sent": "Gesendet",
+      "failed": "Fehlgeschlagen",
+      "skipped": "Übersprungen"
+    },
+    "progress": "{sent} gesendet, {pending} offen, {skipped} übersprungen, {failed} fehlgeschlagen",
+    "deliveries": "Zustellprotokoll",
+    "recipient": "Empfänger:in",
+    "kind": "Art",
+    "createdAt": "Angelegt",
+    "detail": "Grund",
+    "reasons": {
+      "disabled": "Konto deaktiviert",
+      "erased": "Konto gelöscht",
+      "no-email": "Keine E-Mail-Adresse",
+      "break-glass": "Notfallkonto",
+      "unknown-kind": "Art nicht mehr im Code",
+      "nothing-to-send": "Nichts zu senden"
+    },
+    "allStatuses": "Alle",
+    "refresh": "Aktualisieren",
+    "minutes": "{n} Minuten",
+    "hours": "{h} Std. {m} Min."
   }
 }

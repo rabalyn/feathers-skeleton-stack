@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n'
 interface ServiceError {
   code?: number
   message?: string
+  // Feathers lifts `errors` out of the data it is given.
+  errors?: { message?: string }[]
   data?: { errors?: { message?: string }[]; reason?: string }
 }
 
@@ -17,7 +19,7 @@ export const useNotify = () => {
   const success = (message: string) => $q.notify({ type: 'positive', message })
 
   const failure = (error: unknown) => {
-    const { code, data } = (error ?? {}) as ServiceError
+    const { code, data, errors } = (error ?? {}) as ServiceError
     if (code === 401) return
     // Uploads (ADR 0020): too large for the limit or a quota, or a type
     // that is not accepted or not what the file really is.
@@ -33,7 +35,7 @@ export const useNotify = () => {
               ? t('errors.unavailable')
               : t('errors.generic')
     // Validation details come from the server's schemas and name the field.
-    const details = code === 400 ? (data?.errors ?? []).map((entry) => entry.message).filter(Boolean) : []
+    const details = code === 400 ? (errors ?? data?.errors ?? []).map((entry) => entry.message).filter(Boolean) : []
     $q.notify({ type: 'negative', message, ...(details.length ? { caption: details.join(' · ') } : {}) })
   }
 

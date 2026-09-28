@@ -17,7 +17,9 @@
     "menu": "Menu",
     "documents": "Documents",
     "audit": "Activity log",
-    "gdpr": "Data requests"
+    "gdpr": "Data requests",
+    "mailTemplates": "Mail templates",
+    "mailings": "Mailings"
   },
   "auth": {
     "login": "Log in",
@@ -166,5 +168,95 @@
     "notSelf": "You cannot erase your own account.",
     "notBreakGlass": "The break-glass account holds no personal data and cannot be erased.",
     "exportTitle": "Data export"
+  },
+  "mail": {
+    "kinds": {
+      "gdpr": {
+        "export-ready": "Data export ready"
+      },
+      "documents": {
+        "stale-reminder": "Reminder about old documents"
+      }
+    },
+    "params": {
+      "documents": {
+        "stale-reminder": {
+          "olderThanDays": "Not changed for (days)"
+        }
+      }
+    },
+    "types": {
+      "notification": "Notification",
+      "campaign": "Mailing"
+    },
+    "notDeclared": "No longer in the code",
+    "subject": "Subject",
+    "body": "Text (Markdown)",
+    "variables": "Available variables",
+    "variablesHint": "Values are inserted as text. Links must point into the application, e.g. {example}.",
+    "preview": "Preview",
+    "save": "Save as new version",
+    "saved": "Template saved",
+    "refused": "The template does not work like this",
+    "refusedAt": "{part}, line {line}: {message}",
+    "refusedPart": "{part}: {message}",
+    "parts": {
+      "subject": "Subject",
+      "body": "Text"
+    },
+    "history": "Versions",
+    "active": "Active",
+    "system": "Default text",
+    "compare": "Compare",
+    "compareTitle": "Version of {date} compared with the editor",
+    "activate": "Activate",
+    "activated": "Version activated",
+    "load": "Load into the editor",
+    "close": "Close",
+    "html": "HTML",
+    "text": "Text only",
+    "previewFrame": "Preview of the mail",
+    "campaign": "Mailing",
+    "newCampaign": "New mailing",
+    "previewCampaign": "Recipients and preview",
+    "recipients": "{count} recipients",
+    "duration": "Sending takes about {duration}",
+    "durationNow": "Sent right away",
+    "previewFor": "Preview for {name}",
+    "nobody": "This mailing reaches nobody.",
+    "send": "Send",
+    "confirmTitle": "Send this mailing?",
+    "confirmText": "It goes to {count} recipients and takes about {duration}. The previewed wording is sent; later changes to the template do not change it.",
+    "cancel": "Cancel",
+    "sent": "Mailing is being sent",
+    "campaigns": "Mailings sent",
+    "sentAt": "Sent",
+    "sentBy": "By",
+    "status": "Status",
+    "statuses": {
+      "pending": "Being prepared",
+      "queued": "Sending",
+      "sent": "Sent",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    },
+    "progress": "{sent} sent, {pending} pending, {skipped} skipped, {failed} failed",
+    "deliveries": "Delivery log",
+    "recipient": "Recipient",
+    "kind": "Kind",
+    "createdAt": "Created",
+    "detail": "Reason",
+    "reasons": {
+      "disabled": "Account disabled",
+      "erased": "Account erased",
+      "no-email": "No email address",
+      "break-glass": "Break-glass account",
+      "unknown-kind": "Kind no longer in the code",
+      "nothing-to-send": "Nothing to send"
+    },
+    "allStatuses": "All",
+    "refresh": "Refresh",
+    "minutes": "{n} minutes",
+    "hours": "{h} h {m} min"
   }
 }

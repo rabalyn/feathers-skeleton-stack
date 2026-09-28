@@ -57,6 +57,19 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/GdprPage.vue'),
         meta: { requires: ['create', 'erasures'] }
       },
+      // Mail (ADR 0027): wording and mailings are the admin's alone.
+      {
+        path: 'mail/templates',
+        name: 'mail-templates',
+        component: () => import('@/pages/MailTemplatesPage.vue'),
+        meta: { requires: ['read', 'mail-templates'] }
+      },
+      {
+        path: 'mail/campaigns',
+        name: 'mailings',
+        component: () => import('@/pages/MailingsPage.vue'),
+        meta: { requires: ['create', 'mail-campaigns'] }
+      },
       {
         path: 'directory',
         name: 'directory',
