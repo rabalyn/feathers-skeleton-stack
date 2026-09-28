@@ -82,6 +82,8 @@ export type {
 export type { QueueJob, QueueJobState, QueueScheduler, QueueStatus } from './services/queues/queues.schema.js'
 export { ALLOWED_CONTENT_TYPES, AVATAR_CONTENT_TYPES, FILENAME_HEADER, type AllowedContentType } from './uploads.js'
 export { ROLES, defineAbilitiesFor, type AbilityUser, type AppAbility, type Role } from './abilities.js'
+// For asking an ability about one record, as the server does.
+export { subject } from '@casl/ability'
 export { PAGINATE } from './paginate.js'
 export {
   API_PREFIX,

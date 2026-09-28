@@ -20,7 +20,8 @@
     "gdpr": "Datenanfragen",
     "mailTemplates": "E-Mail-Vorlagen",
     "mailings": "Mailings",
-    "queues": "Warteschlangen"
+    "queues": "Warteschlangen",
+    "sessions": "Sitzungen"
   },
   "auth": {
     "login": "Anmelden",
@@ -59,7 +60,8 @@
     "disable": "Deaktivieren",
     "saved": "Gespeichert",
     "empty": "Keine Benutzer gefunden",
-    "erased": "gelöscht"
+    "erased": "gelöscht",
+    "sessions": "Sitzungen"
   },
   "settings": {
     "key": "Schlüssel",
@@ -151,7 +153,8 @@
       "breakglass_create": "Notfallkonto angelegt",
       "breakglass_rotate": "Notfallpasswort geändert",
       "data-exports_create": "Datenexport angefordert",
-      "data-exports_download": "Datenexport heruntergeladen"
+      "data-exports_download": "Datenexport heruntergeladen",
+      "sessions_revoke": "Sitzung beendet"
     }
   },
   "gdpr": {
@@ -306,5 +309,21 @@
       "build-export": "Export erstellen",
       "send-mail": "E-Mail senden"
     }
+  },
+  "sessions": {
+    "mine": "Wo ich angemeldet bin",
+    "current": "Dieser Browser",
+    "since": "angemeldet {date}",
+    "lastUsed": "zuletzt aktiv {date}",
+    "revoke": "Sitzung beenden",
+    "revoked": "Sitzung beendet",
+    "empty": "Keine aktiven Sitzungen",
+    "unknownBrowser": "Unbekannter Browser",
+    "person": "Konto",
+    "browser": "Browser",
+    "issuedAt": "Angemeldet",
+    "lastUsedAt": "Zuletzt aktiv",
+    "expiresAt": "Läuft ab ohne Nutzung",
+    "filterBy": "Nur dieses Konto zeigen"
   }
 }

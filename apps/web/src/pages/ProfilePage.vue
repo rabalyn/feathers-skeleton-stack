@@ -49,6 +49,12 @@
           <DataExports :subject-id="user.id" />
         </q-card-section>
       </q-card>
+      <q-card flat bordered data-test="my-sessions">
+        <q-card-section>
+          <h2 class="text-h6 q-my-none">{{ t('sessions.mine') }}</h2>
+        </q-card-section>
+        <SessionList :user-id="user.id" />
+      </q-card>
       <q-card flat bordered data-test="my-activity">
         <q-card-section>
           <h2 class="text-h6 q-my-none">{{ t('audit.mine') }}</h2>
@@ -67,6 +73,7 @@ import { uploadFile } from '@/api/files'
 import { client } from '@/api/feathers'
 import AuditEventList from '@/components/AuditEventList.vue'
 import DataExports from '@/components/DataExports.vue'
+import SessionList from '@/components/SessionList.vue'
 import { useAvatarUrl } from '@/composables/avatar'
 import { useFormat } from '@/composables/format'
 import { useNotify } from '@/composables/notify'

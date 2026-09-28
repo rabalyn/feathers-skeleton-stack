@@ -38,5 +38,5 @@ test('an operator sees an admin’s changes live, and loses the page when demote
   // Promoted back, for the rest of the run.
   await row(admin, 'op01oper').getByRole('combobox', { name: 'Rolle' }).click()
   await admin.getByRole('option', { name: 'Betrieb' }).click()
-  await expect(navLabels(operator)).toHaveText(['Mein Profil', 'Dokumente', 'Benutzer', 'Verzeichnis', 'Aktivitätsprotokoll'])
+  await expect(navLabels(operator)).toHaveText(['Mein Profil', 'Dokumente', 'Benutzer', 'Verzeichnis', 'Sitzungen', 'Aktivitätsprotokoll'])
 })

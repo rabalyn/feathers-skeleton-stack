@@ -62,6 +62,7 @@ const links = computed(() =>
     { name: 'users', icon: 'group', label: 'nav.users', requires: ['read', 'users'] },
     { name: 'settings', icon: 'tune', label: 'nav.settings', requires: ['read', 'settings'] },
     { name: 'directory', icon: 'contact_page', label: 'nav.directory', requires: ['read', 'directory'] },
+    { name: 'sessions', icon: 'devices', label: 'nav.sessions', requires: ['read', 'sessions'] },
     { name: 'audit', icon: 'history', label: 'nav.audit', requires: ['read', 'audit-events'] },
     { name: 'gdpr', icon: 'privacy_tip', label: 'nav.gdpr', requires: ['create', 'erasures'] },
     { name: 'mail-templates', icon: 'mail', label: 'nav.mailTemplates', requires: ['read', 'mail-templates'] },
