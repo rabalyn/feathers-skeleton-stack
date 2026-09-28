@@ -13,7 +13,8 @@ export const staleDocuments = defineMailKind({
   key: 'documents.stale-reminder',
   type: 'campaign',
   params: Type.Object(
-    { olderThanDays: Type.Integer({ minimum: 1, maximum: 3650, default: 365 }) },
+    // 0 reaches every owner of a document.
+    { olderThanDays: Type.Integer({ minimum: 0, maximum: 3650, default: 365 }) },
     { additionalProperties: false }
   ),
   variables: Type.Object(

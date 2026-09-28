@@ -598,7 +598,7 @@ services:
       E2E_APP_ORIGIN: https://e2e.localhost:8443
       # Chromium resolves *.localhost to loopback; map the public names to
       # nginx instead (ADR 0015).
-      E2E_HOST_RESOLVER_RULES: MAP e2e.localhost nginx, MAP idp.localhost nginx
+      E2E_HOST_RESOLVER_RULES: MAP e2e.localhost nginx, MAP idp.localhost nginx, MAP mail.localhost nginx
       # The e2e database's break-glass account (ADR 0008), made by
       # `stack.sh e2e` for the run; a local test value, never a real one.
       E2E_BREAKGLASS_EMAIL: breakglass@e2e.localhost

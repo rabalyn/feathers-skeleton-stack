@@ -448,6 +448,9 @@ INSERT INTO users (tu_id, given_name, surname, role, enabled, auth_source) VALUE
   ('us02othr', 'Olaf', 'Other', 'user', true, 'saml'),
   -- Erased by the GDPR spec; never logs in.
   ('us03gone', 'Greta', 'Gone', 'user', true, 'saml');
+-- Mail (ADR 0027) is not throttled here: runs follow each other within
+-- the production window, on a queue prefix that outlives the database.
+UPDATE settings SET value = '1000' WHERE key = 'mailSendLimitCount';
 SQL
   E2E_BREAKGLASS_PASSWORD=$(podman exec api-e2e node dist/bootstrap.js --email "$E2E_BREAKGLASS_EMAIL" 2>/dev/null) ||
     die "bootstrap in api-e2e failed"
@@ -477,7 +480,7 @@ fingerprint() { # <path>...
 }
 TEST_AGENT_SOURCES=(compose.yaml containers/openbao scripts/openbao-lib.sh)
 TEST_TEMPLATE_SOURCES=(apps/api/src/migrate.ts apps/api/src/migration-support.ts
-  apps/api/src/migrations apps/api/src/settings)
+  apps/api/src/migrations apps/api/src/settings apps/api/src/mail)
 
 # The fingerprint sits in the agent's tmpfs, so it goes with the container.
 ensure_test_agent() {

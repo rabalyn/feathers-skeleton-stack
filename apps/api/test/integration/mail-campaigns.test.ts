@@ -82,7 +82,7 @@ describe('campaign preview', () => {
   })
 
   it.each([
-    ['parameters the kind does not accept', { kind: KIND, params: { olderThanDays: 0 } }],
+    ['parameters the kind does not accept', { kind: KIND, params: { olderThanDays: -1 } }],
     ['parameters the kind does not declare', { kind: KIND, params: { olderThanDays: 5, extra: true } }],
     ['a notification', { kind: 'gdpr.export-ready', params: { exportId: '0190f0f0-0000-7000-8000-000000000000' } }],
     ['an unknown kind', { kind: 'nope.kind', params: {} }]

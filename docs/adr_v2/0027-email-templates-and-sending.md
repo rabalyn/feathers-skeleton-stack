@@ -33,7 +33,7 @@ Admins cannot create kinds: a template nothing sends and nothing supplies variab
 The skeleton registers two kinds of its own (`apps/api/src/mail/registry.ts`), which the end-to-end suite proves arrive:
 
 - **`gdpr.export-ready`**, a notification: the worker sends it in the transaction that marks a GDPR export ready ([0013](0013-gdpr-export-and-retention.md)), to the account that asked for it, with a link to where that account fetches it. It is a feature of the skeleton; products keep it.
-- **`documents.stale-reminder`**, a campaign on the example documents: every owner of documents unchanged for `olderThanDays` gets one mail listing them. It has the shape a product's campaign will have (the admin's choice as a parameter, a list per recipient built at send time), and a product replaces it with its own.
+- **`documents.stale-reminder`**, a campaign on the example documents: every owner of documents unchanged for `olderThanDays` (0 reaches every owner) gets one mail listing them. It has the shape a product's campaign will have (the admin's choice as a parameter, a list per recipient built at send time), and a product replaces it with its own.
 
 ### Recipients are accounts
 
@@ -96,7 +96,7 @@ Templates, campaigns and the delivery log are **admin only**: the wording of the
 - Mail after a write is exactly as durable as the write. The cost is an outbox sweep and at-least-once delivery.
 - A template's power is deliberately small: Markdown and Liquid control flow over given variables, no raw HTML, no layout. A product that needs a different look changes the layout in code.
 - Building variables at send time means a campaign of thousands runs `build()` thousands of times. Each call must be one indexed query or close to it; the kind's author owns that.
-- Mail joins the registry, the retention table, the settings and the authorization matrix, and its tests join the end-to-end suite: a campaign and a notification are proven to arrive in Mailpit.
+- Mail joins the registry, the retention table, the settings and the authorization matrix, and its tests join the end-to-end suite: a campaign and a notification are proven to arrive in Mailpit. The e2e database lifts the sending limit to 1000, since runs follow each other within one window on a queue prefix that outlives the database.
 
 ## Open questions
 
