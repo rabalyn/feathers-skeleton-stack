@@ -1,0 +1,19 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Unit]
+Requires=loki.service
+After=loki.service
+
+[Container]
+ContainerName=alloy
+Environment=ENVIRONMENT=local
+Exec=run /etc/alloy/config.alloy '--storage.path=/var/lib/alloy/data' '--server.http.listen-addr=127.0.0.1:12345' --disable-reporting
+Image=docker.io/grafana/alloy@sha256:f111cce835516c5f99166342be7038496b52ced16667be5a11e19258a3e4cd30
+Network=observability.network
+Volume=../../containers/alloy/config.alloy:/etc/alloy/config.alloy:ro,Z
+Volume=logs.volume:/var/log/app:ro
+Volume=/var/log/journal:/var/log/journal:ro
+Volume=/etc/machine-id:/etc/machine-id:ro
+Volume=alloy-data:/var/lib/alloy/data
+Volume=trust:/trust:ro

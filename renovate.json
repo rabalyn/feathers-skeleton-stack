@@ -1,0 +1,50 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Automated dependency update PRs (ADR 0018). Images are pinned by digest; where a file cannot carry tag@digest (compose.yaml, because podlet rejects it), the version sits in a trailing comment, which the custom managers below keep in step.",
+  "extends": ["config:recommended", ":semanticCommits"],
+  "rangeStrategy": "pin",
+  "labels": ["dependencies"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Digest-pinned images with the version in a trailing comment: compose.yaml, scripts, git hooks",
+      "managerFilePatterns": ["/^compose\\.yaml$/", "/^scripts/[^/]+\\.sh$/", "/^\\.githooks/[^/]+$/"],
+      "matchStrings": [
+        "(?<depName>(?:docker\\.io|ghcr\\.io|quay\\.io|mcr\\.microsoft\\.com)/[^:@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64}) # (?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "docker",
+      "autoReplaceStringTemplate": "{{depName}}@{{newDigest}} # {{newValue}}"
+    },
+    {
+      "customType": "regex",
+      "description": "tag@digest images held in shell variables and Containerfile ARGs",
+      "managerFilePatterns": ["/^scripts/[^/]+\\.sh$/", "/(^|/)Containerfile$/"],
+      "matchStrings": [
+        "(?<depName>(?:docker\\.io|ghcr\\.io|quay\\.io|mcr\\.microsoft\\.com)/[^:@\\s]+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Feathers packages move together",
+      "matchPackageNames": ["@feathersjs/**"],
+      "groupName": "feathers"
+    },
+    {
+      "description": "Lint tooling moves together",
+      "matchPackageNames": ["eslint", "@eslint/**", "typescript-eslint", "globals", "dependency-cruiser"],
+      "groupName": "lint tooling"
+    },
+    {
+      "description": "The Playwright MCP server (e2e/mcp-server.mjs) is playwright-core's own and must match the browsers of @playwright/test's image",
+      "matchPackageNames": ["@playwright/test", "playwright-core", "mcr.microsoft.com/playwright"],
+      "groupName": "playwright"
+    },
+    {
+      "description": "The OpenBao server and its agents run one image and must stay on one version",
+      "matchPackageNames": ["docker.io/openbao/openbao"],
+      "groupName": "openbao"
+    }
+  ]
+}

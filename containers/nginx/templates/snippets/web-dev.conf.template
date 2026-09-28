@@ -1,0 +1,15 @@
+# The Vite dev server of the `dev` profile (ADR 0014), hot reload included.
+# Same origin, TLS and headers as the bundle. Included by app.conf.
+location / {
+  set $web_upstream http://${NGINX_WEB_UPSTREAM};
+  proxy_pass $web_upstream;
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection $connection_upgrade;
+  proxy_set_header Host $http_host;
+  proxy_read_timeout 1h;
+  # One Cache-Control, ours.
+  proxy_hide_header Cache-Control;
+  add_header Cache-Control "no-store" always;
+  include /etc/nginx/conf.d/snippets/security-headers.conf;
+}

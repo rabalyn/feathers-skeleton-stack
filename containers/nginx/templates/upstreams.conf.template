@@ -1,0 +1,8 @@
+# Every upstream is a container name, resolved at request time through
+# Podman's DNS (ADR 0016). A restarted container comes back on a new address:
+# nginx forgets the old one within a second, and a connect to an address that
+# is gone fails after 2 s instead of the default 60 s, so a reconnecting
+# Socket.IO client reaches the new api within seconds. On the container
+# network a connect that works takes well under a millisecond.
+resolver ${NGINX_LOCAL_RESOLVERS} valid=1s ipv6=off;
+proxy_connect_timeout 2s;

@@ -1,0 +1,4 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Network]

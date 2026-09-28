@@ -1,0 +1,43 @@
+# Local and CI test directory (ADR 0008). Rendered at start by entrypoint.sh;
+# @ROOTPW@ is replaced by a hash of the admin password from OpenBao.
+include   /etc/openldap/schema/core.schema
+include   /etc/openldap/schema/cosine.schema
+include   /etc/openldap/schema/inetorgperson.schema
+
+pidfile   /run/slapd/slapd.pid
+argsfile  /run/slapd/slapd.args
+modulepath /usr/lib/openldap
+moduleload back_mdb.so
+
+# LDAPS only (listener set by -h in entrypoint.sh); TLS 1.2 or later.
+TLSCertificateFile    /tls/fullchain.crt
+TLSCertificateKeyFile /tls/tls.key
+TLSProtocolMin        3.3
+
+database  mdb
+maxsize   104857600
+suffix    "dc=feathers,dc=test"
+rootdn    "cn=admin,dc=feathers,dc=test"
+rootpw    @ROOTPW@
+directory /var/lib/openldap/data
+
+index objectClass eq
+index cn          eq,sub
+index mail        eq,sub
+index sn,givenName eq,sub
+
+# Passwords are only ever used to bind; nobody reads them.
+access to attrs=userPassword
+  by self =xw
+  by anonymous auth
+  by * none
+
+# Service accounts read the people subtree: Keycloak for federation, the
+# api for directory lookup (ADR 0008). Nobody else reads anything.
+access to dn.subtree="ou=people,dc=feathers,dc=test"
+  by dn.exact="cn=keycloak,ou=services,dc=feathers,dc=test" read
+  by dn.exact="cn=api,ou=services,dc=feathers,dc=test" read
+  by * none
+
+access to *
+  by * none

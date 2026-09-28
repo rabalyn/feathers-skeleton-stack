@@ -1,0 +1,76 @@
+# Prometheus (ADR 0022). Every target every 15 seconds, over TLS verified
+# against the CA root; the server name is the target's service name.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  # Expanded from the container's environment (always, since Prometheus 3).
+  external_labels:
+    environment: ${ENVIRONMENT}
+
+scrape_configs:
+  - job_name: api
+    scheme: https
+    tls_config: { ca_file: /trust/ca.crt }
+    static_configs: [{ targets: ['api:9090'] }]
+
+  - job_name: worker
+    scheme: https
+    tls_config: { ca_file: /trust/ca.crt }
+    static_configs: [{ targets: ['worker:9090'] }]
+
+  - job_name: postgres
+    scheme: https
+    tls_config: { ca_file: /trust/ca.crt }
+    static_configs: [{ targets: ['postgres-exporter:9187'] }]
+
+  - job_name: pgbouncer
+    scheme: https
+    tls_config: { ca_file: /trust/ca.crt }
+    static_configs: [{ targets: ['pgbouncer-exporter:9127'] }]
+
+  - job_name: valkey
+    scheme: https
+    tls_config: { ca_file: /trust/ca.crt }
+    static_configs: [{ targets: ['valkey-exporter:9121'] }]
+
+  - job_name: s3
+    scheme: https
+    tls_config: { ca_file: /trust/ca.crt }
+    static_configs: [{ targets: ['s3:3903'] }]
+
+  - job_name: node
+    scheme: https
+    tls_config: { ca_file: /trust/ca.crt }
+    static_configs: [{ targets: ['node-exporter:9100'] }]
+
+  - job_name: prometheus
+    scheme: https
+    tls_config: { ca_file: /trust/ca.crt }
+    static_configs: [{ targets: ['prometheus:9090'] }]
+
+  - job_name: loki
+    scheme: https
+    tls_config: { ca_file: /trust/ca.crt }
+    static_configs: [{ targets: ['loki:3100'] }]
+
+  - job_name: grafana
+    scheme: https
+    tls_config: { ca_file: /trust/ca.crt }
+    static_configs: [{ targets: ['grafana:3000'] }]
+
+  # The uptime check (ADR 0022): blackbox_exporter fetches the public
+  # GET /api/ping through Nginx and reports the certificate's expiry. The
+  # public URLs are deployment configuration, in targets/uptime.yml.
+  - job_name: uptime
+    metrics_path: /probe
+    params: { module: [public_ping] }
+    scheme: https
+    tls_config: { ca_file: /trust/ca.crt, server_name: blackbox }
+    file_sd_configs: [{ files: [/etc/prometheus/targets/uptime.yml] }]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115

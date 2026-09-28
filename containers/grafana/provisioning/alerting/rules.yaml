@@ -1,0 +1,578 @@
+# Alert rules as code (ADR 0022). Thresholds are first guesses, to be tuned
+# after observing normal behaviour (0022, open questions). Templates use
+# {{ .Labels.x }}: Grafana expands $VARIABLES in provisioning files.
+apiVersion: 1
+groups:
+- orgId: 1
+  name: baseline
+  folder: Application
+  interval: 1m
+  rules:
+  - uid: app-errors
+    title: Application errors in logs
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: loki
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum by (service) (count_over_time({service=~"api|worker", level="error"}[5m]))
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+        queryType: instant
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 5
+    for: 0s
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: More than 5 error lines in 5 minutes from {{ .Labels.service }}
+  - uid: auth-anomaly
+    title: Authentication anomaly
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: loki
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(count_over_time({service="api"} |= "rate limit exceeded" [10m]))
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+        queryType: instant
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 20
+    for: 0s
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: More than 20 rate-limit rejections in 10 minutes
+  - uid: breakglass-refused
+    title: Failed break-glass logins
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: loki
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(count_over_time({service="api"} |= "break-glass login refused" [10m]))
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+        queryType: instant
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 3
+    for: 0s
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: More than 3 refused break-glass logins in 10 minutes
+  # Every successful break-glass login (ADR 0008): either an emergency or a
+  # leaked password, and a human should know either way. The exact message
+  # match leaves out "break-glass login refused".
+  - uid: breakglass-login
+    title: Break-glass login
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: loki
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(count_over_time({service="api"} |= "break-glass login" | json | msg="break-glass login" [10m]))
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+        queryType: instant
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    for: 0s
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: Someone logged in with the break-glass account
+  - uid: target-down
+    title: Scrape target down
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: prometheus
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: min by (job) (up)
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    for: 1m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: Prometheus cannot scrape {{ .Labels.job }}
+  - uid: api-not-ready
+    title: API not ready
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: prometheus
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: min by (dependency) (dependency_up{service="api"})
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    for: 2m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: The API cannot reach {{ .Labels.dependency }}
+  - uid: api-error-rate
+    title: API error rate
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: prometheus
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(rate(http_requests_total{service="api",status_code=~"5.."}[5m])) / sum(rate(http_requests_total{service="api"}[5m]))
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0.05
+    for: 10m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: More than 5% of API requests fail with 5xx
+  - uid: api-latency
+    title: API latency
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: prometheus
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{service="api"}[5m])))
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 1
+    for: 10m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: 95th percentile API request duration above 1 s
+  - uid: db-connections
+    title: Database connections
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: prometheus
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(pg_stat_activity_count) / max(pg_settings_max_connections)
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0.8
+    for: 5m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: PostgreSQL server connections above 80% of max_connections
+  - uid: pgbouncer-waiting
+    title: Clients waiting in PgBouncer
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: prometheus
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(pgbouncer_pools_client_waiting_connections)
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    for: 2m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: Clients have been waiting for a PgBouncer server connection for 2 minutes
+  - uid: volume-capacity
+    title: Volume capacity
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: prometheus
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: 1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|ramfs|nsfs|fuse.*"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs|ramfs|nsfs|fuse.*"}
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0.8
+    for: 10m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: Filesystem {{ .Labels.mountpoint }} is more than 80% full
+  - uid: uptime
+    title: Public endpoint down
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: prometheus
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: min by (instance) (probe_success{job="uptime"})
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    for: 2m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ .Labels.instance }} does not answer'
+  - uid: certificate-expiry
+    title: Public certificate expires soon
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: prometheus
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: min by (instance) (probe_ssl_earliest_cert_expiry{job="uptime"}) - time()
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1209600
+    for: 0s
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: warning
+    annotations:
+      summary: The certificate of {{ .Labels.instance }} expires within 14 days
+  # Backups (ADR 0017): any error line of the backup service, and a missing
+  # success line. The 26 hours assume the default daily schedule, a runtime
+  # setting: changing the schedule means changing this rule (ADR 0025).
+  - uid: backup-failed
+    title: Backup failed
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: loki
+      relativeTimeRange:
+        from: 3600
+        to: 0
+      model:
+        refId: A
+        expr: sum(count_over_time({service="backup", level=~"error|fatal"}[1h]))
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+        queryType: instant
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    for: 0s
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: The backup service logged an error in the last hour
+  - uid: backup-missing
+    title: Backup missing
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: loki
+      relativeTimeRange:
+        from: 93600
+        to: 0
+      model:
+        refId: A
+        expr: sum(count_over_time({service="backup"} |= "backup completed" [26h]))
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+        queryType: instant
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+    for: 0s
+    # No success line at all is exactly the case this rule is for.
+    noDataState: Alerting
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: No backup has completed in the last 26 hours

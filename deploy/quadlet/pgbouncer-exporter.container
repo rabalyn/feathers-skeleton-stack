@@ -1,0 +1,14 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Container]
+ContainerName=pgbouncer-exporter
+Entrypoint=["/bin/sh","-c"]
+Exec='PGBOUNCER_EXPORTER_CONNECTION_STRING="postgres://stats:$$(cat /run/secrets/database_password)@pgbouncer:6432/pgbouncer?sslmode=verify-full&sslrootcert=/trust/ca.crt" exec /bin/pgbouncer_exporter --web.config.file=/etc/observability/web-config.yml'
+Image=quay.io/prometheuscommunity/pgbouncer-exporter@sha256:30f31b6c2efdad3647f8182cc7c1a3a19e42bae5d17387694989f969371c230d
+Network=db.network
+Network=observability.network
+Volume=../../containers/observability/web-config.yml:/etc/observability/web-config.yml:ro,Z
+Volume=pgbouncer-exporter-secrets.volume:/run/secrets:ro
+Volume=tls-pgbouncer-exporter:/tls:ro
+Volume=trust:/trust:ro

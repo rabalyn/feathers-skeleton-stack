@@ -1,0 +1,23 @@
+packages:
+  - apps/*
+  - packages/*
+  - e2e
+
+# Install scripts run only where listed as true (ADR 0018). These two only
+# fetch or verify native binaries that already arrive as optional platform
+# packages, so they are denied.
+allowBuilds:
+  '@parcel/watcher': false
+  esbuild: false
+  msgpackr-extract: false
+
+# Security floor for transitive dependencies (ADR 0018): the SAML libraries
+# pin @xmldom/xmldom ranges that still admit versions with known XML
+# injection and DoS flaws. Remove once they require >= 0.8.15 themselves.
+#
+# @intlify/unplugin-vue-i18n pins esbuild ^0.25, whose binaries are built
+# with a Go toolchain carrying critical crypto/tls flaws; it only calls
+# esbuild's stable transform API. Remove once it allows a current esbuild.
+overrides:
+  '@xmldom/xmldom@<0.8.15': 0.8.15
+  'esbuild@<0.28.2': 0.28.2

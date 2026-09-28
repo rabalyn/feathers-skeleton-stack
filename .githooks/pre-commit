@@ -1,0 +1,5 @@
+#!/bin/sh
+# gitleaks on what is about to be committed (ADR 0023), as a backstop; the
+# CI gate scans the whole history. Enabled by `pnpm install` (core.hooksPath).
+set -eu
+exec "$(git rev-parse --show-toplevel)/scripts/gitleaks.sh" --staged

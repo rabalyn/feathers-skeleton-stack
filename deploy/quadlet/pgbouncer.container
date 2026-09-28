@@ -1,0 +1,16 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Unit]
+Requires=postgres.service
+After=postgres.service
+
+[Container]
+ContainerName=pgbouncer
+Image=localhost/feathers-pgbouncer:dev
+Network=app-data.network
+Network=db.network
+StopSignal=SIGINT
+Volume=pgbouncer-secrets.volume:/run/secrets:ro
+Volume=tls-pgbouncer:/tls:ro
+Volume=trust:/trust:ro

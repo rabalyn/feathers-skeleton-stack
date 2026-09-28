@@ -1,0 +1,262 @@
+{
+  "app": {
+    "title": "claude-feathers",
+    "loading": "Loading …",
+    "language": "Language",
+    "retry": "Try again",
+    "locales": {
+      "de": "Deutsch",
+      "en": "English"
+    }
+  },
+  "nav": {
+    "profile": "My profile",
+    "users": "Users",
+    "settings": "Settings",
+    "directory": "Directory",
+    "menu": "Menu",
+    "documents": "Documents",
+    "audit": "Activity log",
+    "gdpr": "Data requests",
+    "mailTemplates": "Mail templates",
+    "mailings": "Mailings"
+  },
+  "auth": {
+    "login": "Log in",
+    "logout": "Log out",
+    "welcome": "Please log in with your TU-ID.",
+    "unavailable": "The service cannot be reached right now. Your session is kept.",
+    "expired": "Your session has ended. Please log in again.",
+    "breakGlass": {
+      "title": "Emergency login",
+      "hint": "Only for the break-glass account, when the TU-ID login is unavailable. Every attempt is recorded.",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Log in",
+      "invalid": "Email or password is wrong.",
+      "limited": "Too many attempts. Please wait a minute.",
+      "unavailable": "The service cannot be reached right now."
+    }
+  },
+  "user": {
+    "tuId": "TU-ID",
+    "givenName": "Given name",
+    "surname": "Surname",
+    "email": "Email",
+    "role": "Role",
+    "enabled": "Active",
+    "createdAt": "Created",
+    "roles": {
+      "admin": "Administration",
+      "operator": "Operations",
+      "user": "User"
+    }
+  },
+  "users": {
+    "search": "Search",
+    "enable": "Enable",
+    "disable": "Disable",
+    "saved": "Saved",
+    "empty": "No users found",
+    "erased": "erased"
+  },
+  "settings": {
+    "key": "Key",
+    "value": "Value",
+    "updatedAt": "Changed",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saved": "Setting saved",
+    "invalidJson": "Not valid JSON"
+  },
+  "directory": {
+    "search": "Name, TU-ID or email",
+    "hint": "At least {min} characters",
+    "empty": "No matches",
+    "truncated": "There are more matches than shown. Please narrow the search.",
+    "hasAccount": "Has an account"
+  },
+  "errors": {
+    "notFound": "This page does not exist.",
+    "home": "Go to the start page",
+    "forbidden": "You are not allowed to do that.",
+    "unavailable": "The service cannot be reached right now. Please try again later.",
+    "generic": "Something went wrong.",
+    "tooLarge": "The file is too large.",
+    "quota": "Your storage space is used up.",
+    "totalQuota": "The storage space of this system is used up.",
+    "unsupportedType": "This file type is not accepted, or the file is not what its type says."
+  },
+  "avatar": {
+    "title": "Picture",
+    "upload": "Upload a picture",
+    "remove": "Remove",
+    "saved": "Picture saved",
+    "removed": "Picture removed",
+    "hint": "PNG, JPEG or WebP"
+  },
+  "documents": {
+    "title": "Title",
+    "file": "File",
+    "size": "Size",
+    "owner": "Owner",
+    "updatedAt": "Changed",
+    "new": "New document",
+    "create": "Upload",
+    "download": "Download",
+    "remove": "Delete",
+    "confirmRemove": "Delete “{title}”?",
+    "created": "Document uploaded",
+    "removed": "Document deleted",
+    "empty": "No documents yet",
+    "hint": "PDF, PNG, JPEG or WebP",
+    "cancel": "Cancel"
+  },
+  "exports": {
+    "title": "My data",
+    "explainOwn": "Download everything this system holds about you, as a ZIP file with a JSON document and your files. It is prepared in the background and kept for a few days.",
+    "requestOwn": "Export my data",
+    "request": "Export this person's data",
+    "pending": "An export is being prepared.",
+    "pendingHint": "Being prepared …",
+    "failedHint": "This export could not be prepared. Please request a new one.",
+    "download": "Download",
+    "expires": "available until {date}",
+    "states": {
+      "pending": "In preparation",
+      "ready": "Ready",
+      "failed": "Failed"
+    }
+  },
+  "audit": {
+    "mine": "My activity",
+    "empty": "No activity recorded",
+    "time": "Time",
+    "actor": "Account",
+    "action": "Action",
+    "resource": "Resource",
+    "detail": "Detail",
+    "system": "System",
+    "erased": "erased account {id}",
+    "actions": {
+      "login": "Logged in",
+      "login_refused": "Login refused",
+      "logout": "Logged out",
+      "session_reuse-detected": "Reused session token detected",
+      "users_patch": "Account changed",
+      "users_erase": "Account erased",
+      "settings_update": "Setting changed",
+      "breakglass_create": "Break-glass account created",
+      "breakglass_rotate": "Break-glass password changed",
+      "data-exports_create": "Data export requested",
+      "data-exports_download": "Data export downloaded"
+    }
+  },
+  "gdpr": {
+    "explain": "Requests of data subjects: find the person by TU-ID, export their data to hand it over, or erase them.",
+    "lookUp": "Look up",
+    "notFound": "No account with this TU-ID.",
+    "exportExplain": "The export is available to you only. Hand it over to the person yourself.",
+    "eraseTitle": "Erase",
+    "eraseExplain": "Removes TU-ID, name, email and picture, deletes the person's documents and files and logs them out everywhere. The account remains only as an anonymous number in the activity log. This cannot be undone.",
+    "erase": "Erase this person",
+    "confirmTitle": "Erase for good?",
+    "confirmText": "Type the TU-ID {tuId} to confirm.",
+    "cancel": "Cancel",
+    "erased": "The person was erased",
+    "notSelf": "You cannot erase your own account.",
+    "notBreakGlass": "The break-glass account holds no personal data and cannot be erased.",
+    "exportTitle": "Data export"
+  },
+  "mail": {
+    "kinds": {
+      "gdpr": {
+        "export-ready": "Data export ready"
+      },
+      "documents": {
+        "stale-reminder": "Reminder about old documents"
+      }
+    },
+    "params": {
+      "documents": {
+        "stale-reminder": {
+          "olderThanDays": "Not changed for (days)"
+        }
+      }
+    },
+    "types": {
+      "notification": "Notification",
+      "campaign": "Mailing"
+    },
+    "notDeclared": "No longer in the code",
+    "subject": "Subject",
+    "body": "Text (Markdown)",
+    "variables": "Available variables",
+    "variablesHint": "Values are inserted as text. Links must point into the application, e.g. {example}.",
+    "preview": "Preview",
+    "save": "Save as new version",
+    "saved": "Template saved",
+    "refused": "The template does not work like this",
+    "refusedAt": "{part}, line {line}: {message}",
+    "refusedPart": "{part}: {message}",
+    "parts": {
+      "subject": "Subject",
+      "body": "Text"
+    },
+    "history": "Versions",
+    "active": "Active",
+    "system": "Default text",
+    "compare": "Compare",
+    "compareTitle": "Version of {date} compared with the editor",
+    "activate": "Activate",
+    "activated": "Version activated",
+    "load": "Load into the editor",
+    "close": "Close",
+    "html": "HTML",
+    "text": "Text only",
+    "previewFrame": "Preview of the mail",
+    "campaign": "Mailing",
+    "newCampaign": "New mailing",
+    "previewCampaign": "Recipients and preview",
+    "recipients": "{count} recipients",
+    "duration": "Sending takes about {duration}",
+    "durationNow": "Sent right away",
+    "previewFor": "Preview for {name}",
+    "nobody": "This mailing reaches nobody.",
+    "send": "Send",
+    "confirmTitle": "Send this mailing?",
+    "confirmText": "It goes to {count} recipients and takes about {duration}. The previewed wording is sent; later changes to the template do not change it.",
+    "cancel": "Cancel",
+    "sent": "Mailing is being sent",
+    "campaigns": "Mailings sent",
+    "sentAt": "Sent",
+    "sentBy": "By",
+    "status": "Status",
+    "statuses": {
+      "pending": "Being prepared",
+      "queued": "Sending",
+      "sent": "Sent",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    },
+    "progress": "{sent} sent, {pending} pending, {skipped} skipped, {failed} failed",
+    "deliveries": "Delivery log",
+    "recipient": "Recipient",
+    "kind": "Kind",
+    "createdAt": "Created",
+    "detail": "Reason",
+    "reasons": {
+      "disabled": "Account disabled",
+      "erased": "Account erased",
+      "no-email": "No email address",
+      "break-glass": "Break-glass account",
+      "unknown-kind": "Kind no longer in the code",
+      "nothing-to-send": "Nothing to send"
+    },
+    "allStatuses": "All",
+    "refresh": "Refresh",
+    "minutes": "{n} minutes",
+    "hours": "{h} h {m} min"
+  }
+}

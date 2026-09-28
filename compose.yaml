@@ -1,0 +1,1323 @@
+# Single source of the service topology (ADR 0001). Quadlet units under
+# deploy/quadlet/ are generated from this file with scripts/quadlet.sh.
+#
+# Conventions this file keeps so the generated units work:
+# - every service sets container_name, because Quadlet otherwise names
+#   containers systemd-<name> and service-name DNS stops resolving;
+# - no restart policies: they are production drop-ins (ADR 0001);
+# - `build:` is local only and is stripped before generation;
+# - third-party images are pinned by digest alone (podlet rejects tag@digest),
+#   with the version in a trailing comment;
+# - depends_on is always written in map form;
+# - services whose production counterpart is external or different (ADR
+#   0001, 0002) carry the `local` profile, test runners the `test` profile.
+#   Neither reaches the generated units, and scripts/stack.sh always runs
+#   with --profile local;
+# - the `dev` profile holds the Vite dev server (ADR 0014), started by
+#   `scripts/stack.sh up --dev`, which also sets NGINX_WEB_UPSTREAM. Values
+#   interpolated from the environment are local-only by the same rule and
+#   are dropped from the generated units.
+name: feathers
+
+services:
+  certs:
+    build:
+      context: .
+      dockerfile: containers/certs/Containerfile
+    image: localhost/feathers-certs:dev
+    container_name: certs
+    profiles: [local]
+    environment:
+      CERT_HOSTNAMES: app.localhost,e2e.localhost,idp.localhost,dozzle.localhost,grafana.localhost,mail.localhost
+    network_mode: none
+    volumes:
+      - certs-ca:/ca
+      - trust:/trust
+      - tls-nginx:/tls/nginx
+      - tls-openbao:/tls/openbao
+      - tls-postgres:/tls/postgres
+      - tls-pgbouncer:/tls/pgbouncer
+      - tls-ldap:/tls/ldap
+      - tls-valkey:/tls/valkey
+      - tls-s3:/tls/s3
+      - tls-api:/tls/api
+      - tls-worker:/tls/worker
+      - tls-prometheus:/tls/prometheus
+      - tls-loki:/tls/loki
+      - tls-grafana:/tls/grafana
+      - tls-mail:/tls/mail
+      - tls-blackbox:/tls/blackbox
+      - tls-postgres-exporter:/tls/postgres-exporter
+      - tls-pgbouncer-exporter:/tls/pgbouncer-exporter
+      - tls-valkey-exporter:/tls/valkey-exporter
+      - tls-node-exporter:/tls/node-exporter
+
+  nginx:
+    build:
+      context: .
+      dockerfile: containers/nginx/Containerfile
+    image: localhost/feathers-nginx:dev
+    container_name: nginx
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+    environment:
+      NGINX_ENTRYPOINT_LOCAL_RESOLVERS: "1"
+      NGINX_TLS_DIR: /etc/nginx/tls
+      NGINX_APP_HOST: app.localhost
+      NGINX_IDP_HOST: idp.localhost
+      NGINX_PUBLIC_PORT: "8443"
+      # Mirrored in bytes as the api's BODY_SIZE_CEILING_BYTES (ADR 0025).
+      NGINX_BODY_SIZE_LIMIT: 10m
+      NGINX_API_UPSTREAM: api:3030
+      # The e2e origin (ADR 0015), local only: interpolated values never
+      # reach the production units.
+      NGINX_E2E_HOST: ${NGINX_E2E_HOST:-e2e.localhost}
+      NGINX_E2E_API_UPSTREAM: ${NGINX_E2E_API_UPSTREAM:-api-e2e:3030}
+      NGINX_IDP_UPSTREAM: idp:8080
+      NGINX_DOZZLE_HOST: dozzle.localhost
+      NGINX_DOZZLE_UPSTREAM: dozzle:8080
+      # Grafana in every environment, Mailpit's inbox locally (ADR 0022);
+      # production sets its own Grafana host name and no mail host.
+      NGINX_GRAFANA_HOST: grafana.localhost
+      NGINX_GRAFANA_UPSTREAM: grafana:3000
+      NGINX_MAIL_HOST: mail.localhost
+      NGINX_MAIL_UPSTREAM: mail:8025
+      # Empty: serve the built bundle. `up --dev`: the dev server.
+      NGINX_WEB_UPSTREAM: ${NGINX_WEB_UPSTREAM:-}
+    ports:
+      # Nginx listens on the public port itself, so inside the networks
+      # nginx:8443 is the same origin a browser uses (the e2e container).
+      - "127.0.0.1:8443:8443"
+    networks:
+      edge:
+        # The public name, for clients inside the stack: the uptime probe
+        # reaches the same origin a browser does (ADR 0022).
+        aliases: [app.localhost]
+      idp-edge: {}
+      dozzle-edge: {}
+      grafana-edge: {}
+      mail-edge: {}
+      mcp-edge: {}
+    volumes:
+      - tls-nginx:/etc/nginx/tls:ro
+      - trust:/trust:ro
+
+  # The Vite dev server with the frontend source bind-mounted (ADR 0014).
+  # Nginx proxies to it when NGINX_WEB_UPSTREAM is set; origin, TLS and
+  # headers stay those of production.
+  web:
+    build:
+      context: .
+      dockerfile: containers/nginx/Containerfile
+      target: web-dev
+    image: localhost/feathers-web-dev:dev
+    container_name: web
+    profiles: [dev]
+    environment:
+      PUBLIC_HOST: app.localhost
+      PUBLIC_PORT: "8443"
+    networks: [edge]
+    volumes:
+      - ./apps/web/src:/repo/apps/web/src:ro,Z
+      - ./apps/web/public:/repo/apps/web/public:ro,Z
+      - ./apps/web/index.html:/repo/apps/web/index.html:ro,Z
+      - ./apps/web/quasar.config.ts:/repo/apps/web/quasar.config.ts:ro,Z
+
+  api:
+    build:
+      context: .
+      dockerfile: containers/api/Containerfile
+      target: runtime
+    image: localhost/feathers-api:dev
+    container_name: api
+    # The api refuses to start before migrate has seeded the runtime
+    # settings (ADR 0025).
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment: &api-environment
+      PUBLIC_ORIGIN: https://app.localhost:8443
+      # Rotated JSON log files, read by the collector (ADR 0021).
+      LOG_FILE: /var/log/app/api
+      # Metrics and health on the internal port, over TLS (ADR 0022).
+      INTERNAL_TLS_CERT_FILE: /tls/tls.crt
+      INTERNAL_TLS_KEY_FILE: /tls/tls.key
+      AUTH_SIGNING_SECRET_FILE: /run/secrets/auth_signing_secret
+      REFRESH_TOKEN_KEY_FILE: /run/secrets/refresh_token_key
+      SAML_SP_PRIVATE_KEY_FILE: /run/secrets/saml_sp_key
+      SAML_SP_CERTIFICATE_FILE: /run/secrets/saml_sp_cert
+      SAML_IDP_CERTIFICATE_FILE: /run/secrets/saml_idp_cert
+      SAML_IDP_ENTITY_ID: https://idp.localhost:8443/realms/feathers
+      SAML_IDP_SSO_URL: https://idp.localhost:8443/realms/feathers/protocol/saml
+      SAML_IDP_SLO_URL: https://idp.localhost:8443/realms/feathers/protocol/saml
+      DATABASE_HOST: pgbouncer
+      DATABASE_PORT: "6432"
+      DATABASE_NAME: app
+      DATABASE_USER: app
+      DATABASE_PASSWORD_FILE: /run/secrets/database_password
+      DATABASE_CA_FILE: /trust/ca.crt
+      # Nginx's NGINX_BODY_SIZE_LIMIT (10m) in bytes.
+      BODY_SIZE_CEILING_BYTES: "10485760"
+      VALKEY_HOST: valkey
+      VALKEY_USER: api
+      VALKEY_PASSWORD_FILE: /run/secrets/valkey_password
+      VALKEY_CA_FILE: /trust/ca.crt
+      # X-Forwarded-For is believed only from this container (ADR 0016).
+      TRUSTED_PROXY_HOST: nginx
+      # Directory lookup (ADR 0008); the university directory in production.
+      LDAP_URL: ldaps://ldap:636
+      LDAP_BIND_DN: cn=api,ou=services,dc=feathers,dc=test
+      LDAP_BIND_PASSWORD_FILE: /run/secrets/ldap_bind_password
+      LDAP_BASE_DN: ou=people,dc=feathers,dc=test
+      LDAP_CA_FILE: /trust/ca.crt
+      # Object storage (ADR 0020), over TLS to the s3 container's Nginx.
+      S3_ENDPOINT: https://s3:3900
+      S3_KEY_ID_FILE: /run/secrets/s3_key_id
+      S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
+      S3_CA_FILE: /trust/ca.crt
+    networks: [edge, app-data, identity, object, observability]
+    volumes:
+      - api-secrets:/run/secrets:ro
+      - trust:/trust:ro
+      - logs:/var/log/app
+      - tls-api:/tls:ro
+    healthcheck:
+      test: ["CMD-SHELL", "NODE_EXTRA_CA_CERTS=/trust/ca.crt node -e \"fetch('https://localhost:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # The api of the end-to-end suite (ADR 0015): the same image and
+  # configuration on a database of its own, `app_e2e`, behind its own origin,
+  # so a Playwright run never touches the data of the local `app`.
+  # `scripts/stack.sh e2e` recreates the database, starts this container for
+  # the run and removes it afterwards.
+  api-e2e:
+    image: localhost/feathers-api:dev
+    container_name: api-e2e
+    profiles: [test]
+    environment:
+      <<: *api-environment
+      PUBLIC_ORIGIN: https://e2e.localhost:8443
+      DATABASE_NAME: app_e2e
+      RATE_LIMIT_PREFIX: rl:e2e
+      # Emptied by every `stack.sh e2e`, as app_e2e is recreated.
+      S3_UPLOADS_BUCKET: e2e-uploads
+      S3_EXPORTS_BUCKET: e2e-exports
+      # Its exports go to worker-e2e, not to the local worker (ADR 0024).
+      QUEUE_PREFIX: bull:e2e
+      # Stdout only: its lines stay out of Loki and the alert rules.
+      LOG_FILE: ""
+    networks: [edge, app-data, identity, object]
+    volumes:
+      - api-secrets:/run/secrets:ro
+      - trust:/trust:ro
+      - tls-api:/tls:ro
+    healthcheck:
+      test: ["CMD-SHELL", "NODE_EXTRA_CA_CERTS=/trust/ca.crt node -e \"fetch('https://localhost:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Background jobs (ADR 0024): the api's image, another entry point, and
+  # credentials of its own.
+  worker:
+    image: localhost/feathers-api:dev
+    container_name: worker
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: ["node", "dist/worker.js"]
+    environment: &worker-environment
+      LOG_FILE: /var/log/app/worker
+      INTERNAL_TLS_CERT_FILE: /tls/tls.crt
+      INTERNAL_TLS_KEY_FILE: /tls/tls.key
+      DATABASE_HOST: pgbouncer
+      DATABASE_PORT: "6432"
+      DATABASE_NAME: app
+      DATABASE_USER: worker
+      DATABASE_PASSWORD_FILE: /run/secrets/database_password
+      DATABASE_CA_FILE: /trust/ca.crt
+      VALKEY_HOST: valkey
+      VALKEY_USER: worker
+      VALKEY_PASSWORD_FILE: /run/secrets/valkey_password
+      VALKEY_CA_FILE: /trust/ca.crt
+      S3_ENDPOINT: https://s3:3900
+      S3_KEY_ID_FILE: /run/secrets/s3_key_id
+      S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
+      S3_CA_FILE: /trust/ca.crt
+      # Mail (ADR 0027): Mailpit locally, the university relay in production;
+      # links in mail start with the public origin.
+      PUBLIC_ORIGIN: https://app.localhost:8443
+      SMTP_HOST: mail
+      SMTP_PORT: "1025"
+      SMTP_CA_FILE: /trust/ca.crt
+      MAIL_FROM: noreply@app.localhost
+    networks: [app-data, object, observability]
+    volumes:
+      - worker-secrets:/run/secrets:ro
+      - trust:/trust:ro
+      - logs:/var/log/app
+      - tls-worker:/tls:ro
+    healthcheck:
+      test: ["CMD-SHELL", "NODE_EXTRA_CA_CERTS=/trust/ca.crt node -e \"fetch('https://localhost:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # The worker of the end-to-end suite (ADR 0015): builds api-e2e's exports
+  # (ADR 0013) from app_e2e and its buckets, under a queue prefix of their
+  # own. `scripts/stack.sh e2e` starts it with api-e2e and removes it after.
+  worker-e2e:
+    image: localhost/feathers-api:dev
+    container_name: worker-e2e
+    profiles: [test]
+    command: ["node", "dist/worker.js"]
+    environment:
+      <<: *worker-environment
+      DATABASE_NAME: app_e2e
+      QUEUE_PREFIX: bull:e2e
+      S3_UPLOADS_BUCKET: e2e-uploads
+      S3_EXPORTS_BUCKET: e2e-exports
+      PUBLIC_ORIGIN: https://e2e.localhost:8443
+      # Stdout only: its lines stay out of Loki and the alert rules.
+      LOG_FILE: ""
+    # `observability` for Mailpit, where the suite finds its mail (ADR 0027).
+    networks: [app-data, object, observability]
+    volumes:
+      - worker-secrets:/run/secrets:ro
+      - trust:/trust:ro
+      - tls-worker:/tls:ro
+    healthcheck:
+      test: ["CMD-SHELL", "NODE_EXTRA_CA_CERTS=/trust/ca.crt node -e \"fetch('https://localhost:9090/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Backups (ADR 0017): restic repositories under /srv/backups, which is a
+  # named volume locally and the host's NFS mount when BACKUP_TARGET names
+  # it (CI); the production unit mounts /srv/backups (scripts/quadlet.sh).
+  # Only on db, object and secrets (ADR 0002). Valkey's snapshot is read
+  # from its volume, never over the network.
+  backup:
+    build:
+      context: .
+      dockerfile: containers/api/Containerfile
+      target: backup
+    image: localhost/feathers-backup:dev
+    container_name: backup
+    # restic's locks name the host; a fixed name lets a restarted container
+    # recognise its own stale ones.
+    hostname: backup
+    # It refuses to start without its runtime settings (ADR 0025).
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      LOG_FILE: /var/log/app/backup/backup
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: app
+      DATABASE_USER: backup
+      DATABASE_PASSWORD_FILE: /run/secrets/database_password
+      DATABASE_CA_FILE: /trust/ca.crt
+      S3_ENDPOINT: https://s3:3900
+      S3_KEY_ID_FILE: /run/secrets/s3_key_id
+      S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
+      S3_CA_FILE: /trust/ca.crt
+      RESTIC_PASSWORD_FILE: /run/secrets/restic_password
+      OPENBAO_ADDR: https://openbao:8200
+      OPENBAO_TOKEN_FILE: /run/secrets/openbao_token
+      OPENBAO_CA_FILE: /trust/ca.crt
+    networks: [db, object, secrets]
+    volumes:
+      - ${BACKUP_TARGET:-backups}:/srv/backups
+      - backup-data:/var/lib/backup
+      - valkey-data:/var/lib/valkey:ro
+      - backup-secrets:/run/secrets:ro
+      - trust:/trust:ro
+      - logs:/var/log/app
+
+  migrate:
+    image: localhost/feathers-api:dev
+    container_name: migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["node", "dist/migrate.js"]
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: app
+      DATABASE_USER: migrator
+      DATABASE_PASSWORD_FILE: /run/secrets/database_password
+      DATABASE_CA_FILE: /trust/ca.crt
+    networks: [db]
+    volumes:
+      - migrate-secrets:/run/secrets:ro
+      - trust:/trust:ro
+
+  postgres:
+    image: docker.io/library/postgres@sha256:d8703cd7fba306b9fec9268ecedfa8a966846c053036a60e3635791957eb2f66 # 18.6-alpine
+    container_name: postgres
+    # The image's entry point, plus roles.sh on every start (ADR 0003).
+    entrypoint: ["bash", "/usr/local/share/postgres/entrypoint.sh"]
+    command:
+      - postgres
+      - -c
+      - hba_file=/etc/postgresql/pg_hba.conf
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/tls/tls.crt
+      - -c
+      - ssl_key_file=/tls/tls.key
+      - -c
+      - ssl_min_protocol_version=TLSv1.2
+      - -c
+      - password_encryption=scram-sha-256
+      - -c
+      - max_connections=100
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/superuser_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    networks: [db]
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - postgres-secrets:/run/secrets:ro
+      - tls-postgres:/tls:ro
+      - ./containers/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro,Z
+      - ./containers/postgres/initdb:/docker-entrypoint-initdb.d:ro,Z
+      - ./containers/postgres/entrypoint.sh:/usr/local/share/postgres/entrypoint.sh:ro,Z
+      - ./containers/postgres/roles.sh:/usr/local/share/postgres/roles.sh:ro,Z
+    healthcheck:
+      # Over TCP, the way clients connect: during first initialisation the
+      # image runs a temporary server on the Unix socket only, which a socket
+      # probe would report as ready (and systemd trusts this via
+      # Notify=healthy). Healthy only once the roles are applied.
+      test: ["CMD-SHELL", "gosu postgres pg_isready -q -h 127.0.0.1 && test -e /run/postgresql/roles-applied"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  pgbouncer:
+    build:
+      context: .
+      dockerfile: containers/pgbouncer/Containerfile
+    image: localhost/feathers-pgbouncer:dev
+    container_name: pgbouncer
+    # Safe shutdown: running transactions finish, then it exits. On SIGTERM
+    # PgBouncer 1.23+ waits for every client to disconnect, which ran into
+    # Podman's SIGKILL whenever a client outlived the stop (ADR 0004).
+    stop_signal: SIGINT
+    depends_on:
+      postgres:
+        condition: service_started
+    networks: [app-data, db]
+    volumes:
+      - pgbouncer-secrets:/run/secrets:ro
+      - tls-pgbouncer:/tls:ro
+      - trust:/trust:ro
+
+  valkey:
+    image: docker.io/valkey/valkey@sha256:3b83b0b6a598bb390c8186a408a69949772f439548a81c5ea0ab7ccf102c248d # 9.1.2-alpine
+    container_name: valkey
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+    # Files group-readable: the backup service reads the RDB snapshot through
+    # Valkey's group (ADR 0017). The image's entry point keeps a umask it
+    # did not default to.
+    entrypoint: ["sh", "-c", "umask 0027 && exec docker-entrypoint.sh \"$$@\"", "valkey"]
+    command: ["valkey-server", "/etc/valkey/valkey.conf"]
+    networks: [app-data]
+    volumes:
+      - ./containers/valkey/valkey.conf:/etc/valkey/valkey.conf:ro,Z
+      - valkey-data:/data
+      - valkey-secrets:/run/secrets:ro
+      - tls-valkey:/tls:ro
+      - trust:/trust:ro
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/secrets/probe_password)\" valkey-cli --user probe --tls --cacert /trust/ca.crt -h valkey ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Object storage (ADR 0020): Garage behind Nginx for TLS, one image. The
+  # buckets and each client's key are set up by the container at every start,
+  # from keys its agent renders.
+  s3:
+    build:
+      context: .
+      dockerfile: containers/s3/Containerfile
+    image: localhost/feathers-s3:dev
+    container_name: s3
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+    environment:
+      # Local only (interpolated, so never in the generated units): the
+      # buckets of the test runs, emptied by each run (ADR 0015, 0020), and
+      # the source and target of the backup-and-restore check (ADR 0017).
+      S3_LOCAL_GRANTS: ${S3_LOCAL_GRANTS:-api:e2e-uploads:write api:e2e-exports:write worker:e2e-uploads:write worker:e2e-exports:write test:test-uploads:write test:test-purge:write test:test-exports:write backup:backup-check:read backup:restore-check:read}
+    networks: [object, observability]
+    volumes:
+      - s3-data:/var/lib/garage
+      - s3-secrets:/run/secrets:ro
+      - tls-s3:/tls:ro
+      - trust:/trust:ro
+    healthcheck:
+      test: ["CMD-SHELL", "test -e /run/garage/bootstrapped && curl -fsS --cacert /trust/ca.crt https://localhost:3903/health >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  test:
+    build:
+      context: .
+      dockerfile: containers/api/Containerfile
+      target: test
+    image: localhost/feathers-api-test:dev
+    container_name: test
+    profiles: [test]
+    environment:
+      DATABASE_HOST: pgbouncer
+      DATABASE_PORT: "6432"
+      DATABASE_NAME: postgres
+      DATABASE_USER: test
+      DATABASE_PASSWORD_FILE: /run/secrets/database_password
+      DATABASE_CA_FILE: /trust/ca.crt
+      DATABASE_POOL_MAX: "2"
+      VALKEY_HOST: valkey
+      VALKEY_USER: test
+      VALKEY_PASSWORD_FILE: /run/secrets/valkey_password
+      VALKEY_CA_FILE: /trust/ca.crt
+      LDAP_URL: ldaps://ldap:636
+      LDAP_BIND_DN: cn=api,ou=services,dc=feathers,dc=test
+      LDAP_BIND_PASSWORD_FILE: /run/secrets/ldap_bind_password
+      LDAP_BASE_DN: ou=people,dc=feathers,dc=test
+      LDAP_CA_FILE: /trust/ca.crt
+      S3_ENDPOINT: https://s3:3900
+      S3_KEY_ID_FILE: /run/secrets/s3_key_id
+      S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
+      S3_CA_FILE: /trust/ca.crt
+      S3_UPLOADS_BUCKET: test-uploads
+      S3_EXPORTS_BUCKET: test-exports
+      # Sending through Mailpit (ADR 0027).
+      SMTP_HOST: mail
+      SMTP_PORT: "1025"
+      SMTP_CA_FILE: /trust/ca.crt
+      MAIL_FROM: noreply@test.localhost
+    networks: [app-data, identity, object, observability]
+    volumes:
+      - test-secrets:/run/secrets:ro
+      - trust:/trust:ro
+
+  ldap:
+    build:
+      context: .
+      dockerfile: containers/ldap/Containerfile
+    image: localhost/feathers-ldap:dev
+    container_name: ldap
+    profiles: [local]
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+    networks: [identity]
+    volumes:
+      - ldap-data:/var/lib/openldap
+      - ldap-secrets:/run/secrets:ro
+      - tls-ldap:/tls:ro
+
+  idp:
+    build:
+      context: .
+      dockerfile: containers/idp/Containerfile
+    image: localhost/feathers-idp:dev
+    container_name: idp
+    profiles: [local]
+    depends_on:
+      ldap:
+        condition: service_started
+    environment:
+      KC_HOSTNAME: https://idp.localhost:8443
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_TRUSTSTORE_PATHS: /trust/ca.crt
+    networks: [idp-edge, identity]
+    volumes:
+      - idp-data:/opt/keycloak/data/h2
+      - idp-secrets:/run/secrets:ro
+      - trust:/trust:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # Local convenience only (ADR 0002): a live view of container output at
+  # https://dozzle.localhost:8443. Not part of the log pipeline (ADR 0021,
+  # 0022), which reads the log files, not container output.
+  dozzle:
+    image: docker.io/amir20/dozzle@sha256:b1dd6f52417d505f0de6602fbf629cd240cdf59aba4f7c6959169874e727ef8b # v11.1.1
+    container_name: dozzle
+    profiles: [local]
+    environment:
+      DOZZLE_FILTER: label=com.docker.compose.project=feathers
+      DOZZLE_ENABLE_ACTIONS: "false"
+      DOZZLE_ENABLE_SHELL: "false"
+      DOZZLE_NO_ANALYTICS: "true"
+      DOZZLE_RELEASE_CHECK_MODE: manual
+      DOZZLE_IMAGE_CHECK_MODE: "off"
+    networks: [dozzle-edge]
+    # The rootless Podman API socket (systemctl --user enable --now
+    # podman.socket). A socket cannot be mounted read-only in any useful
+    # sense: whoever reaches it controls the user's containers, which is
+    # accepted for a local-only tool behind 127.0.0.1. SELinux hosts need
+    # the label disabled to connect to it.
+    security_opt: [label=disable]
+    volumes:
+      - ${XDG_RUNTIME_DIR}/podman/podman.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "/dozzle", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  e2e:
+    build:
+      context: .
+      dockerfile: containers/e2e/Containerfile
+    image: localhost/feathers-e2e:dev
+    container_name: e2e
+    profiles: [test]
+    environment:
+      # The e2e origin, served by api-e2e on its own database (ADR 0015).
+      E2E_APP_ORIGIN: https://e2e.localhost:8443
+      # Chromium resolves *.localhost to loopback; map the public names to
+      # nginx instead (ADR 0015).
+      E2E_HOST_RESOLVER_RULES: MAP e2e.localhost nginx, MAP idp.localhost nginx, MAP mail.localhost nginx
+      # The e2e database's break-glass account (ADR 0008), made by
+      # `stack.sh e2e` for the run; a local test value, never a real one.
+      E2E_BREAKGLASS_EMAIL: breakglass@e2e.localhost
+      E2E_BREAKGLASS_PASSWORD: ${E2E_BREAKGLASS_PASSWORD:-}
+    # The container networks are IPv4 only. Link-local IPv6 addresses still
+    # appear, and settle, just after start; Chromium reports that as a
+    # network change and aborts the request in flight (ERR_NETWORK_CHANGED),
+    # which failed the first test of a run intermittently.
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks: [edge, idp-edge]
+    volumes:
+      - trust:/trust:ro
+
+  # The browser a coding agent drives (ADR 0026): the e2e image, idle until
+  # an agent starts the Playwright MCP server in it with `podman exec -i`
+  # (.mcp.json). Its only network is internal and holds nothing but Nginx,
+  # so the browser reaches the local origins and not the internet.
+  mcp-browser:
+    build:
+      context: .
+      dockerfile: containers/e2e/Containerfile
+    image: localhost/feathers-e2e:dev
+    container_name: mcp-browser
+    profiles: [local]
+    command: ["sh", "-c", "trap 'exit 0' TERM; sleep infinity & wait"]
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks: [mcp-edge]
+    volumes:
+      - trust:/trust:ro
+
+  openbao:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: openbao
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+    entrypoint: ["bao"]
+    command: ["server", "-config=/openbao/config/server.hcl"]
+    user: "100:1000"
+    environment:
+      BAO_ADDR: https://127.0.0.1:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/server.hcl:/openbao/config/server.hcl:ro,Z
+      - openbao-data:/openbao/data
+      - tls-openbao:/openbao/tls:ro
+      - trust:/openbao/trust:ro
+
+  api-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: api-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    # Owner of the rendered files; the api reads them through group 1000.
+    user: "100:1000"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/api.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/api.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - api-secrets:/run/secrets
+      - api-agent-cred:/run/agent
+
+  postgres-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: postgres-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:70"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/postgres.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/postgres.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - postgres-secrets:/run/secrets
+      - postgres-agent-cred:/run/agent
+
+  pgbouncer-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: pgbouncer-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:101"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/pgbouncer.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/pgbouncer.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - pgbouncer-secrets:/run/secrets
+      - pgbouncer-agent-cred:/run/agent
+
+  migrate-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: migrate-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:1000"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/migrate.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/migrate.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - migrate-secrets:/run/secrets
+      - migrate-agent-cred:/run/agent
+
+  test-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: test-agent
+    profiles: [test]
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:1000"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/test.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/test.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - test-secrets:/run/secrets
+      - test-agent-cred:/run/agent
+
+  valkey-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: valkey-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:1000"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/valkey.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/valkey.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - valkey-secrets:/run/secrets
+      - valkey-agent-cred:/run/agent
+
+  ldap-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: ldap-agent
+    profiles: [local]
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:101"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/ldap.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/ldap.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - ldap-secrets:/run/secrets
+      - ldap-agent-cred:/run/agent
+
+  idp-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: idp-agent
+    profiles: [local]
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:0"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/idp.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/idp.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - idp-secrets:/run/secrets
+      - idp-agent-cred:/run/agent
+
+  worker-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: worker-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    # Owner of the rendered files; the worker reads them through group 1000.
+    user: "100:1000"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/worker.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/worker.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - worker-secrets:/run/secrets
+      - worker-agent-cred:/run/agent
+
+  s3-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: s3-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:3900"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/s3.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/s3.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - s3-secrets:/run/secrets
+      - s3-agent-cred:/run/agent
+
+  backup-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: backup-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:1100"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/backup.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/backup.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - backup-secrets:/run/secrets
+      - backup-agent-cred:/run/agent
+
+  # --- observability (ADR 0021, 0022) ---------------------------------------
+  # TLS on every hop, each listener with its own leaf at /tls; CPU and
+  # memory are capped so monitoring cannot starve the application.
+
+  prometheus:
+    image: docker.io/prom/prometheus@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e # v3.15.0
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.config.file=/etc/observability/web-config.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=14d
+    environment:
+      ENVIRONMENT: local
+    mem_limit: 1g
+    cpus: 1.0
+    networks: [observability]
+    volumes:
+      - ./containers/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro,Z
+      - ./containers/prometheus/targets:/etc/prometheus/targets:ro,Z
+      - ./containers/observability/web-config.yml:/etc/observability/web-config.yml:ro,Z
+      - prometheus-data:/prometheus
+      - tls-prometheus:/tls:ro
+      - trust:/trust:ro
+
+  loki:
+    image: docker.io/grafana/loki@sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193 # 3.7.8
+    container_name: loki
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    mem_limit: 1g
+    cpus: 1.0
+    networks: [observability]
+    volumes:
+      - ./containers/loki/loki.yaml:/etc/loki/loki.yaml:ro,Z
+      - loki-data:/loki
+      - tls-loki:/tls:ro
+
+  # The log shipper. Root inside its rootless container, which is the host
+  # user: only that user may read the user journal Podman logs to.
+  alloy:
+    image: docker.io/grafana/alloy@sha256:f111cce835516c5f99166342be7038496b52ced16667be5a11e19258a3e4cd30 # v1.20.0
+    container_name: alloy
+    # Stopped before Loki, so the lines it still holds are shipped rather
+    # than retried until Podman's SIGKILL: by systemd through this ordering
+    # in production, and by scripts/stack.sh locally, because podman-compose
+    # stops everything at once on `down`.
+    depends_on:
+      loki:
+        condition: service_started
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --storage.path=/var/lib/alloy/data
+      - --server.http.listen-addr=127.0.0.1:12345
+      - --disable-reporting
+    environment:
+      ENVIRONMENT: local
+    networks: [observability]
+    volumes:
+      - ./containers/alloy/config.alloy:/etc/alloy/config.alloy:ro,Z
+      - logs:/var/log/app:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      - alloy-data:/var/lib/alloy/data
+      - trust:/trust:ro
+
+  grafana:
+    image: docker.io/grafana/grafana@sha256:ac461fb352abc50da10a51c7d02462e9c05488f11f53f14b3ad79a8145f638a0 # 13.2.2
+    container_name: grafana
+    environment:
+      GF_SERVER_PROTOCOL: https
+      GF_SERVER_CERT_FILE: /tls/tls.crt
+      GF_SERVER_CERT_KEY: /tls/tls.key
+      GF_SERVER_ROOT_URL: https://grafana.localhost:8443/
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/admin_password
+      GF_SECURITY_SECRET_KEY__FILE: /run/secrets/secret_key
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      # The CA root beside the system roots: Prometheus, Loki and Mailpit
+      # locally, a public relay in production.
+      SSL_CERT_DIR: /etc/ssl/certs:/trust
+      # No SMTP login: the university relay accepts mail by the sender's
+      # host name, without authentication (ADR 0022); TLS is mandatory.
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: mail:1025
+      GF_SMTP_FROM_ADDRESS: grafana@app.localhost
+      GF_SMTP_FROM_NAME: claude-feathers alerts
+      GF_SMTP_STARTTLS_POLICY: MandatoryStartTLS
+      # Deployment configuration (ADR 0022); may be a distribution list.
+      ALERT_EMAIL: operators@app.localhost
+      # Alertmanager's grouping times, short here so `stack.sh alerts` is
+      # quick; scripts/quadlet.sh writes production's 30s and 5m (ADR 0022).
+      ALERT_GROUP_WAIT: ${ALERT_GROUP_WAIT:-5s}
+      ALERT_GROUP_INTERVAL: ${ALERT_GROUP_INTERVAL:-30s}
+    mem_limit: 512m
+    cpus: 1.0
+    networks: [observability, grafana-edge]
+    volumes:
+      - ./containers/grafana/provisioning:/etc/grafana/provisioning:ro,Z
+      - ./containers/grafana/dashboards:/var/lib/grafana/dashboards:ro,Z
+      - grafana-data:/var/lib/grafana
+      - grafana-secrets:/run/secrets:ro
+      - tls-grafana:/tls:ro
+      - trust:/trust:ro
+
+  # SMTP capture locally and in CI; the university relay in production.
+  mail:
+    image: docker.io/axllent/mailpit@sha256:74d609a42ec279aa63c6b4622a6fa9b5408d1ad5b1d76a1c4be40a265ce0863d # v1.31.2
+    container_name: mail
+    profiles: [local]
+    user: "65534:65534"
+    command:
+      - --smtp=0.0.0.0:1025
+      - --smtp-tls-cert=/tls/tls.crt
+      - --smtp-tls-key=/tls/tls.key
+      - --smtp-require-starttls
+      - --listen=0.0.0.0:8025
+      - --ui-tls-cert=/tls/tls.crt
+      - --ui-tls-key=/tls/tls.key
+      - --disable-version-check
+    networks: [observability, mail-edge]
+    volumes:
+      - tls-mail:/tls:ro
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter@sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e # v0.20.1
+    container_name: postgres-exporter
+    command: ["--web.config.file=/etc/observability/web-config.yml"]
+    environment:
+      DATA_SOURCE_URI: postgres:5432/postgres?sslmode=verify-full&sslrootcert=/trust/ca.crt
+      DATA_SOURCE_USER: exporter
+      DATA_SOURCE_PASS_FILE: /run/secrets/database_password
+    networks: [db, observability]
+    volumes:
+      - ./containers/observability/web-config.yml:/etc/observability/web-config.yml:ro,Z
+      - postgres-exporter-secrets:/run/secrets:ro
+      - tls-postgres-exporter:/tls:ro
+      - trust:/trust:ro
+
+  pgbouncer-exporter:
+    image: quay.io/prometheuscommunity/pgbouncer-exporter@sha256:30f31b6c2efdad3647f8182cc7c1a3a19e42bae5d17387694989f969371c230d # v0.12.1
+    container_name: pgbouncer-exporter
+    # The password goes into the connection string through the environment,
+    # never onto the command line.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        PGBOUNCER_EXPORTER_CONNECTION_STRING="postgres://stats:$$(cat /run/secrets/database_password)@pgbouncer:6432/pgbouncer?sslmode=verify-full&sslrootcert=/trust/ca.crt"
+        exec /bin/pgbouncer_exporter --web.config.file=/etc/observability/web-config.yml
+    networks: [db, observability]
+    volumes:
+      - ./containers/observability/web-config.yml:/etc/observability/web-config.yml:ro,Z
+      - pgbouncer-exporter-secrets:/run/secrets:ro
+      - tls-pgbouncer-exporter:/tls:ro
+      - trust:/trust:ro
+
+  valkey-exporter:
+    image: docker.io/oliver006/redis_exporter@sha256:ca3abd5f19da6c87e96038ba08aaa3dfaab34dc649834584c4d6880b05952fef # v1.92.0
+    container_name: valkey-exporter
+    command:
+      - --redis.addr=rediss://valkey:6379
+      - --redis.user=exporter
+      - --redis.password-file=/run/secrets/passwords.json
+      - --tls-ca-cert-file=/trust/ca.crt
+      - --tls-server-cert-file=/tls/tls.crt
+      - --tls-server-key-file=/tls/tls.key
+    networks: [app-data, observability]
+    volumes:
+      - valkey-exporter-secrets:/run/secrets:ro
+      - tls-valkey-exporter:/tls:ro
+      - trust:/trust:ro
+
+  # Host CPU, memory and filesystems, read through the host's root.
+  node-exporter:
+    image: quay.io/prometheus/node-exporter@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0 # v1.12.1
+    container_name: node-exporter
+    command:
+      - --path.rootfs=/host
+      - --web.config.file=/etc/observability/web-config.yml
+      # The defaults, plus /run: runtime tmpfs and removable media
+      # automounts, never a data, log or backup volume.
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|run|sys|var/lib/docker/.+|var/lib/containers/storage/.+)($|/)
+    pid: host
+    networks: [observability]
+    volumes:
+      - ./containers/observability/web-config.yml:/etc/observability/web-config.yml:ro,Z
+      - /:/host:ro
+      - tls-node-exporter:/tls:ro
+
+  # The uptime check (ADR 0022), probing the public endpoint through Nginx.
+  # In production it must run on another machine.
+  blackbox:
+    image: quay.io/prometheus/blackbox-exporter@sha256:e753ff9f3fc458d02cca5eddab5a77e1c175eee484a8925ac7d524f04366c2fc # v0.28.0
+    container_name: blackbox
+    user: "65534:65534"
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+      - --web.config.file=/etc/observability/web-config.yml
+    networks: [edge, observability]
+    volumes:
+      - ./containers/blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro,Z
+      - ./containers/observability/web-config.yml:/etc/observability/web-config.yml:ro,Z
+      - tls-blackbox:/tls:ro
+      - trust:/trust:ro
+
+  grafana-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: grafana-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:0"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/grafana.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/grafana.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - grafana-secrets:/run/secrets
+      - grafana-agent-cred:/run/agent
+
+  postgres-exporter-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: postgres-exporter-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:65534"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/postgres-exporter.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/postgres-exporter.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - postgres-exporter-secrets:/run/secrets
+      - postgres-exporter-agent-cred:/run/agent
+
+  pgbouncer-exporter-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: pgbouncer-exporter-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:65534"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/pgbouncer-exporter.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/pgbouncer-exporter.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - pgbouncer-exporter-secrets:/run/secrets
+      - pgbouncer-exporter-agent-cred:/run/agent
+
+  valkey-exporter-agent:
+    image: docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4 # 2.7.0
+    container_name: valkey-exporter-agent
+    depends_on:
+      openbao:
+        condition: service_started
+    entrypoint: ["bao"]
+    command: ["agent", "-config=/openbao/agent/agent.hcl"]
+    user: "100:59000"
+    environment:
+      BAO_ADDR: https://openbao:8200
+      BAO_CACERT: /openbao/trust/ca.crt
+    networks: [secrets]
+    volumes:
+      - ./containers/openbao/agents/valkey-exporter.hcl:/openbao/agent/agent.hcl:ro,Z
+      - ./containers/openbao/agents/valkey-exporter.role_id:/openbao/agent/role_id:ro,Z
+      - trust:/openbao/trust:ro
+      - valkey-exporter-secrets:/run/secrets
+      - valkey-exporter-agent-cred:/run/agent
+
+networks:
+  edge: {}
+  idp-edge: {}
+  dozzle-edge: {}
+  app-data: {}
+  db: {}
+  object: {}
+  identity: {}
+  secrets: {}
+  observability: {}
+  grafana-edge: {}
+  mail-edge: {}
+  # No route out of the host (ADR 0026).
+  mcp-edge:
+    internal: true
+
+volumes:
+  certs-ca: {}
+  trust: {}
+  tls-nginx: {}
+  tls-openbao: {}
+  tls-postgres: {}
+  tls-pgbouncer: {}
+  tls-ldap: {}
+  tls-valkey: {}
+  tls-s3: {}
+  tls-api: {}
+  tls-worker: {}
+  tls-prometheus: {}
+  tls-loki: {}
+  tls-grafana: {}
+  tls-mail: {}
+  tls-blackbox: {}
+  tls-postgres-exporter: {}
+  tls-pgbouncer-exporter: {}
+  tls-valkey-exporter: {}
+  tls-node-exporter: {}
+  prometheus-data: {}
+  loki-data: {}
+  alloy-data: {}
+  grafana-data: {}
+  openbao-data: {}
+  postgres-data: {}
+  ldap-data: {}
+  idp-data: {}
+  valkey-data: {}
+  s3-data: {}
+  # The backup target locally (ADR 0017); BACKUP_TARGET replaces it with a
+  # host directory, the NFS mount in CI.
+  backups:
+    driver: local
+    driver_opts: { o: "uid=1100,gid=1100" }
+  # The backup service's own: the bucket mirror, staged files, restic's cache.
+  backup-data:
+    driver: local
+    driver_opts: { o: "uid=1100,gid=1100" }
+  # JSON log files of the api and the worker (ADR 0021), written by uid 1000.
+  logs:
+    driver: local
+    driver_opts: { o: "uid=1000,gid=1000" }
+  # Secret delivery (ADR 0023): tmpfs only. <service>-secrets is shared with
+  # the service; <service>-agent-cred holds the agent's secret_id and is seen
+  # by the agent alone.
+  api-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1000,mode=0750" }
+  api-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1000,mode=0700" }
+  postgres-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=70,mode=0750" }
+  postgres-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=70,mode=0700" }
+  pgbouncer-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=101,mode=0750" }
+  pgbouncer-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=101,mode=0700" }
+  migrate-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1000,mode=0750" }
+  migrate-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1000,mode=0700" }
+  test-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1000,mode=0750" }
+  test-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1000,mode=0700" }
+  ldap-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=101,mode=0750" }
+  ldap-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=101,mode=0700" }
+  valkey-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1000,mode=0750" }
+  valkey-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1000,mode=0700" }
+  idp-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=0,mode=0750" }
+  idp-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=0,mode=0700" }
+  worker-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1000,mode=0750" }
+  worker-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1000,mode=0700" }
+  s3-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=3900,mode=0750" }
+  s3-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=3900,mode=0700" }
+  grafana-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=0,mode=0750" }
+  grafana-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=0,mode=0700" }
+  postgres-exporter-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=65534,mode=0750" }
+  postgres-exporter-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=65534,mode=0700" }
+  pgbouncer-exporter-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=65534,mode=0750" }
+  pgbouncer-exporter-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=65534,mode=0700" }
+  valkey-exporter-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=59000,mode=0750" }
+  valkey-exporter-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=59000,mode=0700" }
+  backup-secrets:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1100,mode=0750" }
+  backup-agent-cred:
+    driver: local
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=1m,uid=100,gid=1100,mode=0700" }

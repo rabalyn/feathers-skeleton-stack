@@ -1,0 +1,7 @@
+# TLS for every Prometheus-style listener (ADR 0022): Prometheus itself and
+# the exporters built on the Prometheus exporter toolkit. Each container
+# mounts its own leaf at /tls.
+tls_server_config:
+  cert_file: /tls/tls.crt
+  key_file: /tls/tls.key
+  min_version: TLS12

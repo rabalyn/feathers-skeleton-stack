@@ -1,0 +1,15 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Container]
+ContainerName=blackbox
+Exec='--config.file=/etc/blackbox/blackbox.yml' '--web.config.file=/etc/observability/web-config.yml'
+Group=65534
+Image=quay.io/prometheus/blackbox-exporter@sha256:e753ff9f3fc458d02cca5eddab5a77e1c175eee484a8925ac7d524f04366c2fc
+Network=edge.network
+Network=observability.network
+User=65534
+Volume=../../containers/blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro,Z
+Volume=../../containers/observability/web-config.yml:/etc/observability/web-config.yml:ro,Z
+Volume=tls-blackbox:/tls:ro
+Volume=trust:/trust:ro

@@ -1,0 +1,22 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Container]
+Notify=healthy
+ContainerName=postgres
+Entrypoint=["bash","/usr/local/share/postgres/entrypoint.sh"]
+Environment=POSTGRES_PASSWORD_FILE=/run/secrets/superuser_password PGDATA=/var/lib/postgresql/data/pgdata
+Exec=postgres -c 'hba_file=/etc/postgresql/pg_hba.conf' -c 'ssl=on' -c 'ssl_cert_file=/tls/tls.crt' -c 'ssl_key_file=/tls/tls.key' -c 'ssl_min_protocol_version=TLSv1.2' -c 'password_encryption=scram-sha-256' -c 'max_connections=100'
+HealthCmd=gosu postgres pg_isready -q -h 127.0.0.1 && test -e /run/postgresql/roles-applied
+HealthInterval=5s
+HealthRetries=10
+HealthTimeout=3s
+Image=docker.io/library/postgres@sha256:d8703cd7fba306b9fec9268ecedfa8a966846c053036a60e3635791957eb2f66
+Network=db.network
+Volume=postgres-data:/var/lib/postgresql/data
+Volume=postgres-secrets.volume:/run/secrets:ro
+Volume=tls-postgres:/tls:ro
+Volume=../../containers/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro,Z
+Volume=../../containers/postgres/initdb:/docker-entrypoint-initdb.d:ro,Z
+Volume=../../containers/postgres/entrypoint.sh:/usr/local/share/postgres/entrypoint.sh:ro,Z
+Volume=../../containers/postgres/roles.sh:/usr/local/share/postgres/roles.sh:ro,Z

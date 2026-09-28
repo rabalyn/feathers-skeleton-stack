@@ -1,0 +1,13 @@
+dn: dc=feathers,dc=test
+objectClass: dcObject
+objectClass: organization
+dc: feathers
+o: claude-feathers test directory
+
+dn: ou=people,dc=feathers,dc=test
+objectClass: organizationalUnit
+ou: people
+
+dn: ou=services,dc=feathers,dc=test
+objectClass: organizationalUnit
+ou: services

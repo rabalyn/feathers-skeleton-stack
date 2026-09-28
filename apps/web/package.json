@@ -1,0 +1,43 @@
+{
+  "name": "@app/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "productName": "claude-feathers",
+  "scripts": {
+    "dev": "quasar dev",
+    "build": "quasar build",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@app/api": "workspace:*",
+    "@app/feathers-pinia": "workspace:*",
+    "@feathersjs/adapter-commons": "5.0.50",
+    "@feathersjs/authentication-client": "5.0.50",
+    "@feathersjs/commons": "5.0.50",
+    "@feathersjs/errors": "5.0.50",
+    "@feathersjs/feathers": "5.0.50",
+    "@feathersjs/socketio-client": "5.0.50",
+    "@quasar/extras": "2.1.0",
+    "pinia": "4.0.3",
+    "quasar": "2.33.2",
+    "socket.io-client": "4.8.3",
+    "vue": "3.5.43",
+    "vue-i18n": "11.4.12",
+    "vue-router": "5.3.1"
+  },
+  "devDependencies": {
+    "@intlify/unplugin-vue-i18n": "^11.2.5",
+    "@quasar/app-vite": "3.10.0",
+    "@quasar/mcp": "1.1.0",
+    "@types/node": "^24.13.6",
+    "@vue/test-utils": "^2.5.1",
+    "autoprefixer": "^10.6.1",
+    "happy-dom": "^20.14.5",
+    "postcss": "^8.5.28",
+    "typescript": "6.0.3",
+    "vitest": "5.0.1",
+    "vue-tsc": "3.3.11"
+  }
+}

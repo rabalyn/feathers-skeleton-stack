@@ -1,0 +1,8 @@
+FROM docker.io/library/alpine:3.24.2@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
+RUN apk add --no-cache pgbouncer \
+ && addgroup -S -g 101 pgbouncer \
+ && adduser -S -D -H -u 101 -G pgbouncer pgbouncer
+COPY containers/pgbouncer/pgbouncer.ini /etc/pgbouncer/pgbouncer.ini
+USER 101:101
+EXPOSE 6432
+CMD ["pgbouncer", "/etc/pgbouncer/pgbouncer.ini"]

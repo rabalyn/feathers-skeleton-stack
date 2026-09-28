@@ -1,0 +1,12 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Container]
+ContainerName=node-exporter
+Exec='--path.rootfs=/host' '--web.config.file=/etc/observability/web-config.yml' '--collector.filesystem.mount-points-exclude=''^/(dev|proc|run|sys|var/lib/docker/.+|var/lib/containers/storage/.+)($|/)'
+Image=quay.io/prometheus/node-exporter@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0
+Network=observability.network
+PodmanArgs=--pid host
+Volume=../../containers/observability/web-config.yml:/etc/observability/web-config.yml:ro,Z
+Volume=/:/host:ro
+Volume=tls-node-exporter:/tls:ro

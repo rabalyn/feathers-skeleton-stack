@@ -1,0 +1,317 @@
+{
+  "realm": "feathers",
+  "displayName": "claude-feathers (local IdP)",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "de",
+    "en"
+  ],
+  "defaultLocale": "de",
+  "components": {
+    "org.keycloak.storage.UserStorageProvider": [
+      {
+        "name": "ldap",
+        "providerId": "ldap",
+        "config": {
+          "enabled": [
+            "true"
+          ],
+          "priority": [
+            "0"
+          ],
+          "vendor": [
+            "other"
+          ],
+          "connectionUrl": [
+            "ldaps://ldap:636"
+          ],
+          "useTruststoreSpi": [
+            "always"
+          ],
+          "authType": [
+            "simple"
+          ],
+          "bindDn": [
+            "cn=keycloak,ou=services,dc=feathers,dc=test"
+          ],
+          "bindCredential": [
+            "${LDAP_BIND_CREDENTIAL}"
+          ],
+          "usersDn": [
+            "ou=people,dc=feathers,dc=test"
+          ],
+          "searchScope": [
+            "1"
+          ],
+          "userObjectClasses": [
+            "inetOrgPerson"
+          ],
+          "usernameLDAPAttribute": [
+            "cn"
+          ],
+          "rdnLDAPAttribute": [
+            "cn"
+          ],
+          "uuidLDAPAttribute": [
+            "entryUUID"
+          ],
+          "editMode": [
+            "READ_ONLY"
+          ],
+          "importEnabled": [
+            "true"
+          ],
+          "syncRegistrations": [
+            "false"
+          ],
+          "trustEmail": [
+            "true"
+          ],
+          "pagination": [
+            "false"
+          ],
+          "connectionPooling": [
+            "true"
+          ],
+          "cachePolicy": [
+            "NO_CACHE"
+          ]
+        },
+        "subComponents": {
+          "org.keycloak.storage.ldap.mappers.LDAPStorageMapper": [
+            {
+              "name": "username",
+              "providerId": "user-attribute-ldap-mapper",
+              "config": {
+                "ldap.attribute": [
+                  "cn"
+                ],
+                "user.model.attribute": [
+                  "username"
+                ],
+                "read.only": [
+                  "true"
+                ],
+                "always.read.value.from.ldap": [
+                  "true"
+                ],
+                "is.mandatory.in.ldap": [
+                  "true"
+                ]
+              }
+            },
+            {
+              "name": "first name",
+              "providerId": "user-attribute-ldap-mapper",
+              "config": {
+                "ldap.attribute": [
+                  "givenName"
+                ],
+                "user.model.attribute": [
+                  "firstName"
+                ],
+                "read.only": [
+                  "true"
+                ],
+                "always.read.value.from.ldap": [
+                  "true"
+                ],
+                "is.mandatory.in.ldap": [
+                  "false"
+                ]
+              }
+            },
+            {
+              "name": "last name",
+              "providerId": "user-attribute-ldap-mapper",
+              "config": {
+                "ldap.attribute": [
+                  "sn"
+                ],
+                "user.model.attribute": [
+                  "lastName"
+                ],
+                "read.only": [
+                  "true"
+                ],
+                "always.read.value.from.ldap": [
+                  "true"
+                ],
+                "is.mandatory.in.ldap": [
+                  "true"
+                ]
+              }
+            },
+            {
+              "name": "email",
+              "providerId": "user-attribute-ldap-mapper",
+              "config": {
+                "ldap.attribute": [
+                  "mail"
+                ],
+                "user.model.attribute": [
+                  "email"
+                ],
+                "read.only": [
+                  "true"
+                ],
+                "always.read.value.from.ldap": [
+                  "true"
+                ],
+                "is.mandatory.in.ldap": [
+                  "false"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "https://app.localhost:8443/api/auth/saml/metadata",
+      "name": "claude-feathers (local)",
+      "protocol": "saml",
+      "enabled": true,
+      "frontchannelLogout": true,
+      "redirectUris": [
+        "https://app.localhost:8443/api/auth/saml/*"
+      ],
+      "attributes": {
+        "saml_assertion_consumer_url_post": "https://app.localhost:8443/api/auth/saml/acs",
+        "saml_single_logout_service_url_redirect": "https://app.localhost:8443/api/auth/saml/logout",
+        "saml.assertion.signature": "true",
+        "saml.server.signature": "true",
+        "saml.signature.algorithm": "RSA_SHA256",
+        "saml_signature_canonicalization_method": "http://www.w3.org/2001/10/xml-exc-c14n#",
+        "saml.client.signature": "true",
+        "saml.encrypt": "true",
+        "saml.force.post.binding": "true",
+        "saml_force_name_id_format": "true",
+        "saml_name_id_format": "transient",
+        "saml.authnstatement": "true",
+        "saml.encryption.algorithm": "http://www.w3.org/2009/xmlenc11#aes256-gcm",
+        "saml.encryption.keyAlgorithm": "http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p",
+        "saml.encryption.digestMethod": "http://www.w3.org/2000/09/xmldsig#sha1"
+      },
+      "protocolMappers": [
+        {
+          "name": "cn (TU-ID)",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "attribute.name": "cn",
+            "attribute.nameformat": "Basic"
+          }
+        },
+        {
+          "name": "givenName",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "firstName",
+            "attribute.name": "givenName",
+            "attribute.nameformat": "Basic"
+          }
+        },
+        {
+          "name": "sn",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "lastName",
+            "attribute.name": "sn",
+            "attribute.nameformat": "Basic"
+          }
+        },
+        {
+          "name": "mail",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "email",
+            "attribute.name": "mail",
+            "attribute.nameformat": "Basic"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "https://e2e.localhost:8443/api/auth/saml/metadata",
+      "name": "claude-feathers (local e2e)",
+      "protocol": "saml",
+      "enabled": true,
+      "frontchannelLogout": true,
+      "redirectUris": [
+        "https://e2e.localhost:8443/api/auth/saml/*"
+      ],
+      "attributes": {
+        "saml_assertion_consumer_url_post": "https://e2e.localhost:8443/api/auth/saml/acs",
+        "saml_single_logout_service_url_redirect": "https://e2e.localhost:8443/api/auth/saml/logout",
+        "saml.assertion.signature": "true",
+        "saml.server.signature": "true",
+        "saml.signature.algorithm": "RSA_SHA256",
+        "saml_signature_canonicalization_method": "http://www.w3.org/2001/10/xml-exc-c14n#",
+        "saml.client.signature": "true",
+        "saml.encrypt": "true",
+        "saml.force.post.binding": "true",
+        "saml_force_name_id_format": "true",
+        "saml_name_id_format": "transient",
+        "saml.authnstatement": "true",
+        "saml.encryption.algorithm": "http://www.w3.org/2009/xmlenc11#aes256-gcm",
+        "saml.encryption.keyAlgorithm": "http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p",
+        "saml.encryption.digestMethod": "http://www.w3.org/2000/09/xmldsig#sha1"
+      },
+      "protocolMappers": [
+        {
+          "name": "cn (TU-ID)",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "attribute.name": "cn",
+            "attribute.nameformat": "Basic"
+          }
+        },
+        {
+          "name": "givenName",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "firstName",
+            "attribute.name": "givenName",
+            "attribute.nameformat": "Basic"
+          }
+        },
+        {
+          "name": "sn",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "lastName",
+            "attribute.name": "sn",
+            "attribute.nameformat": "Basic"
+          }
+        },
+        {
+          "name": "mail",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "config": {
+            "user.attribute": "email",
+            "attribute.name": "mail",
+            "attribute.nameformat": "Basic"
+          }
+        }
+      ]
+    }
+  ]
+}
