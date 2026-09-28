@@ -178,3 +178,31 @@ describe('users: directory fields — writable by nobody', () => {
     await expect(app.service('users').patch(other.id, {}, as(admin))).rejects.toMatchObject({ code: 400 })
   })
 })
+
+describe('users: own locale — write for every role (ADR 0027)', () => {
+  it.each([
+    ['admin', () => admin],
+    ['operator', () => operator],
+    ['user', () => member]
+  ])('%s sets their own locale, German until then', async (_role, who) => {
+    expect((await app.service('users').get(who().id)).locale).toBe('de')
+    const result = await app.service('locales').create({ locale: 'en' }, as(who()))
+    expect(result).toMatchObject({ id: who().id, locale: 'en' })
+    await app.service('locales').create({ locale: 'de' }, as(who()))
+  })
+
+  it('refuses a locale the application does not have', async () => {
+    await expect(app.service('locales').create({ locale: 'fr' } as never, as(member))).rejects.toMatchObject({ code: 400 })
+  })
+
+  it('cannot address anybody else', async () => {
+    await expect(
+      app.service('locales').create({ locale: 'en', userId: other.id } as never, as(member))
+    ).rejects.toMatchObject({ code: 400 })
+    await expect(app.service('users').patch(other.id, { locale: 'en' } as never, as(admin))).rejects.toMatchObject({ code: 400 })
+  })
+
+  it('refuses unauthenticated calls', async () => {
+    await expect(app.service('locales').create({ locale: 'en' }, { provider: 'rest' })).rejects.toMatchObject({ code: 401 })
+  })
+})

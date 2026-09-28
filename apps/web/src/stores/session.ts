@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
 import { client, socket } from '@/api/feathers'
 import { accessTokenExpiry, renewalDelay, requestRefresh, retryDelay } from '@/api/refresh'
+import { i18n } from '@/boot/i18n'
 
 // The browser's side of the session (ADR 0010, 0014). The access token lives
 // in the Feathers client's in-memory storage and nowhere else; the refresh
@@ -147,6 +148,20 @@ export const useSessionStore = defineStore('session', () => {
   client.service('users').on('patched', (next: User) => {
     if (status.value === 'authenticated' && next.id === user.value?.id) setUser(next)
   })
+
+  // Mail reaches the person in the language they last used here (ADR 0027):
+  // whenever the one on screen differs from their record, it is written. A
+  // failed write is tried again with the next change.
+  watch(
+    () => [status.value, user.value?.locale, i18n.global.locale.value] as const,
+    ([current, stored, chosen]) => {
+      if (current !== 'authenticated' || !stored || stored === chosen) return
+      client
+        .service('locales')
+        .create({ locale: chosen })
+        .then(setUser, () => undefined)
+    }
+  )
 
   // A call refused as unauthenticated means the session changed under us
   // (revoked, role changed, disabled): find out which.

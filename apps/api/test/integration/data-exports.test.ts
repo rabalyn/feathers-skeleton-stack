@@ -206,7 +206,7 @@ describe('building and downloading an export', () => {
     expect(json).toMatchObject({
       format: 'data-export/1',
       subjectId: member.id,
-      account: { id: member.id, tuId: 'us01user', givenName: 'Given', surname: 'us01user', email: 'us01user@example.test', avatarFileId: avatarFile },
+      account: { id: member.id, tuId: 'us01user', givenName: 'Given', surname: 'us01user', email: 'us01user@example.test', locale: 'de', avatarFileId: avatarFile },
       documents: [expect.objectContaining({ title: 'Report', fileId: documentFile })],
       sessions: expect.any(Array),
       auditEvents: expect.arrayContaining([expect.objectContaining({ action: 'data-exports.create', actorId: member.id })])

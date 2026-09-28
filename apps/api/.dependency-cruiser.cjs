@@ -10,13 +10,13 @@ module.exports = {
     {
       name: 'client-entry-is-browser-safe',
       comment:
-        'src/client.ts is imported by the browser (ADR 0007). At runtime it may reach only abilities, paginate, paths, limits, uploads, @casl/ability and the Feathers client core. Import server code with `import type`, or move browser-safe code into an allowlisted module.',
+        'src/client.ts is imported by the browser (ADR 0007). At runtime it may reach only abilities, locales, paginate, paths, limits, uploads, @casl/ability and the Feathers client core. Import server code with `import type`, or move browser-safe code into an allowlisted module.',
       severity: 'error',
       from: { path: '^src/client\\.ts$' },
       to: {
         reachable: true,
         pathNot: [
-          '^src/(client|abilities|paginate|paths|limits|uploads)\\.ts$',
+          '^src/(client|abilities|locales|paginate|paths|limits|uploads)\\.ts$',
           '(^|/)node_modules/@casl/ability/',
           '(^|/)node_modules/@feathersjs/(feathers|authentication-client)/'
         ]

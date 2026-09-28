@@ -33,6 +33,8 @@ export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
   // `read` too, which feathers-casl checks on a create's result: the
   // caller's own user record.
   can(['create', 'read'], 'avatars')
+  // The language mail reaches the caller in (ADR 0027), likewise their own.
+  can(['create', 'read'], 'locales')
 
   // Uploads (ADR 0020): everyone uploads; a file is readable where its
   // owner's records are. `file-contents` checks the `files` rule on the

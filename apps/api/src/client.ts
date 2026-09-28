@@ -11,6 +11,7 @@ import type { SETTING_EXTERNAL_METHODS } from './services/settings/settings.js'
 import type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
 import type { USER_EXTERNAL_METHODS } from './services/users/users.js'
 import type { AvatarData, AVATAR_EXTERNAL_METHODS } from './services/users/avatars.js'
+import type { LocaleData, LOCALE_EXTERNAL_METHODS } from './services/users/locales.js'
 import type { Document, DocumentData, DocumentPatch, DocumentQuery } from './services/documents/documents.schema.js'
 import type { DOCUMENT_EXTERNAL_METHODS } from './services/documents/documents.js'
 import type { File, FileQuery } from './services/files/files.schema.js'
@@ -25,6 +26,8 @@ export type { DirectoryEntry, DirectoryPage, DirectoryQuery } from './services/d
 export type { Document, DocumentData, DocumentPatch, DocumentQuery } from './services/documents/documents.schema.js'
 export type { File } from './services/files/files.schema.js'
 export type { AvatarData } from './services/users/avatars.js'
+export type { LocaleData } from './services/users/locales.js'
+export { DEFAULT_LOCALE, LOCALES, type Locale } from './locales.js'
 export type { DataExport, DataExportData, DataExportQuery } from './services/data-exports/data-exports.schema.js'
 export type { Erasure, ErasureData } from './services/erasures/erasures.js'
 export type { AuditEvent, AuditEventQuery } from './services/audit-events/audit-events.js'
@@ -62,6 +65,9 @@ export interface ClientServiceTypes {
   >
   // The caller's own avatar; the result is their user record.
   avatars: External<ClientService<User, AvatarData, never, never, Params>, typeof AVATAR_EXTERNAL_METHODS>
+  // The language the caller's mail is written in; the result is their user
+  // record.
+  locales: External<ClientService<User, LocaleData, never, never, Params>, typeof LOCALE_EXTERNAL_METHODS>
   // Metadata only: uploads and downloads are plain HTTP (FILES_URL,
   // FILE_CONTENTS_URL).
   files: Pick<ClientService<File, never, never, never, Params<FileQuery>>, 'get'>
