@@ -12,10 +12,13 @@ import type { DataExport } from '../../src/services/data-exports/data-exports.sc
 import type { Storage } from '../../src/storage.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp, loadValkeyConfig } from '../support/app.js'
+import { DATA_EXPORTS_TEST_BUCKET } from '../support/global-setup.js'
 
 // ADR 0013 over HTTP against the stack's Valkey, Garage and a worker of the
 // test's own: who may export whom, the job, the relayed outcome, the ZIP and
-// its download, and export expiry. ADR 0011's export cells.
+// its download, and export expiry. ADR 0011's export cells. Exports go to a
+// bucket of this file's own, since the expiry's orphan sweep removes every
+// object it has no row for.
 
 let app: Application
 let base: string
@@ -93,7 +96,7 @@ const unzip = async (body: Buffer) => {
 }
 
 beforeAll(async () => {
-  ;({ app } = await createTestApp())
+  ;({ app } = await createTestApp({ s3: { s3ExportsBucket: DATA_EXPORTS_TEST_BUCKET } }))
   const server = await app.listen(0)
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`
   maintenance = startMaintenance({
@@ -519,12 +522,15 @@ describe('export expiry', () => {
     const orphan = randomUUID()
     await put(orphan)
 
-    // A fresh orphan is within the hour's grace; none here. Objects other
-    // test files leave in the tests' exports bucket count as orphans too.
+    // A fresh orphan is within the hour's grace; none here. The earlier
+    // tests' exports lost their rows to beforeEach, so they are orphans too.
+    const before = await knex()('dataExports').pluck('id')
+    let objects = 0
+    for await (const page of exports.list()) objects += page.filter((object) => !before.includes(object.key)).length
     const result = await exportExpiry(knex(), app.get('settings'), exports, { orphanGraceHours: 0 })
 
-    expect(result).toEqual({ expired: 2, stalled: 1, orphans: expect.any(Number) })
-    expect(result.orphans).toBeGreaterThanOrEqual(1)
+    expect(result).toEqual({ expired: 2, stalled: 1, orphans: objects })
+    expect(objects).toBeGreaterThanOrEqual(1)
     expect((await knex()('dataExports').pluck('id')).sort()).toEqual([recent, stalled].sort())
     expect(await knex()('dataExports').where({ id: stalled }).first()).toMatchObject({ state: 'failed' })
     expect(await exports.get(old)).toBeUndefined()
