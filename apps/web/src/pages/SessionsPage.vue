@@ -2,7 +2,7 @@
   <q-page padding>
     <h1 class="text-h5 q-mt-none">{{ t('nav.sessions') }}</h1>
     <q-table
-      :pagination="pagination"
+      v-model:pagination="pagination"
       :rows="rows"
       :columns="columns"
       row-key="id"
@@ -101,11 +101,20 @@ const params = computed(() => ({
 }))
 const sessions = api.service('sessions').useFind(params, { paginateOn: 'server' })
 const rows = computed(() => sessions.data as Session[])
-const pagination = computed(() => ({ ...paging.value, rowsNumber: sessions.total }))
+// Two-way: QTable reads a bound pagination only while it has an
+// update:pagination listener, and otherwise keeps the one it mounted with.
+const pagination = computed<NonNullable<QTableProps['pagination']>>({
+  get: () => ({ ...paging.value, rowsNumber: sessions.total }),
+  set: (next) => {
+    paging.value = { page: next.page ?? 1, rowsPerPage: next.rowsPerPage ?? 50 }
+  }
+})
 
 const onRequest: QTableProps['onRequest'] = ({ pagination: next }) => {
-  paging.value = { page: next.page ?? 1, rowsPerPage: next.rowsPerPage ?? 50 }
+  pagination.value = next
 }
+// Another filter is another list: it starts on its first page.
+watch(userFilter, () => (paging.value = { ...paging.value, page: 1 }))
 
 const accounts = ref(new Map<string, User>())
 watch(
