@@ -63,6 +63,13 @@ describe('audit events (ADR 0011, 0013)', () => {
     expect((await get(member, `/audit-events/${theirs.data[0]!.id}`)).status).toBe(404)
   })
 
+  it("cannot be widened to others' events by the query", async () => {
+    for (const query of [`$or[0][actorId]=${admin.id}`, `actorId[$ne]=${member.id}`, `$or[0][resourceId]=${member.id}`]) {
+      // 'login' is the member's only event; the others are the admin's and the system's.
+      expect((await actions(await get(member, `/audit-events?${query}`))).filter((action) => action !== 'login'), query).toEqual([])
+    }
+  })
+
   it('filters, and returns the event as recorded', async () => {
     const response = await get(admin, `/audit-events?resourceId=${member.id}&action=users.patch`)
     const { data } = (await response.json()) as { data: AuditEvent[] }
