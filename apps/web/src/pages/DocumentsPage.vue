@@ -27,7 +27,7 @@
     </q-form>
 
     <q-table
-      :pagination="pagination"
+      v-model:pagination="pagination"
       :rows="rows"
       :columns="columns"
       row-key="id"
@@ -97,15 +97,22 @@ const params = computed(() => ({
 }))
 const documents = api.service('documents').useFind(params, { paginateOn: 'server' })
 const rows = computed(() => documents.data as Document[])
-const pagination = computed(() => ({ ...paging.value, rowsNumber: documents.total }))
+// Two-way: QTable reads a bound pagination only while it has an
+// update:pagination listener, and otherwise keeps the one it mounted with.
+const pagination = computed<NonNullable<QTableProps['pagination']>>({
+  get: () => ({ ...paging.value, rowsNumber: documents.total }),
+  set: (next) => {
+    paging.value = {
+      page: next.page ?? 1,
+      rowsPerPage: next.rowsPerPage ?? 25,
+      sortBy: next.sortBy ?? 'updatedAt',
+      descending: next.descending ?? true
+    }
+  }
+})
 
 const onRequest: QTableProps['onRequest'] = ({ pagination: next }) => {
-  paging.value = {
-    page: next.page ?? 1,
-    rowsPerPage: next.rowsPerPage ?? 25,
-    sortBy: next.sortBy ?? 'updatedAt',
-    descending: next.descending ?? true
-  }
+  pagination.value = next
 }
 
 // Owners by TU-ID, for those who see everyone's documents and may read

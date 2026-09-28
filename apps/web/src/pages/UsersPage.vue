@@ -2,7 +2,7 @@
   <q-page padding>
     <h1 class="text-h5 q-mt-none">{{ t('nav.users') }}</h1>
     <q-table
-      :pagination="pagination"
+      v-model:pagination="pagination"
       :rows="users.data"
       :columns="columns"
       row-key="id"
@@ -72,7 +72,7 @@
 <script setup lang="ts">
 import { ROLES, type Role, type User, type UserPatch } from '@app/api/client'
 import type { QTableProps } from 'quasar'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi } from '@/boot/feathers'
 import { useFormat } from '@/composables/format'
@@ -105,16 +105,25 @@ const params = computed(() => ({
 
 const users = api.service('users').useFind(params, { paginateOn: 'server' })
 
-const pagination = computed(() => ({ ...paging.value, rowsNumber: users.total }))
+// Two-way: QTable reads a bound pagination only while it has an
+// update:pagination listener, and otherwise keeps the one it mounted with.
+const pagination = computed<NonNullable<QTableProps['pagination']>>({
+  get: () => ({ ...paging.value, rowsNumber: users.total }),
+  set: (next) => {
+    paging.value = {
+      page: next.page ?? 1,
+      rowsPerPage: next.rowsPerPage ?? 25,
+      sortBy: next.sortBy ?? 'surname',
+      descending: next.descending ?? false
+    }
+  }
+})
 
 const onRequest: QTableProps['onRequest'] = ({ pagination: next }) => {
-  paging.value = {
-    page: next.page ?? 1,
-    rowsPerPage: next.rowsPerPage ?? 25,
-    sortBy: next.sortBy ?? 'surname',
-    descending: next.descending ?? false
-  }
+  pagination.value = next
 }
+// Another filter is another list: it starts on its first page.
+watch(roleFilter, () => (paging.value = { ...paging.value, page: 1 }))
 
 const columns = computed<NonNullable<QTableProps['columns']>>(() => [
   {
