@@ -119,6 +119,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await maintenance.exportQueue.obliterate({ force: true })
   await maintenance.queue.obliterate({ force: true })
+  await maintenance.mail.queue.obliterate({ force: true })
   await maintenance.close()
   await app.teardown()
 })
@@ -260,7 +261,7 @@ describe('building and downloading an export', () => {
     try {
       const [row] = await knex()('dataExports').insert({ subjectId: other.id, requestedBy: other.id }).returning('id')
       const exportId = (row as { id: string }).id
-      const result = await buildExport({ knex: knex(), uploads: app.get('storage'), exports: app.get('exports'), exportId })
+      const result = await buildExport({ knex: knex(), uploads: app.get('storage'), exports: app.get('exports'), exportId, mail: app.get('mail') })
       expect(result).toMatchObject({ state: 'ready', missingFiles: [lostId] })
 
       const stored = await app.get('exports').get(exportId)
@@ -297,7 +298,7 @@ describe('building and downloading an export', () => {
     const vanishing = { exists: async () => true, get: async () => undefined } as unknown as Storage
     try {
       await expect(
-        buildExport({ knex: knex(), uploads: vanishing, exports: slow, exportId: (row as { id: string }).id })
+        buildExport({ knex: knex(), uploads: vanishing, exports: slow, exportId: (row as { id: string }).id, mail: app.get('mail') })
       ).rejects.toThrow(/object missing/)
     } finally {
       await knex()('files').where({ id: (file as { id: string }).id }).delete()

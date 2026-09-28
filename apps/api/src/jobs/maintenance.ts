@@ -5,6 +5,7 @@ import { Counter, Gauge, Histogram, type Registry } from 'prom-client'
 import type { SettingsStore } from '../settings/store.js'
 import type { Storage } from '../storage.js'
 import { buildExport } from '../gdpr/export.js'
+import { MailOutbox } from '../mail/outbox.js'
 import { BUILD_EXPORT, DATA_EXPORTS_QUEUE, EXPORT_JOB_OPTIONS, QUEUE_PREFIX, type ExportJob } from './queues.js'
 import { exportExpiry } from './export-expiry.js'
 import { objectPurge } from './object-purge.js'
@@ -21,6 +22,11 @@ export { BUILD_EXPORT, DATA_EXPORTS_QUEUE, QUEUE_PREFIX, queueConnection } from 
 export const RETENTION_CLEANUP = 'retention-cleanup'
 export const OBJECT_PURGE = 'object-purge'
 export const EXPORT_EXPIRY = 'export-expiry'
+// The mail outbox's sweep (ADR 0027): every minute, one attempt; the next
+// run is the retry.
+export const MAIL_SWEEP = 'mail-sweep'
+export const MAIL_SWEEP_EVERY = { every: 60_000 }
+export const MAIL_SWEEP_OPTIONS: JobsOptions = { attempts: 1, removeOnComplete: { count: 10 }, removeOnFail: { count: 100 } }
 
 // Daily jobs run at night, local time (ADR 0024).
 export const DAILY = { pattern: '30 3 * * *', tz: 'Europe/Berlin' }
@@ -69,6 +75,8 @@ export const startMaintenance = ({
 }: MaintenanceOptions) => {
   const queue = new Queue(MAINTENANCE_QUEUE, { connection, prefix, defaultJobOptions: JOB_OPTIONS })
   const exportQueue = new Queue<ExportJob>(DATA_EXPORTS_QUEUE, { connection, prefix, defaultJobOptions: EXPORT_JOB_OPTIONS })
+  // Notifications the worker causes, and the sweep.
+  const mail = new MailOutbox(connection, logger, prefix)
   const queues = [queue, exportQueue] as Queue[]
   const registers = metrics ? [metrics] : []
   const outcomes = new Counter({
@@ -108,6 +116,8 @@ export const startMaintenance = ({
     }
     worker.on('completed', (job, result: unknown) => {
       finished(job, 'completed')
+      // Every minute: only worth a line when it found something.
+      if (job.name === MAIL_SWEEP && result === 0) return
       logger.info({ queue: name, job: job.name, job_id: job.id, request_id: (job.data as { requestId?: string } | undefined)?.requestId, result }, 'job completed')
     })
     worker.on('failed', (job, error) => {
@@ -142,6 +152,8 @@ export const startMaintenance = ({
             return objectPurge(knex, settings, storage)
           case EXPORT_EXPIRY:
             return exportExpiry(knex, settings, exports)
+          case MAIL_SWEEP:
+            return mail.sweep(knex)
           default:
             throw new UnrecoverableError(`unknown job ${job.name}`)
         }
@@ -159,7 +171,7 @@ export const startMaintenance = ({
       async (job) => {
         if (job.name !== BUILD_EXPORT) throw new UnrecoverableError(`unknown job ${job.name}`)
         try {
-          const result = await buildExport({ knex, uploads: storage, exports, exportId: job.data.exportId })
+          const result = await buildExport({ knex, uploads: storage, exports, exportId: job.data.exportId, mail })
           // Built all the same, but the object store lost data: at `error`,
           // for the log alert (ADR 0022).
           if (result.missingFiles) {
@@ -187,16 +199,18 @@ export const startMaintenance = ({
     worker,
     exportQueue,
     exportWorker,
+    mail,
     // Creates or updates the schedules; safe to run on every start.
     schedule: async () => {
       for (const name of [RETENTION_CLEANUP, OBJECT_PURGE, EXPORT_EXPIRY]) {
         await queue.upsertJobScheduler(name, DAILY, { name, opts: JOB_OPTIONS })
       }
+      await queue.upsertJobScheduler(MAIL_SWEEP, MAIL_SWEEP_EVERY, { name: MAIL_SWEEP, opts: MAIL_SWEEP_OPTIONS })
     },
     isRunning: () => worker.isRunning() && exportWorker.isRunning(),
     close: async () => {
       await Promise.all([worker.close(), exportWorker.close()])
-      await Promise.all([queue.close(), exportQueue.close()])
+      await Promise.all([queue.close(), exportQueue.close(), mail.close()])
     }
   }
 }

@@ -6,6 +6,7 @@ import type { Application } from '../../src/app.js'
 import {
   DAILY,
   EXPORT_EXPIRY,
+  MAIL_SWEEP,
   OBJECT_PURGE,
   RETENTION_CLEANUP,
   queueConnection,
@@ -46,19 +47,22 @@ afterAll(async () => {
   await events.close()
   await maintenance.queue.obliterate({ force: true })
   await maintenance.exportQueue.obliterate({ force: true })
+  await maintenance.mail.queue.obliterate({ force: true })
   await maintenance.close()
   await app.teardown()
 })
 
 describe('maintenance queue', () => {
-  it('schedules retention cleanup, the object purge and export expiry daily at 03:30 Berlin time, once however often it starts', async () => {
+  it('schedules retention cleanup, the object purge and export expiry daily at 03:30 Berlin time and the mail sweep every minute, once however often it starts', async () => {
     await maintenance.schedule()
     await maintenance.schedule()
     const schedulers = await maintenance.queue.getJobSchedulers()
-    expect(schedulers).toHaveLength(3)
+    expect(schedulers).toHaveLength(4)
     for (const key of [RETENTION_CLEANUP, OBJECT_PURGE, EXPORT_EXPIRY]) {
       expect(schedulers).toContainEqual(expect.objectContaining({ key, pattern: DAILY.pattern, tz: DAILY.tz }))
     }
+    // The mail outbox's sweep (ADR 0027), every minute.
+    expect(schedulers).toContainEqual(expect.objectContaining({ key: MAIL_SWEEP, every: 60_000 }))
   })
 
   it('runs retention cleanup when the job arrives', async () => {

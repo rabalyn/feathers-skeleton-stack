@@ -201,6 +201,21 @@ export const PERSONAL_DATA: readonly RegistryEntry[] = [
   },
   {
     kind: 'table',
+    table: 'mail_deliveries',
+    userColumns: ['user_id'],
+    export: {
+      key: 'mailDeliveries',
+      collect: (knex, userId) =>
+        knex('mailDeliveries')
+          .where({ userId })
+          .orderBy('createdAt')
+          .select('id', 'kind', 'campaignId', 'params', 'status', 'skipReason', 'revisionId', 'attempts', 'error', 'createdAt', 'completedAt')
+    },
+    erasure: 'delete',
+    note: 'The mail sent to the person (ADR 0027): kind, wording revision, outcome; neither address nor text'
+  },
+  {
+    kind: 'table',
     table: 'erasures',
     userColumns: [],
     erasure: 'keep',

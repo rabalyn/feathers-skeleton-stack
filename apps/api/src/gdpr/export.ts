@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto'
 import { Transform } from 'node:stream'
 import type { Knex } from 'knex'
 import { ZipFile } from 'yazl'
+import { exportReady } from '../mail/kinds/export-ready.js'
+import type { MailOutbox } from '../mail/outbox.js'
 import type { Storage } from '../storage.js'
 import { TABLE_ENTRIES, exportedFiles } from './registry.js'
 
@@ -58,6 +60,8 @@ export interface BuildOptions {
   uploads: Storage
   exports: Storage
   exportId: string
+  // Tells the requester the export is ready (ADR 0027).
+  mail: MailOutbox
 }
 
 // Builds the export of one pending row. A row that is gone or no longer
@@ -66,7 +70,7 @@ export interface BuildOptions {
 // no path, and reported in the result: the person gets everything that
 // exists, and the gap is visible rather than silent (ADR 0013). An object
 // that vanishes while the ZIP is written fails the attempt.
-export const buildExport = async ({ knex, uploads, exports, exportId }: BuildOptions): Promise<ExportResult> => {
+export const buildExport = async ({ knex, uploads, exports, exportId, mail }: BuildOptions): Promise<ExportResult> => {
   const row = await knex('dataExports').where({ id: exportId }).first<{ subjectId: string; state: string } | undefined>()
   if (!row || row.state !== 'pending') return { exportId, state: 'skipped' }
 
@@ -119,9 +123,15 @@ export const buildExport = async ({ knex, uploads, exports, exportId }: BuildOpt
   await exports.putStream(exportId, counted, EXPORT_CONTENT_TYPE)
   const sha256 = hash.digest('hex')
 
-  const updated = await knex('dataExports')
-    .where({ id: exportId, state: 'pending' })
-    .update({ state: 'ready', sizeBytes, sha256, completedAt: knex.fn.now() })
+  // The requester's mail commits with the export's readiness.
+  const updated = await knex.transaction(async (trx) => {
+    const [ready]: { requestedBy: string }[] = await trx('dataExports')
+      .where({ id: exportId, state: 'pending' })
+      .update({ state: 'ready', sizeBytes, sha256, completedAt: trx.fn.now() })
+      .returning('requestedBy')
+    if (ready) await mail.notify(trx, exportReady, ready.requestedBy, { exportId })
+    return ready ? 1 : 0
+  })
   if (updated !== 1) {
     // Erased while it was built: the object must not outlive its row.
     await exports.delete(exportId)

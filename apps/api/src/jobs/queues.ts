@@ -28,6 +28,25 @@ export const EXPORT_JOB_OPTIONS: JobsOptions = {
   removeOnFail: { count: 500 }
 }
 
+// Mail (ADR 0027): one job per delivery, on a queue of its own so a large
+// campaign never delays the daily jobs or exports. The job id is the
+// delivery's id. A temporary SMTP failure is retried with backoff, five
+// attempts in all.
+export const MAIL_QUEUE = 'mail'
+export const SEND_MAIL = 'send-mail'
+
+export interface MailJob {
+  deliveryId: string
+  requestId?: string
+}
+
+export const MAIL_JOB_OPTIONS: JobsOptions = {
+  attempts: 5,
+  backoff: { type: 'exponential', delay: 60_000 },
+  removeOnComplete: { count: 1000 },
+  removeOnFail: { count: 1000 }
+}
+
 // BullMQ opens its own connections from these options, with the settings
 // blocking commands need; the rate limiter's fail-fast connection would not
 // do (ADR 0010).

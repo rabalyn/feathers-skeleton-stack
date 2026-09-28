@@ -55,7 +55,7 @@ Every save writes a new row of `mail_template_revisions` (kind, locale, subject,
 
 ### Notifications go through an outbox
 
-Product code calls `mail.notify(trx, kind, userId, params)` **inside the transaction** of the write that causes it. That inserts a `pending` row into `mail_deliveries`, so the mail exists exactly when the write commits: never for a rolled-back write, and not lost when the process dies after the commit. This is the transactional outbox foreseen in [0024](0024-background-jobs-bullmq.md). After commit the API enqueues a job whose id is the delivery's id. A worker sweep every minute enqueues pending deliveries older than a minute, and BullMQ's job id deduplicates, so a lost enqueue is only a delay.
+Product code calls `mail.notify(trx, kind, userId, params)` **inside the transaction** of the write that causes it. That inserts a `pending` row into `mail_deliveries`, so the mail exists exactly when the write commits: never for a rolled-back write, and not lost when the process dies after the commit. This is the transactional outbox foreseen in [0024](0024-background-jobs-bullmq.md). After commit the API enqueues a job whose id is the delivery's id. A worker sweep every minute enqueues pending deliveries older than a minute, and BullMQ's job id deduplicates, so a lost enqueue is only a delay. The sweep runs on the `maintenance` queue, not on `mail`, whose rate limit would count it; a delivery still pending whose job has already failed (its last attempt could not even record the failure) is enqueued again.
 
 `params` hold surrogate ids, never direct identifiers or rendered text ([0024](0024-background-jobs-bullmq.md)).
 

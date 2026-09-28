@@ -14,6 +14,8 @@ import type { ServiceProvider } from './auth/saml.js'
 import type { SessionStore } from './auth/sessions.js'
 import { TrustedProxy } from './client-ip.js'
 import { Directory } from './directory.js'
+import { queueConnection } from './jobs/queues.js'
+import { MailOutbox } from './mail/outbox.js'
 import { defaultDeny } from './hooks/default-deny.js'
 import { sanitizeHttpErrors, sanitizeServiceErrors } from './hooks/errors.js'
 import { API_PREFIX, SOCKET_PATH } from './paths.js'
@@ -45,6 +47,9 @@ export interface AppSettings {
   storage: Storage
   // The exports bucket (ADR 0013).
   exports: Storage
+  // Notifications are written here, in the transaction of their cause
+  // (ADR 0027).
+  mail: MailOutbox
 }
 
 export interface AppOptions {
@@ -73,6 +78,7 @@ export const createApp = (
   app.set('directory', new Directory(config))
   app.set('storage', new Storage(config))
   app.set('exports', new Storage(config, config.s3ExportsBucket))
+  app.set('mail', new MailOutbox(queueConnection(config), logger, config.queuePrefix))
   const proxy = new TrustedProxy(config.trustedProxyHost)
 
   // Served by the internal listener (ADR 0022).
@@ -157,6 +163,7 @@ export const createApp = (
         const closing = next()
         await withDeadline(closing, SHUTDOWN_GRACE_MS, destroyConnections)
         await closing
+        await app.get('mail').close()
         await knex.destroy()
         valkey.disconnect()
         app.get('storage').close()
