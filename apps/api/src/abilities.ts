@@ -85,6 +85,7 @@ export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
       can(['create', 'read'], 'mail-previews')
       can(['read', 'create'], 'mail-campaigns')
       can(['create', 'read'], 'mail-campaign-previews')
+      can('read', 'mail-deliveries')
       break
     case 'operator':
       can('read', 'users')

@@ -135,6 +135,16 @@ describe('sending a campaign', () => {
     await app.service('mail-templates').patch(`${KIND}:de`, { revisionId: campaign.revisions.de! })
   })
 
+  it('shows admins the delivery log, by surrogate id and outcome, without address or text', async () => {
+    const [campaign] = (await app.service('mail-campaigns').find(as(admin))).data
+    const log = await app.service('mail-deliveries').find({ ...as(admin), query: { campaignId: campaign!.id } })
+    expect(log.total).toBe(3)
+    expect(log.data.map((row) => row.status).sort()).toEqual(['sent', 'sent', 'skipped'])
+    expect(Object.keys(log.data[0]!).sort()).toEqual(
+      ['attempts', 'campaignId', 'completedAt', 'createdAt', 'error', 'id', 'kind', 'params', 'revisionId', 'skipReason', 'status', 'userId'].sort()
+    )
+  })
+
   it('lists campaigns newest first', async () => {
     const page = await app.service('mail-campaigns').find(as(admin))
     expect(page.data[0]).toMatchObject({ kind: KIND, sentBy: admin.id })
@@ -145,9 +155,10 @@ describe('campaigns: admins only (ADR 0011)', () => {
   it.each([
     ['operator', () => operator],
     ['user', () => people[0]!]
-  ])('%s neither previews, sends nor sees campaigns', async (_role, who) => {
+  ])('%s neither previews, sends nor sees campaigns or the delivery log', async (_role, who) => {
     await expect(app.service('mail-campaign-previews').create({ kind: KIND, params: PARAMS }, as(who()))).rejects.toMatchObject({ code: 403 })
     await expect(app.service('mail-campaigns').create({ kind: KIND, params: PARAMS }, as(who()))).rejects.toMatchObject({ code: 403 })
     await expect(app.service('mail-campaigns').find(as(who()))).rejects.toMatchObject({ code: 403 })
+    await expect(app.service('mail-deliveries').find(as(who()))).rejects.toMatchObject({ code: 403 })
   })
 })

@@ -1,8 +1,8 @@
 import type { Knex } from 'knex'
 import type { SettingsStore } from '../settings/store.js'
 
-// Retention cleanup (ADR 0013, 0024): audit events and expired sessions past
-// their retention, deleted in batches, one transaction per batch, so a large
+// Retention cleanup (ADR 0013, 0024): audit events, expired sessions and the
+// mail delivery log (ADR 0027) past their retention, deleted in batches, one transaction per batch, so a large
 // backlog never holds long locks.
 
 export const RETENTION_BATCH_SIZE = 1000
@@ -10,6 +10,7 @@ export const RETENTION_BATCH_SIZE = 1000
 export interface RetentionResult {
   auditEvents: number
   sessions: number
+  mailDeliveries: number
 }
 
 // Runs `batch` until it deletes fewer rows than a full batch.
@@ -29,9 +30,10 @@ export const retentionCleanup = async (
   settings: SettingsStore,
   batchSize = RETENTION_BATCH_SIZE
 ): Promise<RetentionResult> => {
-  const [auditDays, sessionDays] = await Promise.all([
+  const [auditDays, sessionDays, mailDays] = await Promise.all([
     settings.get('auditRetentionDays'),
-    settings.get('expiredSessionRetentionDays')
+    settings.get('expiredSessionRetentionDays'),
+    settings.get('mailDeliveryRetentionDays')
   ])
 
   const auditEvents = await inBatches(batchSize, () =>
@@ -59,5 +61,15 @@ export const retentionCleanup = async (
     })
   )
 
-  return { auditEvents, sessions }
+  // Counted from when the mail was asked for, whatever became of it.
+  const mailDeliveries = await inBatches(batchSize, () =>
+    knex('mailDeliveries')
+      .whereIn(
+        'id',
+        knex('mailDeliveries').select('id').where('createdAt', '<', olderThanDays(knex, mailDays)).limit(batchSize)
+      )
+      .delete()
+  )
+
+  return { auditEvents, sessions, mailDeliveries }
 }

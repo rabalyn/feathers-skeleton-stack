@@ -30,6 +30,7 @@ beforeEach(async () => {
   await knex()('authRefreshTokens').delete()
   await knex()('authSessions').delete()
   await knex()('auditEvents').delete()
+  await knex()('mailDeliveries').delete()
 })
 
 const auditEvent = (occurredAt: Date, action: string) =>
@@ -80,11 +81,28 @@ describe('retention cleanup', () => {
     )
   })
 
+  it('deletes mail deliveries older than mailDeliveryRetentionDays (90), whatever their status (ADR 0027)', async () => {
+    const delivery = (createdAt: Date, status: string) =>
+      knex()('mailDeliveries').insert({
+        userId,
+        kind: 'gdpr.export-ready',
+        status,
+        skipReason: status === 'skipped' ? 'no-email' : null,
+        createdAt
+      })
+    await delivery(daysAgo(91), 'pending')
+    await delivery(daysAgo(120), 'skipped')
+    await delivery(daysAgo(89), 'skipped')
+    const result = await retentionCleanup(knex(), app.get('settings'), 1)
+    expect(result.mailDeliveries).toBe(2)
+    expect(await knex()('mailDeliveries').pluck('status')).toEqual(['skipped'])
+  })
+
   it('follows the runtime settings', async () => {
     await auditEvent(daysAgo(10), 'ten days')
     await knex()('settings').where({ key: 'auditRetentionDays' }).update({ value: JSON.stringify(7) })
     try {
-      expect(await retentionCleanup(knex(), app.get('settings'))).toEqual({ auditEvents: 1, sessions: 0 })
+      expect(await retentionCleanup(knex(), app.get('settings'))).toEqual({ auditEvents: 1, sessions: 0, mailDeliveries: 0 })
     } finally {
       await knex()('settings').where({ key: 'auditRetentionDays' }).update({ value: JSON.stringify(90) })
     }
@@ -92,6 +110,6 @@ describe('retention cleanup', () => {
 
   it('does nothing when nothing is due', async () => {
     await auditEvent(new Date(), 'now')
-    expect(await retentionCleanup(knex(), app.get('settings'))).toEqual({ auditEvents: 0, sessions: 0 })
+    expect(await retentionCleanup(knex(), app.get('settings'))).toEqual({ auditEvents: 0, sessions: 0, mailDeliveries: 0 })
   })
 })

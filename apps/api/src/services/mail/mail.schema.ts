@@ -188,3 +188,39 @@ export interface MailCampaignPreview {
   recipient: { id: string; givenName: string; surname: string } | null
   previews: Record<string, MailPreview> | null
 }
+
+// The delivery log (ADR 0027): per mail, to whom (by surrogate id), which
+// kind and campaign, the wording's revision and the outcome; never the
+// address or the text.
+export const mailDeliverySchema = Type.Object(
+  {
+    id: Type.String({ format: 'uuid' }),
+    userId: Type.String({ format: 'uuid' }),
+    kind: Type.String(),
+    campaignId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]),
+    params: Type.Record(Type.String(), Type.Unknown()),
+    status: Type.Union([Type.Literal('pending'), Type.Literal('sent'), Type.Literal('failed'), Type.Literal('skipped')]),
+    skipReason: Type.Union([Type.String(), Type.Null()]),
+    revisionId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]),
+    attempts: Type.Integer(),
+    error: Type.Union([Type.String(), Type.Null()]),
+    createdAt: Type.String({ format: 'date-time' }),
+    completedAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()])
+  },
+  { $id: 'MailDelivery', additionalProperties: false }
+)
+export type MailDelivery = Static<typeof mailDeliverySchema>
+
+export const mailDeliveryResolver = resolve<MailDelivery, HookContext>({
+  createdAt: virtual(async (delivery) => toIso(delivery.createdAt)),
+  completedAt: virtual(async (delivery) => (delivery.completedAt ? toIso(delivery.completedAt) : null))
+})
+export const mailDeliveryExternalResolver = resolve<MailDelivery, HookContext>({})
+
+export const mailDeliveryQueryProperties = Type.Pick(mailDeliverySchema, ['id', 'userId', 'kind', 'campaignId', 'status', 'createdAt'])
+export const mailDeliveryQuerySchema = Type.Intersect(
+  [querySyntax(mailDeliveryQueryProperties), Type.Object({}, { additionalProperties: false })],
+  { additionalProperties: false }
+)
+export type MailDeliveryQuery = Static<typeof mailDeliveryQuerySchema>
+export const mailDeliveryQueryValidator = getValidator(mailDeliveryQuerySchema, queryValidator)

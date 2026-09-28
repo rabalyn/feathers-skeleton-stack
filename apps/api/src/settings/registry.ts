@@ -44,6 +44,8 @@ export const SETTINGS = {
   // worker processes; the rate the previous applications sent at.
   mailSendLimitCount: define(Type.Integer({ minimum: 1, maximum: 10_000 }), 10),
   mailSendLimitWindowSeconds: define(seconds(DAY), 300),
+  // The delivery log: who got which mail, in which wording (ADR 0013).
+  mailDeliveryRetentionDays: define(days, 90),
   featureFlags: define(Type.Record(Type.String({ pattern: '^[a-zA-Z][a-zA-Z0-9]*$' }), Type.Boolean()), {}),
   maintenanceMode: define(Type.Boolean(), false)
 }
@@ -77,7 +79,8 @@ export const WORKER_SETTINGS = [
   'expiredSessionRetentionDays',
   'objectPurgeDelayDays',
   'mailSendLimitCount',
-  'mailSendLimitWindowSeconds'
+  'mailSendLimitWindowSeconds',
+  'mailDeliveryRetentionDays'
 ] as const satisfies readonly SettingKey[]
 
 export const BACKUP_SETTINGS = ['backupSchedule', 'backupRetentionDailySnapshots'] as const satisfies readonly SettingKey[]

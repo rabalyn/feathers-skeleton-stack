@@ -20,6 +20,8 @@ import type { DATA_EXPORT_EXTERNAL_METHODS } from './services/data-exports/data-
 import type { Erasure, ErasureData, ERASURE_EXTERNAL_METHODS } from './services/erasures/erasures.js'
 import type { AuditEvent, AuditEventQuery, AUDIT_EVENT_EXTERNAL_METHODS } from './services/audit-events/audit-events.js'
 import type {
+  MailDelivery,
+  MailDeliveryQuery,
   MailCampaign,
   MailCampaignData,
   MailCampaignPreview,
@@ -42,6 +44,7 @@ import type {
   MAIL_TEMPLATE_REVISION_EXTERNAL_METHODS
 } from './services/mail/mail-templates.js'
 import type { MAIL_CAMPAIGN_EXTERNAL_METHODS, MAIL_CAMPAIGN_PREVIEW_EXTERNAL_METHODS } from './services/mail/mail-campaigns.js'
+import type { MAIL_DELIVERY_EXTERNAL_METHODS } from './services/mail/mail-deliveries.js'
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
 export type { Setting, SettingPatch, SettingQuery } from './services/settings/settings.schema.js'
@@ -55,6 +58,8 @@ export type { DataExport, DataExportData, DataExportQuery } from './services/dat
 export type { Erasure, ErasureData } from './services/erasures/erasures.js'
 export type { AuditEvent, AuditEventQuery } from './services/audit-events/audit-events.js'
 export type {
+  MailDelivery,
+  MailDeliveryQuery,
   MailCampaign,
   MailCampaignData,
   MailCampaignPreview,
@@ -143,6 +148,11 @@ export interface ClientServiceTypes {
   'mail-campaign-previews': External<
     ClientService<MailCampaignPreview, MailCampaignPreviewData, never, never, Params>,
     typeof MAIL_CAMPAIGN_PREVIEW_EXTERNAL_METHODS
+  >
+  // The delivery log: outcomes by surrogate id, never address or text.
+  'mail-deliveries': External<
+    ClientService<MailDelivery, never, never, Paginated<MailDelivery>, Params<MailDeliveryQuery>>,
+    typeof MAIL_DELIVERY_EXTERNAL_METHODS
   >
 }
 
