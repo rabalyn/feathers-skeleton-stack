@@ -37,7 +37,11 @@ const emptyTestBuckets = async () => {
   }
 }
 
+// Worker databases go at the start of a run and at its end, in one go:
+// every DROP DATABASE waits for a checkpoint.
 export default async function setup() {
   await Promise.all([dropWorkerDatabases(), emptyTestBuckets()])
-  return emptyTestBuckets
+  return async () => {
+    await Promise.all([dropWorkerDatabases(), emptyTestBuckets()])
+  }
 }
