@@ -62,18 +62,31 @@ export const requestRefresh = async (deps: RefreshDependencies = defaults()): Pr
     }
   })
 
-// When the access token expires, in epoch milliseconds, read from its
-// payload. The signature is the server's business; this only schedules.
-export const accessTokenExpiry = (token: string): number | null => {
+// The access token's payload. The signature is the server's business; the
+// browser only reads what the token says about itself.
+const accessTokenPayload = (token: string): Record<string, unknown> => {
   const payload = token.split('.')[1]
-  if (!payload) return null
+  if (!payload) return {}
   try {
     const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '='))
-    const { exp } = JSON.parse(json) as { exp?: unknown }
-    return typeof exp === 'number' ? exp * 1000 : null
+    const parsed: unknown = JSON.parse(json)
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {}
   } catch {
-    return null
+    return {}
   }
+}
+
+// When the access token expires, in epoch milliseconds, for scheduling.
+export const accessTokenExpiry = (token: string): number | null => {
+  const { exp } = accessTokenPayload(token)
+  return typeof exp === 'number' ? exp * 1000 : null
+}
+
+// The session the access token belongs to (ADR 0010): the one this browser
+// is logged in with, among the user's sessions.
+export const accessTokenSession = (token: string): string | null => {
+  const { sid } = accessTokenPayload(token)
+  return typeof sid === 'string' ? sid : null
 }
 
 // How long to wait before renewing: a minute before expiry, never sooner

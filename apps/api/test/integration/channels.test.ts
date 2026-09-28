@@ -78,7 +78,7 @@ const connect = async (): Promise<Connection> => {
   // build of socket.io-client, this import the ESM one.
   const client = createClient(socketio.default(socket as never), { Authentication: ManualAuthenticationClient })
   const connection: Connection = { socket, client, events: [], disconnects: [] }
-  for (const path of ['users', 'settings', 'documents', 'data-exports'] as const) {
+  for (const path of ['users', 'settings', 'documents', 'data-exports', 'sessions'] as const) {
     for (const event of ['created', 'updated', 'patched', 'removed']) {
       client.service(path).on(event, (data: unknown) => connection.events.push({ path, event, data }))
     }
@@ -175,6 +175,50 @@ describe('who receives an event', () => {
     await settle(() => expect(received(asAdmin, 'data-exports')).toHaveLength(1))
     expect(received(asAdmin, 'data-exports')[0]).toMatchObject({ event: 'patched', data: { id: row!.id, subjectId: member.id } })
     for (const connection of [asOperator, asSubject, asOther]) expect(received(connection, 'data-exports')).toEqual([])
+  })
+
+  it('logins, refreshes and revocations go to admins and operators, operators without the browser (ADR 0011)', async () => {
+    const [asAdmin, asOperator, asOwner] = await Promise.all([connectAs(admin), connectAs(operator), connectAs(member)])
+    const events = (connection: Connection) =>
+      received(connection, 'sessions').filter((e) => (e.data as { userId?: string }).userId === other.id)
+
+    // A login: the session store issues it, not the service.
+    const { session, refreshToken } = await app.get('sessions').issue(other.id, { userAgent: 'Firefox' })
+    await settle(() => {
+      for (const connection of [asAdmin, asOperator]) expect(events(connection)).toHaveLength(1)
+    })
+    expect(events(asAdmin)[0]).toMatchObject({ event: 'created', data: { id: session.id, userAgent: 'Firefox', revokedAt: null } })
+    expect(events(asOperator)[0]).toMatchObject({ event: 'created', data: { id: session.id, lastUsedAt: expect.any(String) } })
+    expect(events(asOperator)[0]?.data).not.toHaveProperty('userAgent')
+
+    // A refresh moves lastUsedAt.
+    expect((await app.get('sessions').refresh(refreshToken)).status).toBe('rotated')
+    await settle(() => {
+      for (const connection of [asAdmin, asOperator]) expect(events(connection).map((e) => e.event)).toEqual(['created', 'patched'])
+    })
+
+    // Revoked through the service: one event, not the service's and the store's.
+    await app.service('sessions').remove(session.id, as(admin))
+    await settle(() => {
+      for (const connection of [asAdmin, asOperator]) {
+        expect(events(connection).map((e) => e.event)).toEqual(['created', 'patched', 'removed'])
+      }
+    })
+    expect(events(asAdmin)[2]).toMatchObject({ data: { id: session.id, revokedAt: expect.any(String) } })
+    // A user sees no sessions, not even of their own logins.
+    expect(received(asOwner, 'sessions')).toEqual([])
+  })
+
+  it('a logout is published as a revocation', async () => {
+    const asAdmin = await connectAs(admin)
+    const { session } = await app.get('sessions').issue(other.id)
+    await app.get('sessions').revoke(session.id)
+    await settle(() =>
+      expect(received(asAdmin, 'sessions').filter((e) => (e.data as { id: string }).id === session.id).map((e) => e.event)).toEqual([
+        'created',
+        'removed'
+      ])
+    )
   })
 
   it('the payload is the one REST returns, not the internal result', async () => {

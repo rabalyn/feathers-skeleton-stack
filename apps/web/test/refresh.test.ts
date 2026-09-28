@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   REFRESH_LOCK,
   accessTokenExpiry,
+  accessTokenSession,
   classifyStatus,
   renewalDelay,
   requestRefresh,
@@ -93,6 +94,12 @@ describe('scheduling', () => {
     expect(accessTokenExpiry(token({ exp: 1_000 }))).toBe(1_000_000)
     expect(accessTokenExpiry(token({}))).toBeNull()
     expect(accessTokenExpiry('garbage')).toBeNull()
+  })
+
+  it('reads the session id from the token payload', () => {
+    expect(accessTokenSession(token({ sid: 'abc', exp: 1 }))).toBe('abc')
+    expect(accessTokenSession(token({ sid: 1 }))).toBeNull()
+    expect(accessTokenSession('garbage')).toBeNull()
   })
 
   it('renews a minute before expiry, never sooner than five seconds', () => {

@@ -55,6 +55,7 @@ const ACTIONS = [
   'login.refused',
   'logout',
   'session.reuse-detected',
+  'sessions.revoke',
   'users.patch',
   'users.erase',
   'settings.update',

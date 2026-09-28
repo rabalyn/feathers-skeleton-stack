@@ -52,6 +52,19 @@
           />
         </q-td>
       </template>
+      <template #body-cell-sessions="props">
+        <q-td :props="props" auto-width>
+          <q-btn
+            flat
+            dense
+            round
+            icon="devices"
+            :to="{ name: 'sessions', query: { userId: props.row.id } }"
+            :aria-label="t('users.sessions')"
+            :title="t('users.sessions')"
+          />
+        </q-td>
+      </template>
     </q-table>
   </q-page>
 </template>
@@ -125,7 +138,9 @@ const columns = computed<NonNullable<QTableProps['columns']>>(() => [
     align: 'left',
     sortable: true,
     format: (value: User['createdAt']) => dateTime(value)
-  }
+  },
+  // Admins and operators read every session (ADR 0011).
+  ...(session.canAll('read', 'sessions') ? [{ name: 'sessions', field: 'id', label: '', align: 'right' as const }] : [])
 ])
 
 const patch = async (id: string, data: UserPatch) => {

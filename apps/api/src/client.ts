@@ -19,6 +19,7 @@ import type { DataExport, DataExportData, DataExportQuery } from './services/dat
 import type { DATA_EXPORT_EXTERNAL_METHODS } from './services/data-exports/data-exports.js'
 import type { Erasure, ErasureData, ERASURE_EXTERNAL_METHODS } from './services/erasures/erasures.js'
 import type { AuditEvent, AuditEventQuery, AUDIT_EVENT_EXTERNAL_METHODS } from './services/audit-events/audit-events.js'
+import type { Session, SessionQuery, SESSION_EXTERNAL_METHODS } from './services/sessions/sessions.js'
 import type {
   MailDelivery,
   MailDeliveryQuery,
@@ -59,6 +60,7 @@ export { DEFAULT_LOCALE, LOCALES, type Locale } from './locales.js'
 export type { DataExport, DataExportData, DataExportQuery } from './services/data-exports/data-exports.schema.js'
 export type { Erasure, ErasureData } from './services/erasures/erasures.js'
 export type { AuditEvent, AuditEventQuery } from './services/audit-events/audit-events.js'
+export type { Session, SessionQuery } from './services/sessions/sessions.js'
 export type {
   MailDelivery,
   MailDeliveryQuery,
@@ -80,6 +82,8 @@ export type {
 export type { QueueJob, QueueJobState, QueueScheduler, QueueStatus } from './services/queues/queues.schema.js'
 export { ALLOWED_CONTENT_TYPES, AVATAR_CONTENT_TYPES, FILENAME_HEADER, type AllowedContentType } from './uploads.js'
 export { ROLES, defineAbilitiesFor, type AbilityUser, type AppAbility, type Role } from './abilities.js'
+// For asking an ability about one record, as the server does.
+export { subject } from '@casl/ability'
 export { PAGINATE } from './paginate.js'
 export {
   API_PREFIX,
@@ -129,6 +133,12 @@ export interface ClientServiceTypes {
   'audit-events': External<
     ClientService<AuditEvent, never, never, Paginated<AuditEvent>, Params<AuditEventQuery>>,
     typeof AUDIT_EVENT_EXTERNAL_METHODS
+  >
+  // Active sessions: the caller's own, everyone's for admins and operators.
+  // `remove` revokes one; the result carries revokedAt.
+  sessions: External<
+    ClientService<Session, never, never, Paginated<Session>, Params<SessionQuery>>,
+    typeof SESSION_EXTERNAL_METHODS
   >
   // Mail (ADR 0027), admins only: the kinds code declares, the active
   // wording per kind and locale, its revisions, and previews of unsaved

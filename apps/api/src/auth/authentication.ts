@@ -12,6 +12,7 @@ import type { Application } from '../app.js'
 import { recordAudit } from '../audit.js'
 import { endSessionConnections } from '../channels.js'
 import { AUTHENTICATION_URL } from '../paths.js'
+import { publishSession } from '../services/sessions/sessions.js'
 import type { User } from '../services/users/users.schema.js'
 import { decoyHash, MAX_PASSWORD_LENGTH, verifyPassword } from './password.js'
 import { RateLimitUnavailable, TooManyRequests, type RateLimitBucket } from '../rate-limit.js'
@@ -268,9 +269,14 @@ export const authentication = (app: Application) => {
   })
   app.set(
     'sessions',
-    new SessionStore(app.get('knex'), app.get('settings'), refreshTokenKey, (sessionId) =>
-      endSessionConnections(app, sessionId)
-    )
+    new SessionStore(app.get('knex'), app.get('settings'), refreshTokenKey, {
+      issued: (session) => publishSession(app, 'created', session),
+      refreshed: (session) => publishSession(app, 'patched', session),
+      revoked: (session) => {
+        endSessionConnections(app, session.id)
+        publishSession(app, 'removed', session)
+      }
+    })
   )
   app.set('serviceProvider', new ServiceProvider(app.get('config'), app.get('knex')))
 

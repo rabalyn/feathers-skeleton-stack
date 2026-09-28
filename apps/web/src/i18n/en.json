@@ -20,7 +20,8 @@
     "gdpr": "Data requests",
     "mailTemplates": "Mail templates",
     "mailings": "Mailings",
-    "queues": "Queues"
+    "queues": "Queues",
+    "sessions": "Sessions"
   },
   "auth": {
     "login": "Log in",
@@ -59,7 +60,8 @@
     "disable": "Disable",
     "saved": "Saved",
     "empty": "No users found",
-    "erased": "erased"
+    "erased": "erased",
+    "sessions": "Sessions"
   },
   "settings": {
     "key": "Key",
@@ -151,7 +153,8 @@
       "breakglass_create": "Break-glass account created",
       "breakglass_rotate": "Break-glass password changed",
       "data-exports_create": "Data export requested",
-      "data-exports_download": "Data export downloaded"
+      "data-exports_download": "Data export downloaded",
+      "sessions_revoke": "Session ended"
     }
   },
   "gdpr": {
@@ -306,5 +309,18 @@
       "build-export": "Build export",
       "send-mail": "Send e-mail"
     }
+  },
+  "sessions": {
+    "current": "This browser",
+    "revoke": "End session",
+    "revoked": "Session ended",
+    "empty": "No active sessions",
+    "unknownBrowser": "Unknown browser",
+    "person": "Account",
+    "browser": "Browser",
+    "issuedAt": "Logged in",
+    "lastUsedAt": "Last active",
+    "expiresAt": "Expires if unused",
+    "filterBy": "Show only this account"
   }
 }

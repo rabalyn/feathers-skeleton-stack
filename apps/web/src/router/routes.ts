@@ -44,6 +44,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/SettingsPage.vue'),
         meta: { requires: ['read', 'settings'] }
       },
+      // Every session, for admins and operators (ADR 0011).
+      {
+        path: 'sessions',
+        name: 'sessions',
+        component: () => import('@/pages/SessionsPage.vue'),
+        meta: { requires: ['read', 'sessions'] }
+      },
       {
         path: 'audit',
         name: 'audit',

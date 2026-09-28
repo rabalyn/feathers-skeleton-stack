@@ -73,13 +73,21 @@ const SESSION_COLUMNS: string[] = [
   'samlSessionIndex'
 ]
 
+// Told after a session changed, once its transaction has committed: to end
+// a revoked session's sockets and to publish every change to those who see
+// sessions (ADR 0011, 0012).
+export interface SessionEvents {
+  issued?: (session: AuthSession) => void
+  refreshed?: (session: AuthSession) => void
+  revoked?: (session: AuthSession) => void
+}
+
 export class SessionStore {
   constructor(
     private readonly knex: Knex,
     private readonly settings: SettingsStore,
     private readonly refreshTokenKey: string,
-    // Told after a session was revoked, to end its sockets (ADR 0012).
-    private readonly onRevoked: (sessionId: string) => void = () => {}
+    private readonly events: SessionEvents = {}
   ) {}
 
   successorOf(token: string): string {
@@ -95,7 +103,7 @@ export class SessionStore {
       this.settings.get('sessionAbsoluteSeconds')
     ])
     const refreshToken = randomBytes(32).toString('base64url')
-    return this.knex.transaction(async (trx) => {
+    const issued = await this.knex.transaction(async (trx) => {
       const [session]: AuthSession[] = await trx('authSessions')
         .insert({
           userId,
@@ -111,6 +119,8 @@ export class SessionStore {
       await trx('authRefreshTokens').insert({ sessionId: session.id, tokenHash: hashRefreshToken(refreshToken) })
       return { session, refreshToken }
     })
+    this.events.issued?.(issued.session)
+    return issued
   }
 
   async get(id: string): Promise<AuthSession | undefined> {
@@ -187,7 +197,8 @@ export class SessionStore {
         .returning(SESSION_COLUMNS)
       return { status: 'rotated', session: touched ?? session, refreshToken: current }
     })
-    if (outcome.status === 'reuse') this.onRevoked(outcome.session.id)
+    if (outcome.status === 'reuse') this.events.revoked?.({ ...outcome.session, revokedAt: new Date() })
+    if (outcome.status === 'rotated') this.events.refreshed?.(outcome.session)
     return outcome
   }
 
@@ -206,8 +217,15 @@ export class SessionStore {
     return undefined
   }
 
-  async revoke(id: string): Promise<void> {
-    await this.knex('authSessions').where({ id }).whereNull('revokedAt').update({ revokedAt: this.knex.fn.now() })
-    this.onRevoked(id)
+  // Revokes the session if it is not already; returns it as revoked, or
+  // undefined if there was nothing to revoke.
+  async revoke(id: string): Promise<AuthSession | undefined> {
+    const [revoked]: AuthSession[] = await this.knex('authSessions')
+      .where({ id })
+      .whereNull('revokedAt')
+      .update({ revokedAt: this.knex.fn.now() })
+      .returning(SESSION_COLUMNS)
+    if (revoked) this.events.revoked?.(revoked)
+    return revoked
   }
 }

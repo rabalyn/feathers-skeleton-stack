@@ -2,7 +2,7 @@ import { defineAbilitiesFor, SAML_LOGIN_URL, AUTHENTICATION_URL, type AppAbility
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
 import { client, socket } from '@/api/feathers'
-import { accessTokenExpiry, renewalDelay, requestRefresh, retryDelay } from '@/api/refresh'
+import { accessTokenExpiry, accessTokenSession, renewalDelay, requestRefresh, retryDelay } from '@/api/refresh'
 import { i18n } from '@/boot/i18n'
 
 // The browser's side of the session (ADR 0010, 0014). The access token lives
@@ -22,6 +22,8 @@ export const useSessionStore = defineStore('session', () => {
   // Set when an authenticated session ended without the user logging out.
   const expired = ref(false)
   const ability = shallowRef<AppAbility | null>(null)
+  // The session this browser is logged in with, from the access token.
+  const sessionId = ref<string | null>(null)
 
   let timer: ReturnType<typeof setTimeout> | undefined
   let attempt = 0
@@ -49,6 +51,7 @@ export const useSessionStore = defineStore('session', () => {
     socket.disconnect().connect()
     user.value = null
     ability.value = null
+    sessionId.value = null
     status.value = 'anonymous'
   }
 
@@ -94,6 +97,7 @@ export const useSessionStore = defineStore('session', () => {
     attempt = 0
     unavailable.value = false
     expired.value = false
+    sessionId.value = accessTokenSession(accessToken)
     status.value = 'authenticated'
     schedule(renewalDelay(accessTokenExpiry(accessToken), Date.now()))
     return status.value
@@ -250,6 +254,7 @@ export const useSessionStore = defineStore('session', () => {
     unavailable,
     expired,
     ability,
+    sessionId,
     settled,
     isAuthenticated: computed(() => status.value === 'authenticated'),
     start,
