@@ -5,6 +5,7 @@ import type { AuditEvent } from '../../src/services/audit-events/audit-events.js
 import type { Session } from '../../src/services/sessions/sessions.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
+import { grantRoles, type SeededRole } from '../support/roles.js'
 
 // ADR 0011's sessions row over HTTP: admins read and revoke every session,
 // operators read every session but not its browser and revoke none, users
@@ -20,7 +21,7 @@ let other: User
 // A login of `user`, and a bearer token for it, as the refresh would issue.
 const login = async (user: User, userAgent = `browser of ${user.tuId}`) => {
   const { session } = await app.get('sessions').issue(user.id, { userAgent })
-  const token = await app.service('authentication').createAccessToken({ sid: session.id, role: user.role }, { subject: user.id })
+  const token = await app.service('authentication').createAccessToken({ sid: session.id }, { subject: user.id })
   return { id: session.id, token }
 }
 
@@ -38,9 +39,9 @@ beforeAll(async () => {
   const server = await app.listen(0)
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`
   const users = app.service('users')
-  const make = async (tuId: string, role: User['role']) => {
+  const make = async (tuId: string, role: SeededRole) => {
     const created = await users.create({ tuId, givenName: tuId, surname: 'Test', email: null, authSource: 'saml' })
-    return role === 'user' ? created : users.patch(created.id, { role })
+    return grantRoles(app, created.id, [role])
   }
   admin = await make('ad02admn', 'admin')
   operator = await make('op02oper', 'operator')

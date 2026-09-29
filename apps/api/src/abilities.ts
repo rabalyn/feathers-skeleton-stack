@@ -1,19 +1,25 @@
-import { AbilityBuilder, createAliasResolver, createMongoAbility, type MongoAbility } from '@casl/ability'
+import { AbilityBuilder, createAliasResolver, createMongoAbility, type MongoAbility, type RawRuleOf } from '@casl/ability'
 
-// Role abilities (ADR 0011): the one module where authorization rules live.
-// It is imported by the browser through the client entry point to hide
-// actions, so it must import nothing but @casl/ability (ADR 0007). The
-// server remains the only enforcement point.
+// Authorization (ADR 0011): the one module where rules live. Permissions are
+// declared here, in the catalogue; roles, which an admin composes from them,
+// are rows in the database. It is imported by the browser through the client
+// entry point to hide actions, so it must import nothing but @casl/ability
+// (ADR 0007). The server remains the only enforcement point.
 
-export const ROLES = ['admin', 'operator', 'user'] as const
-export type Role = (typeof ROLES)[number]
+export type AppAbility = MongoAbility
 
+// Who an ability is for: the account, and the permission keys its roles add
+// up to (loaded per request, ADR 0010).
 export interface AbilityUser {
   id: string
-  role: Role
+  permissions: readonly string[]
+  // The roles themselves, whose names the account may always read.
+  roleIds?: readonly string[]
 }
 
-// Feathers methods, grouped into the actions the permission matrix uses.
+type Can = AbilityBuilder<AppAbility>['can']
+
+// Feathers methods, grouped into the actions the permission catalogue uses.
 // No service offers `update` (ADR 0006), so `write` does not cover it.
 const resolveAction = createAliasResolver({
   read: ['get', 'find'],
@@ -21,18 +27,95 @@ const resolveAction = createAliasResolver({
   delete: ['remove']
 })
 
-export type AppAbility = MongoAbility
+// What `sessions.read` shows of a session: everything but the user agent,
+// which `sessions.read-user-agent` adds (decided 2026-09-28, ADR 0011).
+const SESSION_FIELDS_WITHOUT_USER_AGENT = ['id', 'userId', 'issuedAt', 'lastUsedAt', 'idleExpiresAt', 'familyExpiresAt', 'revokedAt']
 
-// What an operator reads of a session: everything but the user agent
-// (decided 2026-09-28, ADR 0011).
-const OPERATOR_SESSION_FIELDS = ['id', 'userId', 'issuedAt', 'lastUsedAt', 'idleExpiresAt', 'familyExpiresAt', 'revokedAt']
+// What anybody who sees user records reads of a role: its name, not what it
+// grants.
+const ROLE_NAME_FIELDS = ['id', 'key', 'kind', 'name']
 
-export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
-  const { can, build } = new AbilityBuilder<AppAbility>(createMongoAbility)
+export interface PermissionEntry {
+  key: string
+  // The permissions page shows the catalogue grouped by this; its label is
+  // the web app's translation `permissions.groups.<group>`.
+  group: string
+  grant: (can: Can, user: AbilityUser) => void
+}
 
-  // Own user record: read, for every role, and its avatar, set through
-  // `avatars`, which only ever acts on the caller's own record. Directory
-  // fields are writable by nobody (ADR 0009).
+// The permission catalogue (ADR 0011). A product adds entries for its own
+// resources; the web app translates `permissions.keys.<key>` and
+// `permissions.descriptions.<key>`. A key is stable once released: roles
+// store it.
+type Grant = PermissionEntry['grant']
+const entry = <K extends string>(key: K, group: string, grant: Grant): PermissionEntry & { key: K } => ({ key, group, grant })
+
+const CATALOGUE_ENTRIES = [
+  entry('users.read', 'users', (can) => {
+    can('read', 'users')
+    // Their avatars. Files carry no mark of what they are attached to, so
+    // this reaches every file whose id the reader knows.
+    can('read', 'files')
+    can('read', 'roles', ROLE_NAME_FIELDS)
+  }),
+  // Which fields a patch may carry is fixed by the users patch schema.
+  entry('users.enable', 'users', (can) => can('patch', 'users')),
+  entry('directory.read', 'users', (can) => can('read', 'directory')),
+  // The caller always becomes the owner of what they create; lists are
+  // scoped by the same condition.
+  entry('documents.own', 'documents', (can, user) => {
+    can('create', 'documents')
+    can(['read', 'write', 'delete'], 'documents', { ownerId: user.id })
+  }),
+  entry('documents.all', 'documents', (can) => {
+    can(['read', 'write', 'delete'], 'documents')
+    can('read', 'files')
+  }),
+  entry('sessions.read', 'sessions', (can) => can('read', 'sessions', SESSION_FIELDS_WITHOUT_USER_AGENT)),
+  entry('sessions.read-user-agent', 'sessions', (can) => can('read', 'sessions')),
+  // `read` beside `delete`: feathers-casl checks the removed record.
+  entry('sessions.revoke', 'sessions', (can) => {
+    can('delete', 'sessions')
+    can('read', 'sessions', SESSION_FIELDS_WITHOUT_USER_AGENT)
+  }),
+  entry('audit-events.read', 'privacy', (can) => can('read', 'audit-events')),
+  entry('data-exports.any', 'privacy', (can) => can('create', 'data-exports')),
+  // `read` for feathers-casl's check of the create's result.
+  entry('erasures.create', 'privacy', (can) => can(['create', 'read'], 'erasures')),
+  entry('settings.manage', 'configuration', (can) => can(['read', 'patch'], 'settings')),
+  // `read` on previews for feathers-casl's check of the create's result.
+  entry('mail.manage', 'configuration', (can) => {
+    can('read', 'mail-kinds')
+    can(['read', 'patch'], 'mail-templates')
+    can(['read', 'create'], 'mail-template-revisions')
+    can(['create', 'read'], 'mail-previews')
+    can(['read', 'create'], 'mail-campaigns')
+    can(['create', 'read'], 'mail-campaign-previews')
+    can('read', 'mail-deliveries')
+  }),
+  entry('queues.read', 'configuration', (can) => can('read', 'queues'))
+]
+
+export type PermissionKey = (typeof CATALOGUE_ENTRIES)[number]['key']
+export const PERMISSIONS: readonly (PermissionEntry & { key: PermissionKey })[] = CATALOGUE_ENTRIES
+export const PERMISSION_KEYS: readonly PermissionKey[] = PERMISSIONS.map((entry) => entry.key)
+const CATALOGUE = new Map<string, PermissionEntry>(PERMISSIONS.map((entry) => [entry.key, entry]))
+
+export const isPermissionKey = (key: string): key is PermissionKey => CATALOGUE.has(key)
+
+// Role management: `admin`'s alone and outside the catalogue, so no role can
+// be granted it (ADR 0011). Only the fixed `admin` role yields this key.
+export const ROLE_MANAGEMENT = 'roles.manage'
+
+// The kinds of role (ADR 0011).
+export const ROLE_KINDS = ['admin', 'seeded', 'custom'] as const
+export type RoleKind = (typeof ROLE_KINDS)[number]
+
+// What every signed-in account may do, whatever its roles: its own record,
+// avatar, locale and files, its own GDPR export, its own audit events and
+// the names of its own roles.
+// No role can withdraw it (ADR 0011, 0013).
+const grantBaseline = (can: Can, user: AbilityUser) => {
   can('read', 'users', { id: user.id })
   // `read` too, which feathers-casl checks on a create's result: the
   // caller's own user record.
@@ -47,68 +130,62 @@ export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
   can('read', 'files', { ownerId: user.id })
   can('read', 'file-contents')
 
-  // Documents: the caller always becomes the owner of what they create.
-  can('create', 'documents')
-
-  // GDPR export (ADR 0013): every role exports itself, an admin anyone.
-  // An export is seen and fetched by the account that asked for it only.
+  // GDPR export (ADR 0013): every account exports itself. An export is seen
+  // and fetched by the account that asked for it only.
   can('create', 'data-exports', { subjectId: user.id })
   can('read', 'data-exports', { requestedBy: user.id })
   // Checks the `data-exports` rule on the record itself, like file-contents.
   can('read', 'data-export-contents')
 
-  // Audit events (ADR 0011, 0013): what the caller did; all of them for
-  // admins and operators below.
+  // Audit events (ADR 0011, 0013): what the caller did.
   can('read', 'audit-events', { actorId: user.id })
 
-  switch (user.role) {
-    case 'admin':
-      can('read', 'users')
-      // Role assignment and enable/disable. Which fields a patch may carry
-      // is fixed by the users patch schema.
-      can('patch', 'users')
-      // All avatars, all documents (ADR 0011).
-      can('read', 'files')
-      can(['read', 'write', 'delete'], 'documents')
-      // Runtime settings (ADR 0025): configuration is the admin's alone.
-      can('read', 'settings')
-      can('patch', 'settings')
-      // Directory lookup (ADR 0008).
-      can('read', 'directory')
-      can('read', 'audit-events')
-      can('create', 'data-exports')
-      // Erasure (ADR 0013): the admin's alone; `read` for feathers-casl's
-      // check of the create's result.
-      can(['create', 'read'], 'erasures')
-      // Mail (ADR 0027): the wording of the application's mail is runtime
-      // behaviour, the admin's alone. `read` on previews for feathers-casl's
-      // check of the create's result.
-      can('read', 'mail-kinds')
-      can(['read', 'patch'], 'mail-templates')
-      can(['read', 'create'], 'mail-template-revisions')
-      can(['create', 'read'], 'mail-previews')
-      can(['read', 'create'], 'mail-campaigns')
-      can(['create', 'read'], 'mail-campaign-previews')
-      can('read', 'mail-deliveries')
-      // The queue view (ADR 0024): runtime state, read-only.
-      can('read', 'queues')
-      // Who is logged in (ADR 0010): every session, and ending any of them.
-      can(['read', 'delete'], 'sessions')
-      break
-    case 'operator':
-      can('read', 'users')
-      can('read', 'directory')
-      can('read', 'audit-events')
-      can('read', 'files')
-      can(['read', 'write', 'delete'], 'documents')
-      // Every session, but not the browser it was opened in, and ending none.
-      can('read', 'sessions', OPERATOR_SESSION_FIELDS)
-      break
-    case 'user':
-      // Their own documents only; lists are scoped by the same condition.
-      can(['read', 'write', 'delete'], 'documents', { ownerId: user.id })
-      break
-  }
+  // The names of the caller's own roles, shown on their profile.
+  if (user.roleIds?.length) can('read', 'roles', ROLE_NAME_FIELDS, { id: { $in: [...user.roleIds] } })
+}
 
-  return build({ resolveAction })
+const grantRoleManagement = (can: Can) => {
+  can(['read', 'create', 'patch', 'delete'], 'roles')
+  can(['read', 'patch'], 'user-roles')
+}
+
+type Rule = RawRuleOf<AppAbility>
+const asList = (value: string | string[]) => [value].flat()
+
+// feathers-casl narrows a result to the intersection of every field rule
+// that matches it, whatever broader rule applies beside them. So a field
+// rule is dropped where a rule without fields or conditions grants the same
+// actions on the same subject: `sessions.read` beside
+// `sessions.read-user-agent` reads every field, as CASL itself would have it.
+const withoutShadowedFieldRules = (rules: Rule[]): Rule[] => {
+  const broad = rules.filter((rule) => !rule.inverted && !rule.fields && !rule.conditions)
+  const covers = (wide: Rule, narrow: Rule) =>
+    asList(narrow.action).every((action) => asList(wide.action).includes(action)) &&
+    asList(narrow.subject as string | string[]).every((name) => asList(wide.subject as string | string[]).includes(name))
+  return rules.filter((rule) => rule.inverted || !rule.fields || !broad.some((wide) => covers(wide, rule)))
+}
+
+export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
+  const { can, rules } = new AbilityBuilder<AppAbility>(createMongoAbility)
+  grantBaseline(can, user)
+  for (const key of user.permissions) {
+    if (key === ROLE_MANAGEMENT) grantRoleManagement(can)
+    // A key code no longer declares grants nothing (ADR 0011).
+    else CATALOGUE.get(key)?.grant(can, user)
+  }
+  return createMongoAbility(withoutShadowedFieldRules(rules), { resolveAction })
+}
+
+// The permissions of the fixed `admin` role: the whole catalogue, including
+// what is added later, and role management.
+export const ADMIN_PERMISSIONS: readonly string[] = [...PERMISSION_KEYS, ROLE_MANAGEMENT]
+
+// The services an ability reads every record of, whatever fields: the
+// subject channels a connection joins (ADR 0012).
+export const unconditionalReadSubjects = (ability: AppAbility): string[] => {
+  const subjects = new Set<string>()
+  for (const rule of ability.rules) {
+    for (const name of [rule.subject].flat()) if (typeof name === 'string') subjects.add(name)
+  }
+  return [...subjects].filter((name) => ability.rulesFor('get', name).some((rule) => !rule.inverted && !rule.conditions))
 }

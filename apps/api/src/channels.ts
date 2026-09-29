@@ -1,7 +1,7 @@
 import type { AuthenticationResult } from '@feathersjs/authentication'
 import type { HookContext, Params, RealTimeConnection } from '@feathersjs/feathers'
 import { getChannelsWithReadAbility } from 'feathers-casl'
-import { defineAbilitiesFor, type AppAbility, type Role } from './abilities.js'
+import { defineAbilitiesFor, unconditionalReadSubjects, type AppAbility } from './abilities.js'
 import type { Application } from './app.js'
 
 // Real-time delivery (ADR 0012). A connection joins channels derived from
@@ -10,14 +10,16 @@ import type { Application } from './app.js'
 // the record and which fields of it.
 
 export const userChannel = (userId: string) => `users/${userId}`
-export const roleChannel = (role: Exclude<Role, 'user'>) => `roles/${role}`
+// Joined by every connection that may read all records of a service,
+// whatever its roles (ADR 0012).
+export const subjectChannel = (service: string) => `subjects/${service}`
 
 // What the server knows about an authenticated connection, beside what
 // Feathers keeps on it (`authentication`, `user`).
 interface SessionConnection extends RealTimeConnection {
   ability?: AppAbility
   sessionId?: string
-  user?: { id: string; role: Role }
+  user?: { id: string; roleIds?: string[]; permissions?: string[] }
 }
 
 const leaveAll = (app: Application, connection: RealTimeConnection) => {
@@ -37,10 +39,10 @@ const join = (app: Application, connection: SessionConnection, result: Authentic
   // else leaves it anonymous, in no channel.
   if (authentication?.strategy !== 'jwt' || !user || typeof sessionId !== 'string') return
 
-  connection.ability = defineAbilitiesFor(user)
+  connection.ability = defineAbilitiesFor({ id: user.id, permissions: user.permissions ?? [], roleIds: user.roleIds ?? [] })
   connection.sessionId = sessionId
   app.channel(userChannel(user.id)).join(connection)
-  if (user.role !== 'user') app.channel(roleChannel(user.role)).join(connection)
+  for (const service of unconditionalReadSubjects(connection.ability)) app.channel(subjectChannel(service)).join(connection)
 }
 
 // Ends the connections matching `which`: they leave every channel and the
@@ -59,6 +61,11 @@ export const endConnections = (app: Application, which: (connection: SessionConn
 
 export const endUserConnections = (app: Application, userId: string) =>
   endConnections(app, (connection) => connection.user?.id === userId)
+
+export const endUsersConnections = (app: Application, userIds: readonly string[]) => {
+  const ids = new Set(userIds)
+  endConnections(app, (connection) => connection.user !== undefined && ids.has(connection.user.id))
+}
 
 export const endSessionConnections = (app: Application, sessionId: string) =>
   endConnections(app, (connection) => connection.sessionId === sessionId)

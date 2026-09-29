@@ -48,8 +48,13 @@ import type { MAIL_CAMPAIGN_EXTERNAL_METHODS, MAIL_CAMPAIGN_PREVIEW_EXTERNAL_MET
 import type { MAIL_DELIVERY_EXTERNAL_METHODS } from './services/mail/mail-deliveries.js'
 import type { QueueStatus } from './services/queues/queues.schema.js'
 import type { QUEUE_EXTERNAL_METHODS } from './services/queues/queues.js'
+import type { Role, RoleData, RolePatch, RoleQuery } from './services/roles/roles.schema.js'
+import type { ROLE_EXTERNAL_METHODS } from './services/roles/roles.js'
+import type { UserRoles, UserRolesPatch, USER_ROLE_EXTERNAL_METHODS } from './services/roles/user-roles.js'
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
+export type { Role, RoleData, RolePatch, RoleQuery } from './services/roles/roles.schema.js'
+export type { UserRoles, UserRolesPatch } from './services/roles/user-roles.js'
 export type { Setting, SettingPatch, SettingQuery } from './services/settings/settings.schema.js'
 export type { DirectoryEntry, DirectoryPage, DirectoryQuery } from './services/directory/directory.schema.js'
 export type { Document, DocumentData, DocumentPatch, DocumentQuery } from './services/documents/documents.schema.js'
@@ -81,7 +86,19 @@ export type {
 } from './services/mail/mail.schema.js'
 export type { QueueJob, QueueJobState, QueueScheduler, QueueStatus } from './services/queues/queues.schema.js'
 export { ALLOWED_CONTENT_TYPES, AVATAR_CONTENT_TYPES, FILENAME_HEADER, type AllowedContentType } from './uploads.js'
-export { ROLES, defineAbilitiesFor, type AbilityUser, type AppAbility, type Role } from './abilities.js'
+export {
+  ADMIN_PERMISSIONS,
+  PERMISSIONS,
+  PERMISSION_KEYS,
+  ROLE_KINDS,
+  ROLE_MANAGEMENT,
+  defineAbilitiesFor,
+  isPermissionKey,
+  type AbilityUser,
+  type AppAbility,
+  type PermissionKey,
+  type RoleKind
+} from './abilities.js'
 // For asking an ability about one record, as the server does.
 export { subject } from '@casl/ability'
 export { PAGINATE } from './paginate.js'
@@ -114,6 +131,11 @@ export interface ClientServiceTypes {
     ClientService<Document, DocumentData, DocumentPatch, Paginated<Document>, Params<DocumentQuery>>,
     typeof DOCUMENT_EXTERNAL_METHODS
   >
+  // Roles and what they grant (ADR 0011): names for whoever reads users,
+  // everything and every change for admins.
+  roles: External<ClientService<Role, RoleData, RolePatch, Paginated<Role>, Params<RoleQuery>>, typeof ROLE_EXTERNAL_METHODS>
+  // A user's roles, assigned by admins; the id is the user's.
+  'user-roles': External<ClientService<UserRoles, never, UserRolesPatch, never, Params>, typeof USER_ROLE_EXTERNAL_METHODS>
   // The caller's own avatar; the result is their user record.
   avatars: External<ClientService<User, AvatarData, never, never, Params>, typeof AVATAR_EXTERNAL_METHODS>
   // The language the caller's mail is written in; the result is their user
@@ -134,7 +156,7 @@ export interface ClientServiceTypes {
     ClientService<AuditEvent, never, never, Paginated<AuditEvent>, Params<AuditEventQuery>>,
     typeof AUDIT_EVENT_EXTERNAL_METHODS
   >
-  // Active sessions: the caller's own, everyone's for admins and operators.
+  // Active sessions, under `sessions.read`.
   // `remove` revokes one; the result carries revokedAt.
   sessions: External<
     ClientService<Session, never, never, Paginated<Session>, Params<SessionQuery>>,

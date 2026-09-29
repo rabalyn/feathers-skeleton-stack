@@ -70,7 +70,6 @@ export const PERSONAL_DATA: readonly RegistryEntry[] = [
             'givenName',
             'surname',
             'email',
-            'role',
             'enabled',
             'authSource',
             'locale',
@@ -81,6 +80,22 @@ export const PERSONAL_DATA: readonly RegistryEntry[] = [
     },
     erasure: 'clear-identifiers',
     note: 'The person: TU-ID, name, surname, email and avatar are cleared, the account disabled'
+  },
+  {
+    kind: 'table',
+    table: 'user_roles',
+    userColumns: ['user_id'],
+    export: {
+      key: 'roles',
+      collect: (knex, userId) =>
+        knex('userRoles')
+          .join('roles', 'roles.id', 'userRoles.roleId')
+          .where('userRoles.userId', userId)
+          .orderBy('roles.key')
+          .select('roles.key', 'roles.name')
+    },
+    erasure: 'keep',
+    note: 'The roles the person holds (ADR 0011); they identify nobody, and the erased account is disabled'
   },
   {
     kind: 'table',

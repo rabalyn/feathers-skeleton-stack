@@ -6,6 +6,7 @@ import { seedMailTemplates } from '../../src/mail/templates.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
 import { db } from '../support/worker-database.js'
+import { grantRoles, type SeededRole } from '../support/roles.js'
 
 // ADR 0027: templates seeded from code defaults, immutable revisions, the
 // check on save, roll back; and ADR 0011's mail row: admins only.
@@ -25,9 +26,9 @@ let defaults: Map<string, string>
 beforeAll(async () => {
   ;({ app } = await createTestApp())
   const users = app.service('users')
-  const make = async (tuId: string, role: User['role']) => {
+  const make = async (tuId: string, role: SeededRole) => {
     const created = await users.create({ tuId, givenName: tuId, surname: 'Test', email: `${tuId}@example.org`, authSource: 'saml' })
-    return role === 'user' ? created : users.patch(created.id, { role })
+    return grantRoles(app, created.id, [role])
   }
   admin = await make('mt01admn', 'admin')
   operator = await make('mt02oper', 'operator')

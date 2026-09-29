@@ -420,18 +420,26 @@ breakglass_alert_check() {
 
 # The test directory's accounts (containers/ldap/seed/users.ldif) with
 # their roles, as an administrator would assign them: a login refreshes
-# directory fields but never the role (ADR 0009, 0011). `up` gives them to
-# the local `app` after every start, restoring a role changed by hand; the
-# e2e run to its fresh database.
+# directory fields but never the roles (ADR 0009, 0011). `up` gives them to
+# the local `app` after every start, restoring roles changed by hand; the
+# e2e run to its fresh database. What the seeded roles grant is left alone.
 seed_test_accounts() { # <database>
   podman exec -i -u postgres postgres psql -q -v ON_ERROR_STOP=1 -d "$1" <<'SQL' >/dev/null
-INSERT INTO users (tu_id, given_name, surname, email, role, enabled, auth_source) VALUES
-  ('ad01admn', 'Ada', 'Admin', 'ada.admin@example.org', 'admin', true, 'saml'),
-  ('op01oper', 'Otto', 'Operator', 'otto.operator@example.org', 'operator', true, 'saml'),
-  ('us01user', 'Uma', 'User', 'uma.user@example.org', 'user', true, 'saml'),
-  ('us02othr', 'Olaf', 'Other', 'olaf.other@example.org', 'user', true, 'saml')
-ON CONFLICT (tu_id) DO UPDATE SET role = EXCLUDED.role, enabled = true, updated_at = now()
-  WHERE users.role IS DISTINCT FROM EXCLUDED.role OR NOT users.enabled;
+CREATE TEMPORARY TABLE seed (tu_id text, given_name text, surname text, email text, role_key text);
+INSERT INTO seed VALUES
+  ('ad01admn', 'Ada', 'Admin', 'ada.admin@example.org', 'admin'),
+  ('op01oper', 'Otto', 'Operator', 'otto.operator@example.org', 'operator'),
+  ('us01user', 'Uma', 'User', 'uma.user@example.org', 'user'),
+  ('us02othr', 'Olaf', 'Other', 'olaf.other@example.org', 'user');
+INSERT INTO users (tu_id, given_name, surname, email, enabled, auth_source)
+  SELECT tu_id, given_name, surname, email, true, 'saml' FROM seed
+ON CONFLICT (tu_id) DO UPDATE SET enabled = true, updated_at = now() WHERE NOT users.enabled;
+DELETE FROM user_roles USING users, seed, roles
+  WHERE user_roles.user_id = users.id AND users.tu_id = seed.tu_id
+    AND roles.id = user_roles.role_id AND roles.key <> seed.role_key;
+INSERT INTO user_roles (user_id, role_id)
+  SELECT users.id, roles.id FROM seed JOIN users USING (tu_id) JOIN roles ON roles.key = seed.role_key
+ON CONFLICT DO NOTHING;
 SQL
 }
 
@@ -457,8 +465,12 @@ SQL
   seed_test_accounts "$E2E_DATABASE"
   podman exec -i -u postgres postgres psql -q -v ON_ERROR_STOP=1 -d "$E2E_DATABASE" <<'SQL' >/dev/null
 -- Erased by the GDPR spec; never logs in.
-INSERT INTO users (tu_id, given_name, surname, role, enabled, auth_source) VALUES
-  ('us03gone', 'Greta', 'Gone', 'user', true, 'saml');
+WITH gone AS (
+  INSERT INTO users (tu_id, given_name, surname, enabled, auth_source) VALUES
+    ('us03gone', 'Greta', 'Gone', true, 'saml')
+  RETURNING id
+)
+INSERT INTO user_roles (user_id, role_id) SELECT gone.id, roles.id FROM gone, roles WHERE roles.key = 'user';
 -- Mail (ADR 0027) is not throttled here: runs follow each other within
 -- the production window, on a queue prefix that outlives the database.
 UPDATE settings SET value = '1000' WHERE key = 'mailSendLimitCount';

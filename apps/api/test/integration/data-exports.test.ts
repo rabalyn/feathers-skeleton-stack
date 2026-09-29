@@ -13,6 +13,7 @@ import type { Storage } from '../../src/storage.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp, loadValkeyConfig } from '../support/app.js'
 import { DATA_EXPORTS_TEST_BUCKET } from '../support/global-setup.js'
+import { grantRoles, type SeededRole } from '../support/roles.js'
 
 // ADR 0013 over HTTP against the stack's Valkey, Garage and a worker of the
 // test's own: who may export whom, the job, the relayed outcome, the ZIP and
@@ -41,7 +42,7 @@ const tokenFor = async (user: User) => {
   const cached = tokens.get(user.id)
   if (cached) return cached
   const { session } = await app.get('sessions').issue(user.id)
-  const token = await app.service('authentication').createAccessToken({ sid: session.id, role: user.role }, { subject: user.id })
+  const token = await app.service('authentication').createAccessToken({ sid: session.id }, { subject: user.id })
   tokens.set(user.id, token)
   return token
 }
@@ -109,9 +110,9 @@ beforeAll(async () => {
     prefix: app.get('config').queuePrefix
   })
   const users = app.service('users')
-  const make = async (tuId: string, role: User['role']) => {
+  const make = async (tuId: string, role: SeededRole) => {
     const created = await users.create({ tuId, givenName: 'Given', surname: tuId, email: `${tuId}@example.test`, authSource: 'saml' })
-    return role === 'user' ? created : users.patch(created.id, { role })
+    return grantRoles(app, created.id, [role])
   }
   admin = await make('ad01admn', 'admin')
   operator = await make('op01oper', 'operator')
@@ -135,7 +136,7 @@ describe('requesting an export (ADR 0011)', () => {
   it('lets every role export itself, and refuses exporting others to all but admin', async () => {
     for (const user of [member, operator, admin]) {
       const response = await requestExport(user, user.id)
-      expect(response.status, user.role).toBe(201)
+      expect(response.status, user.tuId ?? '').toBe(201)
       expect(await response.json()).toMatchObject({ subjectId: user.id, requestedBy: user.id, state: 'pending' })
     }
     expect((await requestExport(member, other.id)).status).toBe(403)
@@ -211,6 +212,7 @@ describe('building and downloading an export', () => {
       format: 'data-export/1',
       subjectId: member.id,
       account: { id: member.id, tuId: 'us01user', givenName: 'Given', surname: 'us01user', email: 'us01user@example.test', locale: 'de', avatarFileId: avatarFile },
+      roles: [{ key: 'user', name: { de: 'Benutzer', en: 'User' } }],
       documents: [expect.objectContaining({ title: 'Report', fileId: documentFile })],
       sessions: expect.any(Array),
       auditEvents: expect.arrayContaining([expect.objectContaining({ action: 'data-exports.create', actorId: member.id })])
@@ -358,12 +360,13 @@ describe("two people's exports", () => {
 
   // A person with `sessions` logins; their calls use the first.
   const person = async (tuId: string, sessions: number): Promise<Person> => {
-    const user = await app.service('users').create({ tuId, givenName: tuId, surname: 'Test', email: `${tuId}@example.test`, authSource: 'saml' })
+    const created = await app.service('users').create({ tuId, givenName: tuId, surname: 'Test', email: `${tuId}@example.test`, authSource: 'saml' })
+    const user = await grantRoles(app, created.id, ['user'])
     const sessionIds: string[] = []
     for (let i = 0; i < sessions; i++) {
       const { session } = await app.get('sessions').issue(user.id)
       sessionIds.push(session.id)
-      if (i === 0) tokens.set(user.id, await app.service('authentication').createAccessToken({ sid: session.id, role: user.role }, { subject: user.id }))
+      if (i === 0) tokens.set(user.id, await app.service('authentication').createAccessToken({ sid: session.id }, { subject: user.id }))
     }
     return { user, sessionIds, uploads: new Map(), documentIds: [], avatarId: '', exportIds: [] }
   }

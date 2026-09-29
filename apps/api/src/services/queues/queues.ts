@@ -3,7 +3,7 @@ import type { Params } from '@feathersjs/feathers'
 import { hooks as schemaHooks } from '@feathersjs/schema'
 import { Queue, QueueEvents, type Job } from 'bullmq'
 import type { Application } from '../../app.js'
-import { publishTo, roleChannel } from '../../channels.js'
+import { publishTo, subjectChannel } from '../../channels.js'
 import { QUEUE_NAMES, queueConnection } from '../../jobs/queues.js'
 import {
   queueStatusQueryValidator,
@@ -13,11 +13,11 @@ import {
   type QueueStatusQuery
 } from './queues.schema.js'
 
-// The queue view (ADR 0024), the admin's alone (ADR 0011): what the worker
+// The queue view (ADR 0024), under `queues.read` (ADR 0011): what the worker
 // is doing and what it will do. Read-only; the retries and the outbox sweep
 // recover work by themselves. The api listens to every queue's events and,
-// while an admin is connected, publishes the changed queue's status as a
-// `status` event to the admin channel (ADR 0012), at most once a second per
+// while somebody who reads it is connected, publishes the changed queue's status as a
+// `status` event to its subject channel (ADR 0012), at most once a second per
 // queue, however busy the queue is.
 
 export const QUEUES_PATH = 'queues'
@@ -63,7 +63,7 @@ export class QueueService {
 
   constructor(private readonly app: Application) {}
 
-  // The connections are opened by the first read, which is an admin opening
+  // The connections are opened by the first read, which is somebody opening
   // the page: an api nobody watches the queues of holds none of them.
   private open() {
     if (this.queues.size || this.closed) return
@@ -176,9 +176,9 @@ export class QueueService {
   }
 
   // Coalesces a queue's changes into one status event per interval, sent
-  // only while an admin is there to receive it.
+  // only while somebody is there to receive it.
   private changed(name: string) {
-    if (this.closed || this.pending.has(name) || !this.anyAdmin()) return
+    if (this.closed || this.pending.has(name) || !this.anyReader()) return
     const wait = Math.max(0, (this.lastSent.get(name) ?? 0) + QUEUE_STATUS_INTERVAL_MS - Date.now())
     this.pending.set(
       name,
@@ -194,8 +194,8 @@ export class QueueService {
     )
   }
 
-  private anyAdmin() {
-    const channel = roleChannel('admin')
+  private anyReader() {
+    const channel = subjectChannel(QUEUES_PATH)
     return this.app.channels.includes(channel) && this.app.channel(channel).length > 0
   }
 
@@ -216,8 +216,8 @@ export const queues = (app: Application) => {
   app.service(QUEUES_PATH).hooks({
     before: { all: [schemaHooks.validateQuery(queueStatusQueryValidator)] }
   })
-  // Runtime state: the admin's alone (ADR 0012).
-  app.service(QUEUES_PATH).publish(QUEUE_STATUS_EVENT, publishTo(app, () => [roleChannel('admin')]))
+  // Runtime state, for whoever reads the queues (ADR 0012).
+  app.service(QUEUES_PATH).publish(QUEUE_STATUS_EVENT, publishTo(app, () => [subjectChannel(QUEUES_PATH)]))
 }
 
 declare module '../../app.js' {

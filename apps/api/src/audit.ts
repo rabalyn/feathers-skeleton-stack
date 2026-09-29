@@ -19,11 +19,15 @@ export type AuditAction =
   | 'mail.campaign.send'
   | 'mail.template.activate'
   | 'mail.template.save'
+  | 'roles.create'
+  | 'roles.patch'
+  | 'roles.remove'
   | 'session.reuse-detected'
   | 'sessions.revoke'
   | 'settings.update'
   | 'users.erase'
   | 'users.patch'
+  | 'users.roles'
 
 export interface AuditEvent {
   actorId: string | null

@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Application } from '../../src/app.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
+import { grantRoles, type SeededRole } from '../support/roles.js'
 
 // ADR 0008 (directory lookup) against the stack's LDAPS test directory, and
 // the directory row of ADR 0011's matrix. Seeded people: ad01admn Ada Admin,
@@ -19,9 +20,9 @@ const find = (who: User, query: Record<string, unknown>) =>
 beforeAll(async () => {
   ;({ app } = await createTestApp())
   const users = app.service('users')
-  const make = async (tuId: string, role: User['role']) => {
+  const make = async (tuId: string, role: SeededRole) => {
     const created = await users.create({ tuId, givenName: tuId, surname: 'T', email: `${tuId}@example.org`, authSource: 'saml' })
-    return role === 'user' ? created : users.patch(created.id, { role })
+    return grantRoles(app, created.id, [role])
   }
   // Accounts of people who have logged in; us02othr never has.
   admin = await make('ad01admn', 'admin')

@@ -3,6 +3,7 @@ import { authenticate } from '@feathersjs/authentication'
 import type { NextFunction } from '@feathersjs/feathers'
 import { authorize } from 'feathers-casl'
 import { defineAbilitiesFor } from '../abilities.js'
+import { loadAccess } from '../permissions.js'
 import type { HookContext } from '../declarations.js'
 import { currentRequest } from '../request-context.js'
 
@@ -33,6 +34,9 @@ export const defaultDeny = async (context: HookContext, next: NextFunction) => {
   // From here on, log lines of this call name the user (ADR 0021).
   const request = currentRequest()
   if (request) request.userRef = user.id
-  context.params.ability = defineAbilitiesFor(user)
+  // Loaded afresh for every call, so a changed role or assignment applies
+  // at once (ADR 0011).
+  const { roleIds, permissions } = await loadAccess(context.app.get('knex'), user.id)
+  context.params.ability = defineAbilitiesFor({ id: user.id, permissions, roleIds })
   await casl(context, next)
 }

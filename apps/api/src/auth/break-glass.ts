@@ -28,9 +28,11 @@ export const createBreakGlass = async (knex: Knex, email: string): Promise<{ use
     const taken = await trx<User>('users').whereRaw('lower(email) = lower(?)', [email]).first('id')
     if (taken) throw new BreakGlassError(`${email} belongs to another account`)
     const [user] = await trx<User>('users')
-      .insert({ email, givenName: 'Break-glass', surname: 'Admin', role: 'admin', authSource: 'local' })
+      .insert({ email, givenName: 'Break-glass', surname: 'Admin', authSource: 'local' })
       .returning(['id'])
     if (!user) throw new Error('user insert returned nothing')
+    // It holds `admin` for good (ADR 0008, 0011).
+    await trx.raw(`INSERT INTO user_roles (user_id, role_id) SELECT ?, id FROM roles WHERE kind = 'admin'`, [user.id])
     await trx('localCredentials').insert({ userId: user.id, passwordHash })
     await recordAudit(trx, { actorId: null, action: 'breakglass.create', resourceType: 'users', resourceId: user.id })
     return { userId: user.id, password }

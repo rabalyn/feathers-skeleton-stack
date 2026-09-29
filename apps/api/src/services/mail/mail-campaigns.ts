@@ -4,7 +4,7 @@ import { KnexService } from '@feathersjs/knex'
 import { hooks as schemaHooks } from '@feathersjs/schema'
 import type { Application } from '../../app.js'
 import { recordAudit } from '../../audit.js'
-import { publishTo, roleChannel } from '../../channels.js'
+import { publishTo, subjectChannel } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
 import { CampaignError, campaignKind, campaignParamsError, createCampaign, previewCampaign } from '../../mail/campaigns.js'
 import type { CampaignKind } from '../../mail/kind.js'
@@ -125,8 +125,8 @@ export const mailCampaigns = (app: Application) => {
       find: [newestFirst]
     }
   })
-  // Campaigns are the admin's alone (ADR 0011).
-  app.service(MAIL_CAMPAIGNS_PATH).publish(publishTo(app, () => [roleChannel('admin')]))
+  // To whoever may read campaigns (ADR 0011, 0012).
+  app.service(MAIL_CAMPAIGNS_PATH).publish(publishTo(app, () => [subjectChannel(MAIL_CAMPAIGNS_PATH)]))
 
   app.use(MAIL_CAMPAIGN_PREVIEWS_PATH, new MailCampaignPreviewService(app), {
     methods: [...MAIL_CAMPAIGN_PREVIEW_EXTERNAL_METHODS]

@@ -10,10 +10,12 @@ import { hashRefreshToken } from '../../src/auth/sessions.js'
 import { createTestApp } from '../support/app.js'
 import { db } from '../support/worker-database.js'
 import { PUBLIC_ORIGIN } from '../support/saml-idp.js'
+import { grantRoles, roleIdOf, type SeededRole } from '../support/roles.js'
 
 // ADR 0012 over real WebSockets through the typed client: which connection
-// receives which event, and that a changed role, a disabled account or a
-// revoked session closes the sockets it concerns.
+// receives which event, and that changed roles, a change to what a role
+// grants, a disabled account or a revoked session closes the sockets it
+// concerns.
 
 let app: Application
 let base: string
@@ -29,9 +31,9 @@ beforeAll(async () => {
   const server = await app.listen(0)
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
   const users = app.service('users')
-  const make = async (tuId: string, role: User['role']) => {
+  const make = async (tuId: string, role: SeededRole) => {
     const created = await users.create({ tuId, givenName: tuId, surname: 'Test', email: null, authSource: 'saml' })
-    return role === 'user' ? created : users.patch(created.id, { role })
+    return grantRoles(app, created.id, [role])
   }
   admin = await make('ad01admn', 'admin')
   operator = await make('op01oper', 'operator')
@@ -95,7 +97,7 @@ const tokenFor = async (user: User) => {
   const { session } = await app.get('sessions').issue(user.id)
   const accessToken = await app
     .service('authentication')
-    .createAccessToken({ sid: session.id, role: user.role }, { subject: user.id })
+    .createAccessToken({ sid: session.id }, { subject: user.id })
   return { sessionId: session.id, accessToken }
 }
 
@@ -228,7 +230,26 @@ describe('who receives an event', () => {
     expect(received(asAdmin, 'users')[0]?.data).toEqual(JSON.parse(JSON.stringify(viaRest)))
   })
 
-  it('a setting goes to admins only (ADR 0011)', async () => {
+  it('a role goes to admins in full, to readers of users by name, and to no plain user (ADR 0011)', async () => {
+    const [asAdmin, asOperator, asMember] = await Promise.all([connectAs(admin), connectAs(operator), connectAs(member)])
+    for (const connection of [asAdmin, asOperator, asMember]) {
+      for (const event of ['created', 'patched', 'removed'] as const) {
+        connection.client.service('roles').on(event, (data: unknown) => connection.events.push({ path: 'roles', event, data }))
+      }
+    }
+    const role = await app.service('roles').create({ key: 'live-role', name: { de: 'Live', en: 'Live' }, permissions: ['queues.read'] }, as(admin))
+
+    await settle(() => {
+      for (const connection of [asAdmin, asOperator]) expect(received(connection, 'roles')).toHaveLength(1)
+    })
+    expect(received(asAdmin, 'roles')[0]).toMatchObject({ event: 'created', data: { id: role.id, permissions: ['queues.read'] } })
+    expect(received(asOperator, 'roles')[0]).toMatchObject({ data: { id: role.id, key: 'live-role', name: { en: 'Live' } } })
+    expect(received(asOperator, 'roles')[0]?.data).not.toHaveProperty('permissions')
+    expect(received(asMember, 'roles')).toEqual([])
+    await app.service('roles').remove(role.id, as(admin))
+  })
+
+  it('a setting goes to admins only, as seeded (ADR 0011)', async () => {
     const [asAdmin, asOperator, asMember] = await Promise.all([connectAs(admin), connectAs(operator), connectAs(member)])
     await app.service('settings').patch('refreshGraceSeconds', { value: 20 }, as(admin))
     await app.service('settings').patch('refreshGraceSeconds', { value: 10 }, as(admin))
@@ -257,13 +278,22 @@ describe('who receives an event', () => {
 })
 
 describe('forced re-authentication', () => {
-  const restore = async (user: User) => {
-    await app.service('users').patch(user.id, { role: user.role, enabled: true })
+  const restore = async (user: User, role: SeededRole) => {
+    await grantRoles(app, user.id, [role])
+    await app.service('users').patch(user.id, { enabled: true })
+  }
+
+  const reconnect = async (connection: Connection) => {
+    connection.socket.connect()
+    await vi.waitFor(() => expect(connection.socket.connected).toBe(true))
+    // The token carries no role (ADR 0010): it still holds, and the
+    // connection rejoins under what the user may now read.
+    await connection.client.authenticate({ strategy: 'jwt', accessToken: connection.accessToken ?? '' })
   }
 
   it('a role change closes every socket of that user, and only theirs', async () => {
     const [first, second, bystander] = await Promise.all([connectAs(operator), connectAs(operator), connectAs(admin)])
-    await app.service('users').patch(operator.id, { role: 'user' }, as(admin))
+    await app.service('user-roles').patch(operator.id, { roleIds: [await roleIdOf(app, 'user')] }, as(admin))
 
     await settle(() => {
       expect(first.disconnects).toEqual(['io server disconnect'])
@@ -272,35 +302,56 @@ describe('forced re-authentication', () => {
     expect(bystander.disconnects).toEqual([])
     expect(received(bystander, 'users')).toHaveLength(1)
 
-    // Reconnected, the old token no longer holds: its role is stale.
-    first.socket.connect()
-    await vi.waitFor(() => expect(first.socket.connected).toBe(true))
-    await expect(
-      first.client.authenticate({ strategy: 'jwt', accessToken: first.accessToken ?? '' })
-    ).rejects.toMatchObject({ code: 401 })
-
-    // With a token for the new role, it is a plain user's connection: no
-    // longer in roles/operator.
-    const { accessToken } = await tokenFor({ ...operator, role: 'user' })
-    await first.client.authenticate({ strategy: 'jwt', accessToken })
+    // Reconnected, it is a plain user's connection: no longer in
+    // subjects/users.
+    await reconnect(first)
     await app.service('users').patch(member.id, { enabled: true }, as(admin))
     await settle(() => expect(received(bystander, 'users')).toHaveLength(2))
     expect(received(first, 'users')).toEqual([])
 
-    await restore(operator)
+    await restore(operator, 'operator')
+  })
+
+  it("a change to what a role grants closes its holders' sockets, and only theirs", async () => {
+    const operatorRole = await app.service('roles').get(await roleIdOf(app, 'operator'))
+    const [holder, bystander, userHolder] = await Promise.all([connectAs(operator), connectAs(admin), connectAs(member)])
+    await app
+      .service('roles')
+      .patch(operatorRole.id, { permissions: (operatorRole.permissions ?? []).filter((key) => key !== 'users.read') }, as(admin))
+
+    await settle(() => expect(holder.disconnects).toEqual(['io server disconnect']))
+    expect(bystander.disconnects).toEqual([])
+    expect(userHolder.disconnects).toEqual([])
+
+    // Rejoined without users.read, it sees no one else's record.
+    await reconnect(holder)
+    await app.service('users').patch(other.id, { enabled: true }, as(admin))
+    await settle(() => expect(received(bystander, 'users').filter((e) => (e.data as User).id === other.id)).toHaveLength(1))
+    expect(received(holder, 'users')).toEqual([])
+
+    await app.service('roles').patch(operatorRole.id, { permissions: operatorRole.permissions ?? [] }, as(admin))
+  })
+
+  it('renaming a role closes nothing', async () => {
+    const operatorRole = await app.service('roles').get(await roleIdOf(app, 'operator'))
+    const holder = await connectAs(operator)
+    await app.service('roles').patch(operatorRole.id, { name: operatorRole.name }, as(admin))
+    await settle(() => undefined)
+    expect(holder.disconnects).toEqual([])
   })
 
   it('disabling an account closes its sockets', async () => {
     const connection = await connectAs(member)
     await app.service('users').patch(member.id, { enabled: false }, as(admin))
     await settle(() => expect(connection.disconnects).toEqual(['io server disconnect']))
-    await restore(member)
+    await restore(member, 'user')
   })
 
-  it('a patch that changes neither role nor state closes nothing', async () => {
+  it('a change that changes neither roles nor state closes nothing', async () => {
     const connection = await connectAs(member)
-    await app.service('users').patch(member.id, { role: 'user', enabled: true }, as(admin))
-    await settle(() => expect(received(connection, 'users')).toHaveLength(1))
+    await app.service('user-roles').patch(member.id, { roleIds: member.roleIds }, as(admin))
+    await app.service('users').patch(member.id, { enabled: true }, as(admin))
+    await settle(() => expect(received(connection, 'users')).toHaveLength(2))
     expect(connection.disconnects).toEqual([])
   })
 
@@ -316,7 +367,7 @@ describe('forced re-authentication', () => {
     const { session, refreshToken } = await app.get('sessions').issue(member.id)
     const accessToken = await app
       .service('authentication')
-      .createAccessToken({ sid: session.id, role: member.role }, { subject: member.id })
+      .createAccessToken({ sid: session.id }, { subject: member.id })
     await connection.client.authenticate({ strategy: 'jwt', accessToken })
 
     // Rotate, then present the rotated-away token outside the grace window.

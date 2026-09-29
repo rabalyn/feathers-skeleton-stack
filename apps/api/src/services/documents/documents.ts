@@ -3,7 +3,7 @@ import type { NextFunction, Params } from '@feathersjs/feathers'
 import { KnexService } from '@feathersjs/knex'
 import { hooks as schemaHooks } from '@feathersjs/schema'
 import type { Application } from '../../app.js'
-import { publishTo, roleChannel, userChannel } from '../../channels.js'
+import { publishTo, subjectChannel, userChannel } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
 import { PAGINATE } from '../../paginate.js'
 import { ALLOWED_CONTENT_TYPES } from '../files/files.schema.js'
@@ -98,10 +98,10 @@ export const documents = (app: Application) => {
     }
   })
 
-  // A document concerns its owner, and operators and admins, who see all
-  // documents (ADR 0011, 0012).
+  // A document concerns its owner, and whoever reads every document (ADR
+  // 0011, 0012).
   app.service(DOCUMENTS_PATH).publish(
-    publishTo(app, (document) => [userChannel(String(document.ownerId)), roleChannel('admin'), roleChannel('operator')])
+    publishTo(app, (document) => [userChannel(String(document.ownerId)), subjectChannel(DOCUMENTS_PATH)])
   )
 }
 

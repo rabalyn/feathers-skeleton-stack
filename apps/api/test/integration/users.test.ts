@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Application } from '../../src/app.js'
 import type { User, UserQuery } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
+import { grantRoles, roleIdOf, type SeededRole } from '../support/roles.js'
 
 // ADR 0011's permission matrix is the specification: each `users` cell has a
 // test here, including the denied ones (ADR 0018).
@@ -20,7 +21,7 @@ const as = (user: User) => ({ provider: 'rest' as const, user, authenticated: tr
 beforeAll(async () => {
   ;({ app } = await createTestApp())
   const users = app.service('users')
-  const make = async (tuId: string, role: User['role']) => {
+  const make = async (tuId: string, role: SeededRole) => {
     const created = await users.create({
       tuId,
       givenName: tuId,
@@ -28,7 +29,7 @@ beforeAll(async () => {
       email: `${tuId}@example.org`,
       authSource: 'saml'
     })
-    return role === 'user' ? created : users.patch(created.id, { role })
+    return grantRoles(app, created.id, [role])
   }
   admin = await make('ad01admn', 'admin')
   operator = await make('op01oper', 'operator')
@@ -120,7 +121,7 @@ describe('users: all user records — read for admin and operator only', () => {
   })
 
   it('user cannot widen their scope with $or or $ne', async () => {
-    const queries: UserQuery[] = [{ $or: [{ id: other.id }, { id: member.id }] }, { id: { $ne: member.id } }, { $or: [{ role: 'admin' }] }]
+    const queries: UserQuery[] = [{ $or: [{ id: other.id }, { id: member.id }] }, { id: { $ne: member.id } }, { $or: [{ tuId: 'us02othr' }] }, { roleId: operator.roleIds[0] }]
     for (const query of queries) {
       const page = await app.service('users').find({ ...as(member), query })
       expect(page.data.every((u) => u.id === member.id), JSON.stringify(query)).toBe(true)
@@ -136,23 +137,25 @@ describe('users: all user records — read for admin and operator only', () => {
   })
 })
 
-describe('users: role assignment — write for admin only', () => {
-  it('admin changes a role', async () => {
-    const patched = await app.service('users').patch(other.id, { role: 'operator' }, as(admin))
-    expect(patched.role).toBe('operator')
-    await app.service('users').patch(other.id, { role: 'user' })
+describe('users: roles on the record (ADR 0011)', () => {
+  it('carries the ids of the roles held, and the permissions to the holder only', async () => {
+    const own = await app.service('users').get(operator.id, as(operator))
+    expect(own.roleIds).toEqual([await roleIdOf(app, 'operator')])
+    expect(own.permissions).toEqual(expect.arrayContaining(['users.read', 'documents.all']))
+    const seen = await app.service('users').get(operator.id, as(admin))
+    expect(seen.roleIds).toEqual(own.roleIds)
+    expect(seen).not.toHaveProperty('permissions')
   })
 
-  it.each([
-    ['operator', () => operator],
-    ['user', () => member]
-  ])('%s cannot change a role, not even their own', async (_role, who) => {
+  it('lists the holders of a role', async () => {
+    const page = await app.service('users').find({ ...as(admin), query: { roleId: await roleIdOf(app, 'user') } })
+    expect(page.data.map((u) => u.tuId).sort()).toEqual(['us01user', 'us02othr'])
+  })
+
+  it('is not assigned through users.patch', async () => {
     await expect(
-      app.service('users').patch(who().id, { role: 'admin' }, as(who()))
-    ).rejects.toMatchObject({ code: 403 })
-    await expect(
-      app.service('users').patch(other.id, { role: 'admin' }, as(who()))
-    ).rejects.toMatchObject({ code: 403 })
+      app.service('users').patch(other.id, { roleIds: [await roleIdOf(app, 'admin')] } as never, as(admin))
+    ).rejects.toMatchObject({ code: 400 })
   })
 })
 

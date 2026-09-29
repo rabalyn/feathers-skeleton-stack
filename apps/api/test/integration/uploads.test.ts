@@ -7,6 +7,7 @@ import type { File } from '../../src/services/files/files.schema.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
 import { db } from '../support/worker-database.js'
+import { grantRoles, type SeededRole } from '../support/roles.js'
 
 // ADR 0020 and the documents and avatar cells of ADR 0011's matrix, over
 // HTTP against the stack's Garage.
@@ -35,7 +36,7 @@ const tokenFor = async (user: User) => {
   const cached = tokens.get(user.id)
   if (cached) return cached
   const { session } = await app.get('sessions').issue(user.id)
-  const token = await app.service('authentication').createAccessToken({ sid: session.id, role: user.role }, { subject: user.id })
+  const token = await app.service('authentication').createAccessToken({ sid: session.id }, { subject: user.id })
   tokens.set(user.id, token)
   return token
 }
@@ -68,9 +69,9 @@ beforeAll(async () => {
   const server = await app.listen(0)
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`
   const users = app.service('users')
-  const make = async (tuId: string, role: User['role']) => {
+  const make = async (tuId: string, role: SeededRole) => {
     const created = await users.create({ tuId, givenName: tuId, surname: 'Test', email: `${tuId}@example.org`, authSource: 'saml' })
-    return role === 'user' ? created : users.patch(created.id, { role })
+    return grantRoles(app, created.id, [role])
   }
   admin = await make('ad02admn', 'admin')
   operator = await make('op02oper', 'operator')
@@ -268,7 +269,7 @@ describe('documents', () => {
     const document = await createDocument(member)
     for (const user of [operator, admin]) {
       await expect(app.service('documents').get(document.id, as(user))).resolves.toMatchObject({ id: document.id })
-      await expect(app.service('documents').patch(document.id, { title: user.role }, as(user))).resolves.toMatchObject({ title: user.role })
+      await expect(app.service('documents').patch(document.id, { title: user.tuId ?? '' }, as(user))).resolves.toMatchObject({ title: user.tuId })
     }
     await app.service('documents').remove(document.id, as(operator))
   })

@@ -17,7 +17,7 @@ What operators and users may see differs between the products built on this skel
 ### Permissions are declared in code, roles are composed in the database
 
 - A **permission catalogue** in the ability module declares every grantable permission: a stable key (`documents.all`), the group it is shown under, and a function from the user to its CASL rules, conditions and field lists included. It is the one place where rules are written. A product adds entries for its resources; labels and descriptions are the web app's translations, keyed by the permission key, and a test refuses a key without both.
-- A **baseline** of rules applies to every signed-in account and is not in the catalogue, so no role can withdraw it: the own user record, the own avatar and locale, uploading and reading one's own files, one's own GDPR export ([0013](0013-gdpr-export-and-retention.md)), and one's own audit events. It is what the right of access and transparency require.
+- A **baseline** of rules applies to every signed-in account and is not in the catalogue, so no role can withdraw it: the own user record, the own avatar and locale, uploading and reading one's own files, one's own GDPR export ([0013](0013-gdpr-export-and-retention.md)), one's own audit events, and the names of one's own roles. It is what the right of access and transparency require.
 - A **role** is a row of `roles`: a key, a name per locale (`de` and `en`, both required, [0027](0027-email-templates-and-sending.md)) and a kind. `role_permissions` holds the catalogue keys each role grants. A key that code no longer declares is ignored when abilities are built and dropped by the next migration.
 - Users hold **any number of roles** through `user_roles`; their permissions are the union of their roles' permissions, on top of the baseline. A user with no role has the baseline only.
 - There are three kinds of role:
@@ -38,7 +38,7 @@ The permission matrix, now as catalogue permissions. `admin` holds all of them. 
 
 | Permission | Covers | `operator` | `user` |
 | --- | --- | --- | --- |
-| (baseline) | Own user record read, own avatar and locale write; upload, own files read; own GDPR export; own audit events | ✓ | ✓ |
+| (baseline) | Own user record read, own avatar and locale write; upload, own files read; own GDPR export; own audit events; own roles' names | ✓ | ✓ |
 | `users.read` | All user records and their avatars; role names | ✓ | — |
 | `users.enable` | Account enable / disable | — | — |
 | `directory.read` | Directory lookup (LDAP) | ✓ | — |
@@ -69,7 +69,7 @@ Directory-sourced user fields are never writable by anyone in the application ([
 ### Enforcement
 
 - `feathers-casl` enforces the ability built from the baseline and the catalogue entries of the caller's permissions. Rules are declared in one module, not scattered across services.
-- The caller's permissions are loaded with the session on every request ([0010](0010-sessions-postgres-ratelimits-valkey.md)): the same query joins `user_roles` and `role_permissions`. There is no cache, so a changed role or assignment applies on the user's very next request.
+- The caller's permissions are loaded on every request, beside the session check ([0010](0010-sessions-postgres-ratelimits-valkey.md)), in one query over `user_roles`, `roles` and `role_permissions`. There is no cache, so a changed role or assignment applies on the user's very next request.
 - A **global default-deny hook** requires authentication and authorization on every service. Public endpoints are an explicit allowlist, each rate-limited where it accepts credentials:
   - `GET /api/ping`,
   - the SAML routes under `/api/auth/saml/`: metadata, login, ACS and logout,
