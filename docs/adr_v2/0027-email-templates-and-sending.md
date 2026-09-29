@@ -87,7 +87,7 @@ On confirmation the API writes a `mail_campaigns` row and an audit event (`mail.
 
 ### Access
 
-Templates, campaigns and the delivery log are **admin only**: the wording of the application's mail is runtime behaviour, which is the admin's alone ([0011](0011-casl-role-authorization.md)). Operators neither see nor send. Notifications need no permission: code sends them as a consequence of a write the caller was already allowed to make.
+Templates, campaigns and the delivery log are under the `mail.manage` permission, which only `admin` holds as seeded: the wording of the application's mail is runtime behaviour. Operators neither see nor send unless an admin grants it ([0011](0011-casl-role-authorization.md)). Notifications need no permission: code sends them as a consequence of a write the caller was already allowed to make.
 
 ## Consequences
 

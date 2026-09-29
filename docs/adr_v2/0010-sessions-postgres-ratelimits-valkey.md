@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADRs 0023, 0024, 0025, 0028
-- Related: [0008](0008-authentication-saml2-ldap.md), [0011](0011-casl-role-authorization.md), [0013](0013-gdpr-export-and-retention.md), [0018](0018-owasp-security-baseline.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md), [0025](0025-runtime-settings.md)
+- Related: [0008](0008-authentication-saml2-ldap.md), [0011](0011-casl-role-authorization.md), [0013](0013-gdpr-export-and-retention.md), [0018](0018-owasp-security-baseline.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md), [0025](0025-runtime-settings.md), [0028](0028-read-only-view-as.md)
 
 ## Context
 
@@ -14,10 +14,10 @@ A JWT that is only checked by signature stays valid until it expires, so logout,
 
 ### Sessions live in PostgreSQL and are checked on every authenticated request
 
-- An `auth_sessions` row is one login, which is one refresh token **family**: surrogate user id, issue, idle-expiry, absolute-expiry and revocation timestamps, last-used timestamp, and coarse client metadata. Its id is the session id the access token carries, and it does not change when the refresh token rotates, so the per-request check stays one primary-key lookup.
+- An `auth_sessions` row is one login, which is one refresh token **family**: surrogate user id, issue, idle-expiry, absolute-expiry and revocation timestamps, last-used timestamp, and coarse client metadata, and the target and expiry of a read-only view-as when one is running ([0028](0028-read-only-view-as.md)). Its id is the session id the access token carries, and it does not change when the refresh token rotates, so the per-request check stays one primary-key lookup.
 - An `auth_refresh_tokens` row is one refresh token of a family: a **hash** of the token, its issue time and its rotation time. At most one row per family is current (not rotated). Never the token itself is stored.
-- Every authenticated request — REST and WebSocket alike — resolves its session row and rejects the request if the session is revoked or expired, the user is disabled, or the role on the token no longer matches the role on the user record.
-- Consequences of that check, all of them the point of the exercise: logout is immediate, logout-all is immediate, disabling an account is immediate, and a role change takes effect on the next request rather than after the token expires.
+- Every authenticated request — REST and WebSocket alike — resolves its session row and rejects the request if the session is revoked or expired or the user is disabled. The same query loads the user's permissions through their roles, so the ability every request is authorized with is never older than the request ([0011](0011-casl-role-authorization.md)). The token carries no role. Decided 2026-09-29; until then it carried the one role, compared against the user record.
+- Consequences of that check, all of them the point of the exercise: logout is immediate, logout-all is immediate, disabling an account is immediate, and a change of a user's roles, or of a role's permissions, takes effect on the next request rather than after the token expires.
 
 ### Two credentials, two mechanisms
 

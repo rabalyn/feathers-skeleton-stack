@@ -2,7 +2,7 @@
 
 This directory holds the architecture decisions for this project. It supersedes `docs/adr/`, which split a single planning document into seventy files and accumulated 433 open items before any business logic existed. See [0019](0019-adr-convention.md) for what changed and why.
 
-Twenty-seven ADRs, each covering a decision with real alternatives. Read [0001](0001-one-stack-every-environment.md) first — the parity rule it sets is the reason several later decisions look the way they do.
+Twenty-eight ADRs, each covering a decision with real alternatives. Read [0001](0001-one-stack-every-environment.md) first — the parity rule it sets is the reason several later decisions look the way they do.
 
 ## Index
 
@@ -33,8 +33,9 @@ Twenty-seven ADRs, each covering a decision with real alternatives. Read [0001](
 - [0009 — TU-ID is the user-facing identifier; a surrogate key is the internal one](0009-tu-id-identity-model.md)
 - [0010 — Sessions in PostgreSQL, validated per request; rate limits in Valkey](0010-sessions-postgres-ratelimits-valkey.md)
 - [0011 — Role-based authorization with feathers-casl and a default-deny boundary](0011-casl-role-authorization.md)
-- [0012 — Real-time updates through role-scoped Feathers channels](0012-role-scoped-channels.md)
+- [0012 — Real-time updates through ability-scoped Feathers channels](0012-role-scoped-channels.md)
 - [0013 — GDPR data export, retention as runtime settings, and erasure semantics](0013-gdpr-export-and-retention.md)
+- [0028 — Read-only view-as another user, bounded by the viewer's own rights](0028-read-only-view-as.md)
 - [0018 — OWASP-aligned security baseline](0018-owasp-security-baseline.md)
 
 ### Operations
@@ -101,10 +102,12 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 
 **Slice 11 — sessions, done** ([0010](0010-sessions-postgres-ratelimits-valkey.md), [0011](0011-casl-role-authorization.md)): who is logged in, for admins and operators. The `sessions` service that the permission matrix's sessions row had lacked, over `auth_sessions`: active sessions only, `remove` revoking one (the row stays for reuse detection, the sockets close, `sessions.revoke` is audited); admins read and revoke every session, operators read them without the user agent, through a CASL field rule that the external resolver and the channel filter both apply; users have no access. The session store publishes logins, refreshes and every revocation as the service's events, so the Sessions page follows them live; it is filtered by person from the Users page.
 
+**Slice 12 — editable roles and view-as, next** ([0011](0011-casl-role-authorization.md), [0012](0012-role-scoped-channels.md), [0028](0028-read-only-view-as.md)): the permission catalogue and baseline in the ability module; `roles`, `role_permissions` and `user_roles` with the seeded defaults, and `users.role` contracted away ([0003](0003-postgresql-and-knex.md)); permissions loaded with the session per request; the `roles` and `user-roles` services with their safeguards and audit events; subject channels in place of role channels; the permissions page with the role preview; the Users page with several roles; view-as with its banner, and the tests for the seeded defaults, each catalogue entry, the safeguards and the intersected ability.
+
 **Later.** The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
 
 ## Status of this set
 
-All twenty-seven are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds ([0022](0022-observability-and-alerting.md)), the issuer of production certificates for internal listeners ([0016](0016-nginx-and-tls-everywhere.md)), and the university SMTP relay's sending limit ([0027](0027-email-templates-and-sending.md)).
+All twenty-eight are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds ([0022](0022-observability-and-alerting.md)), the issuer of production certificates for internal listeners ([0016](0016-nginx-and-tls-everywhere.md)), and the university SMTP relay's sending limit ([0027](0027-email-templates-and-sending.md)).
 
-The record of processing activities and the DPIA ([0013](0013-gdpr-export-and-retention.md)) are organisational deliverables to be prepared with the data protection officer before production.
+The record of processing activities and the DPIA ([0013](0013-gdpr-export-and-retention.md)) are organisational deliverables to be prepared with the data protection officer before production; view-as ([0028](0028-read-only-view-as.md)) is part of them.
