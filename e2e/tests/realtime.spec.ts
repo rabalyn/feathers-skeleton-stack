@@ -29,10 +29,9 @@ test('an operator sees an admin’s changes live, and loses the page when demote
 
   // Demoted, the operator's socket is closed; the page re-authenticates
   // under the new roles and leaves what they may not see. Each option adds
-  // or takes away one role (ADR 0011).
+  // or takes away one role, sent together as the menu closes (ADR 0011).
   await row(admin, 'op01oper').getByRole('combobox', { name: 'Rollen' }).click()
   await admin.getByRole('option', { name: 'Benutzer' }).click()
-  await expect(admin.getByText('Gespeichert').last()).toBeVisible()
   await admin.getByRole('option', { name: 'Betrieb' }).click()
   await admin.keyboard.press('Escape')
   await expect(operator).toHaveURL(/\/profile$/)
@@ -42,7 +41,6 @@ test('an operator sees an admin’s changes live, and loses the page when demote
   // Promoted back, for the rest of the run.
   await row(admin, 'op01oper').getByRole('combobox', { name: 'Rollen' }).click()
   await admin.getByRole('option', { name: 'Betrieb' }).click()
-  await expect(admin.getByText('Gespeichert').last()).toBeVisible()
   await admin.getByRole('option', { name: 'Benutzer' }).click()
   await admin.keyboard.press('Escape')
   await expect(operator.locator('[data-field="role"]')).toHaveText('Betrieb')

@@ -30,7 +30,7 @@
         <q-td :props="props">
           <q-select
             v-if="mayAssign"
-            :model-value="props.row.roleIds"
+            :model-value="drafts[props.row.id] ?? props.row.roleIds"
             :options="roleOptions"
             multiple
             use-chips
@@ -38,9 +38,10 @@
             map-options
             dense
             borderless
-            :display-value="props.row.roleIds.length ? undefined : t('user.noRoles')"
+            :display-value="(drafts[props.row.id] ?? props.row.roleIds).length ? undefined : t('user.noRoles')"
             :aria-label="t('user.role')"
-            @update:model-value="(roleIds: string[]) => assign(props.row.id, roleIds)"
+            @update:model-value="(roleIds: string[]) => (drafts[props.row.id] = roleIds)"
+            @popup-hide="commit(props.row)"
           />
           <span v-else>{{ namesOf(props.row.roleIds) }}</span>
         </q-td>
@@ -86,7 +87,7 @@
 <script setup lang="ts">
 import type { User, UserPatch } from '@app/api/client'
 import type { QTableProps } from 'quasar'
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/boot/feathers'
@@ -183,14 +184,25 @@ const columns = computed<NonNullable<QTableProps['columns']>>(() => [
   ...(session.canAll('read', 'sessions') || mayViewAs.value ? [{ name: 'sessions', field: 'id', label: '', align: 'right' as const }] : [])
 ])
 
-// The full list of the person's roles; the server ends their sessions'
-// sockets, so the new rights apply at once (ADR 0012).
-const assign = async (id: string, roleIds: string[]) => {
+// Roles picked while the menu is open, sent as one change when it closes:
+// a patch carries the full list, so one per click could overwrite the one
+// before it. The server ends the person's sockets, so the new rights apply
+// at once (ADR 0012).
+const drafts = reactive<Record<string, string[]>>({})
+const commit = async (user: User) => {
+  const roleIds = drafts[user.id]
+  if (!roleIds) return
+  if (roleIds.length === user.roleIds.length && roleIds.every((id) => user.roleIds.includes(id))) {
+    delete drafts[user.id]
+    return
+  }
   try {
-    await api.service('user-roles').patch(id, { roleIds })
+    await api.service('user-roles').patch(user.id, { roleIds })
     notify.success(t('users.saved'))
   } catch (error) {
     notify.failure(error)
+  } finally {
+    delete drafts[user.id]
   }
 }
 

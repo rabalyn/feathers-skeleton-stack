@@ -6,7 +6,9 @@ ARG RESTIC_IMAGE=docker.io/restic/restic@sha256:136600b6ff6843d61d355f7f71f460a1
 FROM ${RESTIC_IMAGE} AS restic
 
 FROM ${NODE_IMAGE} AS base
-ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# corepack keeps pnpm in COREPACK_HOME, not in root's home, so the
+# unprivileged `test` target finds it without a network (ADR 0015).
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH COREPACK_ENABLE_DOWNLOAD_PROMPT=0 COREPACK_HOME=/corepack
 # Dependencies are fixed when the image is built; pnpm's pre-run check would
 # see the build's lockfile and manifest writes as drift and try to reinstall
 # as the unprivileged user (ADR 0015).
@@ -17,6 +19,10 @@ RUN corepack enable && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm
 WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
+# The pnpm version package.json names, fetched once here; afterwards corepack
+# never reaches the network, so a missing copy fails loudly instead.
+RUN corepack install && chmod -R a+rX /corepack
+ENV COREPACK_ENABLE_NETWORK=0
 
 # Full dependency set; also the base of the `test` target (ADR 0015).
 FROM base AS build

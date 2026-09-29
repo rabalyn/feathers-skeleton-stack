@@ -3,7 +3,9 @@ FROM mcr.microsoft.com/playwright:v1.63.0-noble@sha256:bc6ab0d6d44ff4826e4cb8c1e
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libnss3-tools \
  && rm -rf /var/lib/apt/lists/*
-ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# corepack keeps pnpm in COREPACK_HOME, not in root's home, so pwuser finds
+# it without a network (ADR 0015).
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH COREPACK_ENABLE_DOWNLOAD_PROMPT=0 COREPACK_HOME=/corepack
 # Dependencies are fixed when the image is built; pnpm's pre-run check would
 # see the build's lockfile and manifest writes as drift and try to reinstall
 # as the unprivileged user (ADR 0015).
@@ -13,6 +15,10 @@ RUN corepack enable && rm -rf /usr/lib/node_modules/npm /usr/lib/node_modules/ya
 WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY e2e/package.json e2e/
+# The pnpm version package.json names, fetched once here; afterwards corepack
+# never reaches the network, so a missing copy fails loudly instead.
+RUN corepack install && chmod -R a+rX /corepack
+ENV COREPACK_ENABLE_NETWORK=0
 RUN pnpm install --frozen-lockfile --filter @app/e2e
 COPY e2e e2e
 COPY containers/e2e/entrypoint.sh /usr/local/bin/entrypoint.sh
