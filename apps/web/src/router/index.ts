@@ -1,6 +1,6 @@
 import { defineRouter } from '#q-app'
 import { watch } from 'vue'
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteMeta } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import routes from './routes'
 
@@ -13,6 +13,8 @@ export default defineRouter(({ store }) => {
     history: createWebHistory(import.meta.env.QUASAR_VUE_ROUTER_BASE)
   })
   const session = useSessionStore(store)
+  const allowed = (meta: RouteMeta) =>
+    (!meta.requires || session.canAll(...meta.requires)) && (!meta.requiresSome || session.can(...meta.requiresSome))
 
   router.beforeEach(async (to) => {
     // Nothing authenticated renders before the session is known.
@@ -24,7 +26,7 @@ export default defineRouter(({ store }) => {
     if (!session.isAuthenticated) {
       return { name: 'login', query: to.fullPath === '/' ? {} : { returnTo: to.fullPath } }
     }
-    if (to.meta.requires && !session.canAll(...to.meta.requires)) return { name: 'profile' }
+    if (!allowed(to.meta)) return { name: 'profile' }
     return true
   })
 
@@ -48,7 +50,7 @@ export default defineRouter(({ store }) => {
     () => session.ability,
     () => {
       const current = router.currentRoute.value
-      if (session.isAuthenticated && current.meta.requires && !session.canAll(...current.meta.requires)) {
+      if (session.isAuthenticated && !allowed(current.meta)) {
         void router.replace({ name: 'profile' })
       }
     }

@@ -21,7 +21,8 @@
     "mailTemplates": "Mail templates",
     "mailings": "Mailings",
     "queues": "Queues",
-    "sessions": "Sessions"
+    "sessions": "Sessions",
+    "permissions": "Roles & permissions"
   },
   "auth": {
     "login": "Log in",
@@ -45,14 +46,10 @@
     "givenName": "Given name",
     "surname": "Surname",
     "email": "Email",
-    "role": "Role",
+    "role": "Roles",
     "enabled": "Active",
     "createdAt": "Created",
-    "roles": {
-      "admin": "Administration",
-      "operator": "Operations",
-      "user": "User"
-    }
+    "noRoles": "No role"
   },
   "users": {
     "search": "Search",
@@ -154,7 +151,13 @@
       "breakglass_rotate": "Break-glass password changed",
       "data-exports_create": "Data export requested",
       "data-exports_download": "Data export downloaded",
-      "sessions_revoke": "Session ended"
+      "sessions_revoke": "Session ended",
+      "roles_create": "Role created",
+      "roles_patch": "Role changed",
+      "roles_remove": "Role deleted",
+      "users_roles": "Roles assigned",
+      "view-as_start": "Viewed as",
+      "view-as_end": "View ended"
     }
   },
   "gdpr": {
@@ -322,5 +325,75 @@
     "lastUsedAt": "Last active",
     "expiresAt": "Expires if unused",
     "filterBy": "Show only this account"
+  },
+  "permissions": {
+    "title": "Roles & permissions",
+    "intro": "A role is a set of permissions; a person has all permissions of all their roles. Administration always has every permission and alone manages roles.",
+    "permission": "Permission",
+    "newRole": "New role",
+    "key": "Key",
+    "keyHint": "Lower-case letters, digits and hyphens; fixed once created",
+    "name": "Name ({locale})",
+    "rename": "Rename",
+    "delete": "Delete",
+    "deleteConfirm": "Delete the role “{name}”?",
+    "assigned": "The role is still assigned. Remove it from everybody who holds it first.",
+    "created": "Role created",
+    "saved": "Saved",
+    "deleted": "Role deleted",
+    "fixed": "Fixed: always every permission",
+    "seeded": "Built in: editable, not deletable",
+    "custom": "Custom",
+    "preview": "Preview",
+    "previewing": "Preview as “{name}”: menus and actions as this role shows them. Data is still read with your own rights.",
+    "endPreview": "End preview",
+    "cancel": "Cancel",
+    "save": "Save",
+    "groups": {
+      "users": "People",
+      "documents": "Documents",
+      "sessions": "Sessions",
+      "privacy": "Privacy",
+      "configuration": "Configuration"
+    },
+    "keys": {
+      "users_read": "See all people",
+      "users_enable": "Enable and disable accounts",
+      "directory_read": "Look people up in the directory",
+      "users_view-as": "View as others",
+      "documents_own": "Own documents",
+      "documents_all": "All documents",
+      "sessions_read": "See who is logged in",
+      "sessions_read-user-agent": "See their browsers",
+      "sessions_revoke": "End sessions",
+      "audit-events_read": "See all activity",
+      "data-exports_any": "Export anybody’s data",
+      "erasures_create": "Erase people",
+      "settings_manage": "Change settings",
+      "mail_manage": "Mail templates and mailings",
+      "queues_read": "See job queues"
+    },
+    "descriptions": {
+      "users_read": "Every user record with its picture, and the names of the roles",
+      "users_enable": "Switch accounts on and off",
+      "directory_read": "Search the university directory for people who have not logged in yet",
+      "users_view-as": "See the application as another person sees it, read-only and never beyond one’s own rights",
+      "documents_own": "Create documents and read, change and delete one’s own",
+      "documents_all": "Read, rename and delete everybody’s documents; only owners replace a file",
+      "sessions_read": "Every active session, without the browser it was opened in",
+      "sessions_read-user-agent": "The browser each session was opened in",
+      "sessions_revoke": "End anybody’s session, which logs them out there",
+      "audit-events_read": "The whole activity log, not just one’s own",
+      "data-exports_any": "Request the GDPR export of any person, handed to them by the requester",
+      "erasures_create": "Erase a person’s identifying data (GDPR)",
+      "settings_manage": "Runtime settings, feature flags and maintenance mode",
+      "mail_manage": "Edit the wording of mails, send mailings and read the delivery log",
+      "queues_read": "State, schedules and jobs of the background queues"
+    }
+  },
+  "viewAs": {
+    "start": "View as this person",
+    "banner": "You see the application as {who}, read-only, until {until}. What you may not see yourself stays hidden.",
+    "stop": "End view"
   }
 }

@@ -21,7 +21,8 @@
     "mailTemplates": "E-Mail-Vorlagen",
     "mailings": "Mailings",
     "queues": "Warteschlangen",
-    "sessions": "Sitzungen"
+    "sessions": "Sitzungen",
+    "permissions": "Rollen & Rechte"
   },
   "auth": {
     "login": "Anmelden",
@@ -45,14 +46,10 @@
     "givenName": "Vorname",
     "surname": "Nachname",
     "email": "E-Mail",
-    "role": "Rolle",
+    "role": "Rollen",
     "enabled": "Aktiv",
     "createdAt": "Angelegt",
-    "roles": {
-      "admin": "Administration",
-      "operator": "Betrieb",
-      "user": "Benutzer"
-    }
+    "noRoles": "Keine Rolle"
   },
   "users": {
     "search": "Suchen",
@@ -154,7 +151,13 @@
       "breakglass_rotate": "Notfallpasswort geändert",
       "data-exports_create": "Datenexport angefordert",
       "data-exports_download": "Datenexport heruntergeladen",
-      "sessions_revoke": "Sitzung beendet"
+      "sessions_revoke": "Sitzung beendet",
+      "roles_create": "Rolle angelegt",
+      "roles_patch": "Rolle geändert",
+      "roles_remove": "Rolle gelöscht",
+      "users_roles": "Rollen vergeben",
+      "view-as_start": "Angesehen als",
+      "view-as_end": "Ansicht beendet"
     }
   },
   "gdpr": {
@@ -322,5 +325,75 @@
     "lastUsedAt": "Zuletzt aktiv",
     "expiresAt": "Läuft ab ohne Nutzung",
     "filterBy": "Nur dieses Konto zeigen"
+  },
+  "permissions": {
+    "title": "Rollen & Rechte",
+    "intro": "Eine Rolle ist eine Menge von Rechten; eine Person hat alle Rechte all ihrer Rollen. Die Administration hat stets jedes Recht und verwaltet als einzige die Rollen.",
+    "permission": "Recht",
+    "newRole": "Neue Rolle",
+    "key": "Schlüssel",
+    "keyHint": "Kleinbuchstaben, Ziffern und Bindestriche; nach dem Anlegen fest",
+    "name": "Name ({locale})",
+    "rename": "Umbenennen",
+    "delete": "Löschen",
+    "deleteConfirm": "Die Rolle „{name}“ löschen?",
+    "assigned": "Die Rolle ist noch vergeben. Entziehen Sie sie zuerst allen, die sie haben.",
+    "created": "Rolle angelegt",
+    "saved": "Gespeichert",
+    "deleted": "Rolle gelöscht",
+    "fixed": "Fest: stets jedes Recht",
+    "seeded": "Eingebaut: änderbar, nicht löschbar",
+    "custom": "Eigene",
+    "preview": "Vorschau",
+    "previewing": "Vorschau als „{name}“: Menüs und Aktionen, wie diese Rolle sie zeigt. Daten werden weiter mit Ihren eigenen Rechten gelesen.",
+    "endPreview": "Vorschau beenden",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "groups": {
+      "users": "Personen",
+      "documents": "Dokumente",
+      "sessions": "Sitzungen",
+      "privacy": "Datenschutz",
+      "configuration": "Konfiguration"
+    },
+    "keys": {
+      "users_read": "Alle Personen sehen",
+      "users_enable": "Konten aktivieren und sperren",
+      "directory_read": "Im Verzeichnis nachschlagen",
+      "users_view-as": "Als andere ansehen",
+      "documents_own": "Eigene Dokumente",
+      "documents_all": "Alle Dokumente",
+      "sessions_read": "Sehen, wer angemeldet ist",
+      "sessions_read-user-agent": "Deren Browser sehen",
+      "sessions_revoke": "Sitzungen beenden",
+      "audit-events_read": "Alle Aktivitäten sehen",
+      "data-exports_any": "Daten beliebiger Personen exportieren",
+      "erasures_create": "Personen löschen",
+      "settings_manage": "Einstellungen ändern",
+      "mail_manage": "Mailvorlagen und Rundmails",
+      "queues_read": "Warteschlangen sehen"
+    },
+    "descriptions": {
+      "users_read": "Jedes Benutzerkonto mit Bild und die Namen der Rollen",
+      "users_enable": "Konten ein- und ausschalten",
+      "directory_read": "Im Hochschulverzeichnis nach Personen suchen, die sich noch nicht angemeldet haben",
+      "users_view-as": "Die Anwendung so sehen, wie eine andere Person sie sieht, nur lesend und nie über die eigenen Rechte hinaus",
+      "documents_own": "Dokumente anlegen und die eigenen lesen, ändern und löschen",
+      "documents_all": "Dokumente aller lesen, umbenennen und löschen; die Datei ersetzt nur, wem es gehört",
+      "sessions_read": "Jede aktive Sitzung, ohne den Browser, in dem sie geöffnet wurde",
+      "sessions_read-user-agent": "Den Browser jeder Sitzung",
+      "sessions_revoke": "Sitzungen beliebiger Personen beenden, was sie dort abmeldet",
+      "audit-events_read": "Das ganze Aktivitätsprotokoll, nicht nur das eigene",
+      "data-exports_any": "Den DSGVO-Export beliebiger Personen anfordern; er geht an die anfordernde Person",
+      "erasures_create": "Die identifizierenden Daten einer Person löschen (DSGVO)",
+      "settings_manage": "Laufzeiteinstellungen, Feature-Flags und Wartungsmodus",
+      "mail_manage": "Den Wortlaut von Mails bearbeiten, Rundmails senden und das Versandprotokoll lesen",
+      "queues_read": "Zustand, Zeitpläne und Jobs der Hintergrund-Warteschlangen"
+    }
+  },
+  "viewAs": {
+    "start": "Als diese Person ansehen",
+    "banner": "Sie sehen die Anwendung als {who}, nur lesend, bis {until}. Was Sie selbst nicht sehen dürfen, bleibt verborgen.",
+    "stop": "Ansicht beenden"
   }
 }

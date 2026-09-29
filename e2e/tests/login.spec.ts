@@ -78,14 +78,15 @@ test('an operator reads users but changes nothing, and sees no settings', async 
   await expect(page).toHaveURL(/\/profile$/)
 })
 
-test('an admin changes a role, and the directory finds people', async ({ page }) => {
+test('an admin adds a role, and the directory finds people', async ({ page }) => {
   await loginAs(page, ADMIN)
   await nav(page).getByRole('link', { name: 'Benutzer' }).click()
 
   // us02othr has an account (seeded) but never logs in during the run.
   const row = page.getByRole('row').filter({ hasText: 'us02othr' })
-  await row.getByRole('combobox', { name: 'Rolle' }).click()
+  await row.getByRole('combobox', { name: 'Rollen' }).click()
   await page.getByRole('option', { name: 'Betrieb' }).click()
+  await page.keyboard.press('Escape')
   await expect(page.getByText('Gespeichert')).toBeVisible()
   await page.reload()
   await expect(page.getByRole('row').filter({ hasText: 'us02othr' })).toContainText('Betrieb')

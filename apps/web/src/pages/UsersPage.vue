@@ -26,27 +26,30 @@
           class="role-filter"
         />
       </template>
-      <template #body-cell-role="props">
+      <template #body-cell-roles="props">
         <q-td :props="props">
           <q-select
-            v-if="mayPatch"
-            :model-value="props.row.role"
+            v-if="mayAssign"
+            :model-value="props.row.roleIds"
             :options="roleOptions"
+            multiple
+            use-chips
             emit-value
             map-options
             dense
             borderless
+            :display-value="props.row.roleIds.length ? undefined : t('user.noRoles')"
             :aria-label="t('user.role')"
-            @update:model-value="(role: Role) => patch(props.row.id, { role })"
+            @update:model-value="(roleIds: string[]) => assign(props.row.id, roleIds)"
           />
-          <span v-else>{{ t(`user.roles.${props.row.role}`) }}</span>
+          <span v-else>{{ namesOf(props.row.roleIds) }}</span>
         </q-td>
       </template>
       <template #body-cell-enabled="props">
         <q-td :props="props">
           <q-toggle
             :model-value="props.row.enabled"
-            :disable="!mayPatch"
+            :disable="!mayEnable"
             :aria-label="props.row.enabled ? t('users.disable') : t('users.enable')"
             @update:model-value="(enabled: boolean) => patch(props.row.id, { enabled })"
           />
@@ -55,6 +58,17 @@
       <template #body-cell-sessions="props">
         <q-td :props="props" auto-width>
           <q-btn
+            v-if="mayViewAs && props.row.id !== session.user?.id && props.row.authSource === 'saml' && !props.row.erasedAt"
+            flat
+            dense
+            round
+            icon="preview"
+            :aria-label="t('viewAs.start')"
+            :title="t('viewAs.start')"
+            @click="viewAs(props.row.id)"
+          />
+          <q-btn
+            v-if="session.canAll('read', 'sessions')"
             flat
             dense
             round
@@ -70,13 +84,15 @@
 </template>
 
 <script setup lang="ts">
-import { ROLES, type Role, type User, type UserPatch } from '@app/api/client'
+import type { User, UserPatch } from '@app/api/client'
 import type { QTableProps } from 'quasar'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { useApi } from '@/boot/feathers'
 import { useFormat } from '@/composables/format'
 import { useNotify } from '@/composables/notify'
+import { useRoles } from '@/composables/roles'
 import { useSessionStore } from '@/stores/session'
 
 const api = useApi()
@@ -85,18 +101,33 @@ const { t } = useI18n()
 const { dateTime } = useFormat()
 const notify = useNotify()
 
-// Role and enable/disable are admin actions; an operator reads (ADR 0011).
-const mayPatch = computed(() => session.canAll('patch', 'users'))
+// Assigning roles is the admin's alone; enabling and disabling is
+// users.enable; whoever sees this page reads (ADR 0011).
+const mayAssign = computed(() => session.canAll('patch', 'user-roles'))
+const mayEnable = computed(() => session.canAll('patch', 'users'))
+// Read-only view-as (ADR 0028); the server refuses administrators.
+const mayViewAs = computed(() => session.can('create', 'view-as'))
 
-const roleFilter = ref<Role | null>(null)
-const roleOptions = computed(() => ROLES.map((role) => ({ value: role, label: t(`user.roles.${role}`) })))
+const router = useRouter()
+const viewAs = async (id: string) => {
+  try {
+    await session.startViewAs(id)
+    void router.push({ name: 'profile' })
+  } catch (error) {
+    notify.failure(error)
+  }
+}
+
+const { roles, name, namesOf } = useRoles()
+const roleFilter = ref<string | null>(null)
+const roleOptions = computed(() => roles.value.map((role) => ({ value: role.id, label: name(role) })))
 
 // Server-side paging: the table shows one page; the API sorts and counts.
 const paging = ref({ page: 1, rowsPerPage: 25, sortBy: 'surname', descending: false })
 
 const params = computed(() => ({
   query: {
-    ...(roleFilter.value ? { role: roleFilter.value } : {}),
+    ...(roleFilter.value ? { roleId: roleFilter.value } : {}),
     $sort: { [paging.value.sortBy]: paging.value.descending ? -1 : 1 },
     $limit: paging.value.rowsPerPage,
     $skip: (paging.value.page - 1) * paging.value.rowsPerPage
@@ -138,7 +169,7 @@ const columns = computed<NonNullable<QTableProps['columns']>>(() => [
   { name: 'givenName', field: 'givenName', label: t('user.givenName'), align: 'left', sortable: true },
   { name: 'surname', field: 'surname', label: t('user.surname'), align: 'left', sortable: true },
   { name: 'email', field: 'email', label: t('user.email'), align: 'left', sortable: true },
-  { name: 'role', field: 'role', label: t('user.role'), align: 'left', sortable: true },
+  { name: 'roles', field: 'roleIds', label: t('user.role'), align: 'left' },
   { name: 'enabled', field: 'enabled', label: t('user.enabled'), align: 'center', sortable: true },
   {
     name: 'createdAt',
@@ -148,9 +179,20 @@ const columns = computed<NonNullable<QTableProps['columns']>>(() => [
     sortable: true,
     format: (value: User['createdAt']) => dateTime(value)
   },
-  // Admins and operators read every session (ADR 0011).
-  ...(session.canAll('read', 'sessions') ? [{ name: 'sessions', field: 'id', label: '', align: 'right' as const }] : [])
+  // Under sessions.read (ADR 0011).
+  ...(session.canAll('read', 'sessions') || mayViewAs.value ? [{ name: 'sessions', field: 'id', label: '', align: 'right' as const }] : [])
 ])
+
+// The full list of the person's roles; the server ends their sessions'
+// sockets, so the new rights apply at once (ADR 0012).
+const assign = async (id: string, roleIds: string[]) => {
+  try {
+    await api.service('user-roles').patch(id, { roleIds })
+    notify.success(t('users.saved'))
+  } catch (error) {
+    notify.failure(error)
+  }
+}
 
 const patch = async (id: string, data: UserPatch) => {
   try {

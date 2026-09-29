@@ -89,6 +89,7 @@ import { client } from '@/api/feathers'
 import { useApi } from '@/boot/feathers'
 import { useFormat } from '@/composables/format'
 import { useNotify } from '@/composables/notify'
+import { useRoles } from '@/composables/roles'
 import { useSessionStore } from '@/stores/session'
 
 // Data subject requests, for admins (ADR 0011, 0013): find the person by
@@ -100,6 +101,7 @@ const session = useSessionStore()
 const { t } = useI18n()
 const { dateTime } = useFormat()
 const notify = useNotify()
+const { namesOf } = useRoles()
 
 const tuId = ref('')
 const searching = ref(false)
@@ -131,7 +133,7 @@ const fields = computed(() => {
     { key: 'givenName', label: 'user.givenName', value: current.givenName },
     { key: 'surname', label: 'user.surname', value: current.surname },
     { key: 'email', label: 'user.email', value: current.email },
-    { key: 'role', label: 'user.role', value: t(`user.roles.${current.role}`) },
+    { key: 'role', label: 'user.role', value: namesOf(current.roleIds) },
     { key: 'createdAt', label: 'user.createdAt', value: dateTime(current.createdAt) }
   ] as const
 })
