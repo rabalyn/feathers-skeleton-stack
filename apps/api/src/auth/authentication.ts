@@ -18,7 +18,7 @@ import type { User } from '../services/users/users.schema.js'
 import { decoyHash, MAX_PASSWORD_LENGTH, verifyPassword } from './password.js'
 import { RateLimitUnavailable, TooManyRequests, type RateLimitBucket } from '../rate-limit.js'
 import { SamlRejected, ServiceProvider } from './saml.js'
-import { SessionStore, isActive, type AuthSession } from './sessions.js'
+import { SessionStore, isActive, viewingAs, type AuthSession } from './sessions.js'
 
 // Authentication (ADR 0008, 0010). Four strategies behind one Feathers
 // authentication service at /api/authentication:
@@ -102,7 +102,20 @@ class SessionJwtStrategy extends JWTStrategy {
     if (!user.enabled) {
       throw new NotAuthenticated('Session is no longer valid')
     }
-    return result
+
+    // A read-only view-as (ADR 0028): the call runs as the target, with the
+    // viewer beside it, whose rights bound what it may read (default-deny).
+    // An expired one ends here, and the session's sockets rejoin as the
+    // viewer's own.
+    if (session.viewAsUserId && !viewingAs(session)) {
+      await sessions(this.app).endViewAs(session.id, 'expired')
+      setImmediate(() => endSessionConnections(this.app, session.id))
+      return result
+    }
+    const targetId = viewingAs(session)
+    if (!targetId) return result
+    const target = await this.app.service('users').get(targetId)
+    return { ...result, user: target, viewer: user, viewAs: { expiresAt: session.viewAsExpiresAt?.toISOString() } }
   }
 }
 
@@ -213,7 +226,7 @@ class AppAuthenticationService extends AuthenticationService {
     const session: AuthSession | undefined = token ? await sessions(this.app).findByRefreshToken(token) : undefined
     let idpLogoutUrl: string | null = null
     if (session) {
-      await sessions(this.app).revoke(session.id)
+      await sessions(this.app).revoke(session.id, 'logout')
       await recordAudit(this.app.get('knex'), {
         actorId: session.userId,
         action: 'logout',

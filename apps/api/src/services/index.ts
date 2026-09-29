@@ -15,12 +15,14 @@ import { mailTemplates } from './mail/mail-templates.js'
 import { queues } from './queues/queues.js'
 import { roles } from './roles/roles.js'
 import { userRoles } from './roles/user-roles.js'
+import { viewAs } from './view-as/view-as.js'
 import { users } from './users/users.js'
 
 export const services = (app: Application) => {
   app.configure(users)
   app.configure(roles)
   app.configure(userRoles)
+  app.configure(viewAs)
   app.configure(settings)
   app.configure(directory)
   app.configure(files)

@@ -28,7 +28,18 @@ export interface AuthSession {
   samlNameId: string | null
   samlNameIdFormat: string | null
   samlSessionIndex: string | null
+  // A read-only view-as the session is in (ADR 0028), until it expires.
+  viewAsUserId: string | null
+  viewAsExpiresAt: Date | null
 }
+
+// Why a view-as ended (ADR 0028).
+export type ViewAsEnd = 'stopped' | 'expired' | 'logout' | 'revoked'
+
+// A view-as is on while it has not expired; an expired one is ended on the
+// next request that finds it.
+export const viewingAs = (session: AuthSession, now = new Date()): string | null =>
+  session.viewAsUserId && session.viewAsExpiresAt && session.viewAsExpiresAt > now ? session.viewAsUserId : null
 
 export interface SamlLoginContext {
   nameId?: string | null
@@ -70,7 +81,9 @@ const SESSION_COLUMNS: string[] = [
   'userAgent',
   'samlNameId',
   'samlNameIdFormat',
-  'samlSessionIndex'
+  'samlSessionIndex',
+  'viewAsUserId',
+  'viewAsExpiresAt'
 ]
 
 // Told after a session changed, once its transaction has committed: to end
@@ -179,6 +192,7 @@ export class SessionStore {
         // A rotated-away token outside the grace window: someone else holds
         // a copy. End the whole family.
         await trx('authSessions').where({ id: session.id }).update({ revokedAt: trx.fn.now() })
+        if (viewingAs(session)) await this.recordViewAsEnd(trx, session, 'revoked')
         await recordAudit(trx, {
           actorId: session.userId,
           action: 'session.reuse-detected',
@@ -218,14 +232,61 @@ export class SessionStore {
   }
 
   // Revokes the session if it is not already; returns it as revoked, or
-  // undefined if there was nothing to revoke.
-  async revoke(id: string): Promise<AuthSession | undefined> {
-    const [revoked]: AuthSession[] = await this.knex('authSessions')
-      .where({ id })
-      .whereNull('revokedAt')
-      .update({ revokedAt: this.knex.fn.now() })
-      .returning(SESSION_COLUMNS)
+  // undefined if there was nothing to revoke. A view-as it was in ends with
+  // it.
+  async revoke(id: string, reason: Exclude<ViewAsEnd, 'stopped' | 'expired'> = 'revoked'): Promise<AuthSession | undefined> {
+    const revoked = await this.knex.transaction(async (trx) => {
+      const [row]: AuthSession[] = await trx('authSessions')
+        .where({ id })
+        .whereNull('revokedAt')
+        .update({ revokedAt: trx.fn.now() })
+        .returning(SESSION_COLUMNS)
+      if (row && viewingAs(row)) await this.recordViewAsEnd(trx, row, reason)
+      return row
+    })
     if (revoked) this.events.revoked?.(revoked)
     return revoked
+  }
+
+  // Starts a read-only view-as on the session (ADR 0028), for the lifetime
+  // the setting gives it; the caller has checked the target.
+  async startViewAs(sessionId: string, targetId: string): Promise<AuthSession> {
+    const minutes = await this.settings.get('viewAsMinutes')
+    return this.knex.transaction(async (trx) => {
+      const [row]: AuthSession[] = await trx('authSessions')
+        .where({ id: sessionId })
+        .update({ viewAsUserId: targetId, viewAsExpiresAt: trx.raw('now() + make_interval(mins => ?)', [minutes]) } as never)
+        .returning(SESSION_COLUMNS)
+      if (!row) throw new Error('view-as on a session that does not exist')
+      await recordAudit(trx, {
+        actorId: row.userId,
+        action: 'view-as.start',
+        resourceType: 'users',
+        resourceId: targetId,
+        detail: { sessionId, expiresAt: row.viewAsExpiresAt?.toISOString() }
+      })
+      return row
+    })
+  }
+
+  // Ends the session's view-as, if it is in one; returns whether it was.
+  async endViewAs(sessionId: string, reason: 'stopped' | 'expired'): Promise<boolean> {
+    return this.knex.transaction(async (trx) => {
+      const session: AuthSession | undefined = await trx('authSessions').where({ id: sessionId }).forUpdate().first(SESSION_COLUMNS)
+      if (!session?.viewAsUserId) return false
+      await trx('authSessions').where({ id: sessionId }).update({ viewAsUserId: null, viewAsExpiresAt: null })
+      await this.recordViewAsEnd(trx, session, reason)
+      return true
+    })
+  }
+
+  private async recordViewAsEnd(trx: Knex.Transaction, session: AuthSession, reason: ViewAsEnd) {
+    await recordAudit(trx, {
+      actorId: session.userId,
+      action: 'view-as.end',
+      resourceType: 'users',
+      resourceId: session.viewAsUserId,
+      detail: { sessionId: session.id, reason }
+    })
   }
 }

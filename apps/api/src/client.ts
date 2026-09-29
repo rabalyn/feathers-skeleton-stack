@@ -51,10 +51,12 @@ import type { QUEUE_EXTERNAL_METHODS } from './services/queues/queues.js'
 import type { Role, RoleData, RolePatch, RoleQuery } from './services/roles/roles.schema.js'
 import type { ROLE_EXTERNAL_METHODS } from './services/roles/roles.js'
 import type { UserRoles, UserRolesPatch, USER_ROLE_EXTERNAL_METHODS } from './services/roles/user-roles.js'
+import type { ViewAs, ViewAsData, VIEW_AS_EXTERNAL_METHODS } from './services/view-as/view-as.js'
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
 export type { Role, RoleData, RolePatch, RoleQuery } from './services/roles/roles.schema.js'
 export type { UserRoles, UserRolesPatch } from './services/roles/user-roles.js'
+export type { ViewAs, ViewAsData } from './services/view-as/view-as.js'
 export type { Setting, SettingPatch, SettingQuery } from './services/settings/settings.schema.js'
 export type { DirectoryEntry, DirectoryPage, DirectoryQuery } from './services/directory/directory.schema.js'
 export type { Document, DocumentData, DocumentPatch, DocumentQuery } from './services/documents/documents.schema.js'
@@ -93,6 +95,7 @@ export {
   ROLE_KINDS,
   ROLE_MANAGEMENT,
   defineAbilitiesFor,
+  defineViewAsAbility,
   isPermissionKey,
   type AbilityUser,
   type AppAbility,
@@ -136,6 +139,9 @@ export interface ClientServiceTypes {
   roles: External<ClientService<Role, RoleData, RolePatch, Paginated<Role>, Params<RoleQuery>>, typeof ROLE_EXTERNAL_METHODS>
   // A user's roles, assigned by admins; the id is the user's.
   'user-roles': External<ClientService<UserRoles, never, UserRolesPatch, never, Params>, typeof USER_ROLE_EXTERNAL_METHODS>
+  // Read-only view-as another person (ADR 0028): `create` starts it,
+  // `remove('current')` ends it.
+  'view-as': External<ClientService<ViewAs, ViewAsData, never, never, Params>, typeof VIEW_AS_EXTERNAL_METHODS>
   // The caller's own avatar; the result is their user record.
   avatars: External<ClientService<User, AvatarData, never, never, Params>, typeof AVATAR_EXTERNAL_METHODS>
   // The language the caller's mail is written in; the result is their user
@@ -203,6 +209,10 @@ export interface AuthenticationResponse {
   accessToken: string
   authentication: { strategy: string }
   user: User
+  // In a read-only view-as (ADR 0028): `user` is the person viewed as, and
+  // this the one looking, until `viewAs.expiresAt`.
+  viewer?: User
+  viewAs?: { expiresAt: string }
 }
 
 // DELETE AUTHENTICATION_URL: the session is revoked. Where the login came

@@ -1,7 +1,7 @@
 import type { AuthenticationResult } from '@feathersjs/authentication'
 import type { HookContext, Params, RealTimeConnection } from '@feathersjs/feathers'
 import { getChannelsWithReadAbility } from 'feathers-casl'
-import { defineAbilitiesFor, unconditionalReadSubjects, type AppAbility } from './abilities.js'
+import { defineAbilitiesFor, defineViewAsAbility, unconditionalReadSubjects, type AppAbility } from './abilities.js'
 import type { Application } from './app.js'
 
 // Real-time delivery (ADR 0012). A connection joins channels derived from
@@ -19,6 +19,9 @@ export const subjectChannel = (service: string) => `subjects/${service}`
 interface SessionConnection extends RealTimeConnection {
   ability?: AppAbility
   sessionId?: string
+  // In a read-only view-as, the one looking; `user` is the person viewed as
+  // (ADR 0028).
+  viewerId?: string
   user?: { id: string; roleIds?: string[]; permissions?: string[] }
 }
 
@@ -26,23 +29,48 @@ const leaveAll = (app: Application, connection: RealTimeConnection) => {
   for (const name of app.channels) app.channel(name).leave(connection)
 }
 
+export type ChannelUser = NonNullable<SessionConnection['user']>
+
 // Membership is recomputed from scratch on every (re-)authentication.
 const join = (app: Application, connection: SessionConnection, result: AuthenticationResult) => {
-  leaveAll(app, connection)
-  delete connection.ability
-  delete connection.sessionId
-
   const user = result.user as SessionConnection['user']
+  const viewer = (result as { viewer?: ChannelUser }).viewer
   const authentication = result.authentication as { strategy?: unknown; payload?: { sid?: unknown } } | undefined
   const sessionId = authentication?.payload?.sid
   // Only the session-checked access token attaches a connection; anything
   // else leaves it anonymous, in no channel.
-  if (authentication?.strategy !== 'jwt' || !user || typeof sessionId !== 'string') return
+  if (authentication?.strategy !== 'jwt' || !user || typeof sessionId !== 'string') {
+    leaveAll(app, connection)
+    delete connection.ability
+    delete connection.sessionId
+    delete connection.viewerId
+    return
+  }
+  joinAs(app, connection, { user, viewer, sessionId })
+}
 
-  connection.ability = defineAbilitiesFor({ id: user.id, permissions: user.permissions ?? [], roleIds: user.roleIds ?? [] })
-  connection.sessionId = sessionId
-  app.channel(userChannel(user.id)).join(connection)
-  for (const service of unconditionalReadSubjects(connection.ability)) app.channel(subjectChannel(service)).join(connection)
+// Joins a connection as `user`, viewed by `viewer` in a view-as: the
+// view-as service re-joins its caller's connection this way (ADR 0028).
+export const joinAs = (
+  app: Application,
+  connection: RealTimeConnection,
+  { user, viewer, sessionId }: { user: ChannelUser; viewer?: ChannelUser | undefined; sessionId: string }
+) => {
+  const joined = connection as SessionConnection
+  leaveAll(app, joined)
+  delete joined.viewerId
+
+  const own = { id: user.id, permissions: user.permissions ?? [], roleIds: user.roleIds ?? [] }
+  // A view-as joins the target's channels under the intersected ability
+  // (ADR 0028).
+  joined.ability = viewer
+    ? defineViewAsAbility({ id: viewer.id, permissions: viewer.permissions ?? [], roleIds: viewer.roleIds ?? [] }, own)
+    : defineAbilitiesFor(own)
+  if (viewer) joined.viewerId = viewer.id
+  joined.user = user
+  joined.sessionId = sessionId
+  app.channel(userChannel(user.id)).join(joined)
+  for (const service of unconditionalReadSubjects(joined.ability)) app.channel(subjectChannel(service)).join(joined)
 }
 
 // Ends the connections matching `which`: they leave every channel and the
@@ -59,16 +87,20 @@ export const endConnections = (app: Application, which: (connection: SessionConn
   }
 }
 
-export const endUserConnections = (app: Application, userId: string) =>
-  endConnections(app, (connection) => connection.user?.id === userId)
+// A user's connections, and those viewing as them or being theirs while they
+// view as somebody else: either person's rights bound what a view-as reads.
+export const endUserConnections = (app: Application, userId: string) => endUsersConnections(app, [userId])
 
 export const endUsersConnections = (app: Application, userIds: readonly string[]) => {
   const ids = new Set(userIds)
-  endConnections(app, (connection) => connection.user !== undefined && ids.has(connection.user.id))
+  endConnections(
+    app,
+    (connection) => (connection.user !== undefined && ids.has(connection.user.id)) || (connection.viewerId !== undefined && ids.has(connection.viewerId))
+  )
 }
 
-export const endSessionConnections = (app: Application, sessionId: string) =>
-  endConnections(app, (connection) => connection.sessionId === sessionId)
+export const endSessionConnections = (app: Application, sessionId: string, except?: RealTimeConnection) =>
+  endConnections(app, (connection) => connection.sessionId === sessionId && connection !== except)
 
 // The external form of one event's record: the payload REST would have
 // returned (ADR 0005). `data` is one element of the service's internal
@@ -112,6 +144,7 @@ export const channels = (app: Application) => {
       leaveAll(app, connection)
       delete (connection as SessionConnection).ability
       delete (connection as SessionConnection).sessionId
+      delete (connection as SessionConnection).viewerId
     }
   })
 }

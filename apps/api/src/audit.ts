@@ -28,6 +28,8 @@ export type AuditAction =
   | 'users.erase'
   | 'users.patch'
   | 'users.roles'
+  | 'view-as.end'
+  | 'view-as.start'
 
 export interface AuditEvent {
   actorId: string | null

@@ -1,6 +1,6 @@
 import { subject } from '@casl/ability'
 import { describe, expect, it } from 'vitest'
-import { ADMIN_PERMISSIONS, PERMISSIONS, defineAbilitiesFor, unconditionalReadSubjects } from '../../src/abilities.js'
+import { ADMIN_PERMISSIONS, PERMISSIONS, defineAbilitiesFor, defineViewAsAbility, unconditionalReadSubjects } from '../../src/abilities.js'
 
 // ADR 0011: the permission catalogue. Each entry grants something, rules of
 // several permissions add up, and field rules narrow only where no broader
@@ -57,9 +57,48 @@ describe('field rules add up', () => {
 
 describe('subject channels', () => {
   it('are the services read without conditions', () => {
-    expect(unconditionalReadSubjects(ability([])).sort()).toEqual(['avatars', 'data-export-contents', 'file-contents', 'locales'])
+    expect(unconditionalReadSubjects(ability([])).sort()).toEqual(['avatars', 'data-export-contents', 'file-contents', 'locales', 'view-as'])
     expect(unconditionalReadSubjects(ability(['documents.own']))).not.toContain('documents')
     expect(unconditionalReadSubjects(ability(['documents.all']))).toContain('documents')
     expect(unconditionalReadSubjects(ability(['users.read']))).toEqual(expect.arrayContaining(['users', 'files', 'roles']))
+  })
+})
+
+describe('view-as (ADR 0028)', () => {
+  const viewer = (permissions: readonly string[]) => ({ id: 'viewer', permissions, roleIds: ['v'] })
+  const target = (permissions: readonly string[]) => ({ id: 'target', permissions, roleIds: ['t'] })
+
+  it("shows the target's own documents to a viewer who reads every document, read-only", () => {
+    const seen = defineViewAsAbility(viewer(['documents.all', 'users.read']), target(['documents.own']))
+    expect(seen.can('read', subject('documents', { ownerId: 'target' }))).toBe(true)
+    expect(seen.can('read', subject('documents', { ownerId: 'someone' }))).toBe(false)
+    expect(seen.can('create', 'documents')).toBe(false)
+    expect(seen.can('patch', subject('documents', { ownerId: 'target' }))).toBe(false)
+    expect(seen.can('read', subject('users', { id: 'target' }))).toBe(true)
+  })
+
+  it('never shows the viewer more than their own rights would', () => {
+    const seen = defineViewAsAbility(viewer(['users.read']), target(ADMIN_PERMISSIONS))
+    expect(seen.can('read', 'settings')).toBe(false)
+    expect(seen.can('read', 'documents')).toBe(false)
+    // The target's own activity needs the viewer to read everybody's.
+    expect(seen.can('read', subject('audit-events', { actorId: 'target' }))).toBe(false)
+    expect(defineViewAsAbility(viewer(['audit-events.read']), target([])).can('read', subject('audit-events', { actorId: 'target' }))).toBe(
+      true
+    )
+  })
+
+  it("narrows fields to the viewer's", () => {
+    const seen = defineViewAsAbility(viewer(['sessions.read']), target(['sessions.read', 'sessions.read-user-agent']))
+    expect(seen.can('read', subject('sessions', { id: 's' }), 'lastUsedAt')).toBe(true)
+    expect(seen.can('read', subject('sessions', { id: 's' }), 'userAgent')).toBe(false)
+  })
+
+  it("hides the target's exports, which only their requester ever sees, and allows nothing but ending the view", () => {
+    const seen = defineViewAsAbility(viewer(ADMIN_PERMISSIONS), target(['documents.own']))
+    expect(seen.can('read', subject('data-exports', { requestedBy: 'target' }))).toBe(false)
+    expect(seen.can('create', 'view-as')).toBe(false)
+    expect(seen.can('create', 'roles')).toBe(false)
+    expect(seen.can('delete', 'view-as')).toBe(true)
   })
 })

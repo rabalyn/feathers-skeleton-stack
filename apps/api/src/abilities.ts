@@ -61,6 +61,9 @@ const CATALOGUE_ENTRIES = [
   // Which fields a patch may carry is fixed by the users patch schema.
   entry('users.enable', 'users', (can) => can('patch', 'users')),
   entry('directory.read', 'users', (can) => can('read', 'directory')),
+  // Read-only view as another person, bounded by one's own rights (ADR 0028).
+  // `read` for feathers-casl's check of the create's result.
+  entry('users.view-as', 'users', (can) => can(['create', 'read'], 'view-as')),
   // The caller always becomes the owner of what they create; lists are
   // scoped by the same condition.
   entry('documents.own', 'documents', (can, user) => {
@@ -140,6 +143,10 @@ const grantBaseline = (can: Can, user: AbilityUser) => {
   // Audit events (ADR 0011, 0013): what the caller did.
   can('read', 'audit-events', { actorId: user.id })
 
+  // Ending one's own view-as (ADR 0028), whatever one may do meanwhile;
+  // `read` for feathers-casl's check of the result.
+  can(['delete', 'read'], 'view-as')
+
   // The names of the caller's own roles, shown on their profile.
   if (user.roleIds?.length) can('read', 'roles', ROLE_NAME_FIELDS, { id: { $in: [...user.roleIds] } })
 }
@@ -173,6 +180,39 @@ export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
     // A key code no longer declares grants nothing (ADR 0011).
     else CATALOGUE.get(key)?.grant(can, user)
   }
+  return createMongoAbility(withoutShadowedFieldRules(rules), { resolveAction })
+}
+
+const READ_ACTIONS = ['read', 'get', 'find']
+
+// Read-only view-as (ADR 0028): the target's read rules, each kept only for
+// a service the viewer reads every record of, with its fields narrowed to
+// the viewer's. So a viewer never sees anything their own rights would not
+// show them, and sees less than the target where their rights end. Every
+// write is dropped, except ending the view-as. The browser builds the same
+// ability to hide what it cannot show.
+export const defineViewAsAbility = (viewer: AbilityUser, target: AbilityUser): AppAbility => {
+  const mine = defineAbilitiesFor(viewer)
+  const theirs = defineAbilitiesFor(target)
+  const rules: Rule[] = []
+  for (const rule of theirs.rules) {
+    const actions = asList(rule.action).filter((action) => READ_ACTIONS.includes(action))
+    if (rule.inverted || !actions.length) continue
+    for (const name of asList(rule.subject as string | string[])) {
+      const broad = mine.rulesFor('get', name).filter((own) => !own.inverted && !own.conditions)
+      if (!broad.length) continue
+      const viewerFields = broad.some((own) => !own.fields) ? undefined : [...new Set(broad.flatMap((own) => asList(own.fields ?? [])))]
+      const fields = viewerFields ? (rule.fields ? asList(rule.fields).filter((field) => viewerFields.includes(field)) : viewerFields) : rule.fields
+      if (fields && !fields.length) continue
+      rules.push({
+        action: actions,
+        subject: name,
+        ...(rule.conditions ? { conditions: rule.conditions } : {}),
+        ...(fields ? { fields } : {})
+      })
+    }
+  }
+  rules.push({ action: ['delete', 'read'], subject: 'view-as' })
   return createMongoAbility(withoutShadowedFieldRules(rules), { resolveAction })
 }
 

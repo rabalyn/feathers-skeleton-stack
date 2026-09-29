@@ -9,6 +9,8 @@ export interface RequestContext {
   // The surrogate user key once the call is authenticated, never the TU-ID
   // (ADR 0009).
   userRef?: string
+  // Whom the user views the application as (ADR 0028).
+  viewAsRef?: string
 }
 
 const storage = new AsyncLocalStorage<RequestContext>()
