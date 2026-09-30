@@ -65,6 +65,11 @@ const submit = async () => {
       await router.replace('/')
       return
     }
+    // The account does not bypass maintenance: its page takes over.
+    if (outcome === 'maintenance') {
+      await router.replace({ name: 'maintenance' })
+      return
+    }
     problem.value = outcome
     password.value = ''
   } finally {

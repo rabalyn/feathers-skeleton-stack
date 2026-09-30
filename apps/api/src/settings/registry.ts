@@ -83,7 +83,8 @@ export const WORKER_SETTINGS = [
   'objectPurgeDelayDays',
   'mailSendLimitCount',
   'mailSendLimitWindowSeconds',
-  'mailDeliveryRetentionDays'
+  'mailDeliveryRetentionDays',
+  'maintenanceMode'
 ] as const satisfies readonly SettingKey[]
 
 export const BACKUP_SETTINGS = ['backupSchedule', 'backupRetentionDailySnapshots'] as const satisfies readonly SettingKey[]

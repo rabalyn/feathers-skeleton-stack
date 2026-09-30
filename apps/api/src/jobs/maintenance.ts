@@ -84,6 +84,8 @@ export interface MaintenanceOptions {
 // How often the worker re-reads the sending limit; a change applies to
 // every worker process at once, since the limit lives in the queue.
 export const MAIL_LIMIT_REFRESH_MS = 30_000
+// How often the worker looks whether maintenance mode is on (ADR 0025).
+export const MAINTENANCE_MODE_REFRESH_MS = 15_000
 
 export const startMaintenance = ({
   connection,
@@ -269,6 +271,28 @@ export const startMaintenance = ({
       )
     : undefined
 
+  // Maintenance mode stops all job processing (ADR 0025): each worker
+  // finishes the job it has and takes no further one until the mode is off.
+  // Jobs wait in their queues meanwhile, schedules included.
+  const workers = [worker, exportWorker, ...(mailWorker ? [mailWorker] : [])]
+  let paused = false
+  let applying: Promise<void> | undefined
+  const applyMaintenanceMode = (): Promise<void> =>
+    (applying ??= (async () => {
+      settings.forget('maintenanceMode')
+      const active = await settings.get('maintenanceMode')
+      if (active === paused) return
+      if (active) {
+        logger.warn('maintenance mode: job processing paused')
+        await Promise.all(workers.map((each) => each.pause()))
+      } else {
+        await Promise.all(workers.map((each) => each.resume()))
+        logger.warn('maintenance mode over: job processing resumed')
+      }
+      paused = active
+    })().finally(() => (applying = undefined)))
+  let maintenanceTimer: NodeJS.Timeout | undefined
+
   return {
     queue,
     worker,
@@ -296,10 +320,21 @@ export const startMaintenance = ({
           logger.error({ queue: MAIL_QUEUE, err: { message: error.message } }, 'mail worker stopped')
         )
       }
+      await applyMaintenanceMode()
+      maintenanceTimer = setInterval(() => {
+        applyMaintenanceMode().catch((error: Error) =>
+          logger.warn({ err: { message: error.message } }, 'maintenance mode not refreshed')
+        )
+      }, MAINTENANCE_MODE_REFRESH_MS)
+      maintenanceTimer.unref()
     },
-    isRunning: () => worker.isRunning() && exportWorker.isRunning() && (!mailWorker || mailWorker.isRunning()),
+    applyMaintenanceMode,
+    isPaused: () => paused,
+    // A paused worker's loop has ended, yet the process is well.
+    isRunning: () => workers.every((each) => each.isRunning() || each.isPaused()),
     close: async () => {
       clearInterval(limitTimer)
+      clearInterval(maintenanceTimer)
       await Promise.all([worker.close(), exportWorker.close(), mailWorker?.close()])
       sending?.sender.close()
       await Promise.all([queue.close(), exportQueue.close(), mail.close()])

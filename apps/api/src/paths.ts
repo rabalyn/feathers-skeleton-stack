@@ -8,6 +8,11 @@ export const SOCKET_PATH = `${API_PREFIX}/socket.io`
 // HttpOnly cookie, which is scoped to exactly this path (ADR 0010).
 export const AUTHENTICATION_URL = `${API_PREFIX}/authentication`
 export const SAML_LOGIN_URL = `${API_PREFIX}/auth/saml/login`
+// Whether maintenance mode is on, for anyone: `{ active: boolean }`. The
+// browser's maintenance page polls it (ADR 0025).
+export const MAINTENANCE_URL = `${API_PREFIX}/maintenance`
+// The web app's maintenance page, where the ACS sends a refused login.
+export const MAINTENANCE_PAGE = '/maintenance'
 // Uploads over plain HTTP, since the body is the file (ADR 0020): POST a
 // file to FILES_URL; GET its bytes at FILE_CONTENTS_URL/<id>.
 export const FILES_URL = `${API_PREFIX}/files`

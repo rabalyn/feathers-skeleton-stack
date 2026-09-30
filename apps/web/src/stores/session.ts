@@ -12,6 +12,7 @@ import {
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
 import { client, socket } from '@/api/feathers'
+import { fetchMaintenanceState, isMaintenanceRefusal } from '@/api/maintenance'
 import { accessTokenExpiry, accessTokenSession, renewalDelay, requestRefresh, retryDelay } from '@/api/refresh'
 import { i18n } from '@/boot/i18n'
 
@@ -22,7 +23,12 @@ import { i18n } from '@/boot/i18n'
 //   starting       no answer yet; nothing authenticated is rendered
 //   authenticated  a user, an access token, an authenticated socket
 //   anonymous      no session: the login page
-export type SessionStatus = 'starting' | 'authenticated' | 'anonymous'
+//   maintenance    maintenance mode keeps this browser out, or the API does
+//                  not answer: the maintenance page (ADR 0025)
+export type SessionStatus = 'starting' | 'authenticated' | 'anonymous' | 'maintenance'
+
+// How long a closed socket may stay closed before the API counts as gone.
+const UNREACHABLE_AFTER_MS = 5_000
 
 export const useSessionStore = defineStore('session', () => {
   const status = ref<SessionStatus>('starting')
@@ -41,6 +47,9 @@ export const useSessionStore = defineStore('session', () => {
   const viewAs = shallowRef<{ viewer: User; expiresAt: string } | null>(null)
   // The session this browser is logged in with, from the access token.
   const sessionId = ref<string | null>(null)
+  // Whether maintenance mode is on while this person is let in anyway,
+  // which only those who may switch it off are (ADR 0025): the banner.
+  const maintenanceOn = ref(false)
 
   let timer: ReturnType<typeof setTimeout> | undefined
   let viewAsTimer: ReturnType<typeof setTimeout> | undefined
@@ -117,6 +126,35 @@ export const useSessionStore = defineStore('session', () => {
     else await refresh()
   }
 
+  // Maintenance mode keeps this browser out, or the API is gone: nothing of
+  // the session stays, the socket stops trying, and the maintenance page
+  // takes over. That page reloads the application once the mode is over, so
+  // nothing needs to be put back here.
+  const enterMaintenance = async () => {
+    if (status.value === 'maintenance') return
+    clearTimeout(timer)
+    clearTimeout(viewAsTimer)
+    await client.authentication.removeAccessToken()
+    await client.authentication.reset()
+    socket.disconnect()
+    user.value = null
+    ability.value = null
+    preview.value = null
+    viewAs.value = null
+    sessionId.value = null
+    unavailable.value = false
+    maintenanceOn.value = false
+    status.value = 'maintenance'
+  }
+
+  // The API did not answer: a maintenance window, unless it says otherwise
+  // the next moment.
+  const unreachable = async (): Promise<boolean> => {
+    if ((await fetchMaintenanceState()) === 'inactive') return false
+    await enterMaintenance()
+    return true
+  }
+
   // Read-only view-as (ADR 0028). The server moves this connection into the
   // other person's channels; authenticating again brings their record and
   // the intersected ability here.
@@ -136,7 +174,12 @@ export const useSessionStore = defineStore('session', () => {
       await becomeAnonymous()
       return status.value
     }
-    if (outcome.kind === 'transient') {
+    if (outcome.kind === 'maintenance') {
+      await enterMaintenance()
+      return status.value
+    }
+    if (outcome.kind === 'unreachable' && (await unreachable())) return status.value
+    if (outcome.kind === 'transient' || outcome.kind === 'unreachable') {
       unavailable.value = true
       schedule(retryDelay(attempt++))
       return status.value
@@ -161,6 +204,7 @@ export const useSessionStore = defineStore('session', () => {
     expired.value = false
     sessionId.value = accessTokenSession(accessToken)
     status.value = 'authenticated'
+    void fetchMaintenanceState().then((state) => (maintenanceOn.value = state === 'active'))
     schedule(renewalDelay(accessTokenExpiry(accessToken), Date.now()))
     return status.value
   }
@@ -198,6 +242,18 @@ export const useSessionStore = defineStore('session', () => {
   // no longer holds.
   socket.on('disconnect', (reason) => {
     if (reason === 'io server disconnect' && !endingSession) socket.connect()
+    // The API went away (a stop for maintenance, ADR 0025): if it is still
+    // gone a moment later, the maintenance page waits for it.
+    if ((reason === 'transport close' || reason === 'ping timeout') && status.value === 'authenticated') {
+      setTimeout(() => {
+        if (socket.disconnected && status.value === 'authenticated') void unreachable()
+      }, UNREACHABLE_AFTER_MS)
+    }
+  })
+
+  // An admin sees maintenance mode switched, here or elsewhere, at once.
+  client.service('settings').on('patched', (setting: { key: string; value: unknown }) => {
+    if (setting.key === 'maintenanceMode') maintenanceOn.value = setting.value === true
   })
 
   // Background tabs have their timers throttled; catch up on return.
@@ -243,6 +299,7 @@ export const useSessionStore = defineStore('session', () => {
           if (code === 401 && path !== 'authentication' && status.value === 'authenticated') {
             void refresh()
           }
+          if (isMaintenanceRefusal(context.error)) void enterMaintenance()
         }
       ]
     }
@@ -260,7 +317,7 @@ export const useSessionStore = defineStore('session', () => {
   const passwordLogin = async (
     email: string,
     password: string
-  ): Promise<'ok' | 'invalid' | 'limited' | 'unavailable'> => {
+  ): Promise<'ok' | 'invalid' | 'limited' | 'unavailable' | 'maintenance'> => {
     let response: Response
     try {
       response = await fetch(AUTHENTICATION_URL, {
@@ -274,6 +331,10 @@ export const useSessionStore = defineStore('session', () => {
     }
     if (response.status === 401 || response.status === 403) return 'invalid'
     if (response.status === 429) return 'limited'
+    if (response.status === 503 && isMaintenanceRefusal(await response.json().catch(() => null))) {
+      await enterMaintenance()
+      return 'maintenance'
+    }
     if (!response.ok) return 'unavailable'
     return (await refresh()) === 'authenticated' ? 'ok' : 'unavailable'
   }
@@ -324,6 +385,7 @@ export const useSessionStore = defineStore('session', () => {
     preview,
     viewAs,
     sessionId,
+    maintenanceOn,
     settled,
     isAuthenticated: computed(() => status.value === 'authenticated'),
     start,

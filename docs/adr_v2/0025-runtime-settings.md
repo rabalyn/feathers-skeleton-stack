@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-24
 - Scope: Required (v1)
-- Related: [0005](0005-typebox-schema-boundary.md), [0006](0006-feathersjs-typescript-api.md), [0011](0011-casl-role-authorization.md), [0013](0013-gdpr-export-and-retention.md), [0016](0016-nginx-and-tls-everywhere.md), [0017](0017-nfs-backup-storage.md), [0020](0020-object-storage-uploads.md), [0024](0024-background-jobs-bullmq.md), [0028](0028-read-only-view-as.md)
+- Related: [0005](0005-typebox-schema-boundary.md), [0006](0006-feathersjs-typescript-api.md), [0011](0011-casl-role-authorization.md), [0013](0013-gdpr-export-and-retention.md), [0016](0016-nginx-and-tls-everywhere.md), [0017](0017-nfs-backup-storage.md), [0020](0020-object-storage-uploads.md), [0024](0024-background-jobs-bullmq.md), [0028](0028-read-only-view-as.md), [0029](0029-api-tokens.md)
 
 ## Context
 
@@ -37,7 +37,7 @@ Every operational policy the application or its own services enforce is a runtim
 | Mail sending limit, window | `mailSendLimitWindowSeconds` | 300 seconds | Worker |
 | Mail delivery log retention | `mailDeliveryRetentionDays` | 90 days | Worker ([0027](0027-email-templates-and-sending.md)) |
 | Feature flags | `featureFlags` | None (an empty map of name to boolean) | API |
-| Maintenance mode | `maintenanceMode` | Off | API |
+| Maintenance mode | `maintenanceMode` | Off | API, worker, browser (see *Maintenance mode*) |
 | View-as lifetime | `viewAsMinutes` | 30 minutes | API ([0028](0028-read-only-view-as.md)) |
 
 Durations are whole seconds or days and sizes are bytes, as each key's name says.
@@ -65,9 +65,21 @@ What stays **deployment configuration** is what the application cannot or should
 
 Settings are read and written through the UI under the `settings.manage` permission, which only `admin` holds as seeded; `operator` and `user` see none of them unless an admin grants it ([0011](0011-casl-role-authorization.md)). The backup service reads them through its read-only database role. Consumers cache values in process for **30 seconds**, so a change takes effect within that interval without a restart; the API process that made a change drops its own cache at once. A stored value that no longer matches its schema is treated like a missing one.
 
+### Maintenance mode
+
+Decided 2026-09-30. An admin switches maintenance mode on and off on the Settings page, after a confirmation. It exists so the application can be taken down for work on it while those who do the work still use it.
+
+- **Who is let in**: holders of `settings.manage` ([0011](0011-casl-role-authorization.md)), exactly those who can switch the mode off again, so a role cannot lock itself out; in a view-as, the one looking decides ([0028](0028-read-only-view-as.md)). The break-glass account holds it as an admin ([0008](0008-authentication-saml2-ldap.md)).
+- **Switching it on** revokes every active session of everyone else, and their sockets close with it ([0010](0010-sessions-postgres-ratelimits-valkey.md), [0012](0012-role-scoped-channels.md)). Switching it off ends nothing. Both are audit events of their own (`maintenance.enable` with the number of sessions ended, `maintenance.disable`), beside the setting's `settings.update`.
+- **While it is on**, every service call of anyone else is answered **503 with `data.maintenance: true`**, whatever the transport, and so is every **API token**, an admin's included ([0029](0029-api-tokens.md)). The authentication service answers a refresh the same way, with or without a session, so a browser learns why it is not let in; a refresh, password login or socket authentication that succeeds for somebody else is undone and its session revoked. A wrong break-glass password stays a plain 401.
+- **Login stays reachable.** The ACS cannot tell who logs in before the IdP answers, so the login page and the SAML login start stay open to everyone; the ACS refuses anyone else after the assertion, records `login.refused` with the reason `maintenance`, and redirects to the web app's maintenance page, `/maintenance`.
+- **The worker stops working**: it looks at the setting every 15 seconds, lets each running job finish and takes no further one until the mode is off ([0024](0024-background-jobs-bullmq.md)). Jobs, schedules included, wait in their queues meanwhile. A paused worker counts as live. The backup service is not affected and keeps its schedule ([0017](0017-nfs-backup-storage.md)).
+- **The browser**: `GET /api/maintenance` answers `{ active }` to anyone, uncached, and 503 when the database cannot say. A 503 with `data.maintenance` from any call or refresh, or an API that does not answer at all, takes the browser to the public `/maintenance` page: the API is expected to be down for part of the window, and then the browser cannot learn more. That page polls the state every **30 seconds**; once the API answers and the mode is off, it reloads the application at the login page. An admin sees a banner while the mode is on.
+- Like every setting, other API processes follow within the cache interval above. Sessions are revoked in the database at once, so a process with a stale cache still refuses the ended sessions.
+
 ## Consequences
 
 - Retention, quotas and schedules change without a release, with an audit trail of who changed what.
 - Two rules span a setting and deployment configuration or another setting; they are enforced in one service, not scattered.
 - The backup alert's time window is code while the backup schedule is a setting, so they must be changed together ([0022](0022-observability-and-alerting.md)).
-- Settings are data, so they are included in database backups and restored with them.
+- Settings are data, so they are included in database backups and restored with them. That includes maintenance mode: a backup taken while it was on restores with it on.

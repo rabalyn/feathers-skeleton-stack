@@ -59,6 +59,8 @@ const ACTIONS = [
   'users.patch',
   'users.erase',
   'settings.update',
+  'maintenance.enable',
+  'maintenance.disable',
   'breakglass.create',
   'breakglass.rotate',
   'data-exports.create',

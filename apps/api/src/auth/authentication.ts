@@ -7,12 +7,13 @@ import {
   type AuthenticationRequest,
   type AuthenticationResult
 } from '@feathersjs/authentication'
-import type { HookContext, Params } from '@feathersjs/feathers'
+import type { HookContext, NextFunction, Params } from '@feathersjs/feathers'
 import type { Application } from '../app.js'
 import { recordAudit } from '../audit.js'
 import { endSessionConnections, publishNothing } from '../channels.js'
-import { AUTHENTICATION_URL } from '../paths.js'
-import { assignDefaultRole } from '../permissions.js'
+import { inMaintenance, maintenanceUnavailable, mayBypassMaintenance } from '../maintenance-mode.js'
+import { AUTHENTICATION_URL, MAINTENANCE_PAGE } from '../paths.js'
+import { assignDefaultRole, loadAccess } from '../permissions.js'
 import { publishSession } from '../services/sessions/sessions.js'
 import type { User } from '../services/users/users.schema.js'
 import { API_TOKEN_STRATEGY, ApiTokenStrategy } from './api-tokens.js'
@@ -266,6 +267,37 @@ const setRotatedCookie = async (context: HookContext) => {
   delete authentication.familyExpiresAt
 }
 
+// During maintenance (ADR 0025) no session starts or continues for somebody
+// who may not bypass it: a login, a refresh or a socket's authentication
+// that succeeded is undone, its session revoked, and the answer is 503 with
+// `data.maintenance`. A refresh that fails for want of a session says the
+// same, so a browser without one learns why nobody is let in. A wrong
+// break-glass password stays a plain 401.
+const refuseDuringMaintenance = async (context: HookContext<Application>, next: NextFunction) => {
+  const app = context.app
+  try {
+    await next()
+  } catch (error) {
+    const strategy = (context.data as { strategy?: unknown } | undefined)?.strategy
+    if (error instanceof NotAuthenticated && strategy === 'refresh' && (await inMaintenance(app))) {
+      throw maintenanceUnavailable()
+    }
+    throw error
+  }
+  if (!(await inMaintenance(app))) return
+  const result = context.result as {
+    user?: { id: string }
+    viewer?: { id: string }
+    authentication?: { sessionId?: string; payload?: { sid?: string } }
+  }
+  // In a view-as, the one looking decides.
+  const personId = result.viewer?.id ?? result.user?.id
+  if (personId && mayBypassMaintenance((await loadAccess(app.get('knex'), personId)).permissions)) return
+  const sessionId = result.authentication?.sessionId ?? result.authentication?.payload?.sid
+  if (sessionId) await sessions(app).revoke(sessionId)
+  throw maintenanceUnavailable()
+}
+
 // Logout always clears the cookie, whatever else happened.
 const clearCookieOnLogout = async (context: HookContext) => {
   context.http = { ...context.http, headers: { ...context.http?.headers, 'Set-Cookie': clearedRefreshCookie() } }
@@ -308,7 +340,10 @@ export const authentication = (app: Application) => {
   service.register('password', new PasswordStrategy())
   service.register(API_TOKEN_STRATEGY, new ApiTokenStrategy())
   app.use(AUTH_PATH, service, { methods: ['create', 'remove'] })
-  app.service(AUTH_PATH).hooks({ after: { create: [setRotatedCookie], remove: [clearCookieOnLogout] } })
+  app.service(AUTH_PATH).hooks({
+    around: { create: [refuseDuringMaintenance] },
+    after: { create: [setRotatedCookie], remove: [clearCookieOnLogout] }
+  })
   // Its results carry tokens: for the caller only. The session itself is
   // published by the sessions service (ADR 0010, 0012).
   app.service(AUTH_PATH).publish(publishNothing)
@@ -372,6 +407,24 @@ export const samlRoutes = (app: Application) => {
             })
             ctx.status = 403
             ctx.body = 'Account disabled'
+            return
+          }
+          // During maintenance only those who may switch it off log in; the
+          // rest land on the web app's maintenance page (ADR 0025).
+          if (
+            (await inMaintenance(app)) &&
+            !mayBypassMaintenance((await loadAccess(app.get('knex'), user.id)).permissions)
+          ) {
+            logger().info({ user_ref: user.id }, 'login refused: maintenance mode')
+            await recordAudit(app.get('knex'), {
+              actorId: user.id,
+              action: 'login.refused',
+              resourceType: 'users',
+              resourceId: user.id,
+              detail: { reason: 'maintenance' }
+            })
+            ctx.status = 303
+            ctx.redirect(MAINTENANCE_PAGE)
             return
           }
           const { session, refreshToken } = await app.get('sessions').issue(user.id, {

@@ -158,7 +158,9 @@
       "roles_remove": "Rolle gelöscht",
       "users_roles": "Rollen vergeben",
       "view-as_start": "Angesehen als",
-      "view-as_end": "Ansicht beendet"
+      "view-as_end": "Ansicht beendet",
+      "maintenance_enable": "Wartungsmodus eingeschaltet",
+      "maintenance_disable": "Wartungsmodus ausgeschaltet"
     }
   },
   "gdpr": {
@@ -432,5 +434,23 @@
     "start": "Als diese Person ansehen",
     "banner": "Sie sehen die Anwendung als {who}, nur lesend, bis {until}. Was Sie selbst nicht sehen dürfen, bleibt verborgen.",
     "stop": "Ansicht beenden"
+  },
+  "maintenance": {
+    "title": "Wartung",
+    "body": "Die Anwendung wird gerade gewartet und ist nicht verfügbar. Diese Seite prüft alle 30 Sekunden und bringt Sie zur Anmeldung, sobald sie wieder da ist.",
+    "checking": "Wird geprüft …",
+    "checked": "Zuletzt geprüft um {time}.",
+    "adminLogin": "Anmeldung für Administratoren",
+    "banner": "Der Wartungsmodus ist aktiv: nur Administratoren können die Anwendung nutzen.",
+    "setting": "Wartungsmodus",
+    "isOn": "Aktiv: nur wer Einstellungen ändern darf, kann sich anmelden; alle anderen sehen die Wartungsseite, API-Tokens werden abgewiesen und der Worker nimmt keine Aufträge an.",
+    "isOff": "Aus",
+    "enable": "Einschalten",
+    "disable": "Ausschalten",
+    "confirmEnableTitle": "Wartungsmodus einschalten?",
+    "confirmEnable": "Alle, die keine Einstellungen ändern dürfen, werden sofort abgemeldet und zur Wartungsseite geleitet, können sich bis zum Ende nicht anmelden, und API-Tokens werden abgewiesen. Der Worker nimmt keine Aufträge mehr an.",
+    "confirmDisableTitle": "Wartungsmodus ausschalten?",
+    "confirmDisable": "Alle können sich wieder anmelden, API-Tokens funktionieren wieder und der Worker setzt seine Aufträge fort.",
+    "loginHint": "Der Wartungsmodus ist aktiv: nur Administratoren können sich anmelden."
   }
 }

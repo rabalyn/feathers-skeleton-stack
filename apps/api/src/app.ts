@@ -18,7 +18,8 @@ import { queueConnection } from './jobs/queues.js'
 import { MailOutbox } from './mail/outbox.js'
 import { defaultDeny } from './hooks/default-deny.js'
 import { sanitizeHttpErrors, sanitizeServiceErrors } from './hooks/errors.js'
-import { API_PREFIX, SOCKET_PATH } from './paths.js'
+import { inMaintenance } from './maintenance-mode.js'
+import { API_PREFIX, MAINTENANCE_URL, SOCKET_PATH } from './paths.js'
 import { RateLimiter } from './rate-limit.js'
 import { createRegistry, observeKnexPool, requestMetrics, websocketConnections } from './metrics.js'
 import { createReadiness, observeReadiness, type Readiness } from './readiness.js'
@@ -51,6 +52,8 @@ export interface AppSettings {
   // (ADR 0027).
   mail: MailOutbox
 }
+
+const MAINTENANCE_ROUTE = MAINTENANCE_URL.slice(API_PREFIX.length)
 
 export interface AppOptions {
   // How long runtime settings are cached in process (ADR 0025).
@@ -107,10 +110,24 @@ export const createApp = (
     await next()
   })
 
-  // The only unauthenticated liveness signal on the public port (ADR 0006).
+  // The only unauthenticated liveness signal on the public port (ADR 0006),
+  // and whether maintenance mode is on, which the browser polls while it
+  // shows its maintenance page (ADR 0025). Without the database that is
+  // unknown: 503, and the browser keeps polling.
   app.use(async (ctx, next) => {
     if (ctx.method === 'GET' && ctx.path === '/ping') {
       ctx.body = { pong: true }
+      return
+    }
+    if (ctx.method === 'GET' && ctx.path === MAINTENANCE_ROUTE) {
+      ctx.set('Cache-Control', 'no-store')
+      try {
+        ctx.body = { active: await inMaintenance(app) }
+      } catch (error) {
+        app.get('logger').warn({ err: { message: (error as Error).message } }, 'maintenance state unknown')
+        ctx.status = 503
+        ctx.body = { active: null }
+      }
       return
     }
     await next()
