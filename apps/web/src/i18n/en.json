@@ -22,6 +22,7 @@
     "mailings": "Mailings",
     "queues": "Queues",
     "sessions": "Sessions",
+    "apiTokens": "API tokens",
     "permissions": "Roles & permissions"
   },
   "auth": {
@@ -326,6 +327,37 @@
     "expiresAt": "Expires if unused",
     "filterBy": "Show only this account"
   },
+  "apiTokens": {
+    "new": "New token",
+    "intro": "An API token lets a script call the API over REST with the permissions chosen for it, never more than its owner holds at the time of the call. Send it in the Authorization header:",
+    "empty": "No API tokens",
+    "name": "Name",
+    "nameRequired": "A name is required",
+    "owner": "Owner",
+    "you": "You",
+    "token": "Token",
+    "permissions": "Permissions",
+    "permissionsHint": "Only permissions you hold yourself, and none that need a person in the browser",
+    "nothingGrantable": "You hold no permission a token may carry.",
+    "expiresOn": "Expires on",
+    "expiresHint": "Leave empty for a token that lasts until it is revoked",
+    "createdAt": "Created",
+    "expiresAt": "Expires",
+    "lastUsedAt": "Last used",
+    "never": "Never",
+    "expired": "Expired",
+    "unused": "Not yet",
+    "create": "Create token",
+    "cancel": "Cancel",
+    "createdTitle": "Your new API token",
+    "createdText": "Copy it now: it is not stored and will not be shown again. Anyone who has it can act with its permissions.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "done": "Done",
+    "revoke": "Revoke",
+    "revokeConfirm": "Revoke the token “{name}”? Scripts using it stop working at once.",
+    "revoked": "Token revoked"
+  },
   "permissions": {
     "title": "Roles & permissions",
     "intro": "A role is a set of permissions; a person has all permissions of all their roles. Administration always has every permission and alone manages roles.",
@@ -354,7 +386,8 @@
       "documents": "Documents",
       "sessions": "Sessions",
       "privacy": "Privacy",
-      "configuration": "Configuration"
+      "configuration": "Configuration",
+      "api": "API"
     },
     "keys": {
       "users_read": "See all people",
@@ -371,7 +404,9 @@
       "erasures_create": "Erase people",
       "settings_manage": "Change settings",
       "mail_manage": "Mail templates and mailings",
-      "queues_read": "See job queues"
+      "queues_read": "See job queues",
+      "api-tokens_create": "Create API tokens",
+      "api-tokens_manage": "Manage everybody’s API tokens"
     },
     "descriptions": {
       "users_read": "Every user record with its picture, and the names of the roles",
@@ -388,7 +423,9 @@
       "erasures_create": "Erase a person’s identifying data (GDPR)",
       "settings_manage": "Runtime settings, feature flags and maintenance mode",
       "mail_manage": "Edit the wording of mails, send mailings and read the delivery log",
-      "queues_read": "State, schedules and jobs of the background queues"
+      "queues_read": "State, schedules and jobs of the background queues",
+      "api-tokens_create": "Create tokens for scripts, carrying chosen permissions one holds oneself; they stop working when this permission is withdrawn",
+      "api-tokens_manage": "See and revoke the API tokens of every person"
     }
   },
   "viewAs": {

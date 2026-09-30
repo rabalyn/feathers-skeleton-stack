@@ -14,7 +14,9 @@ export default defineRouter(({ store }) => {
   })
   const session = useSessionStore(store)
   const allowed = (meta: RouteMeta) =>
-    (!meta.requires || session.canAll(...meta.requires)) && (!meta.requiresSome || session.can(...meta.requiresSome))
+    (!meta.requires || session.canAll(...meta.requires)) &&
+    (!meta.requiresSome || session.can(...meta.requiresSome)) &&
+    (!meta.requiresAny || meta.requiresAny.some((pair) => session.canAll(...pair)))
 
   router.beforeEach(async (to) => {
     // Nothing authenticated renders before the session is known.

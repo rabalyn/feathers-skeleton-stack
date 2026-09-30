@@ -10,6 +10,9 @@ declare module 'vue-router' {
     // Hidden unless the user may do this to some record of it, e.g. their
     // own documents.
     requiresSome?: [action: string, subject: string]
+    // Hidden unless the user may do one of these to every record of its
+    // subject.
+    requiresAny?: [action: string, subject: string][]
   }
 }
 
@@ -66,6 +69,18 @@ const routes: RouteRecordRaw[] = [
         name: 'sessions',
         component: () => import('@/pages/SessionsPage.vue'),
         meta: { requires: ['read', 'sessions'] }
+      },
+      // API tokens (ADR 0029): for whoever may create them or see everybody's.
+      {
+        path: 'api-tokens',
+        name: 'api-tokens',
+        component: () => import('@/pages/ApiTokensPage.vue'),
+        meta: {
+          requiresAny: [
+            ['create', 'api-tokens'],
+            ['read', 'api-tokens']
+          ]
+        }
       },
       {
         path: 'audit',

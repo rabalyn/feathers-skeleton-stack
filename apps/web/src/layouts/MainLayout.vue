@@ -98,6 +98,15 @@ const links = computed(() =>
     { name: 'settings', icon: 'tune', label: 'nav.settings', requires: ['read', 'settings'] },
     { name: 'directory', icon: 'contact_page', label: 'nav.directory', requires: ['read', 'directory'] },
     { name: 'sessions', icon: 'devices', label: 'nav.sessions', requires: ['read', 'sessions'] },
+    {
+      name: 'api-tokens',
+      icon: 'key',
+      label: 'nav.apiTokens',
+      requiresAny: [
+        ['create', 'api-tokens'],
+        ['read', 'api-tokens']
+      ]
+    },
     { name: 'audit', icon: 'history', label: 'nav.audit', requires: ['read', 'audit-events'] },
     { name: 'gdpr', icon: 'privacy_tip', label: 'nav.gdpr', requires: ['create', 'erasures'] },
     { name: 'mail-templates', icon: 'mail', label: 'nav.mailTemplates', requires: ['read', 'mail-templates'] },
@@ -106,7 +115,8 @@ const links = computed(() =>
   ].filter(
     (link) =>
       (!link.requires || session.canAll(link.requires[0]!, link.requires[1]!)) &&
-      (!link.requiresSome || session.can(link.requiresSome[0]!, link.requiresSome[1]!))
+      (!link.requiresSome || session.can(link.requiresSome[0]!, link.requiresSome[1]!)) &&
+      (!link.requiresAny || link.requiresAny.some(([action, subject]) => session.canAll(action!, subject!)))
   )
 )
 </script>

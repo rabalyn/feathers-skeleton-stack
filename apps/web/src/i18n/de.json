@@ -22,6 +22,7 @@
     "mailings": "Mailings",
     "queues": "Warteschlangen",
     "sessions": "Sitzungen",
+    "apiTokens": "API-Tokens",
     "permissions": "Rollen & Rechte"
   },
   "auth": {
@@ -326,6 +327,37 @@
     "expiresAt": "Läuft ab ohne Nutzung",
     "filterBy": "Nur dieses Konto zeigen"
   },
+  "apiTokens": {
+    "new": "Neues Token",
+    "intro": "Mit einem API-Token ruft ein Skript die API über REST auf, mit den dafür gewählten Berechtigungen und nie mit mehr, als die Besitzerin oder der Besitzer zum Zeitpunkt des Aufrufs hat. Es wird im Authorization-Header gesendet:",
+    "empty": "Keine API-Tokens",
+    "name": "Name",
+    "nameRequired": "Ein Name ist erforderlich",
+    "owner": "Besitz",
+    "you": "Sie",
+    "token": "Token",
+    "permissions": "Berechtigungen",
+    "permissionsHint": "Nur Berechtigungen, die Sie selbst haben, und keine, die eine Person im Browser erfordern",
+    "nothingGrantable": "Sie haben keine Berechtigung, die ein Token tragen darf.",
+    "expiresOn": "Läuft ab am",
+    "expiresHint": "Leer lassen für ein Token, das bis zum Widerruf gilt",
+    "createdAt": "Erstellt",
+    "expiresAt": "Läuft ab",
+    "lastUsedAt": "Zuletzt benutzt",
+    "never": "Nie",
+    "expired": "Abgelaufen",
+    "unused": "Noch nicht",
+    "create": "Token erstellen",
+    "cancel": "Abbrechen",
+    "createdTitle": "Ihr neues API-Token",
+    "createdText": "Kopieren Sie es jetzt: Es wird nicht gespeichert und nicht wieder angezeigt. Wer es hat, kann mit seinen Berechtigungen handeln.",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "done": "Fertig",
+    "revoke": "Widerrufen",
+    "revokeConfirm": "Das Token „{name}“ widerrufen? Skripte, die es benutzen, funktionieren sofort nicht mehr.",
+    "revoked": "Token widerrufen"
+  },
   "permissions": {
     "title": "Rollen & Rechte",
     "intro": "Eine Rolle ist eine Menge von Rechten; eine Person hat alle Rechte all ihrer Rollen. Die Administration hat stets jedes Recht und verwaltet als einzige die Rollen.",
@@ -354,7 +386,8 @@
       "documents": "Dokumente",
       "sessions": "Sitzungen",
       "privacy": "Datenschutz",
-      "configuration": "Konfiguration"
+      "configuration": "Konfiguration",
+      "api": "API"
     },
     "keys": {
       "users_read": "Alle Personen sehen",
@@ -371,7 +404,9 @@
       "erasures_create": "Personen löschen",
       "settings_manage": "Einstellungen ändern",
       "mail_manage": "Mailvorlagen und Rundmails",
-      "queues_read": "Warteschlangen sehen"
+      "queues_read": "Warteschlangen sehen",
+      "api-tokens_create": "API-Tokens erstellen",
+      "api-tokens_manage": "API-Tokens aller verwalten"
     },
     "descriptions": {
       "users_read": "Jedes Benutzerkonto mit Bild und die Namen der Rollen",
@@ -388,7 +423,9 @@
       "erasures_create": "Die identifizierenden Daten einer Person löschen (DSGVO)",
       "settings_manage": "Laufzeiteinstellungen, Feature-Flags und Wartungsmodus",
       "mail_manage": "Den Wortlaut von Mails bearbeiten, Rundmails senden und das Versandprotokoll lesen",
-      "queues_read": "Zustand, Zeitpläne und Jobs der Hintergrund-Warteschlangen"
+      "queues_read": "Zustand, Zeitpläne und Jobs der Hintergrund-Warteschlangen",
+      "api-tokens_create": "Tokens für Skripte erstellen, mit gewählten Berechtigungen, die man selbst hat; sie hören auf zu wirken, wenn diese Berechtigung entzogen wird",
+      "api-tokens_manage": "Die API-Tokens aller Personen sehen und widerrufen"
     }
   },
   "viewAs": {
