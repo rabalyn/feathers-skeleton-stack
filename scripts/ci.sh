@@ -9,8 +9,9 @@
 #   scripts/ci.sh --static  static checks only: no stack, no image scan
 #
 # Static: gitleaks over the whole history, ESLint, the client dependency
-# boundary, typecheck, unit tests that need no stack, pnpm audit, the Quadlet
-# drift check, the production OpenBao procedure against a throwaway OpenBao.
+# boundary, typecheck, unit tests that need no stack, the service generator's
+# drift check (ADR 0030), pnpm audit, the Quadlet drift check, the
+# production OpenBao procedure against a throwaway OpenBao.
 # Stack: up, Vitest, Playwright, the alert delivery check, the backup and
 # restore cycle (scripts/backup-test.sh), then the vulnerability scan of
 # every image compose.yaml names.
@@ -82,6 +83,7 @@ podman build -q -t "$CI_IMAGE" -f "$ROOT/containers/ci/Containerfile" "$ROOT" >/
 check "lint and client boundary" in_ci_image pnpm lint
 check "typecheck" in_ci_image pnpm typecheck
 check "unit tests" in_ci_image pnpm test:unit
+check "service generator output typechecks" in_ci_image pnpm --filter @app/api gen:check
 check "pnpm audit (high and above)" in_ci_image pnpm audit --audit-level=high
 check "Quadlet units match compose.yaml" "$ROOT/scripts/quadlet.sh" --check
 check "production OpenBao procedure" "$ROOT/scripts/openbao-test.sh"

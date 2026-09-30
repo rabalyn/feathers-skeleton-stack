@@ -3,6 +3,7 @@ import { KnexService } from '@feathersjs/knex'
 import { hooks as schemaHooks, resolve, virtual } from '@feathersjs/schema'
 import { Type, getValidator, querySyntax, type Static } from '@feathersjs/typebox'
 import type { Application } from '../../app.js'
+import { publishNothing } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
 import { PAGINATE } from '../../paginate.js'
 import { queryValidator } from '../../validators.js'
@@ -78,6 +79,8 @@ export const auditEvents = (app: Application) => {
       find: [newestFirst]
     }
   })
+  // Events are recorded beside the changes, not through this service.
+  app.service(AUDIT_EVENTS_PATH).publish(publishNothing)
 }
 
 declare module '../../app.js' {

@@ -5,7 +5,7 @@ import { hooks as schemaHooks } from '@feathersjs/schema'
 import type { Knex } from 'knex'
 import type { Application } from '../../app.js'
 import { recordAudit } from '../../audit.js'
-import { publishTo, subjectChannel } from '../../channels.js'
+import { publishNothing, publishTo, subjectChannel } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
 import type { Locale } from '../../locales.js'
 import { templateVariables } from '../../mail/kind.js'
@@ -254,6 +254,9 @@ export const mailTemplates = (app: Application) => {
   // To whoever may read the wording of the application's mail (ADR 0012).
   app.service(MAIL_TEMPLATES_PATH).publish(publishTo(app, () => [subjectChannel(MAIL_TEMPLATES_PATH)]))
   app.service(MAIL_TEMPLATE_REVISIONS_PATH).publish(publishTo(app, () => [subjectChannel(MAIL_TEMPLATE_REVISIONS_PATH)]))
+  // Kinds are declared in code, and a preview is for the caller only.
+  app.service(MAIL_KINDS_PATH).publish(publishNothing)
+  app.service(MAIL_PREVIEWS_PATH).publish(publishNothing)
 }
 
 declare module '../../app.js' {

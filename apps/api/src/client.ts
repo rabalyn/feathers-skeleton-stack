@@ -54,6 +54,7 @@ import type { Role, RoleData, RolePatch, RoleQuery } from './services/roles/role
 import type { ROLE_EXTERNAL_METHODS } from './services/roles/roles.js'
 import type { UserRoles, UserRolesPatch, USER_ROLE_EXTERNAL_METHODS } from './services/roles/user-roles.js'
 import type { ViewAs, ViewAsData, VIEW_AS_EXTERNAL_METHODS } from './services/view-as/view-as.js'
+// gen:service imports (ADR 0030)
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
 export type { Role, RoleData, RolePatch, RoleQuery } from './services/roles/roles.schema.js'
@@ -90,6 +91,7 @@ export type {
   MailTemplateRevisionQuery
 } from './services/mail/mail.schema.js'
 export type { QueueJob, QueueJobState, QueueScheduler, QueueStatus } from './services/queues/queues.schema.js'
+// gen:service exports (ADR 0030)
 export { ALLOWED_CONTENT_TYPES, AVATAR_CONTENT_TYPES, FILENAME_HEADER, type AllowedContentType } from './uploads.js'
 export {
   ADMIN_PERMISSIONS,
@@ -208,6 +210,7 @@ export interface ClientServiceTypes {
   // The job queues, admins only (ADR 0024), with a `status` event carrying
   // a queue's new state whenever it changes.
   queues: External<ClientService<QueueStatus, never, never, QueueStatus[], Params>, typeof QUEUE_EXTERNAL_METHODS>
+  // gen:service client-types (ADR 0030)
 }
 
 export type ClientApplication = Application<ClientServiceTypes>

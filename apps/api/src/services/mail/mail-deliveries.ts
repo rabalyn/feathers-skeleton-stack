@@ -2,6 +2,7 @@ import type { Params } from '@feathersjs/feathers'
 import { KnexService } from '@feathersjs/knex'
 import { hooks as schemaHooks } from '@feathersjs/schema'
 import type { Application } from '../../app.js'
+import { publishNothing } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
 import { PAGINATE } from '../../paginate.js'
 import {
@@ -44,6 +45,8 @@ export const mailDeliveries = (app: Application) => {
       find: [newestFirst]
     }
   })
+  // Deliveries are written by the worker, not through this service.
+  app.service(MAIL_DELIVERIES_PATH).publish(publishNothing)
 }
 
 declare module '../../app.js' {

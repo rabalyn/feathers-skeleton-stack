@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADRs 0016, 0017, 0018
-- Related: [0005](0005-typebox-schema-boundary.md), [0006](0006-feathersjs-typescript-api.md), [0014](0014-frontend-quasar-vue.md)
+- Related: [0005](0005-typebox-schema-boundary.md), [0006](0006-feathersjs-typescript-api.md), [0014](0014-frontend-quasar-vue.md), [0030](0030-service-generator.md)
 
 ## Context
 
@@ -36,6 +36,6 @@ Everything under `containers/` — Containerfiles, Nginx configuration, LDAP see
 
 ## Consequences
 
-- One definition of the contract, living where the Feathers generator already puts it.
+- One definition of the contract, living beside the service that defines it, in the API package. New services are added to it by the generator ([0030](0030-service-generator.md)).
 - The API package becomes a dependency of the frontend, so its build must run first. The workspace handles ordering.
 - The boundary lint rule is load-bearing; without it the arrangement is one careless import away from bundling `pg`.

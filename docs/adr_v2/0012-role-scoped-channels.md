@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADR 0008 (channel portion)
-- Related: [0006](0006-feathersjs-typescript-api.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0011](0011-casl-role-authorization.md), [0028](0028-read-only-view-as.md), [0029](0029-api-tokens.md)
+- Related: [0006](0006-feathersjs-typescript-api.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0011](0011-casl-role-authorization.md), [0028](0028-read-only-view-as.md), [0029](0029-api-tokens.md), [0030](0030-service-generator.md)
 
 ## Context
 
@@ -22,8 +22,8 @@ Real-time events are a second delivery path out of the application, and it is ea
   - events about everything else publish to `subjects/{service}` only.
 - Channel membership is a **projection of the CASL ability**, not a parallel rule set. `feathers-casl`'s channel helpers filter each outgoing event against the receiving connection's ability, so a connection cannot receive a record, or a field of a record, that a direct request would have denied it.
 - Every event payload passes through the same external resolver as the REST response ([0005](0005-typebox-schema-boundary.md)). There is no separate serialisation path for real-time. The channel helpers are handed the resolved payload, never the service's internal result, because the per-connection copy they produce is what goes on the wire.
-- A publisher only names candidate channels; the ability filter is what decides. A service without a publisher, and every event of the authentication service, reaches nobody. When filtering fails, the event reaches nobody as well (`feathers-casl`'s default would fall back to every authenticated connection).
-- Publishers are added as real screens need them, not speculatively. These services publish: `users` and `documents` to the owner and their subject channel; `sessions`, `settings`, the mail templates, their revisions and campaigns, and the `queues` status event to their subject channel ([0011](0011-casl-role-authorization.md), [0025](0025-runtime-settings.md), [0027](0027-email-templates-and-sending.md), [0024](0024-background-jobs-bullmq.md)); `data-exports` to the requesting account only, since only it sees an export ([0013](0013-gdpr-export-and-retention.md)). `roles` publishes to its subject channel as well. Every other service reaches nobody.
+- A publisher only names candidate channels; the ability filter is what decides. Every service names its publisher, and one whose results go to the caller only, the authentication service among them, names `publishNothing` and reaches nobody; a test fails for a service without a publisher, so reaching nobody is decided rather than fallen into ([0030](0030-service-generator.md)). When filtering fails, the event reaches nobody as well (`feathers-casl`'s default would fall back to every authenticated connection).
+- Publishers are added as real screens need them, not speculatively. These services publish: `users` and `documents` to the owner and their subject channel; `sessions`, `settings`, the mail templates, their revisions and campaigns, and the `queues` status event to their subject channel ([0011](0011-casl-role-authorization.md), [0025](0025-runtime-settings.md), [0027](0027-email-templates-and-sending.md), [0024](0024-background-jobs-bullmq.md)); `data-exports` to the requesting account only, since only it sees an export ([0013](0013-gdpr-export-and-retention.md)). `roles` publishes to its subject channel as well. Every other service names `publishNothing`.
 - Membership is recomputed whenever the connection re-authenticates. When a session is revoked or its permissions change, the connection is dropped from its channels and forced to re-authenticate, so an in-flight socket cannot outlive the permissions it was granted under ([0010](0010-sessions-postgres-ratelimits-valkey.md)).
   - The triggers are: a change of a user's roles or `enabled`, which ends every connection of that user; a change of a role's permissions, which ends every connection of everyone holding it; a revoked session (logout, refresh token reuse), which ends that session's connections; and the start and end of view-as, which re-join the calling connection and end the session's others ([0028](0028-read-only-view-as.md)). A connection in view-as joins the target's channels under the intersected ability.
   - Forcing means the server **closes the socket**. The client reconnects when the server closed it, re-authenticates with its access token and, when that is refused, refreshes first; a disabled account or a revoked session then ends in the anonymous state. A socket whose access token expires unrenewed is closed the same way, by Feathers.
@@ -34,5 +34,5 @@ Real-time events are a second delivery path out of the application, and it is ea
 ## Consequences
 
 - Authorization is expressed once and applied to both delivery paths, which is the only arrangement that stays correct as rules change.
-- Publishers must be written for every service that emits events; a service without one emits to nobody, which is the safe default.
+- Every service carries a publisher line, including those that send nothing; the ones that send nothing say why beside it.
 - A role change, and a change to a role someone holds, causes a visible reconnect in their client. Acceptable, and preferable to a socket retaining stale rights.

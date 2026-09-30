@@ -21,6 +21,8 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/test-results/**',
       '**/playwright-report/**',
+      // The service generator's scratch copy (apps/api/generators/check.sh).
+      '**/.generator-check/**',
       '**/.quasar/**',
       '**/quasar.config.*.temporary.compiled*',
       // Vendored third-party code, kept close to upstream (ADR 0014).

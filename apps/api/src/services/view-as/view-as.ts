@@ -4,7 +4,7 @@ import type { NullableId, Params } from '@feathersjs/feathers'
 import { Type, getValidator, type Static } from '@feathersjs/typebox'
 import { ROLE_MANAGEMENT } from '../../abilities.js'
 import type { Application } from '../../app.js'
-import { endSessionConnections, joinAs, type ChannelUser } from '../../channels.js'
+import { endSessionConnections, joinAs, publishNothing, type ChannelUser } from '../../channels.js'
 import { loadAccess } from '../../permissions.js'
 import { dataValidator } from '../../validators.js'
 
@@ -82,6 +82,8 @@ export class ViewAsService {
 export const viewAs = (app: Application) => {
   app.use(VIEW_AS_PATH, new ViewAsService(app), { methods: [...VIEW_AS_EXTERNAL_METHODS] })
   app.service(VIEW_AS_PATH).hooks({ before: { create: [schemaHooks.validateData(viewAsDataValidator)] } })
+  // Starting and ending concern the caller's own connection only (ADR 0028).
+  app.service(VIEW_AS_PATH).publish(publishNothing)
 }
 
 declare module '../../app.js' {

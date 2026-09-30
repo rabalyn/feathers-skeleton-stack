@@ -2,7 +2,7 @@
 
 This directory holds the architecture decisions for this project. It supersedes `docs/adr/`, which split a single planning document into seventy files and accumulated 433 open items before any business logic existed. See [0019](0019-adr-convention.md) for what changed and why.
 
-Twenty-nine ADRs, each covering a decision with real alternatives. Read [0001](0001-one-stack-every-environment.md) first — the parity rule it sets is the reason several later decisions look the way they do.
+Thirty ADRs, each covering a decision with real alternatives. Read [0001](0001-one-stack-every-environment.md) first — the parity rule it sets is the reason several later decisions look the way they do.
 
 ## Index
 
@@ -52,6 +52,7 @@ Twenty-nine ADRs, each covering a decision with real alternatives. Read [0001](0
 ### Process
 
 - [0019 — ADR convention for this directory](0019-adr-convention.md)
+- [0030 — New services are scaffolded by a project-local generator](0030-service-generator.md)
 
 ## Not yet decided
 

@@ -4,7 +4,7 @@ import { hooks as schemaHooks } from '@feathersjs/schema'
 import { Type, getValidator, type Static } from '@feathersjs/typebox'
 import type { Application } from '../../app.js'
 import { recordAudit } from '../../audit.js'
-import { endUserConnections } from '../../channels.js'
+import { endUserConnections, publishNothing } from '../../channels.js'
 import { dataValidator } from '../../validators.js'
 import { USERS_PATH } from '../users/users.js'
 
@@ -78,6 +78,8 @@ export const erasures = (app: Application) => {
   app.service(ERASURES_PATH).hooks({
     before: { create: [schemaHooks.validateData(erasureDataValidator)] }
   })
+  // The users patch it makes publishes the erased record.
+  app.service(ERASURES_PATH).publish(publishNothing)
 }
 
 declare module '../../app.js' {

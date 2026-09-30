@@ -100,7 +100,8 @@ const CATALOGUE_ENTRIES = [
   // API tokens (ADR 0029): creating one's own, bounded by one's own rights
   // on every request; seeing and revoking one's own is the baseline.
   entry('api-tokens.create', 'api', (can) => can('create', 'api-tokens')),
-  entry('api-tokens.manage', 'api', (can) => can(['read', 'delete'], 'api-tokens'))
+  entry('api-tokens.manage', 'api', (can) => can(['read', 'delete'], 'api-tokens')),
+  // gen:service permissions (ADR 0030)
 ]
 
 export type PermissionKey = (typeof CATALOGUE_ENTRIES)[number]['key']

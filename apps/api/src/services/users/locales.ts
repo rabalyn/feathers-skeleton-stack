@@ -2,6 +2,7 @@ import { Type, getValidator, type Static } from '@feathersjs/typebox'
 import { hooks as schemaHooks } from '@feathersjs/schema'
 import type { Params } from '@feathersjs/feathers'
 import type { Application } from '../../app.js'
+import { publishNothing } from '../../channels.js'
 import { LOCALES } from '../../locales.js'
 import { dataValidator } from '../../validators.js'
 import { USERS_PATH } from './users.js'
@@ -38,6 +39,8 @@ export const locales = (app: Application) => {
     around: { create: [schemaHooks.resolveExternal(userExternalResolver)] },
     before: { create: [schemaHooks.validateData(localeDataValidator)] }
   })
+  // The users patch it makes publishes the change.
+  app.service(LOCALES_PATH).publish(publishNothing)
 }
 
 declare module '../../app.js' {
