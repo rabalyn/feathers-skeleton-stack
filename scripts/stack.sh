@@ -188,6 +188,22 @@ pem_body() { sed '/-----/d' | tr -d '\n'; }
 
 # Runs the healthcheck itself rather than waiting for podman's timer, whose
 # first run comes one full interval (10s for the api) after the start.
+# Host actions an end-to-end spec asks for by printing one line (ADR 0015):
+# `stack-action: stop api-e2e` or `stack-action: start api-e2e`, and nothing
+# else. The e2e container gets no access to Podman; this reads its output.
+e2e_actions() {
+  local line action
+  while IFS= read -r line; do
+    printf '%s\n' "$line"
+    action=${line%$'\r'}
+    action=${action#"${action%%[![:space:]]*}"}
+    case $action in
+      'stack-action: stop api-e2e') podman stop -t 5 api-e2e >/dev/null || log "stopping api-e2e failed" ;;
+      'stack-action: start api-e2e') podman start api-e2e >/dev/null || log "starting api-e2e failed" ;;
+    esac
+  done
+}
+
 wait_healthy() { # <container> <seconds>
   local i
   for i in $(seq "$2"); do
@@ -694,7 +710,7 @@ case $cmd in
     trap 'podman exec api-e2e node dist/empty-bucket.js >/dev/null 2>&1 || true; podman rm -f api-e2e worker-e2e >/dev/null 2>&1 || true' EXIT
     start_e2e_api
     podman exec api-e2e node dist/empty-bucket.js >/dev/null || die "could not empty the e2e buckets"
-    compose --profile test run --rm -T e2e pnpm exec playwright test "$@"
+    compose --profile test run --rm -T e2e pnpm exec playwright test "$@" 2>&1 | e2e_actions
     ;;
   breakglass)
     # The local app's break-glass login, for trying /break-glass by hand.

@@ -35,6 +35,10 @@ export const loginAs = async (page: Page, who: Account, path = '/') => {
   return (await response.json()) as Refreshed
 }
 
+// Asks `scripts/stack.sh e2e`, which reads the suite's output, to stop or
+// start the e2e api (ADR 0015). Nothing else of the host is reachable.
+export const stackAction = (action: 'stop api-e2e' | 'start api-e2e') => console.log(`stack-action: ${action}`)
+
 export const nav = (page: Page) => page.locator('.q-drawer')
 // The labels of the navigation, without the icons' ligature text.
 export const navLabels = (page: Page) => nav(page).locator('.q-item__section--main')

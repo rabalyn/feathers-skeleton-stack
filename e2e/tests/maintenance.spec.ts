@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
-import { ADMIN, USER, loginAs, nav, type Account } from './support.js'
+import { ADMIN, USER, loginAs, nav, stackAction, type Account } from './support.js'
 
 // Maintenance mode (ADR 0025): an admin switches it on, a user's open page
 // goes to the maintenance page, the user cannot log in, the admin keeps
@@ -85,4 +85,21 @@ test('a browser that cannot reach the API waits on the maintenance page until it
   await page.unroute('**/api/**')
   await expect(page).toHaveURL(/\/login$/, { timeout: POLL })
   await expect(page.getByRole('button', { name: 'Anmelden' })).toBeVisible()
+})
+
+test('an open page waits on the maintenance page while the API is stopped, and comes back', async ({ page }) => {
+  test.setTimeout(180_000)
+  await loginAs(page, USER)
+  await expect(page).toHaveURL(/\/profile$/)
+  try {
+    // The socket closes; five seconds later the page finds the API gone.
+    stackAction('stop api-e2e')
+    await expect(page).toHaveURL(/\/maintenance$/, { timeout: 30_000 })
+    await expect(page.getByText('Zuletzt geprüft um')).toBeVisible()
+  } finally {
+    stackAction('start api-e2e')
+  }
+  // A stopped API ends no session: the reload at /login goes on to the
+  // profile.
+  await expect(page).toHaveURL(/\/profile$/, { timeout: POLL + 30_000 })
 })
