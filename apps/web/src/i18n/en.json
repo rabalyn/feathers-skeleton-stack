@@ -158,7 +158,9 @@
       "roles_remove": "Role deleted",
       "users_roles": "Roles assigned",
       "view-as_start": "Viewed as",
-      "view-as_end": "View ended"
+      "view-as_end": "View ended",
+      "maintenance_enable": "Maintenance mode switched on",
+      "maintenance_disable": "Maintenance mode switched off"
     }
   },
   "gdpr": {
@@ -432,5 +434,23 @@
     "start": "View as this person",
     "banner": "You see the application as {who}, read-only, until {until}. What you may not see yourself stays hidden.",
     "stop": "End view"
+  },
+  "maintenance": {
+    "title": "Maintenance",
+    "body": "The application is being maintained and is not available right now. This page checks every 30 seconds and takes you to the login as soon as it is back.",
+    "checking": "Checking …",
+    "checked": "Last checked at {time}.",
+    "adminLogin": "Login for administrators",
+    "banner": "Maintenance mode is on: only administrators can use the application.",
+    "setting": "Maintenance mode",
+    "isOn": "On: only people who may change settings can log in; everyone else sees the maintenance page, API tokens are refused and the worker takes no jobs.",
+    "isOff": "Off",
+    "enable": "Switch on",
+    "disable": "Switch off",
+    "confirmEnableTitle": "Switch maintenance mode on?",
+    "confirmEnable": "Everyone who may not change settings is logged out at once and sent to the maintenance page, cannot log in until it is over, and API tokens are refused. The worker stops taking jobs.",
+    "confirmDisableTitle": "Switch maintenance mode off?",
+    "confirmDisable": "Everyone can log in again, API tokens work again and the worker resumes its jobs.",
+    "loginHint": "Maintenance mode is on: only administrators can log in."
   }
 }

@@ -5,7 +5,10 @@
         <div class="text-h5">{{ t('app.title') }}</div>
       </q-card-section>
       <q-card-section>
-        <q-banner v-if="session.expired" dense class="bg-orange-1 q-mb-md" role="status">
+        <q-banner v-if="session.status === 'maintenance'" dense class="bg-red-1 q-mb-md" role="status">
+          {{ t('maintenance.loginHint') }}
+        </q-banner>
+        <q-banner v-else-if="session.expired" dense class="bg-orange-1 q-mb-md" role="status">
           {{ t('auth.expired') }}
         </q-banner>
         <p>{{ t('auth.welcome') }}</p>

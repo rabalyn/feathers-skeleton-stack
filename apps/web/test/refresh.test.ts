@@ -62,9 +62,19 @@ describe('requestRefresh', () => {
     expect(await requestRefresh(deps(async () => json(401, { name: 'NotAuthenticated' })))).toEqual({ kind: 'rejected' })
   })
 
-  it('reports a network failure and a 503 as transient', async () => {
-    expect(await requestRefresh(deps(async () => Promise.reject(new TypeError('offline'))))).toEqual({ kind: 'transient' })
+  it('reports a 503 as transient', async () => {
     expect(await requestRefresh(deps(async () => json(503, {})))).toEqual({ kind: 'transient' })
+  })
+
+  it('reports a network failure and a missing API behind Nginx as unreachable', async () => {
+    expect(await requestRefresh(deps(async () => Promise.reject(new TypeError('offline'))))).toEqual({ kind: 'unreachable' })
+    expect(await requestRefresh(deps(async () => new Response('<html>', { status: 502 })))).toEqual({ kind: 'unreachable' })
+    expect(await requestRefresh(deps(async () => new Response('<html>', { status: 504 })))).toEqual({ kind: 'unreachable' })
+  })
+
+  it('reports a refusal for maintenance (ADR 0025)', async () => {
+    const refusal = { name: 'Unavailable', code: 503, message: 'Maintenance mode is active', data: { maintenance: true } }
+    expect(await requestRefresh(deps(async () => json(503, refusal)))).toEqual({ kind: 'maintenance' })
   })
 
   it('reports a malformed success as transient rather than trusting it', async () => {

@@ -30,6 +30,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/BreakGlassPage.vue'),
     meta: { public: true }
   },
+  // Maintenance mode (ADR 0025): where the ACS sends a refused login, and
+  // where the browser waits while the API is down.
+  {
+    path: '/maintenance',
+    name: 'maintenance',
+    component: () => import('@/pages/MaintenancePage.vue'),
+    meta: { public: true }
+  },
   {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),

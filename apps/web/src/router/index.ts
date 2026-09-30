@@ -25,6 +25,9 @@ export default defineRouter(({ store }) => {
       return session.isAuthenticated ? safePath(to.query.returnTo) : true
     }
     if (to.meta.public) return true
+    // The login pages stay reachable: only after the IdP answers does the
+    // API know whether somebody may bypass maintenance (ADR 0025).
+    if (session.status === 'maintenance') return { name: 'maintenance' }
     if (!session.isAuthenticated) {
       return { name: 'login', query: to.fullPath === '/' ? {} : { returnTo: to.fullPath } }
     }
@@ -40,9 +43,9 @@ export default defineRouter(({ store }) => {
     () => session.status,
     (status) => {
       const current = router.currentRoute.value
-      if (status === 'anonymous' && current.matched.length > 0 && !current.meta.public) {
-        void router.replace({ name: 'login', query: { returnTo: current.fullPath } })
-      }
+      if (current.matched.length === 0 || current.meta.public) return
+      if (status === 'anonymous') void router.replace({ name: 'login', query: { returnTo: current.fullPath } })
+      if (status === 'maintenance') void router.replace({ name: 'maintenance' })
     }
   )
 

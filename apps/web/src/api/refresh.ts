@@ -1,4 +1,5 @@
 import { AUTHENTICATION_URL, type AuthenticationResponse } from '@app/api/client'
+import { isMaintenanceRefusal } from './maintenance'
 
 // Session restore and renewal (ADR 0010, 0014). Kept free of Vue and of the
 // Feathers client so it can be tested on its own.
@@ -9,10 +10,15 @@ export type RefreshOutcome =
   // The session is gone (no cookie, revoked, expired, disabled account):
   // the user has to log in again.
   | { kind: 'rejected' }
-  // The server could not answer (offline, rate limited, 503 while Valkey is
-  // down, a restart): the session may well be intact, so nobody is logged
-  // out; the caller retries.
+  // The server could not decide (rate limited, 503 while Valkey is down, an
+  // error): the session may well be intact, so nobody is logged out; the
+  // caller retries.
   | { kind: 'transient' }
+  // Nothing answered for the API: the network failed, or Nginx found no
+  // API behind it (502, 504). Maybe maintenance, which the caller asks.
+  | { kind: 'unreachable' }
+  // Maintenance mode is on and this browser is not let in (ADR 0025).
+  | { kind: 'maintenance' }
 
 // One refresh at a time across all tabs of this origin: they share the
 // cookie, and a tab presenting a token another tab has just rotated away
@@ -49,8 +55,10 @@ export const requestRefresh = async (deps: RefreshDependencies = defaults()): Pr
         body: JSON.stringify({ strategy: 'refresh' })
       })
     } catch {
-      return { kind: 'transient' }
+      return { kind: 'unreachable' }
     }
+    if (response.status === 502 || response.status === 504) return { kind: 'unreachable' }
+    if (response.status === 503 && isMaintenanceRefusal(await response.json().catch(() => null))) return { kind: 'maintenance' }
     const kind = classifyStatus(response.status)
     if (kind !== 'ok') return { kind }
     try {

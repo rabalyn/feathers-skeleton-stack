@@ -1,6 +1,22 @@
 <template>
   <q-page padding>
     <h1 class="text-h5 q-mt-none">{{ t('nav.settings') }}</h1>
+    <q-card v-if="mayPatch && maintenance" flat bordered class="q-mb-md">
+      <q-card-section class="row items-center q-gutter-md">
+        <q-icon name="construction" size="md" :color="maintenance.value === true ? 'negative' : 'grey-7'" />
+        <div class="col">
+          <div class="text-subtitle1">{{ t('maintenance.setting') }}</div>
+          <div class="text-caption text-grey-8">
+            {{ maintenance.value === true ? t('maintenance.isOn') : t('maintenance.isOff') }}
+          </div>
+        </div>
+        <q-btn
+          :color="maintenance.value === true ? 'primary' : 'negative'"
+          :label="maintenance.value === true ? t('maintenance.disable') : t('maintenance.enable')"
+          @click="confirmingMaintenance = true"
+        />
+      </q-card-section>
+    </q-card>
     <q-table
       :rows="settings.data"
       :columns="columns"
@@ -18,7 +34,15 @@
       </template>
       <template #body-cell-actions="props">
         <q-td :props="props">
-          <q-btn v-if="mayPatch" flat dense round icon="edit" :aria-label="t('settings.edit')" @click="edit(props.row)" />
+          <q-btn
+            v-if="mayPatch && props.row.key !== MAINTENANCE_KEY"
+            flat
+            dense
+            round
+            icon="edit"
+            :aria-label="t('settings.edit')"
+            @click="edit(props.row)"
+          />
         </q-td>
       </template>
     </q-table>
@@ -43,6 +67,28 @@
         <q-card-actions align="right">
           <q-btn v-close-popup flat :label="t('settings.cancel')" />
           <q-btn color="primary" :label="t('settings.save')" :loading="saving" :disable="draftError !== null" @click="save" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="confirmingMaintenance">
+      <q-card class="editor">
+        <q-card-section>
+          <div class="text-h6">
+            {{ maintenance?.value === true ? t('maintenance.confirmDisableTitle') : t('maintenance.confirmEnableTitle') }}
+          </div>
+        </q-card-section>
+        <q-card-section>
+          {{ maintenance?.value === true ? t('maintenance.confirmDisable') : t('maintenance.confirmEnable') }}
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn v-close-popup flat :label="t('settings.cancel')" />
+          <q-btn
+            :color="maintenance?.value === true ? 'primary' : 'negative'"
+            :label="maintenance?.value === true ? t('maintenance.disable') : t('maintenance.enable')"
+            :loading="saving"
+            @click="toggleMaintenance"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -89,6 +135,24 @@ const columns = computed<NonNullable<QTableProps['columns']>>(() => [
 ])
 
 const show = (value: unknown) => JSON.stringify(value)
+
+// Maintenance mode has a switch of its own, with a confirmation, rather than
+// the JSON editor: switching it on ends everyone else's sessions (ADR 0025).
+const MAINTENANCE_KEY = 'maintenanceMode'
+const maintenance = computed(() => (settings.data as Setting[]).find((setting) => setting.key === MAINTENANCE_KEY))
+const confirmingMaintenance = ref(false)
+const toggleMaintenance = async () => {
+  saving.value = true
+  try {
+    await api.service('settings').patch(MAINTENANCE_KEY, { value: maintenance.value?.value !== true })
+    notify.success(t('settings.saved'))
+    confirmingMaintenance.value = false
+  } catch (error) {
+    notify.failure(error)
+  } finally {
+    saving.value = false
+  }
+}
 
 const editing = ref(false)
 const saving = ref(false)

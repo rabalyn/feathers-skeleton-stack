@@ -8,6 +8,9 @@
         <q-btn flat no-caps icon="account_circle" :label="displayName" :to="{ name: 'profile' }" />
         <q-btn flat no-caps icon="logout" :label="t('auth.logout')" @click="logout" />
       </q-toolbar>
+      <q-banner v-if="session.maintenanceOn" dense class="bg-red-8 text-white" role="status">
+        {{ t('maintenance.banner') }}
+      </q-banner>
       <q-banner v-if="session.unavailable" dense class="bg-warning text-dark" role="status">
         {{ t('auth.unavailable') }}
       </q-banner>
