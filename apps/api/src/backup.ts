@@ -59,7 +59,7 @@ const main = async () => {
   // `dump` writes the file to stdout, so its log lines go to stderr only.
   if (command === 'dump') {
     const [repository, name, snapshot] = args
-    if (!REPOSITORIES.includes(repository as Repository) || !name) fail('usage: dump <db|objects|state> <file> [<snapshot>]')
+    if (!REPOSITORIES.includes(repository as Repository) || !name) fail('usage: dump <db|objects|state|netbox> <file> [<snapshot>]')
     await dumpFile(config, repository as Repository, name!, process.stdout, snapshot)
     return
   }

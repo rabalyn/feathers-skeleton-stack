@@ -6,7 +6,9 @@ import type { Writable } from 'node:stream'
 // the backup target; the password comes from RESTIC_PASSWORD_FILE, which
 // restic reads itself, so it never passes through an argument.
 
-export const REPOSITORIES = ['db', 'objects', 'state'] as const
+// `netbox` holds NetBox's database (ADR 0031), apart from `db` so that the
+// latest snapshot of each is one dump.
+export const REPOSITORIES = ['db', 'objects', 'state', 'netbox'] as const
 export type Repository = (typeof REPOSITORIES)[number]
 
 // Every snapshot is taken under this host name, so retention groups them the

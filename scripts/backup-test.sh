@@ -6,7 +6,8 @@
 # The cycle backs up a source of its own, `backup_check` and the bucket
 # `backup-check`, into repositories of its own under the real target
 # (/srv/backups/check: the NFS export in CI), so the local app's data is
-# only ever read. Valkey and OpenBao are the stack's own, restored into a
+# only ever read. NetBox's database (ADR 0031) is the stack's own, read
+# likewise and restored into `restore_netbox_check`. Valkey and OpenBao are the stack's own, restored into a
 # throwaway Valkey and a throwaway OpenBao. Everything the check creates is
 # removed at the end.
 set -euo pipefail
@@ -18,6 +19,7 @@ SOURCE_DB=backup_check
 SOURCE_BUCKET=backup-check
 RESTORE_DB=restore_check
 RESTORE_BUCKET=restore-check
+RESTORE_NETBOX=restore_netbox_check
 CHECK_DIR=/srv/backups/check
 # The check's own runs log to stdout only: their failures on purpose must
 # not raise the backup alert, nor their successes stand in for the service's
@@ -84,12 +86,13 @@ cleanup() {
     running s3 && { empty_bucket "$SOURCE_BUCKET"; empty_bucket "$RESTORE_BUCKET"; } >/dev/null 2>&1
   fi
   if running postgres; then
-    psql_super postgres <<<"DROP DATABASE IF EXISTS $SOURCE_DB WITH (FORCE); DROP DATABASE IF EXISTS $RESTORE_DB WITH (FORCE);" >/dev/null 2>&1 || true
+    psql_super postgres <<<"DROP DATABASE IF EXISTS $SOURCE_DB WITH (FORCE); DROP DATABASE IF EXISTS $RESTORE_DB WITH (FORCE);
+      DROP DATABASE IF EXISTS $RESTORE_NETBOX WITH (FORCE);" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT
 
-for c in backup postgres s3 valkey openbao; do running "$c" || die "$c is not running; run scripts/stack.sh up"; done
+for c in backup postgres s3 valkey openbao netbox; do running "$c" || die "$c is not running; run scripts/stack.sh up"; done
 [[ -n $OPENBAO_IMAGE && -n $VALKEY_IMAGE ]] || die "images not found in compose.yaml"
 cleanup
 
@@ -111,7 +114,7 @@ check "a run over the app's database and bucket succeeds" "$BACKUP_SH" run
 after=$(log_file | grep -c '"backup completed"' || true)
 check "... and writes its success line to the log file" test "$after" -gt "$before"
 has_snapshot() { in_backup backup restic -r "/srv/backups/$1" --cache-dir /var/lib/backup/cache snapshots --json latest | jq -e 'length == 1' >/dev/null; }
-check "every repository has a snapshot" bash -c "$(declare -f in_backup has_snapshot); has_snapshot db && has_snapshot objects && has_snapshot state"
+check "every repository has a snapshot" bash -c "$(declare -f in_backup has_snapshot); has_snapshot db && has_snapshot objects && has_snapshot state && has_snapshot netbox"
 
 # --- the target ------------------------------------------------------------
 
@@ -250,6 +253,18 @@ JS
 )
 check "every file row resolves to its object, byte for byte" test "$unresolved" = 0
 check "... for all of them" test "$(wc -l <<<"$references")" = 3
+
+# --- restore: NetBox -------------------------------------------------------
+
+log "restoring NetBox into $RESTORE_NETBOX"
+check "restore-netbox into a clean database" backup_sh restore-netbox "$RESTORE_NETBOX"
+check "restore-netbox refuses an existing database without --replace" fails backup_sh restore-netbox "$RESTORE_NETBOX"
+nq() { psql_super "$1" <<<"$2"; }
+check "NetBox's sites are there, with their ids" \
+  test "$(nq "$RESTORE_NETBOX" "SELECT string_agg(id || facility, ',' ORDER BY id) FROM dcim_site")" = \
+  "$(nq netbox "SELECT string_agg(id || facility, ',' ORDER BY id) FROM dcim_site")"
+check "the restored tables belong to NetBox's login" \
+  test "$(nq "$RESTORE_NETBOX" "SELECT tableowner FROM pg_tables WHERE tablename = 'dcim_site'")" = netbox
 
 # --- restore: Valkey -------------------------------------------------------
 

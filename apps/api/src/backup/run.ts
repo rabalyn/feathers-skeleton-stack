@@ -9,13 +9,15 @@ import { REPOSITORIES, SNAPSHOT_HOST, restic, summary, type Repository } from '.
 import { clearState, stageState } from './state.js'
 import { assertTarget } from './target.js'
 
-// One backup run (ADR 0017): the three repositories, each on its own and in
-// any order, since database and objects need no coordination (ADR 0020).
+// One backup run (ADR 0017): the four repositories, each on its own and in
+// any order, since database and objects need no coordination (ADR 0020),
+// and NetBox's database references nothing of the application's (ADR 0031).
 // Each is followed by its retention. A repository that fails does not stop
 // the others; the run then ends with an error line per failure and without
 // the success line, which is what the alerts look for (ADR 0022).
 
 export const DUMP_FILE = 'app.dump'
+export const NETBOX_DUMP_FILE = 'netbox.dump'
 
 export interface BackupContext {
   config: BackupConfig
@@ -27,13 +29,13 @@ export interface BackupContext {
 export const mirrorDir = (config: BackupConfig) => join(config.backupWorkDir, 'mirror', config.s3UploadsBucket)
 export const stateDir = (config: BackupConfig) => join(config.backupWorkDir, 'state')
 
-const backupDatabase = async ({ config }: BackupContext) => {
+const dumpDatabase = (config: BackupConfig, repository: Repository, database: string, file: string) => {
   // Direct to PostgreSQL, verified, as the read-only `backup` role (ADR
   // 0004). The password reaches pg_dump alone, through its environment.
   const connection = [
     `host=${config.databaseHost}`,
     `port=${config.databasePort}`,
-    `dbname=${config.databaseName}`,
+    `dbname=${database}`,
     `user=${config.databaseUser}`,
     'sslmode=verify-full',
     `sslrootcert=${config.databaseCaFile}`
@@ -42,12 +44,17 @@ const backupDatabase = async ({ config }: BackupContext) => {
   // A pg_dump that fails fails the snapshot (--stdin-from-command).
   return restic(
     config,
-    'db',
-    ['backup', '--json', '--quiet', '--host', SNAPSHOT_HOST, '--stdin-filename', DUMP_FILE, '--stdin-from-command', '--',
+    repository,
+    ['backup', '--json', '--quiet', '--host', SNAPSHOT_HOST, '--stdin-filename', file, '--stdin-from-command', '--',
       'pg_dump', '--format=custom', '--compress=0', '--no-password', `--dbname=${connection}`],
     { env: { PGPASSWORD: config.databasePassword } }
   )
 }
+
+const backupDatabase = async ({ config }: BackupContext) => dumpDatabase(config, 'db', config.databaseName, DUMP_FILE)
+
+const backupNetbox = async ({ config }: BackupContext) =>
+  dumpDatabase(config, 'netbox', config.netboxDatabaseName, NETBOX_DUMP_FILE)
 
 const backupObjects = async ({ config, storage, logger }: BackupContext) => {
   const mirror = await syncMirror(storage, mirrorDir(config))
@@ -68,7 +75,8 @@ const backupState = async ({ config }: BackupContext) => {
 const STEPS: Record<Repository, (context: BackupContext) => Promise<string>> = {
   db: backupDatabase,
   objects: backupObjects,
-  state: backupState
+  state: backupState,
+  netbox: backupNetbox
 }
 
 const forget = (config: BackupConfig, repository: Repository, keepDaily: number) =>
