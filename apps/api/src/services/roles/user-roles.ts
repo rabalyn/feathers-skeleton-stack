@@ -3,6 +3,7 @@ import { hooks as schemaHooks } from '@feathersjs/schema'
 import type { Id, NullableId, Params } from '@feathersjs/feathers'
 import { Type, getValidator, type Static } from '@feathersjs/typebox'
 import type { Application } from '../../app.js'
+import { publishNothing } from '../../channels.js'
 import { dataValidator } from '../../validators.js'
 
 // Role assignment (ADR 0011): `admin`'s alone, and its own service rather
@@ -53,6 +54,8 @@ export const userRoles = (app: Application) => {
   app.service(USER_ROLES_PATH).hooks({
     before: { patch: [schemaHooks.validateData(userRolesPatchValidator)] }
   })
+  // The users patch it makes publishes the change.
+  app.service(USER_ROLES_PATH).publish(publishNothing)
 }
 
 declare module '../../app.js' {

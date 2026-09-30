@@ -15,7 +15,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/index.js",
     "test": "vitest run",
-    "lint:boundary": "depcruise src/client.ts --config .dependency-cruiser.cjs"
+    "lint:boundary": "depcruise src/client.ts --config .dependency-cruiser.cjs",
+    "gen:service": "pinion generators/service.ts",
+    "gen:check": "bash generators/check.sh"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1140.0",
@@ -52,6 +54,7 @@
     "yazl": "3.3.1"
   },
   "devDependencies": {
+    "@featherscloud/pinion": "0.5.7",
     "@feathersjs/socketio-client": "5.0.50",
     "@types/node": "^24.13.6",
     "@types/pg": "^8.23.1",

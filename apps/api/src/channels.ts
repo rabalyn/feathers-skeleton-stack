@@ -134,6 +134,11 @@ export const publishTo =
     return getChannelsWithReadAbility(app, payload, context, { channels, channelOnError: [] })
   }
 
+// The publisher of a service whose events reach no connection: its results
+// go to the caller only. Every service names its publisher, so sending
+// nothing is a decision rather than an omission (ADR 0012, 0030).
+export const publishNothing = (): undefined => undefined
+
 export const channels = (app: Application) => {
   // Anonymous connections join nothing: no 'connection' handler.
   app.on('login', (result: AuthenticationResult, { connection }: Params) => {

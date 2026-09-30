@@ -7,7 +7,7 @@ import { hooks as schemaHooks } from '@feathersjs/schema'
 import { Queue, QueueEvents } from 'bullmq'
 import type { Application } from '../../app.js'
 import { recordAudit } from '../../audit.js'
-import { publishTo, userChannel } from '../../channels.js'
+import { publishNothing, publishTo, userChannel } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
 import { EXPORT_CONTENT_TYPE } from '../../gdpr/export.js'
 import { BUILD_EXPORT, DATA_EXPORTS_QUEUE, EXPORT_JOB_OPTIONS, queueConnection, type ExportJob } from '../../jobs/queues.js'
@@ -225,6 +225,8 @@ export const dataExports = (app: Application) => {
 
   app.use(DATA_EXPORT_CONTENTS_PATH, new DataExportContentService(app), { methods: ['get'] })
   app.service(DATA_EXPORT_CONTENTS_PATH).hooks({ around: { get: [sendExport] } })
+  // Read only.
+  app.service(DATA_EXPORT_CONTENTS_PATH).publish(publishNothing)
 }
 
 declare module '../../app.js' {

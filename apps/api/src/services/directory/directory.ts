@@ -3,6 +3,7 @@ import { hooks as schemaHooks } from '@feathersjs/schema'
 import type { Params } from '@feathersjs/feathers'
 import type { Knex } from 'knex'
 import type { Application } from '../../app.js'
+import { publishNothing } from '../../channels.js'
 import { DirectoryUnavailable, type Directory } from '../../directory.js'
 import { PAGINATE } from '../../paginate.js'
 import { directoryQueryValidator, type DirectoryPage, type DirectoryQuery } from './directory.schema.js'
@@ -55,6 +56,8 @@ export const directory = (app: Application) => {
   app.service(DIRECTORY_PATH).hooks({
     before: { find: [schemaHooks.validateQuery(directoryQueryValidator)] }
   })
+  // Read only.
+  app.service(DIRECTORY_PATH).publish(publishNothing)
 }
 
 declare module '../../app.js' {

@@ -6,6 +6,7 @@ import { KnexService } from '@feathersjs/knex'
 import { hooks as schemaHooks } from '@feathersjs/schema'
 import { subject } from '@casl/ability'
 import type { Application } from '../../app.js'
+import { publishNothing } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
 import {
   FILENAME_HEADER,
@@ -165,9 +166,14 @@ export const files = (app: Application) => {
       create: [schemaHooks.validateData(fileDataValidator)]
     }
   })
+  // An upload concerns the uploader, who has the result; what attaches the
+  // file publishes itself.
+  app.service(FILES_PATH).publish(publishNothing)
 
   app.use(FILE_CONTENTS_PATH, new FileContentService(app), { methods: ['get'] })
   app.service(FILE_CONTENTS_PATH).hooks({ around: { get: [sendContent] } })
+  // Read only.
+  app.service(FILE_CONTENTS_PATH).publish(publishNothing)
 }
 
 declare module '../../app.js' {

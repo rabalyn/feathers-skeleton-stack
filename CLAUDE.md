@@ -11,6 +11,7 @@
 - When an ADR does not cover a decision, or covers it ambiguously, **ask before deciding**. Do not fill gaps with assumptions.
 - A decision that changes an ADR is recorded in that ADR as part of the same change, following the convention in `docs/adr_v2/0019-adr-convention.md`.
 - This repository is a skeleton for future products: keep product-specific logic out, and keep infrastructure generic.
+- New Feathers services are created with `pnpm gen:service`, not by hand and not with `@feathersjs/cli` (`docs/adr_v2/0030-service-generator.md`).
 
 ## Implementation approach
 

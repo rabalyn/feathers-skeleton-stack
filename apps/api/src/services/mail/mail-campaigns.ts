@@ -4,7 +4,7 @@ import { KnexService } from '@feathersjs/knex'
 import { hooks as schemaHooks } from '@feathersjs/schema'
 import type { Application } from '../../app.js'
 import { recordAudit } from '../../audit.js'
-import { publishTo, subjectChannel } from '../../channels.js'
+import { publishNothing, publishTo, subjectChannel } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
 import { CampaignError, campaignKind, campaignParamsError, createCampaign, previewCampaign } from '../../mail/campaigns.js'
 import type { CampaignKind } from '../../mail/kind.js'
@@ -134,6 +134,8 @@ export const mailCampaigns = (app: Application) => {
   app.service(MAIL_CAMPAIGN_PREVIEWS_PATH).hooks({
     before: { create: [schemaHooks.validateData(mailCampaignPreviewDataValidator)] }
   })
+  // A preview is for the caller only.
+  app.service(MAIL_CAMPAIGN_PREVIEWS_PATH).publish(publishNothing)
 }
 
 declare module '../../app.js' {

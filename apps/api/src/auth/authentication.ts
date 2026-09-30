@@ -10,7 +10,7 @@ import {
 import type { HookContext, Params } from '@feathersjs/feathers'
 import type { Application } from '../app.js'
 import { recordAudit } from '../audit.js'
-import { endSessionConnections } from '../channels.js'
+import { endSessionConnections, publishNothing } from '../channels.js'
 import { AUTHENTICATION_URL } from '../paths.js'
 import { assignDefaultRole } from '../permissions.js'
 import { publishSession } from '../services/sessions/sessions.js'
@@ -309,6 +309,9 @@ export const authentication = (app: Application) => {
   service.register(API_TOKEN_STRATEGY, new ApiTokenStrategy())
   app.use(AUTH_PATH, service, { methods: ['create', 'remove'] })
   app.service(AUTH_PATH).hooks({ after: { create: [setRotatedCookie], remove: [clearCookieOnLogout] } })
+  // Its results carry tokens: for the caller only. The session itself is
+  // published by the sessions service (ADR 0010, 0012).
+  app.service(AUTH_PATH).publish(publishNothing)
 }
 
 const clientIpOf = (ctx: { state: { clientIp?: unknown } }): string | undefined =>
