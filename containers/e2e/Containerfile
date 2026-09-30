@@ -1,7 +1,10 @@
 # Build context: repository root.
 FROM mcr.microsoft.com/playwright:v1.63.0-noble@sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7
+# OpenSSL from Ubuntu's security updates as well, until the pinned
+# Playwright image carries it (CVE-2026-84782; ADR 0018).
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libnss3-tools \
+ && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl \
  && rm -rf /var/lib/apt/lists/*
 # corepack keeps pnpm in COREPACK_HOME, not in root's home, so pwuser finds
 # it without a network (ADR 0015).
