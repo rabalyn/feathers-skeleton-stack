@@ -135,6 +135,21 @@ export const PERSONAL_DATA: readonly RegistryEntry[] = [
   },
   {
     kind: 'table',
+    table: 'api_tokens',
+    userColumns: ['user_id'],
+    export: {
+      key: 'apiTokens',
+      collect: (knex, userId) =>
+        knex('apiTokens')
+          .where({ userId })
+          .orderBy('createdAt')
+          .select('id', 'name', 'permissions', 'createdAt', 'expiresAt', 'lastUsedAt')
+    },
+    erasure: 'delete',
+    note: 'The person\'s API tokens (ADR 0029): name, permissions, use; the token hash is security material and not exported'
+  },
+  {
+    kind: 'table',
     table: 'local_credentials',
     userColumns: ['user_id'],
     erasure: 'keep',

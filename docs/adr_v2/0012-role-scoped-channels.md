@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADR 0008 (channel portion)
-- Related: [0006](0006-feathersjs-typescript-api.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0011](0011-casl-role-authorization.md), [0028](0028-read-only-view-as.md)
+- Related: [0006](0006-feathersjs-typescript-api.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0011](0011-casl-role-authorization.md), [0028](0028-read-only-view-as.md), [0029](0029-api-tokens.md)
 
 ## Context
 
@@ -16,7 +16,7 @@ Real-time events are a second delivery path out of the application, and it is ea
   - every connection joins `users/{id}` for its own user,
   - and `subjects/{service}` for every service its ability may read **without conditions**, field rules allowed. A connection that reads only its own records of a service reaches them through `users/{id}`.
   - Until 2026-09-29 the second channel was `roles/admin` or `roles/operator`. Roles are data now, composed of permissions and held several at once ([0011](0011-casl-role-authorization.md)), so a channel per role no longer says what a connection may read; a channel per readable service does. Decided 2026-09-29; built in slice 12.
-- Anonymous connections join nothing and receive no service events.
+- Anonymous connections join nothing and receive no service events. Only a session's access token attaches a connection; an API token is accepted on REST requests only and never reaches a socket ([0029](0029-api-tokens.md)).
 - Each service declares a publisher that resolves an event to recipients:
   - events about a user-owned record publish to `users/{ownerId}` and `subjects/{service}`,
   - events about everything else publish to `subjects/{service}` only.

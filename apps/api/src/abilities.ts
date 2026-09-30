@@ -96,7 +96,11 @@ const CATALOGUE_ENTRIES = [
     can(['create', 'read'], 'mail-campaign-previews')
     can('read', 'mail-deliveries')
   }),
-  entry('queues.read', 'configuration', (can) => can('read', 'queues'))
+  entry('queues.read', 'configuration', (can) => can('read', 'queues')),
+  // API tokens (ADR 0029): creating one's own, bounded by one's own rights
+  // on every request; seeing and revoking one's own is the baseline.
+  entry('api-tokens.create', 'api', (can) => can('create', 'api-tokens')),
+  entry('api-tokens.manage', 'api', (can) => can(['read', 'delete'], 'api-tokens'))
 ]
 
 export type PermissionKey = (typeof CATALOGUE_ENTRIES)[number]['key']
@@ -146,6 +150,10 @@ const grantBaseline = (can: Can, user: AbilityUser) => {
   // Ending one's own view-as (ADR 0028), whatever one may do meanwhile;
   // `read` for feathers-casl's check of the result.
   can(['delete', 'read'], 'view-as')
+
+  // One's own API tokens, to see and revoke even after losing the right to
+  // create them (ADR 0029).
+  can(['read', 'delete'], 'api-tokens', { userId: user.id })
 
   // The names of the caller's own roles, shown on their profile.
   if (user.roleIds?.length) can('read', 'roles', ROLE_NAME_FIELDS, { id: { $in: [...user.roleIds] } })
@@ -213,6 +221,32 @@ export const defineViewAsAbility = (viewer: AbilityUser, target: AbilityUser): A
     }
   }
   rules.push({ action: ['delete', 'read'], subject: 'view-as' })
+  return createMongoAbility(withoutShadowedFieldRules(rules), { resolveAction })
+}
+
+// API tokens (ADR 0029). What a token may never carry: tokens themselves,
+// so a leaked one cannot mint successors; view-as, which is state of a
+// browser session; and the irreversible or operational ones, which need a
+// person in the UI.
+export const TOKEN_EXCLUDED_PERMISSIONS: readonly PermissionKey[] = [
+  'api-tokens.create',
+  'api-tokens.manage',
+  'users.view-as',
+  'erasures.create',
+  'settings.manage'
+]
+export const TOKEN_PERMISSION_KEYS: readonly PermissionKey[] = PERMISSION_KEYS.filter((key) => !TOKEN_EXCLUDED_PERMISSIONS.includes(key))
+export const isTokenPermission = (key: string): boolean => (TOKEN_PERMISSION_KEYS as readonly string[]).includes(key)
+
+// A token's ability: the permissions chosen for it that its owner still
+// holds, and nothing else, not even the baseline. Built on every request
+// from the owner's current permissions, so it never exceeds them.
+export const defineTokenAbility = (owner: AbilityUser, tokenPermissions: readonly string[]): AppAbility => {
+  const held = new Set(owner.permissions)
+  const { can, rules } = new AbilityBuilder<AppAbility>(createMongoAbility)
+  for (const key of tokenPermissions) {
+    if (held.has(key) && isTokenPermission(key)) CATALOGUE.get(key)?.grant(can, owner)
+  }
   return createMongoAbility(withoutShadowedFieldRules(rules), { resolveAction })
 }
 

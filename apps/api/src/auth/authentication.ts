@@ -15,19 +15,23 @@ import { AUTHENTICATION_URL } from '../paths.js'
 import { assignDefaultRole } from '../permissions.js'
 import { publishSession } from '../services/sessions/sessions.js'
 import type { User } from '../services/users/users.schema.js'
+import { API_TOKEN_STRATEGY, ApiTokenStrategy } from './api-tokens.js'
 import { decoyHash, MAX_PASSWORD_LENGTH, verifyPassword } from './password.js'
 import { RateLimitUnavailable, TooManyRequests, type RateLimitBucket } from '../rate-limit.js'
 import { SamlRejected, ServiceProvider } from './saml.js'
 import { SessionStore, isActive, viewingAs, type AuthSession } from './sessions.js'
 
-// Authentication (ADR 0008, 0010). Four strategies behind one Feathers
-// authentication service at /api/authentication:
+// Authentication (ADR 0008, 0010, 0029). Four strategies behind one Feathers
+// authentication service at /api/authentication, and API tokens beside it:
 //   jwt      the 15-minute access token; every use re-checks the session row
 //   refresh  the HttpOnly cookie; rotates it and issues a fresh access token
 //   password the break-glass account's email and password; opens a session
 //            like the ACS does
 //   (SAML)   the ACS route validates an assertion and opens the session; the
 //            browser then calls refresh, as on every page load (ADR 0014).
+//   api-token  `Authorization: Bearer apt_…` on REST calls only; accepted by
+//            the default-deny hook, never by this service, so it opens no
+//            session and yields no access token.
 
 export const AUTH_PATH = 'authentication'
 export const REFRESH_COOKIE = 'refresh_token'
@@ -274,6 +278,9 @@ export const authentication = (app: Application) => {
     entity: 'user',
     service: 'users',
     authStrategies: ['jwt', 'refresh', 'password'],
+    // Tried in order on a REST request's Authorization header: an API token
+    // has a prefix no access token has.
+    parseStrategies: [API_TOKEN_STRATEGY, 'jwt'],
     jwtOptions: {
       header: { typ: 'access' },
       audience: publicOrigin,
@@ -299,6 +306,7 @@ export const authentication = (app: Application) => {
   service.register('jwt', new SessionJwtStrategy())
   service.register('refresh', new RefreshStrategy())
   service.register('password', new PasswordStrategy())
+  service.register(API_TOKEN_STRATEGY, new ApiTokenStrategy())
   app.use(AUTH_PATH, service, { methods: ['create', 'remove'] })
   app.service(AUTH_PATH).hooks({ after: { create: [setRotatedCookie], remove: [clearCookieOnLogout] } })
 }

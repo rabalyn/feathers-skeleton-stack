@@ -9,6 +9,8 @@ import { currentRequest } from './request-context.js'
 // request bodies, credentials or assertion contents.
 
 export type AuditAction =
+  | 'api-tokens.create'
+  | 'api-tokens.revoke'
   | 'breakglass.create'
   | 'breakglass.rotate'
   | 'data-exports.create'

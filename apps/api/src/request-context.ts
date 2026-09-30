@@ -11,6 +11,8 @@ export interface RequestContext {
   userRef?: string
   // Whom the user views the application as (ADR 0028).
   viewAsRef?: string
+  // The API token the call authenticated with (ADR 0029).
+  apiTokenRef?: string
 }
 
 const storage = new AsyncLocalStorage<RequestContext>()

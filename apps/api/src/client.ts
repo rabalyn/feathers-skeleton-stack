@@ -20,6 +20,8 @@ import type { DATA_EXPORT_EXTERNAL_METHODS } from './services/data-exports/data-
 import type { Erasure, ErasureData, ERASURE_EXTERNAL_METHODS } from './services/erasures/erasures.js'
 import type { AuditEvent, AuditEventQuery, AUDIT_EVENT_EXTERNAL_METHODS } from './services/audit-events/audit-events.js'
 import type { Session, SessionQuery, SESSION_EXTERNAL_METHODS } from './services/sessions/sessions.js'
+import type { ApiToken, ApiTokenData, ApiTokenQuery } from './services/api-tokens/api-tokens.schema.js'
+import type { API_TOKEN_EXTERNAL_METHODS } from './services/api-tokens/api-tokens.js'
 import type {
   MailDelivery,
   MailDeliveryQuery,
@@ -68,6 +70,7 @@ export type { DataExport, DataExportData, DataExportQuery } from './services/dat
 export type { Erasure, ErasureData } from './services/erasures/erasures.js'
 export type { AuditEvent, AuditEventQuery } from './services/audit-events/audit-events.js'
 export type { Session, SessionQuery } from './services/sessions/sessions.js'
+export type { ApiToken, ApiTokenData, ApiTokenQuery } from './services/api-tokens/api-tokens.schema.js'
 export type {
   MailDelivery,
   MailDeliveryQuery,
@@ -93,6 +96,7 @@ export {
   PERMISSIONS,
   PERMISSION_KEYS,
   ROLE_KINDS,
+  TOKEN_PERMISSION_KEYS,
   ROLE_MANAGEMENT,
   defineAbilitiesFor,
   defineViewAsAbility,
@@ -167,6 +171,12 @@ export interface ClientServiceTypes {
   sessions: External<
     ClientService<Session, never, never, Paginated<Session>, Params<SessionQuery>>,
     typeof SESSION_EXTERNAL_METHODS
+  >
+  // API tokens (ADR 0029): one's own, or everybody's under
+  // api-tokens.manage. The token itself is in the result of `create` only.
+  'api-tokens': External<
+    ClientService<ApiToken, ApiTokenData, never, Paginated<ApiToken>, Params<ApiTokenQuery>>,
+    typeof API_TOKEN_EXTERNAL_METHODS
   >
   // Mail (ADR 0027), admins only: the kinds code declares, the active
   // wording per kind and locale, its revisions, and previews of unsaved
