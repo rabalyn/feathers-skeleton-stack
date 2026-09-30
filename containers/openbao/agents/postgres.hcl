@@ -60,3 +60,9 @@ template {
   destination = "/run/secrets/backup_password"
   perms       = "0440"
 }
+
+template {
+  contents    = "{{ with secret \"kv/data/postgres\" }}{{ .Data.data.netbox_password }}{{ end }}"
+  destination = "/run/secrets/netbox_password"
+  perms       = "0440"
+}

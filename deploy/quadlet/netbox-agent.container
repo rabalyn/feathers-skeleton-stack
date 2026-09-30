@@ -1,0 +1,21 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Unit]
+Requires=openbao.service
+After=openbao.service
+
+[Container]
+ContainerName=netbox-agent
+Entrypoint=["bao"]
+Environment=BAO_ADDR=https://openbao:8200 BAO_CACERT=/openbao/trust/ca.crt
+Exec=agent '-config=/openbao/agent/agent.hcl'
+Group=0
+Image=docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4
+Network=secrets.network
+User=100
+Volume=../../containers/openbao/agents/netbox.hcl:/openbao/agent/agent.hcl:ro,Z
+Volume=../../containers/openbao/agents/netbox.role_id:/openbao/agent/role_id:ro,Z
+Volume=trust:/openbao/trust:ro
+Volume=netbox-secrets.volume:/run/secrets
+Volume=netbox-agent-cred.volume:/run/agent

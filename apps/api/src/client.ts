@@ -54,6 +54,8 @@ import type { Role, RoleData, RolePatch, RoleQuery } from './services/roles/role
 import type { ROLE_EXTERNAL_METHODS } from './services/roles/roles.js'
 import type { UserRoles, UserRolesPatch, USER_ROLE_EXTERNAL_METHODS } from './services/roles/user-roles.js'
 import type { ViewAs, ViewAsData, VIEW_AS_EXTERNAL_METHODS } from './services/view-as/view-as.js'
+import type { Site, SitePage, SiteQuery } from './services/sites/sites.schema.js'
+import type { SITE_EXTERNAL_METHODS } from './services/sites/sites.js'
 // gen:service imports (ADR 0030)
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
@@ -91,6 +93,8 @@ export type {
   MailTemplateRevisionQuery
 } from './services/mail/mail.schema.js'
 export type { QueueJob, QueueJobState, QueueScheduler, QueueStatus } from './services/queues/queues.schema.js'
+export type { Site, SiteGroup, SitePage, SiteQuery } from './services/sites/sites.schema.js'
+export { SITE_PAGE_MAX, SITE_SEARCH_MAX_LENGTH } from './limits.js'
 // gen:service exports (ADR 0030)
 export { ALLOWED_CONTENT_TYPES, AVATAR_CONTENT_TYPES, FILENAME_HEADER, type AllowedContentType } from './uploads.js'
 export {
@@ -212,6 +216,8 @@ export interface ClientServiceTypes {
   // The job queues, admins only (ADR 0024), with a `status` event carrying
   // a queue's new state whenever it changes.
   queues: External<ClientService<QueueStatus, never, never, QueueStatus[], Params>, typeof QUEUE_EXTERNAL_METHODS>
+  // Locations (ADR 0031): the university's buildings from NetBox, read only.
+  sites: External<ClientService<Site, never, never, SitePage, Params<SiteQuery>>, typeof SITE_EXTERNAL_METHODS>
   // gen:service client-types (ADR 0030)
 }
 

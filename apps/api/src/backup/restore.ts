@@ -13,8 +13,9 @@ import { restic, snapshotOf, type Repository } from './restic.js'
 // from here, with the backup key, which the script grants write access to
 // the target bucket for the duration of the restore only.
 
-// Writes one file of a snapshot to `out`: `app.dump` of `db`, or a file of
-// the directory a `state` or `objects` snapshot holds.
+// Writes one file of a snapshot to `out`: `app.dump` of `db`, `netbox.dump`
+// of `netbox` (ADR 0031), or a file of the directory a `state` or `objects`
+// snapshot holds.
 export const dumpFile = async (config: BackupConfig, repository: Repository, name: string, out: Writable, id = 'latest') => {
   const snapshot = await snapshotOf(config, repository, id)
   const root = snapshot.paths[0] ?? '/'

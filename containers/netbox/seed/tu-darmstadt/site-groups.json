@@ -1,0 +1,286 @@
+[
+  {
+    "key": "B",
+    "slug": "b",
+    "parent": null,
+    "name": {
+      "de": "Standort Botanischer Garten",
+      "en": "Location Botanical Garden"
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "H",
+    "slug": "h",
+    "parent": null,
+    "name": {
+      "de": "Standort Hochschulstadion",
+      "en": "Location Hochschulstadion"
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "L",
+    "slug": "l",
+    "parent": null,
+    "name": {
+      "de": "Standort Lichtwiese",
+      "en": "Location Lichtwiese"
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "S",
+    "slug": "s",
+    "parent": null,
+    "name": {
+      "de": "Standort Stadtmitte",
+      "en": "Location Stadtmitte (City Centre)"
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "W",
+    "slug": "w",
+    "parent": null,
+    "name": {
+      "de": "Standort Windkanal / Flugplatz",
+      "en": "Location Wind Tunnel/ Airfield"
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "B1",
+    "slug": "b1",
+    "parent": "b",
+    "name": {
+      "de": "Abschnitt Botanischer Garten West",
+      "en": "Section Botanical Garden West"
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "B2",
+    "slug": "b2",
+    "parent": "b",
+    "name": {
+      "de": "Abschnitt Botanischer Garten Ost",
+      "en": "Section Botanical Garden East"
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "H1",
+    "slug": "h1",
+    "parent": "h",
+    "name": {
+      "de": null,
+      "en": null
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "L1",
+    "slug": "l1",
+    "parent": "l",
+    "name": {
+      "de": "Abschnitt Lichtwiese Quartier Maschinenbau",
+      "en": "Section Lichtwiese Quarter Mechanical Engineering"
+    },
+    "notes": {
+      "de": [
+        "Gebäude L1|02 bis L1|07 in Nutzung von Fachbereich Maschinenbau"
+      ],
+      "en": [
+        "Buildings L1|02 to L1|07 in use by Department of Mechanical Engineering"
+      ]
+    }
+  },
+  {
+    "key": "L2",
+    "slug": "l2",
+    "parent": "l",
+    "name": {
+      "de": "Abschnitt Lichtwiese Quartier Chemie und Materialwissenschaften",
+      "en": "Section Lichtwiese Quarter Chemistry and Materials Science"
+    },
+    "notes": {
+      "de": [
+        "Poststelle Lichtwiese in L2|02",
+        ", Dezernat IV"
+      ],
+      "en": [
+        "Post Office Lichtwiese in L2|02",
+        ", Directorate IV"
+      ]
+    }
+  },
+  {
+    "key": "L3",
+    "slug": "l3",
+    "parent": "l",
+    "name": {
+      "de": "Abschnitt Lichtwiese Quartier Architektur",
+      "en": "Section Lichtwiese Quarter Architecture"
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "L4",
+    "slug": "l4",
+    "parent": "l",
+    "name": {
+      "de": "Abschnitt Lichtwiese Quartier Forum und Mensa",
+      "en": "Section Lichtwiese Quarter Forum and Canteen"
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "L5",
+    "slug": "l5",
+    "parent": "l",
+    "name": {
+      "de": "Abschnitt Lichtwiese Quartier Bauingenieurwesen",
+      "en": "Section Lichtwiese Quarter Civil Engineering"
+    },
+    "notes": {
+      "de": [
+        "Gebäude L5|02-L5|07 und L5|09 werden vom",
+        "FB Bau- und Umweltingenieurwissenschaften genutzt"
+      ],
+      "en": [
+        "Buildings L5|02-L5|07 and L5|09 are used by the",
+        "Department of Civil and Environmental Engineering"
+      ]
+    }
+  },
+  {
+    "key": "L6",
+    "slug": "l6",
+    "parent": "l",
+    "name": {
+      "de": "Abschnitt Lichtwiese",
+      "en": "Section Lichtwiese"
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "S1",
+    "slug": "s1",
+    "parent": "s",
+    "name": {
+      "de": "Abschnitt Stadtmitte Mitte",
+      "en": "Section Stadtmitte Central"
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "S2",
+    "slug": "s2",
+    "parent": "s",
+    "name": {
+      "de": "Abschnitt Stadtmitte Nord",
+      "en": "Section Stadtmitte North"
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "S3",
+    "slug": "s3",
+    "parent": "s",
+    "name": {
+      "de": "Abschnitt Stadtmitte Süd",
+      "en": "Section Stadtmitte South"
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "S4",
+    "slug": "s4",
+    "parent": "s",
+    "name": {
+      "de": "Abschnitt Stadtmitte Außenbereiche",
+      "en": "Section Stadtmitte Outer Areas"
+    },
+    "notes": {
+      "de": [],
+      "en": []
+    }
+  },
+  {
+    "key": "W1",
+    "slug": "w1",
+    "parent": "w",
+    "name": {
+      "de": "Abschnitt Windkanal",
+      "en": "Section Wind Tunnel"
+    },
+    "notes": {
+      "de": [
+        "Die Gebäude W1|01-W1|05 werden vom Maschinenbau FG Strömungslehre und Aerodynamik genutzt"
+      ],
+      "en": [
+        "Buildings W1|01-W1|05 are used by the Mechanical Engineering Institute for Fluid Mechanics and Aerodynamics"
+      ]
+    }
+  },
+  {
+    "key": "W2",
+    "slug": "w2",
+    "parent": "w",
+    "name": {
+      "de": "Abschnitt Flugplatz",
+      "en": "Abschnitt Flugplatz"
+    },
+    "notes": {
+      "de": [
+        "W2|03-W2|05 (August-Euler-Förderverein)"
+      ],
+      "en": [
+        "W2|03-W2|05 (August Euler Support Association)"
+      ]
+    }
+  }
+]

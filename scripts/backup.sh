@@ -21,6 +21,11 @@
 #   scripts/backup.sh replay-erasures <database> --erasures-file <file>
 #       re-apply a kept log of erasures to <database>; for a restored schema
 #       too old to have erase_user(), once it is migrated
+#   scripts/backup.sh restore-netbox <database> [--replace] [--snapshot <id>]
+#       pg_restore of the `netbox` snapshot (ADR 0031) into <database>,
+#       created fresh and owned by the `netbox` login. --replace drops an
+#       existing database first; refused while netbox or netbox-worker runs.
+#       netbox-setup's next start re-seeds and re-issues the api's token
 #   scripts/backup.sh restore-objects <bucket> [--snapshot <id>] [--empty]
 #       upload the `objects` snapshot into <bucket> with the backup key,
 #       which gets write access to <bucket> for the duration only. --empty
@@ -128,6 +133,29 @@ SQL
   post_restore "$db"
 }
 
+# NetBox's database (ADR 0031): no post-steps of its own. Its sessions are
+# NetBox's, and the api's token is re-issued from OpenBao by netbox-setup.
+restore_netbox() { # <database>
+  local db=$1
+  valid_name "$db"
+  running "$POSTGRES" || die "$POSTGRES is not running"
+  if db_exists "$db"; then
+    [[ $replace == true ]] || die "database $db exists; --replace drops it first"
+    if running netbox || running netbox-worker; then die "stop netbox and netbox-worker before replacing $db"; fi
+  fi
+  # Created as roles.sh creates `netbox`.
+  psql_super postgres <<SQL
+DROP DATABASE IF EXISTS $db WITH (FORCE);
+CREATE DATABASE $db OWNER netbox;
+REVOKE ALL ON DATABASE $db FROM PUBLIC;
+GRANT CONNECT ON DATABASE $db TO backup;
+SQL
+  log "restoring the NetBox snapshot $snapshot into $db"
+  # As its owner, so the restored objects are NetBox's.
+  in_backup dump netbox netbox.dump "$snapshot" |
+    podman exec -i -u postgres "$POSTGRES" pg_restore --dbname="$db" --role=netbox --no-owner --exit-on-error --single-transaction
+}
+
 # Mandatory after every database restore (ADR 0017).
 post_restore() { # <database>
   local revoked
@@ -230,12 +258,12 @@ restore_openbao() { # <container> ; root token on stdin
 cmd=${1:-}
 case $cmd in
   init | run | snapshots) in_backup "$cmd" ;;
-  restore-db | restore-objects | restore-valkey | restore-openbao | replay-erasures)
+  restore-db | restore-netbox | restore-objects | restore-valkey | restore-openbao | replay-erasures)
     target=${2:-}
     [[ -n $target && $target != --* ]] || die "usage: $0 $cmd <target> [options]"
     shift 2
     parse_options "$@"
     "${cmd//-/_}" "$target"
     ;;
-  *) sed -n '2,39p' "$0"; exit 2 ;;
+  *) sed -n '2,44p' "$0"; exit 2 ;;
 esac

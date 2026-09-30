@@ -39,5 +39,10 @@ access to dn.subtree="ou=people,dc=feathers,dc=test"
   by dn.exact="cn=api,ou=services,dc=feathers,dc=test" read
   by * none
 
+# The IdP reads group memberships for NetBox (ADR 0031).
+access to dn.subtree="ou=groups,dc=feathers,dc=test"
+  by dn.exact="cn=keycloak,ou=services,dc=feathers,dc=test" read
+  by * none
+
 access to *
   by * none

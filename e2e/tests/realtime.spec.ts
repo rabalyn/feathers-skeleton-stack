@@ -36,7 +36,7 @@ test('an operator sees an admin’s changes live, and loses the page when demote
   await admin.keyboard.press('Escape')
   await expect(operator).toHaveURL(/\/profile$/)
   await expect(operator.locator('[data-field="role"]')).toHaveText('Benutzer')
-  await expect(navLabels(operator)).toHaveText(['Mein Profil', 'Dokumente'])
+  await expect(navLabels(operator)).toHaveText(['Mein Profil', 'Dokumente', 'Gebäude'])
 
   // Promoted back, for the rest of the run.
   await row(admin, 'op01oper').getByRole('combobox', { name: 'Rollen' }).click()
@@ -44,5 +44,5 @@ test('an operator sees an admin’s changes live, and loses the page when demote
   await admin.getByRole('option', { name: 'Benutzer' }).click()
   await admin.keyboard.press('Escape')
   await expect(operator.locator('[data-field="role"]')).toHaveText('Betrieb')
-  await expect(navLabels(operator)).toHaveText(['Mein Profil', 'Dokumente', 'Benutzer', 'Verzeichnis', 'Sitzungen', 'Aktivitätsprotokoll'])
+  await expect(navLabels(operator)).toHaveText(['Mein Profil', 'Dokumente', 'Gebäude', 'Benutzer', 'Verzeichnis', 'Sitzungen', 'Aktivitätsprotokoll'])
 })

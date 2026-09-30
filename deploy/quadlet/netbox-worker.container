@@ -1,0 +1,16 @@
+# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
+# production settings in a drop-in directory next to this file.
+
+[Unit]
+Requires=netbox-setup.service
+After=netbox-setup.service
+
+[Container]
+ContainerName=netbox-worker
+Environment=NETBOX_HOST=netbox.localhost NETBOX_PUBLIC_ORIGIN=https://netbox.localhost:8443 NETBOX_CONTACT_EMAIL=operators@app.localhost DB_HOST=pgbouncer DB_PORT=6432 DB_NAME=netbox DB_USER=netbox REDIS_HOST=valkey REDIS_PORT=6379 REDIS_USERNAME=netbox SKIP_SUPERUSER=true SAML_IDP_ENTITY_ID=https://idp.localhost:8443/realms/feathers SAML_IDP_SSO_URL=https://idp.localhost:8443/realms/feathers/protocol/saml NETBOX_SAML_GROUPS_ATTRIBUTE=groups NETBOX_SAML_SUPERUSER_GROUPS=netbox-admins NETBOX_API_TOKEN_KEY=feathersapi1 GRANIAN_PORT=8443 GRANIAN_WORKERS=2 GRANIAN_SSL_CERTIFICATE=/tls/tls.crt GRANIAN_SSL_KEYFILE=/tls/tls.key
+Exec=/opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py rqworker high default low
+Image=localhost/feathers-netbox:dev
+Network=netbox-data.network
+Volume=netbox-secrets.volume:/run/secrets:ro
+Volume=netbox-media.volume:/opt/netbox/netbox/media
+Volume=trust:/trust:ro

@@ -1,0 +1,17 @@
+# NetBox (ADR 0031): the upstream image with this stack's configuration,
+# the SAML group sync, the setup job and the seed files baked in, so the
+# image production pulls carries the data it seeds.
+FROM docker.io/netboxcommunity/netbox:v4.7.2-5.1.1@sha256:ad038bdb0e3498e5bf81c2c8becf396d62cbdc118d0b491b4d58014968033066
+COPY containers/netbox/config/feathers.py /etc/netbox/config/feathers.py
+COPY containers/netbox/feathers_netbox /opt/netbox/netbox/feathers_netbox
+COPY containers/netbox/seed/tu-darmstadt /opt/feathers/seed/tu-darmstadt
+COPY containers/netbox/setup.sh /opt/feathers/setup.sh
+# Security fixes Ubuntu has released since the upstream image was built
+# (ADR 0018), until a NetBox image carries them.
+USER root
+RUN apt-get update \
+ && apt-get install -y --only-upgrade --no-install-recommends openssl libssl3t64 openssl-provider-legacy \
+ && rm -rf /var/lib/apt/lists/*
+# The image's own user; its group is root, as upstream runs it.
+USER 999:0
+EXPOSE 8443

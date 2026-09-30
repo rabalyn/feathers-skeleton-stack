@@ -78,3 +78,9 @@ template {
   destination = "/run/secrets/s3_secret_key"
   perms       = "0440"
 }
+
+template {
+  contents    = "{{ with secret \"kv/data/api\" }}{{ .Data.data.netbox_token }}{{ end }}"
+  destination = "/run/secrets/netbox_token"
+  perms       = "0440"
+}

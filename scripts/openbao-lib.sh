@@ -78,6 +78,7 @@ configure() {
 generate() { # <generator>
   case ${1#local-only:} in
     random | local) head -c 36 /dev/urandom | base64 | tr '+/' '-_' ;;
+    random-long) head -c 72 /dev/urandom | base64 -w0 | tr '+/' '-_' ;;
     hex32) od -An -vtx1 -N32 /dev/urandom | tr -d ' \n' ;;
     garage-key-id) printf 'GK%s' "$(od -An -vtx1 -N12 /dev/urandom | tr -d ' \n')" ;;
     *) die "unknown generator $1" ;;

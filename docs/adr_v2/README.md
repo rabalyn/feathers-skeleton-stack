@@ -2,7 +2,7 @@
 
 This directory holds the architecture decisions for this project. It supersedes `docs/adr/`, which split a single planning document into seventy files and accumulated 433 open items before any business logic existed. See [0019](0019-adr-convention.md) for what changed and why.
 
-Thirty ADRs, each covering a decision with real alternatives. Read [0001](0001-one-stack-every-environment.md) first — the parity rule it sets is the reason several later decisions look the way they do.
+Thirty-one ADRs, each covering a decision with real alternatives. Read [0001](0001-one-stack-every-environment.md) first — the parity rule it sets is the reason several later decisions look the way they do.
 
 ## Index
 
@@ -26,6 +26,7 @@ Thirty ADRs, each covering a decision with real alternatives. Read [0001](0001-o
 - [0024 — Background jobs on BullMQ in a dedicated worker container](0024-background-jobs-bullmq.md)
 - [0025 — Operational settings are runtime settings in PostgreSQL](0025-runtime-settings.md)
 - [0027 — E-mail from code-declared mail kinds, with admin-edited Liquid templates, sent by the worker](0027-email-templates-and-sending.md)
+- [0031 — NetBox holds the university's locations, seeded from its published building list](0031-netbox-locations.md)
 
 ### Identity, access and privacy
 
@@ -65,6 +66,8 @@ Covered in v1 but not carried forward, or deliberately deferred. Listed so nothi
 | Off-site backup copy | Accepted risk for now ([0017](0017-nfs-backup-storage.md)) |
 | Distributed tracing | Deferred; `request_id` correlation is in place and should stay `traceparent`-compatible ([0021](0021-structured-logging.md)) |
 | Multi-host scale-out | Deferred, as in v1 |
+| Every API call configurable on the permissions page | Wanted (2026-09-30). The catalogue covers every service method but the baseline, which [0011](0011-casl-role-authorization.md) keeps outside it on purpose, so that no role can withdraw a person's access to their own record, export, files, audit events and tokens. Making those configurable needs a decision on which of them the right of access requires, and a safeguard against locking everybody out of their own data |
+| Directory lookup in the list style of [0014](0014-frontend-quasar-vue.md) | To do: a server-paginated table, which LDAP's capped search makes a design question |
 | Offering a product's own services over MCP | Left to each product; the skeleton uses MCP for local development tooling only ([0026](0026-mcp-development-tooling.md)) |
 
 ## Implementation slices
@@ -110,10 +113,12 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 
 **Slice 14 — maintenance mode, done** ([0025](0025-runtime-settings.md)): the `maintenanceMode` setting given its behaviour. Holders of `settings.manage` keep using the application; switching the mode on revokes everyone else's sessions, and while it is on their service calls, refreshes and every API token are answered 503 with `data.maintenance`, the ACS sends their logins to `/maintenance`, and the worker pauses its BullMQ workers. `GET /api/maintenance` reports the state publicly. In the browser, the maintenance state and the public `/maintenance` page, reached on such a 503 or when the API does not answer, polling every 30 seconds and reloading at the login page once the mode is off; the confirmed switch on the Settings page and the banner for admins. `test/integration/maintenance-mode.test.ts`, unit tests for the refresh outcomes and the state, and `e2e/tests/maintenance.spec.ts`.
 
+**Slice 15 — locations in NetBox, done** ([0031](0031-netbox-locations.md)): NetBox 4.7 in the stack (`netbox`, `netbox-worker`, the one-shot `netbox-setup`) on its own database and Valkey user, behind Nginx at `netbox.localhost` with TLS on both hops, its secrets from its own agent; `containers/netbox/seed/scrape_tu_locations.py`, which reads the university's building addresses and campus pages in German and English into committed JSON; the seed of regions, campus and section site groups and one site per building, upserted by slug so NetBox ids stay stable, with a seeded site the files drop set to retired; the api's read-only v2 token and user; SAML login to NetBox through the IdP with rights from the IdP's groups (LDAP groups and Keycloak mappers locally); the read-only `sites` service over NetBox's REST API under `sites.read`, which the seeded roles hold, and the Buildings page as a server-paginated table; NetBox's database in a fourth backup repository with `restore-netbox`. `test/integration/sites.test.ts`, `e2e/tests/locations.spec.ts` and the NetBox part of `backup-test.sh`.
+
 **Later.** The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
 
 ## Status of this set
 
-All twenty-nine are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds ([0022](0022-observability-and-alerting.md)), the issuer of production certificates for internal listeners ([0016](0016-nginx-and-tls-everywhere.md)), and the university SMTP relay's sending limit ([0027](0027-email-templates-and-sending.md)).
+All thirty-one are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds ([0022](0022-observability-and-alerting.md)), the issuer of production certificates for internal listeners ([0016](0016-nginx-and-tls-everywhere.md)), the university SMTP relay's sending limit ([0027](0027-email-templates-and-sending.md)), and the group attribute the university IdP releases to NetBox ([0031](0031-netbox-locations.md)).
 
 The record of processing activities and the DPIA ([0013](0013-gdpr-export-and-retention.md)) are organisational deliverables to be prepared with the data protection officer before production; view-as ([0028](0028-read-only-view-as.md)) is part of them.

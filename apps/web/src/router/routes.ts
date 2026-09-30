@@ -123,6 +123,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/QueuesPage.vue'),
         meta: { requires: ['read', 'queues'] }
       },
+      // The address lookup (ADR 0031): every signed-in person.
+      {
+        path: 'sites',
+        name: 'sites',
+        component: () => import('@/pages/SitesPage.vue'),
+        meta: { requires: ['read', 'sites'] }
+      },
       {
         path: 'directory',
         name: 'directory',

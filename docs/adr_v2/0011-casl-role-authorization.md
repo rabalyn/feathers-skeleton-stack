@@ -42,6 +42,7 @@ The permission matrix, now as catalogue permissions. `admin` holds all of them. 
 | `users.read` | All user records and their avatars; role names | ✓ | — |
 | `users.enable` | Account enable / disable | — | — |
 | `directory.read` | Directory lookup (LDAP) | ✓ | — |
+| `sites.read` | Buildings from NetBox ([0031](0031-netbox-locations.md)) | ✓ | ✓ |
 | `documents.own` | Documents: create; read, write, delete own | — | ✓ |
 | `documents.all` | Documents: create; read, write, delete all; a document's file: own only (below) | ✓ | — |
 | `sessions.read` | Sessions: read, without the user agent | ✓ | — |

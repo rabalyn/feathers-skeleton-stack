@@ -169,19 +169,20 @@ wait_for_rendered() { # [<service>...]
 
 # --- SAML key material (ADR 0008) -----------------------------------------
 
-# The SP key pair: generated once, locally; deployment material in production.
-ensure_sp_keypair() {
-  [[ -n $(kv_get api saml_sp_key) ]] && return 0
-  log "generating the SAML SP key pair"
+# An SP key pair: generated once, locally; deployment material in
+# production. One for the api, one for NetBox (ADR 0031).
+ensure_sp_keypair() { # <service> <common name>
+  [[ -n $(kv_get "$1" saml_sp_key) ]] && return 0
+  log "generating the SAML SP key pair of $1"
   local pems key cert
   pems=$(podman run --rm --network none --entrypoint sh localhost/feathers-certs:dev -c \
-    'openssl req -x509 -newkey rsa:3072 -nodes -days 3650 -subj "/CN=claude-feathers local SP" \
-       -keyout /dev/stdout -out /dev/stdout 2>/dev/null')
+    'openssl req -x509 -newkey rsa:3072 -nodes -days 3650 -subj "/CN=$1" \
+       -keyout /dev/stdout -out /dev/stdout 2>/dev/null' sh "$2")
   key=$(sed -n '/BEGIN PRIVATE KEY/,/END PRIVATE KEY/p' <<<"$pems")
   cert=$(sed -n '/BEGIN CERTIFICATE/,/END CERTIFICATE/p' <<<"$pems")
   [[ -n $key && -n $cert ]] || die "SP key generation failed"
-  printf '%s\n' "$key" | kv_set api saml_sp_key
-  printf '%s\n' "$cert" | kv_set api saml_sp_cert
+  printf '%s\n' "$key" | kv_set "$1" saml_sp_key
+  printf '%s\n' "$cert" | kv_set "$1" saml_sp_cert
 }
 
 pem_body() { sed '/-----/d' | tr -d '\n'; }
@@ -214,26 +215,33 @@ wait_healthy() { # <container> <seconds>
 }
 
 # Exchanges certificates with the local Keycloak: the realm's signing
-# certificate goes to the api through OpenBao, the SP certificate into the
-# realm's client, which then requires signed requests and encrypts.
+# certificate goes to the api and NetBox through OpenBao, each SP
+# certificate into its client in the realm, which then requires signed
+# requests and encrypts.
 configure_local_idp() {
-  local descriptor idp_cert sp_cert current
+  local descriptor idp_cert sp_cert current svc
   descriptor=$(podman exec nginx wget -qO- http://idp:8080/realms/feathers/protocol/saml/descriptor)
   idp_cert=$(sed -n 's/.*<ds:X509Certificate>\([^<]*\)<.*/\1/p' <<<"$descriptor" | head -1)
   [[ -n $idp_cert ]] || die "no signing certificate in the IdP descriptor"
   idp_cert=$(printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "$(fold -w 64 <<<"$idp_cert")")
-  current=$(kv_get api saml_idp_cert)
-  if [[ $current != "${idp_cert%$'\n'}" ]]; then
-    printf '%s' "$idp_cert" | kv_set api saml_idp_cert
-    log "stored the local IdP's signing certificate"
-  fi
+  for svc in api netbox; do
+    current=$(kv_get "$svc" saml_idp_cert)
+    if [[ $current != "${idp_cert%$'\n'}" ]]; then
+      printf '%s' "$idp_cert" | kv_set "$svc" saml_idp_cert
+      log "stored the local IdP's signing certificate for $svc"
+    fi
+  done
 
-  sp_cert=$(kv_get api saml_sp_cert | pem_body)
-  # One SAML client per local origin: the app's and the e2e api's (ADR 0015).
-  # Both share the api's SP key pair. The realm is imported only into a fresh
-  # IdP, so a client added to the realm file later is created here.
+  # One SAML client per local origin: the app's and the e2e api's (ADR 0015),
+  # which share the api's SP key pair, and NetBox's (ADR 0031), with its own.
+  # The realm is imported only into a fresh IdP, so a client added to the
+  # realm file later is created here.
   local client
   while IFS= read -r client; do
+    case $client in
+      '{"clientId":"https://netbox.'*) sp_cert=$(kv_get netbox saml_sp_cert | pem_body) ;;
+      *) sp_cert=$(kv_get api saml_sp_cert | pem_body) ;;
+    esac
     podman exec -i idp bash -s "$sp_cert" "$client" <<'KCADM'
 set -euo pipefail
 kc=/opt/keycloak/bin/kcadm.sh
@@ -258,19 +266,39 @@ $kc update "clients/$id" --config "$cfg" -r feathers \
   -s 'attributes."saml.encryption.digestMethod"=http://www.w3.org/2000/09/xmldsig#sha1'
 KCADM
   done < <(jq -c '.clients[]' "$ROOT/containers/idp/realm-feathers.json")
+
+  # The LDAP group mapper (ADR 0031), likewise created in a realm imported
+  # before it existed.
+  jq -c '.components."org.keycloak.storage.UserStorageProvider"[0].subComponents."org.keycloak.storage.ldap.mappers.LDAPStorageMapper"[]
+    | select(.providerId == "group-ldap-mapper")
+    | . + {providerType: "org.keycloak.storage.ldap.mappers.LDAPStorageMapper"}' "$ROOT/containers/idp/realm-feathers.json" |
+    podman exec -i idp bash -c '
+set -euo pipefail
+mapper=$(cat)
+kc=/opt/keycloak/bin/kcadm.sh
+cfg=$(mktemp)
+trap "rm -f $cfg" EXIT
+$kc config credentials --config "$cfg" --server http://localhost:8080 --realm master \
+  --user admin --password "$(</run/secrets/admin_password)" >/dev/null
+ldap=$($kc get components --config "$cfg" -r feathers -q name=ldap -q type=org.keycloak.storage.UserStorageProvider --fields id --format csv --noquotes)
+[[ -n $($kc get components --config "$cfg" -r feathers -q parent="$ldap" -q name=groups --fields id --format csv --noquotes) ]] && exit 0
+$kc create components --config "$cfg" -r feathers -f - -s parentId="$ldap" <<<"$mapper" >/dev/null
+echo "created the LDAP group mapper"'
   log "configured the local IdP for signed requests and encryption"
 }
 
-# The api reads its SAML material at startup, so it is restarted once the
-# api-agent has rendered the current IdP certificate.
+# The api and NetBox read their SAML material at startup, so they are
+# restarted once their agents have rendered the current IdP certificate.
 wait_for_idp_cert() {
-  local want i
-  want=$(kv_get api saml_idp_cert)
-  for i in $(seq 120); do
-    [[ $(podman exec api-agent cat /run/secrets/saml_idp_cert 2>/dev/null) == "$want" ]] && return 0
-    sleep 1
+  local want i svc
+  for svc in api netbox; do
+    want=$(kv_get "$svc" saml_idp_cert)
+    for i in $(seq 120); do
+      [[ $(podman exec "$svc-agent" cat /run/secrets/saml_idp_cert 2>/dev/null) == "$want" ]] && continue 2
+      sleep 1
+    done
+    die "$svc-agent did not render the IdP certificate"
   done
-  die "api-agent did not render the IdP certificate"
 }
 
 idp_setup() {
@@ -281,9 +309,10 @@ idp_setup() {
   wait_for_idp_cert
   bao token revoke -self >/dev/null
   TOKEN=
-  podman restart api >/dev/null
+  podman restart api netbox >/dev/null
   wait_healthy api 60
-  log "api restarted with the IdP certificate"
+  wait_healthy netbox 180
+  log "api and NetBox restarted with the IdP certificate"
 }
 
 # The local break-glass account (ADR 0008), made by the same bootstrap command
@@ -502,7 +531,8 @@ setup() {
   init_or_unseal
   configure
   fill_secrets local
-  ensure_sp_keypair
+  ensure_sp_keypair api "claude-feathers local SP"
+  ensure_sp_keypair netbox "claude-feathers local NetBox SP"
   issue_secret_ids
   bao token revoke -self >/dev/null
   TOKEN=
@@ -666,7 +696,7 @@ case $cmd in
     setup
     log "starting the stack"
     # shellcheck disable=SC2046
-    compose up -d --force-recreate --no-deps $(app_services | grep -vxE 'migrate|worker|backup') >/dev/null 2>&1
+    compose up -d --force-recreate --no-deps $(app_services | grep -vxE 'migrate|worker|backup|netbox|netbox-worker|netbox-setup') >/dev/null 2>&1
     # --no-deps drops depends_on conditions, so migrate waits here explicitly.
     wait_healthy postgres 120
     compose up -d --force-recreate --no-deps migrate >/dev/null 2>&1
@@ -676,6 +706,12 @@ case $cmd in
     # which migrate has just seeded.
     compose up -d --force-recreate --no-deps worker backup >/dev/null 2>&1
     wait_healthy worker 60
+    # NetBox's migrations and seed (ADR 0031), then NetBox itself.
+    compose up -d --force-recreate --no-deps netbox-setup >/dev/null 2>&1
+    podman wait netbox-setup >/dev/null
+    [[ $(podman inspect -f '{{.State.ExitCode}}' netbox-setup) == 0 ]] || die "netbox-setup failed; see: podman logs netbox-setup"
+    compose up -d --force-recreate --no-deps netbox netbox-worker >/dev/null 2>&1
+    wait_healthy netbox 180
     # The local target is ours to initialise (ADR 0017); a run never does.
     podman exec -u backup backup node dist/backup.js init >/dev/null ||
       die "initialising the backup target failed; see: podman logs backup"

@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADRs 0035, 0037
-- Related: [0001](0001-one-stack-every-environment.md), [0004](0004-pgbouncer-pools.md), [0008](0008-authentication-saml2-ldap.md), [0015](0015-testing-vitest-playwright.md), [0017](0017-nfs-backup-storage.md), [0020](0020-object-storage-uploads.md), [0022](0022-observability-and-alerting.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md), [0026](0026-mcp-development-tooling.md), [0027](0027-email-templates-and-sending.md)
+- Related: [0001](0001-one-stack-every-environment.md), [0004](0004-pgbouncer-pools.md), [0008](0008-authentication-saml2-ldap.md), [0015](0015-testing-vitest-playwright.md), [0017](0017-nfs-backup-storage.md), [0020](0020-object-storage-uploads.md), [0022](0022-observability-and-alerting.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md), [0026](0026-mcp-development-tooling.md), [0027](0027-email-templates-and-sending.md), [0031](0031-netbox-locations.md)
 
 ## Context
 
@@ -25,6 +25,9 @@ The stack needs a fixed service list and a network layout where no component can
 | `valkey` | Rate-limit state and job queues, persisted to disk | same |
 | `s3` | Garage, S3-compatible object storage | same |
 | `openbao` | Secret store ([0023](0023-secrets-management.md)) | same |
+| `netbox` | NetBox, the register of the university's buildings and rooms ([0031](0031-netbox-locations.md)) | same |
+| `netbox-worker` | NetBox's background jobs and housekeeping; same image as `netbox` | same |
+| `netbox-setup` | One-shot job: NetBox's migrations and the seed; same image as `netbox` | same |
 | `*-agent` | One OpenBao Agent per service that reads secrets | same |
 | `idp` | Keycloak, SAML2 identity provider | university IdP (external) |
 | `ldap` | OpenLDAP, seeded test directory | university directory (external) |
@@ -56,9 +59,12 @@ The stack needs a fixed service list and a network layout where no component can
 | `dozzle-edge` | `nginx`, `dozzle` | Browser access to Dozzle; local only |
 | `grafana-edge` | `nginx`, `grafana` | Browser access to Grafana ([0022](0022-observability-and-alerting.md)) |
 | `mail-edge` | `nginx`, `mail` | Browser access to Mailpit's inbox; local only |
+| `netbox-edge` | `nginx`, `netbox` | Browser access to NetBox ([0031](0031-netbox-locations.md)) |
+| `netbox-api` | `netbox`, `api`; locally also `api-e2e` and `test` | The api reads locations from NetBox's REST API |
+| `netbox-data` | `netbox`, `netbox-worker`, `netbox-setup`, `pgbouncer`, `valkey` | NetBox's database and Valkey access, apart from `app-data` |
 | `mcp-edge` | `nginx`, `mcp-browser` (local) | The coding agent's browser; `internal`, so it has no route out of the host; local only ([0026](0026-mcp-development-tooling.md)) |
 | `app-data` | `api`, `worker`, `pgbouncer`, `valkey`, `valkey-exporter`, `test` (test), `api-e2e` (test) | Application data access |
-| `db` | `pgbouncer`, `postgres`, `backup`, `migrate`, `postgres-exporter`, `pgbouncer-exporter` | Direct database access |
+| `db` | `pgbouncer`, `postgres`, `backup`, `migrate`, `netbox-setup`, `postgres-exporter`, `pgbouncer-exporter` | Direct database access |
 | `identity` | `api`, `idp`, `ldap`, `test` (test), `api-e2e` (test) | Authentication and directory lookup |
 | `object` | `api`, `worker`, `s3`, `backup`; locally also `api-e2e` and `test` | Object storage |
 | `secrets` | `openbao`, every `*-agent`, `backup` | Secret delivery; `backup` for OpenBao snapshots |
@@ -77,6 +83,7 @@ Consequences of this layout, all intentional:
 - The API's metrics and health listener is a separate port reachable only on `observability` ([0022](0022-observability-and-alerting.md)).
 - `grafana` and, locally, `mail` are reachable by Nginx under their own host names, each on a network of its own like `dozzle` ([0016](0016-nginx-and-tls-everywhere.md)). Prometheus, Loki and the exporters have no browser route; people use Grafana.
 - `node-exporter` shares the host's process namespace and reads the host's root read-only, and `alloy` reads the host's journal read-only: host metrics and third-party container output ([0021](0021-structured-logging.md)) have no other source.
+- NetBox ([0031](0031-netbox-locations.md)) reaches PostgreSQL through PgBouncer and Valkey on `netbox-data`, which holds neither the api nor the worker, so NetBox has no route to them; the api reaches NetBox on `netbox-api`, and browsers through Nginx on `netbox-edge`. Only `netbox-setup`, which applies NetBox's migrations, is on `db`, like `migrate`.
 - `mcp-browser`, the coding agent's browser ([0026](0026-mcp-development-tooling.md)), is on `mcp-edge` alone: it reaches the local origins through Nginx, as `e2e` does, and has no route to the internet or to any other service. It publishes no port.
 - The test runners sit where the code they test sits. `test` is on `app-data` and `identity`, like the API, so integration tests reach PostgreSQL through PgBouncer and cannot bypass it, and reach the test directory as the API's directory lookup does; the migration into `test_template` is done by the `migrate` job. `e2e` is on `edge` and `idp-edge`, like a browser, and reaches nothing else. Neither exists in production.
 
@@ -84,6 +91,6 @@ Only `nginx` publishes ports to the host. Every other service is reachable only 
 
 ## Consequences
 
-- Nine networks, each removing a specific reachability the previous plan claimed but did not enforce.
-- The `api` joins five networks and remains the hub, which is inherent to a single-application stack.
+- Nine networks, each removing a specific reachability the previous plan claimed but did not enforce; the edge networks of local tools and NetBox's three came later.
+- The `api` joins six networks and remains the hub, which is inherent to a single-application stack.
 - One-shot and scheduled jobs (`migrate`, `certs`, `backup`) need explicit network membership, which the generated Quadlet units inherit from `compose.yaml`.

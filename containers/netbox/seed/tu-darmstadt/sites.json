@@ -1,0 +1,4900 @@
+[
+  {
+    "key": "B1|01",
+    "slug": "b1-01",
+    "group": "b1",
+    "name": {
+      "de": "Botanik, Zoologie (Institutsgebäude mit Energiehaus)",
+      "en": "Botany, Zoology (institute building with energy house)"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 3",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B1|02",
+    "slug": "b1-02",
+    "group": "b1",
+    "name": {
+      "de": "Botanik (Altbau)",
+      "en": "Botany (old building)"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 4",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B1|03",
+    "slug": "b1-03",
+    "group": "b1",
+    "name": {
+      "de": "Großes Gewächshaus",
+      "en": "Large Greenhouse"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 5",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B1|04",
+    "slug": "b1-04",
+    "group": "b1",
+    "name": {
+      "de": "Versuchsgewächshaus",
+      "en": "Experimental Greenhouse"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 5",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B1|06",
+    "slug": "b1-06",
+    "group": "b1",
+    "name": {
+      "de": "Kalthauspflanzen (Gewächshaus)",
+      "en": "Coldhouse plants (Greenhouse)"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 5",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B1|07",
+    "slug": "b1-07",
+    "group": "b1",
+    "name": {
+      "de": "Orchideenhaus (Gewächshaus)",
+      "en": "Orchid house (Greenhouse)"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 5",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B1|08",
+    "slug": "b1-08",
+    "group": "b1",
+    "name": {
+      "de": "Mobi-Office I",
+      "en": "Mobi-Office I"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 2",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B1|70",
+    "slug": "b1-70",
+    "group": "b1",
+    "name": {
+      "de": "Infopavillon Botanischer Garten",
+      "en": "Info Pavilion Botanical Garden"
+    },
+    "address": {
+      "street": "Botanischer Garten",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [
+        "Schnittspahnstraße"
+      ],
+      "en": [
+        "Schnittspahnstraße"
+      ]
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B2|01",
+    "slug": "b2-01",
+    "group": "b2",
+    "name": {
+      "de": "Angewandte Geowissenschaften und Hörsaal",
+      "en": "Applied Geosciences and lecture room"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 9",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Institut für Angewandte Geowissenschaften"
+      ],
+      "en": [
+        "Institute of Applied Geosciences"
+      ]
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B2|02",
+    "slug": "b2-02",
+    "group": "b2",
+    "name": {
+      "de": "Angewandte Geowissenschaften",
+      "en": "Applied Geosciences"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 9",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Institut für Angewandte Geowissenschaften"
+      ],
+      "en": [
+        "Institute of Applied Geosciences"
+      ]
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B2|03",
+    "slug": "b2-03",
+    "group": "b2",
+    "name": {
+      "de": "Biologie Verfügungsgebäude",
+      "en": "Biology Verfügungsgebäude"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 10",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Biologie"
+      ],
+      "en": [
+        "Department of Biology"
+      ]
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B2|04",
+    "slug": "b2-04",
+    "group": "b2",
+    "name": {
+      "de": "Ökologisches Versuchsgewächshaus",
+      "en": "Ecological Experimental Greenhouse"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 10A",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Biologie"
+      ],
+      "en": [
+        "Department of Biology"
+      ]
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B2|05",
+    "slug": "b2-05",
+    "group": "b2",
+    "name": {
+      "de": "Bioinnovationszentrum I (BIZ I)",
+      "en": "Bio Innovation Centre I (BIZ I)"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 12",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Biologie",
+        "Lernlabor Biologie"
+      ],
+      "en": [
+        "Department of Biology",
+        "Biology Learning Lab"
+      ]
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B2|06",
+    "slug": "b2-06",
+    "group": "b2",
+    "name": {
+      "de": "Bioinnovationszentrum II (BIZ II)",
+      "en": "Bio Innovation Centre II (BIZ II)"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 13",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Biologie"
+      ],
+      "en": [
+        "Department of Biology"
+      ]
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B2|07",
+    "slug": "b2-07",
+    "group": "b2",
+    "name": {
+      "de": "Mobi-Office II",
+      "en": "Mobi-Office II"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 15",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Biologie"
+      ],
+      "en": [
+        "Department of Biology"
+      ]
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B2|08",
+    "slug": "b2-08",
+    "group": "b2",
+    "name": {
+      "de": "MerckLifeLab (MLL)",
+      "en": "MerckLifeLab (MLL)"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 14",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Biologie"
+      ],
+      "en": [
+        "Department of Biology"
+      ]
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "B2|61",
+    "slug": "b2-61",
+    "group": "b2",
+    "name": {
+      "de": "Studierendenzentrum Botanik, Cafe Bios",
+      "en": "Botany Student Centre, Cafe Bios"
+    },
+    "address": {
+      "street": "Schnittspahnstraße 11",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Bistro Bios",
+        "Studierendenzentrum Biologie & BIOS Café"
+      ],
+      "en": [
+        "Bistro Bios",
+        "Biology Student Centre & BIOS Café"
+      ]
+    },
+    "sources": [
+      "botanischer_garten_1/index.de.jsp",
+      "botanischer_garten_1/index.en.jsp",
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "H1|01",
+    "slug": "h1-01",
+    "group": "h1",
+    "name": {
+      "de": "Sporthallen",
+      "en": "Sports hall"
+    },
+    "address": {
+      "street": "Nieder-Ramstädter Straße 164",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": [
+        "Lichtwiesenweg 5"
+      ]
+    },
+    "occupants": {
+      "de": [
+        "Unisport-Zentrum (USZ)"
+      ],
+      "en": [
+        "University Sports Centre (USZ)"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "hochschulstadion/index.de.jsp",
+      "hochschulstadion/index.en.jsp"
+    ]
+  },
+  {
+    "key": "H1|02",
+    "slug": "h1-02",
+    "group": "h1",
+    "name": {
+      "de": "Hochschulstadion, Laufbahn und Sitzterrassen",
+      "en": "University stadium, Running track and seating terraces"
+    },
+    "address": {
+      "street": "Lichtwiesenweg 5",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "hochschulstadion/index.de.jsp",
+      "hochschulstadion/index.en.jsp"
+    ]
+  },
+  {
+    "key": "H1|03",
+    "slug": "h1-03",
+    "group": "h1",
+    "name": {
+      "de": "unifit",
+      "en": "unifit"
+    },
+    "address": {
+      "street": "Lichtwiesenweg 15",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "unifit"
+      ],
+      "en": [
+        "unifit"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "hochschulstadion/index.de.jsp",
+      "hochschulstadion/index.en.jsp"
+    ]
+  },
+  {
+    "key": "H1|04",
+    "slug": "h1-04",
+    "group": "h1",
+    "name": {
+      "de": "Hochschulstadion Kinderbadebecken",
+      "en": "University stadium, Children's pool"
+    },
+    "address": {
+      "street": "Lichtwiesenweg 5",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "hochschulstadion/index.de.jsp",
+      "hochschulstadion/index.en.jsp"
+    ]
+  },
+  {
+    "key": "H1|05",
+    "slug": "h1-05",
+    "group": "h1",
+    "name": {
+      "de": "Hochschulstadion Garderoben",
+      "en": "University stadium, Cloakroom"
+    },
+    "address": {
+      "street": "Lichtwiesenweg 5",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "hochschulstadion/index.de.jsp",
+      "hochschulstadion/index.en.jsp"
+    ]
+  },
+  {
+    "key": "H1|06",
+    "slug": "h1-06",
+    "group": "h1",
+    "name": {
+      "de": "Hochschulstadion Schwimmbad mit Tribüne",
+      "en": "University stadium, Swimming pool with grandstand"
+    },
+    "address": {
+      "street": "Lichtwiesenweg 5",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "hochschulstadion/index.de.jsp",
+      "hochschulstadion/index.en.jsp"
+    ]
+  },
+  {
+    "key": "H1|07",
+    "slug": "h1-07",
+    "group": "h1",
+    "name": {
+      "de": "Kletterhalle Alpenverein",
+      "en": "Climbing gym Alpenverein"
+    },
+    "address": {
+      "street": "Lichtwiesenweg 15",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "DAV Kletterzentrum Darmstadt",
+        "Alpenverein Darmstadt"
+      ],
+      "en": [
+        "DAV Kletterzentrum Darmstadt",
+        "Alpenverein Darmstadt"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "hochschulstadion/index.de.jsp",
+      "hochschulstadion/index.en.jsp"
+    ]
+  },
+  {
+    "key": "H1|08",
+    "slug": "h1-08",
+    "group": "h1",
+    "name": {
+      "de": "Bürogebäude Unisport-Zentrum",
+      "en": "Office building University sports centre"
+    },
+    "address": {
+      "street": "Lichtwiesenweg 3",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Unisport-Zentrum (USZ)"
+      ],
+      "en": [
+        "University Sports Centre (USZ)"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "hochschulstadion/index.de.jsp",
+      "hochschulstadion/index.en.jsp"
+    ]
+  },
+  {
+    "key": "H1|82",
+    "slug": "h1-82",
+    "group": "h1",
+    "name": {
+      "de": "Otto-Wolfskehl-Haus (Internationales Gästehaus)",
+      "en": "Otto-Wolfskehl-House (International Guest House)"
+    },
+    "address": {
+      "street": "Nieder-Ramstädter-Straße 130",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [
+        "Nieder-Ramstädter Straße 130/130A"
+      ],
+      "en": [
+        "Nieder-Ramstädter Straße 130/130A"
+      ]
+    },
+    "occupants": {
+      "de": [
+        "Otto-Wolfskehl-Haus",
+        "Dezernat VIII Internationales – Welcome Centre"
+      ],
+      "en": [
+        "Otto-Wolfskehl-Haus"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "hochschulstadion/index.de.jsp",
+      "hochschulstadion/index.en.jsp"
+    ]
+  },
+  {
+    "key": "H1|84",
+    "slug": "h1-84",
+    "group": "h1",
+    "name": {
+      "de": "uniKITA – Waldkindergarten",
+      "en": "uniKITA – Forest kindergarten"
+    },
+    "address": {
+      "street": "Lichtwiesenweg 9A",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "uniKITA",
+        "Kletterwald Darmstadt"
+      ],
+      "en": [
+        "uniKITA",
+        "Climbing forest Darmstadt"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "hochschulstadion/index.de.jsp",
+      "hochschulstadion/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L1|01",
+    "slug": "l1-01",
+    "group": "l1",
+    "name": {
+      "de": "Maschinenbau Fachbereichsgebäude",
+      "en": "Mechanical engineering department building"
+    },
+    "address": {
+      "street": "Otto-Berndt-Straße 2",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Hochschulrechenzentrum (HRZ)",
+        "Fachbereich Maschinenbau",
+        "Fachbereich Bau- und Umweltingenieurwissenschaften",
+        "Institut für Verkehr"
+      ],
+      "en": [
+        "University Computing Centre (HRZ)",
+        "Department of Mechanical Engineering",
+        "Department of Civil and Environmental Engineering",
+        "Institute for Transport"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L1|02",
+    "slug": "l1-02",
+    "group": "l1",
+    "name": {
+      "de": "Maschinenbauhalle 1, U-Station Maschinenbau",
+      "en": "Mechanical Engineering Test hall 1, U-Station Mechanical Engineering"
+    },
+    "address": {
+      "street": "Jovanka-Bontschits-Straße 3",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L1|03",
+    "slug": "l1-03",
+    "group": "l1",
+    "name": {
+      "de": "Maschinenbauhalle 5",
+      "en": "Mechanical Engineering Test hall 5"
+    },
+    "address": {
+      "street": "Jovanka-Bontschits-Straße 9",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L1|04",
+    "slug": "l1-04",
+    "group": "l1",
+    "name": {
+      "de": "Maschinenbauhalle 4 (Prüfstand)",
+      "en": "Mechanical Engineering Test hall 4 (test bench)"
+    },
+    "address": {
+      "street": "Jovanka-Bontschits-Straße 11",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L1|05",
+    "slug": "l1-05",
+    "group": "l1",
+    "name": {
+      "de": "Maschinenbauhalle 3",
+      "en": "Mechanical Engineering Test hall 3"
+    },
+    "address": {
+      "street": "Ottilie-Bock-Straße 6",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L1|06",
+    "slug": "l1-06",
+    "group": "l1",
+    "name": {
+      "de": "Maschinenbauhalle 2",
+      "en": "Mechanical Engineering Test hall 2"
+    },
+    "address": {
+      "street": "Ottilie-Bock-Straße 2",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L1|07",
+    "slug": "l1-07",
+    "group": "l1",
+    "name": {
+      "de": "Maschinenbauhalle 6",
+      "en": "Mechanical Engineering Test hall 6"
+    },
+    "address": {
+      "street": "Jovanka-Bontschits-Straße 10",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L1|09",
+    "slug": "l1-09",
+    "group": "l1",
+    "name": {
+      "de": "CO2-Versuchshalle",
+      "en": "CO2 pilot plant"
+    },
+    "address": {
+      "street": "Ottilie-Bock-Straße 4",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Maschinenbau, Institut EST"
+      ],
+      "en": [
+        "Department of Mechanical Engineering, Institute EST"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L1|10",
+    "slug": "l1-10",
+    "group": "l1",
+    "name": {
+      "de": "Gerhard-Pahl-Zentrum (Lehrzentrum Maschinenbau)",
+      "en": "Gerhard-Pahl-Centre (Learning Centre Mechanical Engineering)"
+    },
+    "address": {
+      "street": "Jovanka-Bontschits-Straße 7",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Maschinenbau"
+      ],
+      "en": [
+        "Department of Mechanical Engineering"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L1|12",
+    "slug": "l1-12",
+    "group": "l1",
+    "name": {
+      "de": "Fahrzeughalle",
+      "en": "Vehicle hall"
+    },
+    "address": {
+      "street": "Ottilie-Bock-Straße 2A",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Maschinenbau, Institut VKM"
+      ],
+      "en": [
+        "Department of Mechanical Engineering, Institute VKM"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L1|13",
+    "slug": "l1-13",
+    "group": "l1",
+    "name": {
+      "de": "Maschinenakustikhalle SAM",
+      "en": "Machine Acoustics Hall SAM"
+    },
+    "address": {
+      "street": "Jovanka-Bontschits-Straße 1",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Maschinenbau"
+      ],
+      "en": [
+        "Department of Mechanical Engineering"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L1|14",
+    "slug": "l1-14",
+    "group": "l1",
+    "name": {
+      "de": "FlowFactory",
+      "en": "FlowFactory"
+    },
+    "address": {
+      "street": "Jovanka-Bontschits-Straße 8",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [
+        "Jovanka-Bontschits-Strasse 8"
+      ],
+      "en": [
+        "Jovanka-Bontschits-Strasse 8"
+      ]
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Maschinenbau, Institut PTW"
+      ],
+      "en": [
+        "Department of Mechanical Engineering, Institute PTW"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L1|16",
+    "slug": "l1-16",
+    "group": "l1",
+    "name": {
+      "de": "Center for Reliability Analytics-CRA",
+      "en": "Center for Reliability Analytics-CRA"
+    },
+    "address": {
+      "street": "Ottilie-Bock-Strasse 3",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Maschinenbau"
+      ],
+      "en": [
+        "Department of Mechanical Engineering"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L1|17",
+    "slug": "l1-17",
+    "group": "l1",
+    "name": {
+      "de": "Additive Manufacturing Center-AMC",
+      "en": "Additive Manufacturing Center-AMC"
+    },
+    "address": {
+      "street": "Ottilie-Bock-Strasse 1",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Maschinenbau",
+        "Odenwaldbahn",
+        "Bahnhof Lichtwiese"
+      ],
+      "en": [
+        "Department of Mechanical Engineering",
+        "Odenwaldbahn",
+        "Train station Lichtwiese"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L2|01",
+    "slug": "l2-01",
+    "group": "l2",
+    "name": {
+      "de": "Materialwissenschaft",
+      "en": "Materials Science"
+    },
+    "address": {
+      "street": "Peter-Grünberg-Straße 2",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Material- und Geowissenschaften",
+        "Lernzentrum Materialwissenschaft"
+      ],
+      "en": [
+        "Department of Materials- and Geosciences",
+        "Learning Centre for Materials Science"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L2|02",
+    "slug": "l2-02",
+    "group": "l2",
+    "name": {
+      "de": "Chemie Fachbereichsgebäude 1 Poststelle Lichtwiese",
+      "en": "Chemistry department building 1 Post Office Lichtwiese"
+    },
+    "address": {
+      "street": "Peter-Grünberg-Straße 4",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Lernzentrum Chemie",
+        "Tutorenzentrum Chemie",
+        "Fachschaft Chemie"
+      ],
+      "en": [
+        "Learning Centre Chemistry",
+        "Tutoring Centre Chemistry",
+        "Departmental Student Body and Representative Committee Chemistry"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L2|03",
+    "slug": "l2-03",
+    "group": "l2",
+    "name": {
+      "de": "Chemie Hörsaalgebäude",
+      "en": "Chemistry auditorium building"
+    },
+    "address": {
+      "street": "Peter-Grünberg-Straße 6",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Hörsäle"
+      ],
+      "en": [
+        "Lecture rooms"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L2|04",
+    "slug": "l2-04",
+    "group": "l2",
+    "name": {
+      "de": "Chemie Fachbereichsgebäude 2",
+      "en": "Chemistry department building 2"
+    },
+    "address": {
+      "street": "Peter-Grünberg-Straße 8",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Chemie",
+        "alle vorstehenden Gebäude in Nutzung von Fachbereich Chemie"
+      ],
+      "en": [
+        "Department of Chemistry",
+        "all the above buildings in use by Department of Chemistry"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L2|05",
+    "slug": "l2-05",
+    "group": "l2",
+    "name": {
+      "de": "Chemie Fachbereichsgebäude 3, Merck-TU-Juniorlabor",
+      "en": "Chemistry department building 3, Merck-TU-Juniorlabor"
+    },
+    "address": {
+      "street": "Peter-Grünberg-Straße 12",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "JuniorLabor (Schülerlabor in Zusammenarbeit mit der Firma Merck)",
+        "Fachbereich Chemie"
+      ],
+      "en": [
+        "JuniorLabor (Student laboratory in cooperation with the company Merck)",
+        "Department of Chemistry"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L2|06",
+    "slug": "l2-06",
+    "group": "l2",
+    "name": {
+      "de": "Center of Smart Interfaces (CSI)",
+      "en": "Center of Smart Interfaces (CSI)"
+    },
+    "address": {
+      "street": "Peter-Grünberg-Straße 10",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Mathematik: Analysis",
+        "FB Chemie: Physikalische Chemie",
+        "FB Material-und Geowissenschaften: Physics of Surfaces",
+        "FB Maschinenbau",
+        "Forschungscluster Thermo-Fluids & Interfaces",
+        "Strömungslehre und Aerodynamik",
+        "Technische Thermodynamik",
+        "Stabsstelle Forschungsinfrastrukturen"
+      ],
+      "en": [
+        "Department of Mathematics: Analysis",
+        "Department of Chemistry: Physical Chemistry",
+        "Department of Materials- and Geosciences: Physics of Surfaces",
+        "Department of Mechanical Engineering:",
+        "Profile area Thermo-Fluids & Interfaces",
+        "Fluid Mechanics and Aerodynamics",
+        "Technical Thermodynamics",
+        "Staff Council Research Infrastructures"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L2|07",
+    "slug": "l2-07",
+    "group": "l2",
+    "name": {
+      "de": "M³ Laborgebäude",
+      "en": "M³ Laboratory Building"
+    },
+    "address": {
+      "street": "Peter-Grünberg-Straße 16",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "NMR-Zentrum",
+        "FB Material-und Geowissenschaften:",
+        "Functional Materials",
+        "Physics of Surfaces"
+      ],
+      "en": [
+        "NMR Centre",
+        "Department of Materials- and Geosciences:",
+        "Functional Materials",
+        "Physics of Surfaces"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L2|08",
+    "slug": "l2-08",
+    "group": "l2",
+    "name": {
+      "de": "Lehrlaborgebäude (LLG)",
+      "en": "Teaching Laboratory Building"
+    },
+    "address": {
+      "street": "El-Lissitzky-Straße 4",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Bau-und Umweltingenieurwissenschaften, IWAR"
+      ],
+      "en": [
+        "Department of Civil and Environmental Engineering, IWAR"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L2|50",
+    "slug": "l2-50",
+    "group": "l2",
+    "name": {
+      "de": "Hausverwaltung Chemie",
+      "en": "Caretaker service Chemistry"
+    },
+    "address": {
+      "street": "Peter-Grünberg-Straße 8",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "(Interim Container wegen Umbau)",
+        "Peter-Grünberg-Straße 8",
+        "Dezernat IV"
+      ],
+      "en": [
+        "(Interim Container during reconstruction)",
+        "Peter-Grünberg-Straße 8",
+        "Directorate IV"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L2|51",
+    "slug": "l2-51",
+    "group": "l2",
+    "name": {
+      "de": "Lernzentrum Chemie",
+      "en": "Learning centre Chemistry"
+    },
+    "address": {
+      "street": "Peter-Grünberg-Straße 8",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "(Interim Container wegen Umbau)",
+        "Peter-Grünberg-Straße 8",
+        "Fachbereich Chemie"
+      ],
+      "en": [
+        "(Interim Container during reconstruction)",
+        "Peter-Grünberg-Straße 8",
+        "Department of Chemistry"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L2|66",
+    "slug": "l2-66",
+    "group": "l2",
+    "name": {
+      "de": "Entsorgungszentrum",
+      "en": "Disposal centre"
+    },
+    "address": {
+      "street": "Peter-Grünberg-Straße 14",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Dezernat IV"
+      ],
+      "en": [
+        "Directorate IV"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L3|01",
+    "slug": "l3-01",
+    "group": "l3",
+    "name": {
+      "de": "Architektur Fachbereichsgebäude",
+      "en": "Architecture department building"
+    },
+    "address": {
+      "street": "El-Lissitzky-Straße 1",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Architektur Lernzentrum Architektur",
+        "FB Bau-und Umweltingenieurwissenschaften, Institut für Baubetrieb",
+        "Lernzentrum Maschinenbau",
+        "Personalrat",
+        "Allgemeiner Studierendenausschuss (AStA)",
+        "Eltern-Kind-Raum"
+      ],
+      "en": [
+        "Department of Architecture Learning Centre Architecture",
+        "Department of Civil and Environmental Engineering, Institute of Construction Technologies and Management",
+        "Learning Centre Mechanical Engineering",
+        "Staff Council",
+        "Students' Union (AStA)",
+        "Parent-child room"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L3|02",
+    "slug": "l3-02",
+    "group": "l3",
+    "name": {
+      "de": "Solar Decathlon 2007",
+      "en": "Solar Decathlon 2007"
+    },
+    "address": {
+      "street": "El-Lissitzky-Straße 3",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L3|03",
+    "slug": "l3-03",
+    "group": "l3",
+    "name": {
+      "de": "Solar Decathlon 2009",
+      "en": "Solar Decathlon 2009"
+    },
+    "address": {
+      "street": "El-Lissitzky-Straße 3A",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L3|06",
+    "slug": "l3-06",
+    "group": "l3",
+    "name": {
+      "de": null,
+      "en": "UniKITA, Toddler groups"
+    },
+    "address": {
+      "street": "El-Lissitzky-Straße 5",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L3|60",
+    "slug": "l3-60",
+    "group": "l3",
+    "name": {
+      "de": "uniKITA, Krabbelgruppen",
+      "en": "uniKITA playgroups"
+    },
+    "address": {
+      "street": "El-Lissitzky-Straße 5",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp"
+    ]
+  },
+  {
+    "key": "L3|61",
+    "slug": "l3-61",
+    "group": "l3",
+    "name": {
+      "de": "UniKITA, Waldkindergarten",
+      "en": "UniKITA, Forest kindergarten"
+    },
+    "address": {
+      "street": "El-Lissitzky-Straße",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L3|62",
+    "slug": "l3-62",
+    "group": "l3",
+    "name": {
+      "de": "Kinderhaus I – Lichtwiese",
+      "en": "Kinderhaus I – Lichtwiese, Childcare facility"
+    },
+    "address": {
+      "street": "El-Lissitzky-Straße 7",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L4|01",
+    "slug": "l4-01",
+    "group": "l4",
+    "name": {
+      "de": "Mensa Lichtwiese",
+      "en": "Canteen Lichtwiese"
+    },
+    "address": {
+      "street": "Peter-Grünberg-Straße 3",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [
+        "Lieferanschrift: Franziska-Braun-Straße 9"
+      ],
+      "en": [
+        "Delivery address: Franziska-Braun-Straße 9"
+      ]
+    },
+    "occupants": {
+      "de": [
+        "Eltern-Kind-Raum"
+      ],
+      "en": [
+        "Parent-child room"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L4|02",
+    "slug": "l4-02",
+    "group": "l4",
+    "name": {
+      "de": "Hörsaal- und Medienzentrum (HMZ)",
+      "en": "Lecture hall and Library building (HMZ)"
+    },
+    "address": {
+      "street": "Franziska-Braun-Straße 10",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Hörsäle, Lernräume, Seminarräume",
+        "Universitäts- und Landesbibliothek (ULB Lichtwiese)",
+        "Cafeteria LichtBAR, Papierladen",
+        "teo Lebensmittelmarkt"
+      ],
+      "en": [
+        "Lecture rooms, learning rooms, seminar rooms",
+        "University and State Library (ULB Lichtwiese)",
+        "Cafeteria LichtBAR, Paper Shop",
+        "teo food market"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L5|01",
+    "slug": "l5-01",
+    "group": "l5",
+    "name": {
+      "de": "Bau- und Umweltingenieurwissenschaften Fachbereichsgebäude 1",
+      "en": "Civil and environmental engineering Department building 1"
+    },
+    "address": {
+      "street": "Franziska-Braun-Straße 7",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Bau- und Umweltingenieurwissenschaften",
+        "FB Maschinenbau, Fachgebiet Strukturmechanik",
+        "Studienbereich Mechanik"
+      ],
+      "en": [
+        "Department of Civil and Environmental Engineering",
+        "Department of Mechanical Engineering, Institute of Structural Mechanics",
+        "Department of Mechanics"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L5|02",
+    "slug": "l5-02",
+    "group": "l5",
+    "name": {
+      "de": "Bau- und Umweltingenieurwissenschaften Halle 1",
+      "en": "Civil and environmental engineering Test hall 1"
+    },
+    "address": {
+      "street": "Günter-Behnisch-Straße 14",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L5|03",
+    "slug": "l5-03",
+    "group": "l5",
+    "name": {
+      "de": "Bau- und Umweltingenieurwissenschaften Halle 4",
+      "en": "Civil and environmental engineering Test hall 4"
+    },
+    "address": {
+      "street": "Günter-Behnisch-Straße 12",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L5|04",
+    "slug": "l5-04",
+    "group": "l5",
+    "name": {
+      "de": "Bau- und Umweltingenieurwissenschaften Halle 3",
+      "en": "Civil and environmental engineering Test hall 3"
+    },
+    "address": {
+      "street": "Günter-Behnisch-Straße 10",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L5|05",
+    "slug": "l5-05",
+    "group": "l5",
+    "name": {
+      "de": "Bau- und Umweltingenieurwissenschaften Halle 2",
+      "en": "Civil and environmental engineering Test hall 2"
+    },
+    "address": {
+      "street": "Günter-Behnisch-Straße 8",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L5|06",
+    "slug": "l5-06",
+    "group": "l5",
+    "name": {
+      "de": "Bau- und Umweltingenieurwissenschaften Fachbereichsgebäude 2",
+      "en": "Civil and environmental engineering Department building 2"
+    },
+    "address": {
+      "street": "Franziska-Braun-Straße 3",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L5|07",
+    "slug": "l5-07",
+    "group": "l5",
+    "name": {
+      "de": "Bau- und Umweltingenieurwissenschaften Halle 5",
+      "en": "Civil and environmental engineering Test hall 5"
+    },
+    "address": {
+      "street": "Franziska-Braun-Straße 5",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L5|08",
+    "slug": "l5-08",
+    "group": "l5",
+    "name": {
+      "de": "Hochleistungsrechner",
+      "en": "High Performance Computer"
+    },
+    "address": {
+      "street": "Günter-Behnisch-Straße 4",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "HRZ"
+      ],
+      "en": [
+        "University Computing Centre (HRZ)"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L5|09",
+    "slug": "l5-09",
+    "group": "l5",
+    "name": {
+      "de": "Glass-Competence-Center (GCC)",
+      "en": "Glass Competence Centre (GCC)"
+    },
+    "address": {
+      "street": "Günter-Behnisch-Straße 6",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L5|60",
+    "slug": "l5-60",
+    "group": "l5",
+    "name": {
+      "de": "Wertstoffzentrum",
+      "en": "Recycling centre"
+    },
+    "address": {
+      "street": "Günter-Behnisch-Straße 2",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Dezernat IV"
+      ],
+      "en": [
+        "Directorate IV"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L6|01",
+    "slug": "l6-01",
+    "group": "l6",
+    "name": {
+      "de": "Verfügungsgebäude SI",
+      "en": "Multi-purpose building SI"
+    },
+    "address": {
+      "street": "Otto-Berndt-Straße 3",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Material-und Geowissenschaften:",
+        "Disperse Feststoffe",
+        "Materialmodellierung",
+        "Mechanik Funktionaler Materialien",
+        "Molekulare Nanostrukturen",
+        "Nanomaterialien",
+        "Oberflächenforschung",
+        "FB Maschinenbau:",
+        "Energie- und Kraftwerkstechnik",
+        "Reaktive Strömungen und Messtechnik, RSM",
+        "FB Chemie",
+        "Katalysatoren und Elektrokatalysatoren",
+        "Energy Centre",
+        "Graduiertenschule für Energiewissenschaft und Energietechnik"
+      ],
+      "en": [
+        "Department of Materials- and Geosciences:",
+        "Dispersive Solids",
+        "Materials Modelling",
+        "Mechanics of Functional Materials",
+        "Molecular Nanostructures",
+        "Nanomaterials",
+        "Surface Science",
+        "Department of Mechanical Engineering:",
+        "Energy and Power Plant Technology",
+        "Reactive Flows and Diagnostics, RSM",
+        "Department of Chemistry",
+        "Catalysts and Electrocatalysts",
+        "Energy Centre",
+        "Graduate School of Energy Science and Engineering"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L6|02",
+    "slug": "l6-02",
+    "group": "l6",
+    "name": {
+      "de": "Verfügungsgebäude SIE",
+      "en": "Multi-purpose building SIE"
+    },
+    "address": {
+      "street": "Otto-Berndt-Straße 1",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Chemie",
+        "Katalysatoren und Elektrokatalysatoren"
+      ],
+      "en": [
+        "Department of Chemistry",
+        "Catalysts and Electrocatalysts"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "L6|03",
+    "slug": "l6-03",
+    "group": "l6",
+    "name": {
+      "de": "ETA-Fabrik",
+      "en": "ETA Factory"
+    },
+    "address": {
+      "street": "Eugen-Kogon-Straße 4",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Maschinenbau, Institut PTW"
+      ],
+      "en": [
+        "Department of Mechanical Engineering, Institute PTW"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "lichtwiese_2/index.de.jsp",
+      "lichtwiese_2/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|01",
+    "slug": "s1-01",
+    "group": "s1",
+    "name": {
+      "de": "Universitätszentrum, karo 5, Audimax",
+      "en": "University Centre, karo 5, Audimax"
+    },
+    "address": {
+      "street": "Karolinenplatz 5",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Universitätsverwaltung",
+        "Dezernat II – Studierendenservice und Hochschulrecht",
+        "Dezernat III – Finanz- und Wirtschaftsangelegenheiten",
+        "Dezernat VI – Forschung und Transfer",
+        "Dezernat VIII Internationales",
+        "Studierendenservice",
+        "Zentrale Studienberatung",
+        "KIVA VI: Entwicklung Interdisziplinarität",
+        "Audimax, Hörsäle",
+        "karo5 Cafeteria TUbar",
+        "Fahrradwerkstatt"
+      ],
+      "en": [
+        "University Administration",
+        "Directorate II – Studies and Teaching",
+        "Directorate III – Finance and Economic Affairs",
+        "Directorate VI – Research Services & Technology Transfer",
+        "Directorate VIII International Affairs – Units VIII A and VIII C",
+        "Student Service",
+        "Central Student Advisory",
+        "KIVA VI: Development interdisciplinarity",
+        "Audimax, Lecture halls",
+        "karo5 Cafeteria TUbar",
+        "Bicycle workshop"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|02",
+    "slug": "s1-02",
+    "group": "s1",
+    "name": {
+      "de": "Altes Hauptgebäude (Westflügel)",
+      "en": "Altes Hauptgebäude (Old Main Building) – west wing"
+    },
+    "address": {
+      "street": "Hochschulstraße 3",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Rechts- und Wirtschaftswissenschaften, Fachgebiete",
+        "Hochschulrechenzentum (HRZ)"
+      ],
+      "en": [
+        "Department of Law and Economics,Chairs",
+        "University Computing Centre (HRZ)"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|03",
+    "slug": "s1-03",
+    "group": "s1",
+    "name": {
+      "de": "Altes Hauptgebäude",
+      "en": "Altes Hauptgebäude (Old Main Building)"
+    },
+    "address": {
+      "street": "Hochschulstraße 1",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Rechts- und Wirtschaftswissenschaften, Dekanat und Studienbüro, Fachgebiete",
+        "Sprachenzentrum",
+        "Hörsäle Seminarräume",
+        "Wilhelm-Köhler-Saal (Vortragssaal)",
+        "Allgemeines Lernzentrum",
+        "Dezernat VII – Personal- und Rechtsangelegenheiten",
+        "Hochschuldidaktische Arbeitsstelle (HDA)",
+        "Stabsstelle IT- und Prozesskoordination",
+        "Stabsstelle Innenrevision",
+        "Personalrat",
+        "Sozial- und Konfliktberatungsstelle",
+        "Gleichstellungsbeauftragte",
+        "Servicestelle Familie",
+        "Kunstforum",
+        "uniGym",
+        "Allgemeiner Studierendenausschuss (AStA)"
+      ],
+      "en": [
+        "Department of Law and Economics, Departmental Management and Office for Student Affairs, Chairs",
+        "Language Resource Centre",
+        "Lecture rooms, seminar rooms",
+        "Wilhelm-Köhler-Saal (lecture hall)",
+        "General learning centre",
+        "Directorate VII – Human Resources and Legal Affairs",
+        "Staff Unit for IT & Process coordination",
+        "Staff Unit Internal Audit",
+        "Centre for Educational Development and Technology (HDA)",
+        "Staff Council",
+        "Social and Conflict Counseling Centre (Sozial- und Konfliktberatungsstelle)",
+        "Gender Equality Officer",
+        "Family Service",
+        "Kunstforum",
+        "uniGym",
+        "General Students' Committee (AStA)"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|05",
+    "slug": "s1-05",
+    "group": "s1",
+    "name": {
+      "de": "Maschinenhaus",
+      "en": "Maschinenhaus"
+    },
+    "address": {
+      "street": "Magdalenenstraße 12",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Georg-Wickop-Hörsaal, Zentrale Seminarräume"
+      ],
+      "en": [
+        "George Wickop Lecture Hall, central seminar rooms"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|08",
+    "slug": "s1-08",
+    "group": "s1",
+    "name": {
+      "de": "Maschinenbau",
+      "en": "Mechanical Engineering"
+    },
+    "address": {
+      "street": "Magdalenenstraße 4",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "in Sanierung"
+      ],
+      "en": [
+        "the building is under renovation"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|09",
+    "slug": "s1-09",
+    "group": "s1",
+    "name": {
+      "de": "Maschinenbauhalle Mitte",
+      "en": "Maschinenbauhalle Centre"
+    },
+    "address": {
+      "street": "Magdalenenstraße 6",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "in Sanierung"
+      ],
+      "en": [
+        "the building is under renovation"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|10",
+    "slug": "s1-10",
+    "group": "s1",
+    "name": {
+      "de": "Druckmaschinen",
+      "en": "Printing Science Technology"
+    },
+    "address": {
+      "street": "Magdalenenstraße 2",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FG Druckmaschinen und Druckverfahren"
+      ],
+      "en": [
+        "Institute of Printing Science and Technology"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|11",
+    "slug": "s1-11",
+    "group": "s1",
+    "name": {
+      "de": "Mensa mit Otto-Berndt-Halle",
+      "en": "Cafeteria (including Otto-Berndt-Hall)"
+    },
+    "address": {
+      "street": "Alexanderstraße 4",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Studierendenwerk Darmstadt",
+        "Mensa Stadtmitte"
+      ],
+      "en": [
+        "Studierendenwerk Darmstadt",
+        "Cafeteria City Centre"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|13",
+    "slug": "s1-13",
+    "group": "s1",
+    "name": {
+      "de": "Pädagogik / Berufspädagogik",
+      "en": "General and Vocational Pedagogy"
+    },
+    "address": {
+      "street": "Alexanderstraße 6",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Lernzentrum Allgemeine Pädagogik und Berufspädagogik",
+        "Zentrum für Lehrerbildung (ZfL)",
+        "Institut für Allgemeine Pädagogik und Berufspädagogik",
+        "LUPE – Labor für Unterrichtsentwicklung, Planspiele und Exchange"
+      ],
+      "en": [
+        "Learning Centre General and Vocational Pedagogy",
+        "Centre for Teacher Education (ZfL)",
+        "Institute of General and Vocational Education",
+        "LUPE – Laboratory for Teaching Development, Simulation Games and Exchange"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|14",
+    "slug": "s1-14",
+    "group": "s1",
+    "name": {
+      "de": "Papierfabrikation",
+      "en": "Paper Technology"
+    },
+    "address": {
+      "street": "Alexanderstraße 8",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachgebiet Papierfabrikation und Mechanische Verfahrenstechnik"
+      ],
+      "en": [
+        "Chair of Paper Technology and Mechanical Process Engineering"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|15",
+    "slug": "s1-15",
+    "group": "s1",
+    "name": {
+      "de": "Psychologie",
+      "en": "Psychology"
+    },
+    "address": {
+      "street": "Alexanderstraße 10",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Dekanat Humanwissenschaften",
+        "Institut für Psychologie",
+        "Lernzentrum Psychologie"
+      ],
+      "en": [
+        "Department of Human Sciences",
+        "Institute for Psychology",
+        "Learning Centre Psychology"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|17",
+    "slug": "s1-17",
+    "group": "s1",
+    "name": {
+      "de": "Sportwissenschaft (Hofreite Vorderhaus)",
+      "en": "Sports Science (Hofreite front house)"
+    },
+    "address": {
+      "street": "Magdalenenstraße 27",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Institut für Sportwissenschaft"
+      ],
+      "en": [
+        "Institute for Sports Science"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|18",
+    "slug": "s1-18",
+    "group": "s1",
+    "name": {
+      "de": "Sportwissenschaft (Hofreite Hinterhaus)",
+      "en": "Sports Science (Hofreite back house)"
+    },
+    "address": {
+      "street": "Magdalenenstraße 27",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Institut für Sportwissenschaft"
+      ],
+      "en": [
+        "Institute for Sports Science"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|19",
+    "slug": "s1-19",
+    "group": "s1",
+    "name": {
+      "de": "Verfügungsgebäude (Container)",
+      "en": "Verfügungsgebäude (Container)"
+    },
+    "address": {
+      "street": "Magdalenenstraße 2A",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [
+        "Magdalenenstraße 2A, Innenhof"
+      ],
+      "en": [
+        "Magdalenenstraße 2A, patio"
+      ]
+    },
+    "occupants": {
+      "de": [
+        "Instituts für Kernphysik (Arbeitsgruppen)"
+      ],
+      "en": [
+        "Institute for Nuclear Physics"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|20",
+    "slug": "s1-20",
+    "group": "s1",
+    "name": {
+      "de": "Universitäts- und Landesbibliothek ULB",
+      "en": "University and State Library ULB"
+    },
+    "address": {
+      "street": "Magdalenenstraße 8",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Universitäts- und Landesbibliothek (ULB)",
+        "Patent-und Markenzentrum (PMZ) Rhein- Main",
+        "Bistro LesBAR"
+      ],
+      "en": [
+        "University and State Library (ULB)",
+        "Patent and Trademark Centre (PMZ) Rhein- Main",
+        "Bistro LesBAR"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|21",
+    "slug": "s1-21",
+    "group": "s1",
+    "name": {
+      "de": "Kinderhaus II – Stadtmitte",
+      "en": "Kinderhaus II – City Centre"
+    },
+    "address": {
+      "street": "Magdalenenstraße 25",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Kinderhaus TU CityHüpfer",
+        "Ingenium"
+      ],
+      "en": [
+        "Kinderhaus TU CityHüpfer",
+        "Ingenium"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|22",
+    "slug": "s1-22",
+    "group": "s1",
+    "name": {
+      "de": "Karl-Plagge-Haus",
+      "en": "Karl Plagge House"
+    },
+    "address": {
+      "street": "Alexanderstraße 2",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Hochschulrechenzentrum (HRZ)",
+        "FB Informatik: FG Scientific Computing",
+        "Hessisches Kompetenzzentrum für Hochleistungsrechnen",
+        "Digital Transformation Office (DTO)",
+        "Informationssicherheit (Infosec)",
+        "Computer emergency Response Team (TUDa-CERT)",
+        "Lernzentrum",
+        "AStA Cafe + Veranstaltungsräume 806 qm"
+      ],
+      "en": [
+        "University Computing Centre (HRZ)",
+        "Department of Computer Science: Institute for Scientific Computing",
+        "Competence Centre for High Performance Computing in Hessen",
+        "Digital Transformation Office (DTO)",
+        "Information Security (Infosec)",
+        "Computer emergency Response Team (TUDa-CERT)",
+        "Learning Centre",
+        "AStA Cafe + Event Rooms 806qm"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S1|60",
+    "slug": "s1-60",
+    "group": "s1",
+    "name": {
+      "de": "Verwaltung",
+      "en": "Administration"
+    },
+    "address": {
+      "street": "Magdalenenstraße 23",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FiF – Forum interdisziplinäre Forschung"
+      ],
+      "en": [
+        "Forum for Interdisciplinary Research (FIF)"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|01",
+    "slug": "s2-01",
+    "group": "s2",
+    "name": {
+      "de": "Rau-Bau",
+      "en": "Rau-Bau"
+    },
+    "address": {
+      "street": "Hochschulstraße 12",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Physik – Dekanat"
+      ],
+      "en": [
+        "Department of Physics – Directorate"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|02",
+    "slug": "s2-02",
+    "group": "s2",
+    "name": {
+      "de": "Robert-Piloty-Gebäude",
+      "en": "Robert Piloty Building"
+    },
+    "address": {
+      "street": "Hochschulstraße 10",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Informatik"
+      ],
+      "en": [
+        "Department of Computer Science"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|03",
+    "slug": "s2-03",
+    "group": "s2",
+    "name": {
+      "de": "Studierendenhaus",
+      "en": "Studierendenhaus (House of the University Groups)"
+    },
+    "address": {
+      "street": "Hochschulstraße 14",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Vereinigung der Universitätsgruppen an der TU Darmstadt e.V."
+      ],
+      "en": [
+        "Association of University Groups at TU Darmstadt e.V."
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|04",
+    "slug": "s2-04",
+    "group": "s2",
+    "name": {
+      "de": "Festkörperphysik",
+      "en": "Institute for Condensed Matter Physics"
+    },
+    "address": {
+      "street": "Hochschulstraße 8",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": [
+        "Hochschulstraße"
+      ]
+    },
+    "occupants": {
+      "de": [
+        "Institut für Festkörperphysik in Sanierung",
+        "Hörsaal",
+        "Lernzentrum Physik"
+      ],
+      "en": [
+        "Institute for Condensed Matter Physics in renovation",
+        "Lecture Room",
+        "Physics Learning Centre"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|05",
+    "slug": "s2-05",
+    "group": "s2",
+    "name": {
+      "de": "Physik Werkstätten",
+      "en": "Physics"
+    },
+    "address": {
+      "street": "Hochschulstraße 6A",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Institut für Festkörperphysik"
+      ],
+      "en": [
+        "Institute for Condensed Matter Physics"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|06",
+    "slug": "s2-06",
+    "group": "s2",
+    "name": {
+      "de": "Physik Hörsäle",
+      "en": "Physics Lecture Rooms"
+    },
+    "address": {
+      "street": "Hochschulstraße 6",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Hörsaal",
+        "Lernzentrum"
+      ],
+      "en": [
+        "Lecture Room",
+        "Learning Centre"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|07",
+    "slug": "s2-07",
+    "group": "s2",
+    "name": {
+      "de": "Physik Institute",
+      "en": "Physics Institutes"
+    },
+    "address": {
+      "street": "Hochschulstraße 6",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Institut für Festkörperphysik",
+        "Institut für Angewandte Physik"
+      ],
+      "en": [
+        "Institute for Condensed Matter Physics",
+        "Institute for Applied Physics"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|08",
+    "slug": "s2-08",
+    "group": "s2",
+    "name": {
+      "de": "Physik Hörsaal Uhrturm",
+      "en": "Physics Lecture Room Clock Tower"
+    },
+    "address": {
+      "street": "Hochschulstraße 4",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Hörsaal"
+      ],
+      "en": [
+        "Lecture Room"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|09",
+    "slug": "s2-09",
+    "group": "s2",
+    "name": {
+      "de": "Physik Lichttechnik",
+      "en": "Physics / Lighting Systems"
+    },
+    "address": {
+      "street": "Hochschulstraße 4A",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [
+        "Hochschulstraße 4"
+      ],
+      "en": [
+        "Hochschulstraße 4"
+      ]
+    },
+    "occupants": {
+      "de": [
+        "FB Elektrotechnik und Informationstechnik",
+        "Fachgebiet Lichttechnik",
+        "Institut für Angewandte Physik"
+      ],
+      "en": [
+        "Department of Electrical Engineering and Information Technology",
+        "Laboratory of Adaptive Lighting Systems and Visual Processing",
+        "Institute for Applied Physics"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|10",
+    "slug": "s2-10",
+    "group": "s2",
+    "name": {
+      "de": "Institutsgebäude",
+      "en": "Institute building"
+    },
+    "address": {
+      "street": "Hochschulstraße 2",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": [
+        "Hochschulstraße 2 Renovation"
+      ]
+    },
+    "occupants": {
+      "de": [
+        "in Sanierung"
+      ],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|11",
+    "slug": "s2-11",
+    "group": "s2",
+    "name": {
+      "de": "Physik Institutsgebäude",
+      "en": "Physics Institute building"
+    },
+    "address": {
+      "street": "Schlossgartenstraße 2",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Institut für Kernphysik"
+      ],
+      "en": [
+        "Institute for Nuclear Physics"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|12",
+    "slug": "s2-12",
+    "group": "s2",
+    "name": {
+      "de": "Institutsgebäude",
+      "en": "Institute building"
+    },
+    "address": {
+      "street": "Schlossgartenstraße 4",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Sanierung"
+      ],
+      "en": [
+        "Renovation"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|13",
+    "slug": "s2-13",
+    "group": "s2",
+    "name": {
+      "de": "Fraunhofer-Institut für Betriebsfestigkeit und Systemzuverlässigkeit LBF, Bereich Kunststoffe",
+      "en": "Fraunhofer Institute for Structural Durability and System Reliability LBF"
+    },
+    "address": {
+      "street": "Schlossgartenstraße 6,6A",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [
+        "Schlossgartenstraße 6, 6A"
+      ],
+      "en": [
+        "Schlossgartenstraße 6, 6A"
+      ]
+    },
+    "occupants": {
+      "de": [
+        "Fraunhofer-Institut für Betriebsfestigkeit u.Systemzuverlässigkeit LBF – Bereich Kunststoffe"
+      ],
+      "en": [
+        "Fraunhofer Institute for Structural Durability and System Reliability LBF"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|14",
+    "slug": "s2-14",
+    "group": "s2",
+    "name": {
+      "de": "Kernphysik / S-DALINAC",
+      "en": "Nuclear Physics/ S-DALINAC"
+    },
+    "address": {
+      "street": "Schlossgartenstraße 9",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Institut für Kernphysik",
+        "S-DALINAC"
+      ],
+      "en": [
+        "Institute for Nuclear Physics",
+        "S-DALINAC"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|15",
+    "slug": "s2-15",
+    "group": "s2",
+    "name": {
+      "de": "Mathematik / Physik",
+      "en": "Mathematics / Physics"
+    },
+    "address": {
+      "street": "Schlossgartenstraße 7",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Mathematik Lernzentrum Mathematik (LZM)",
+        "Institut für Angewandte Physik"
+      ],
+      "en": [
+        "Department of Mathematics Learning Centre Mathematics (LZM)",
+        "Institute for Applied Physics"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|17",
+    "slug": "s2-17",
+    "group": "s2",
+    "name": {
+      "de": "Halbleitertechnik",
+      "en": "Semiconductor Technology"
+    },
+    "address": {
+      "street": "Schlossgartenstraße 8",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Institut für Teilchenbeschleunigung und Elektromagnetische Felder"
+      ],
+      "en": [
+        "Institute for Accelerator Science and Electromagnetic Fields (TEMF)"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S2|20",
+    "slug": "s2-20",
+    "group": "s2",
+    "name": {
+      "de": "Zentrum für IT-Sicherheit (CYSEC)",
+      "en": "Centre for Cybersecurity (CYSEC)"
+    },
+    "address": {
+      "street": "Pankratiusstraße 2",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Zentrum für IT-Sicherheit (CYSEC)"
+      ],
+      "en": [
+        "Centre for Cybersecurity (CYSEC)"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|05",
+    "slug": "s3-05",
+    "group": "s3",
+    "name": {
+      "de": "Fraunhofer-Institut für Graphische Datenverarbeitung (IGD)",
+      "en": "Fraunhofer Institute for Computer Graphics Research (IGD)"
+    },
+    "address": {
+      "street": "Fraunhoferstraße 5",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachgebiet Grafisch-Interaktive Systeme (GRIS)",
+        "Fraunhofer Institut für Graphische Datenverarbeitung IGD"
+      ],
+      "en": [
+        "Interactive Graphics Systems Group (GRIS)",
+        "Fraunhofer Institute for Computer Graphics Research IGD"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|06",
+    "slug": "s3-06",
+    "group": "s3",
+    "name": {
+      "de": "Elektrotechnik und Informationstechnik (Hans-Busch-Institut)",
+      "en": "Electrical Engineering and Information Technology (Hans-Busch-Institute)"
+    },
+    "address": {
+      "street": "Merckstraße 25",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Elektrotechnik und Informationstechnik",
+        "Lernzentrum"
+      ],
+      "en": [
+        "Department of Electrical Engineering and Information Technology",
+        "Learning Centre"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|07",
+    "slug": "s3-07",
+    "group": "s3",
+    "name": {
+      "de": "Ernst-Neufert-Halle",
+      "en": "Ernst Neufert Hall"
+    },
+    "address": {
+      "street": "Rundeturmstraße 1",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Dezernat V – Baumanagement und Technischer Betrieb",
+        "V F – Technischer Betrieb und Energiemanagement"
+      ],
+      "en": [
+        "Directorate V – Building Management and Technical Operations",
+        "V F – Technical operation and energy management"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|09",
+    "slug": "s3-09",
+    "group": "s3",
+    "name": {
+      "de": "Elektrotechnik und Informationstechnik Hallen mit Werkstätten",
+      "en": "Electrical Engineering and Information Technology Halls with workshops"
+    },
+    "address": {
+      "street": "Landgraf-Georg-Straße 6",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Elektrotechnik und Informationstechnik"
+      ],
+      "en": [
+        "Department of Electrical Engineering and Information Technology"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|10",
+    "slug": "s3-10",
+    "group": "s3",
+    "name": {
+      "de": "Elektrotechnik und Informationstechnik Institute",
+      "en": "Electrical Engineering and Information Technology Institutes"
+    },
+    "address": {
+      "street": "Landgraf-Georg-Straße 4",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Elektrotechnik und Informationstechnik",
+        "FG Energieinformationsnetze und -systeme",
+        "Lernzentrum",
+        "Fachschaft",
+        "Elektrotechnischer Verein an der TU Darmstadt"
+      ],
+      "en": [
+        "Department of Electrical Engineering and Information Technology",
+        "Energy Information Networks & Systems Lab",
+        "Learning Centre",
+        "Departmental student body and representative committee",
+        "Elektrotechnischer Verein an der TU Darmstadt"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|11",
+    "slug": "s3-11",
+    "group": "s3",
+    "name": {
+      "de": "Elektrotechnik und Informationstechnik Hörsäle",
+      "en": "Electrical Engineering and Information Technology Lecture Halls"
+    },
+    "address": {
+      "street": "Landgraf-Georg-Straße 2",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|12",
+    "slug": "s3-12",
+    "group": "s3",
+    "name": {
+      "de": "Wissenschaftsschloss De la Fosse-Bau, Präsidium der TU Darmstadt, Universitäts- und Landesbibliothek (ULB), Sparkassen-Saal",
+      "en": "Wissenschaftsschloss De la Fosse-Bau, Executive Board of TU Darmstadt, University and State Library (ULB), Sparkassen-Saal"
+    },
+    "address": {
+      "street": "Residenzschloss 1",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Präsidium",
+        "Chief Communication Officer (CCO)",
+        "Science Communication Centre (SCC)",
+        "Dezernat I – Struktur und Strategie",
+        "FB Gesellschafts- und Geschichtswissenschaften",
+        "Universitäts – und Landesbibliothek (ULB)",
+        "Sparkassensaal",
+        "Künstlerkeller / Keller-Klub"
+      ],
+      "en": [
+        "Executive Board of TU Darmstadt",
+        "Chief Communication Officer (CCO)",
+        "The Science Communication Centre (SCC)",
+        "Directorate I – Strategic Development",
+        "Department of History and Social Sciences",
+        "University and State Library",
+        "Event Hall Sparkassen-Saal",
+        "Künstlerkeller / Keller-Klub"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|13",
+    "slug": "s3-13",
+    "group": "s3",
+    "name": {
+      "de": "Wissenschaftsschloss Kaisersaalbau, Hörsaal",
+      "en": "Wissenschaftsschloss Kaisersaalbau, Auditorium"
+    },
+    "address": {
+      "street": "Residenzschloss 1",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Gesellschafts- und Geschichtswissenschaften",
+        "Hörsaal R30",
+        "Deutsches Poleninstitut (DPI)",
+        "Schlosskeller"
+      ],
+      "en": [
+        "German Institute of Polish Affairs",
+        "Schlosskeller",
+        "Department of History and Social Sciences"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|14",
+    "slug": "s3-14",
+    "group": "s3",
+    "name": {
+      "de": "Wissenschaftsschloss Kirchenbau, Orgelsaal",
+      "en": "Wissenschaftsschloss Kirchenbau, Orgelsaal"
+    },
+    "address": {
+      "street": "Residenzschloss 1",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Orgelsaal",
+        "Schlossmuseum Darmstadt"
+      ],
+      "en": [
+        "Event Hall Orgelsaal",
+        "Darmstadt Palace Museum"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|15",
+    "slug": "s3-15",
+    "group": "s3",
+    "name": {
+      "de": "Wissenschaftsschloss Glockenbau, Schlossmuseum",
+      "en": "Wissenschaftsschloss Glockenbau, Palace Museum"
+    },
+    "address": {
+      "street": "Residenzschloss 1",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Gesellschafts- und Geschichtswissenschaften, Institut für Philosophie",
+        "Eingang Schlossmuseum Darmstadt"
+      ],
+      "en": [
+        "Department of History and Social Sciences, Institute of Philosophy",
+        "Entrance of Darmstadt Palace Museum"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|16",
+    "slug": "s3-16",
+    "group": "s3",
+    "name": {
+      "de": "Wissenschaftsschloss Wallhaus",
+      "en": "Wissenschaftsschlosse Wallhaus"
+    },
+    "address": {
+      "street": "Residenzschloss 1",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Zentrum verantwortungsbewusste Digitalisierung"
+      ],
+      "en": [
+        "Centre Responsible Digitality"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|17",
+    "slug": "s3-17",
+    "group": "s3",
+    "name": {
+      "de": "Wissenschaftsschloss Brückenhaus",
+      "en": "Wissenschaftsschloss Brückenhaus"
+    },
+    "address": {
+      "street": "Residenzschloss 1",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Schlossgarten Cafe-Bar"
+      ],
+      "en": [
+        "Schlossgarten Cafe-Bar"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|19",
+    "slug": "s3-19",
+    "group": "s3",
+    "name": {
+      "de": "Instituts- und Verwaltungsgebäude",
+      "en": "Institute and Administration Building"
+    },
+    "address": {
+      "street": "Rundeturmstraße 12",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [
+        "Rundeturmstraße 12 (Anmietung)"
+      ],
+      "en": [
+        "Rundeturmstraße 12 (rental)"
+      ]
+    },
+    "occupants": {
+      "de": [
+        "FB Elektrotechnik und Informationstechnik: Multimedia Communications Lab (KOM)",
+        "Fachgebiet Bioinspired Communication Systems (BCS)",
+        "Dezernat IV – Immobilienmanagement"
+      ],
+      "en": [
+        "Department of Electrical Engineering and Information Technology: Multimedia Communications Lab (KOM)",
+        "Department of Bioinspired Communication Systems (BCS)",
+        "Directorate IV – Real Estate"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|20",
+    "slug": "s3-20",
+    "group": "s3",
+    "name": {
+      "de": "Instituts- und Verwaltungsgebäude",
+      "en": "Institute and Administration Building"
+    },
+    "address": {
+      "street": "Rundeturmstraße 10",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Elektrotechnik und Informationstechnik: Multimedia Communications Lab (KOM)",
+        "Dezernat V – Baumanagement und Technischer Betrieb",
+        "Strategische Mobilitätsentwicklung",
+        "Freunde der TU Darmstadt"
+      ],
+      "en": [
+        "Department of Electrical Engineering and Information Technology: Multimedia Communications Lab (KOM)",
+        "'Directorate V – Building Management and Technical Operations",
+        "Strategic Mobility Development",
+        "Freunde der TU Darmstadt"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S3|21",
+    "slug": "s3-21",
+    "group": "s3",
+    "name": {
+      "de": "Verfügungsgebäude Elektrotechnik",
+      "en": "Verfügungsgebäude Electrical Engineering"
+    },
+    "address": {
+      "street": "Fraunhoferstraße 4",
+      "postalCode": "64283",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Elektrotechnik und Informationstechnik:",
+        "Dekanat",
+        "FG Hochspannungstechnik",
+        "FG Leistungselektronik",
+        "Electronic Classroom",
+        "Servicezentrum etit",
+        "PC-Pools"
+      ],
+      "en": [
+        "Department of Electrical Engineering and Information Technology:",
+        "Departmental Office",
+        "High-Voltage Laboratories",
+        "Lab for Power Electronics and Control of Drives",
+        "Electronic Classroom",
+        "Student Advisory Service Information Systems Engineering",
+        "PC-Pools"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S4|01",
+    "slug": "s4-01",
+    "group": "s4",
+    "name": {
+      "de": "Mollerbau (Haus der Geschichte / Staatsarchiv)",
+      "en": "Mollerbau (House of History / State Archive)"
+    },
+    "address": {
+      "street": "Karolinenplatz 3",
+      "postalCode": "64289",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Universitätsarchiv"
+      ],
+      "en": [
+        "Historical Archive"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S4|07",
+    "slug": "s4-07",
+    "group": "s4",
+    "name": {
+      "de": "Studienkolleg für ausländische Studierende",
+      "en": "Studienkolleg for international students"
+    },
+    "address": {
+      "street": "Poststraße 5",
+      "postalCode": "64293",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [
+        "Postraße 5"
+      ],
+      "en": [
+        "Postraße 5"
+      ]
+    },
+    "occupants": {
+      "de": [
+        "Studienkolleg für ausländische Studierende"
+      ],
+      "en": [
+        "Studienkolleg for international students"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S4|10",
+    "slug": "s4-10",
+    "group": "s4",
+    "name": {
+      "de": "Institutsgebäude",
+      "en": "Institute building"
+    },
+    "address": {
+      "street": "Dolivostraße 15",
+      "postalCode": "64293",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Mathematik: AG Optimierung",
+        "AG Numerik und wissenschaftliches Rechnen",
+        "FB Maschinenbau: FG Numerische Berechnungsverfahren im Maschinenbau (FNB)",
+        "Graduiertenschule Computational Engineering",
+        "man-da.de GmbH"
+      ],
+      "en": [
+        "Department of Mathematics: Research Group Optimization",
+        "Numerical Analysis and Scientific Computing Group",
+        "Department of Mechanical Engineering: Numeric Methods in Mechanical Engineering (FNB)",
+        "Centre for Computational Engineering",
+        "man-da.de GmbH"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S4|14",
+    "slug": "s4-14",
+    "group": "s4",
+    "name": {
+      "de": "FB Informatik, HDT, emergenCity, CCHH, DLR",
+      "en": "Department of Computer Science, CCHH, emergenCity, DLR"
+    },
+    "address": {
+      "street": "Mornewegstraße 26-32",
+      "postalCode": "64293",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Informatik",
+        "House of Digital Transformation (HDT)",
+        "emergenCITY",
+        "Deutsches Zentrum für Luft-und Raumfahrt (DLR)",
+        "CCHH"
+      ],
+      "en": [
+        "Department of Computer Science",
+        "House of Digital Transformation (HDT)",
+        "emergenCITY",
+        "German Aerospace Centre (DLR)",
+        "CCHH"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S4|15",
+    "slug": "s4-15",
+    "group": "s4",
+    "name": {
+      "de": "Institutsgebäude",
+      "en": "Institute building"
+    },
+    "address": {
+      "street": "Goethestraße 48,50",
+      "postalCode": "64285",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "DLR_School_Lab TU Darmstadt"
+      ],
+      "en": [
+        "DLR_School_Lab TU Darmstadt"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S4|22",
+    "slug": "s4-22",
+    "group": "s4",
+    "name": {
+      "de": "Institutsgebäude",
+      "en": "Institute building"
+    },
+    "address": {
+      "street": "Landwehrstraße 48A-50",
+      "postalCode": "64293",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Informatik",
+        "Exzellenzcluster Reasonable AI (RAI)",
+        "Exzellenzcluster The Adaptive Mind (TAM)",
+        "hessian.AI – Hessisches Zentrum für Künstliche Intelligenz"
+      ],
+      "en": [
+        "Department of Computer Science",
+        "Cluster of Excellence Reasonable AI (RAI)",
+        "Cluster of Excellence The Adaptive Mind (TAM)",
+        "hessian.AI – The Hessian Center for Artificial Intelligence"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S4|23",
+    "slug": "s4-23",
+    "group": "s4",
+    "name": {
+      "de": "Institutsgebäude",
+      "en": "Institute building"
+    },
+    "address": {
+      "street": "Landwehrstraße 50a",
+      "postalCode": "64293",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [
+        "Landwehrstraße 50A"
+      ],
+      "en": [
+        "Landwehrstraße 50A"
+      ]
+    },
+    "occupants": {
+      "de": [
+        "Fachbereich Informatik",
+        "Geschäftsstelle Exzellenzcluster Reasonable AI (RAI)",
+        "Geschäftsstelle hessian.AI – Hessisches Zentrum für Künstliche Intelligenz"
+      ],
+      "en": [
+        "Department of Computer Science",
+        "Managing Office Cluster of Excellence Reasonable AI (RAI)",
+        "Managing Office hessian.AI – Hessian Center for Artificial Intelligence"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S4|27",
+    "slug": "s4-27",
+    "group": "s4",
+    "name": {
+      "de": "Laborgebäude",
+      "en": "Laboratory building"
+    },
+    "address": {
+      "street": "Im Tiefen See 45",
+      "postalCode": "64293",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Laser-und Plasmaphysik"
+      ],
+      "en": [
+        "Laser-and Plasmaphysics"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S4|28",
+    "slug": "s4-28",
+    "group": "s4",
+    "name": {
+      "de": "Bürogebäude",
+      "en": "Office building"
+    },
+    "address": {
+      "street": "Werner-von-Siemens-Straße 2",
+      "postalCode": "64319",
+      "city": "Pfungstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S4|29",
+    "slug": "s4-29",
+    "group": "s4",
+    "name": {
+      "de": "Versuchshalle",
+      "en": "Test hall"
+    },
+    "address": {
+      "street": "Werner-von-Siemens-Straße 2",
+      "postalCode": "64319",
+      "city": "Pfungstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "AKA Flieg"
+      ],
+      "en": [
+        "AKA Flieg"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S4|84",
+    "slug": "s4-84",
+    "group": "s4",
+    "name": {
+      "de": "Georg-Christoph-Lichtenberg-Haus, Internationales Begegnungszentrum (IBZ)",
+      "en": "Georg-Christoph-Lichtenberg-Haus, International meeting centre (IBZ)"
+    },
+    "address": {
+      "street": "Dieburger Straße 241",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Georg-Christoph-Lichtenberg-Haus / Internationales Begegnungszentrum"
+      ],
+      "en": [
+        "Georg-Christoph-Lichtenberg-Haus / International Meeting Centre"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "S4|85",
+    "slug": "s4-85",
+    "group": "s4",
+    "name": {
+      "de": "Reithalle mit Stallungen",
+      "en": "Riding hall with stables"
+    },
+    "address": {
+      "street": "Dieburger Straße 241",
+      "postalCode": "64287",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "Reiterverein an der TU Darmstadt e.V."
+      ],
+      "en": [
+        "Reiterverein an der TU Darmstadt e.V."
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "stadtmitte_3/index.de.jsp",
+      "stadtmitte_3/index.en.jsp"
+    ]
+  },
+  {
+    "key": "W1|01",
+    "slug": "w1-01",
+    "group": "w1",
+    "name": {
+      "de": "Flugtechnik (Labore)",
+      "en": "Flight technology (Labs)"
+    },
+    "address": {
+      "street": "Flughafenstraße 19",
+      "postalCode": "64347",
+      "city": "Griesheim"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "windkanal_flugplatz/index.de.jsp",
+      "windkanal_flugplatz/index.en.jsp"
+    ]
+  },
+  {
+    "key": "W1|03",
+    "slug": "w1-03",
+    "group": "w1",
+    "name": {
+      "de": "Flugtechnik (Werkstätten)",
+      "en": "Flight technology (workshops)"
+    },
+    "address": {
+      "street": "Flughafenstraße 19",
+      "postalCode": "64347",
+      "city": "Griesheim"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "windkanal_flugplatz/index.de.jsp",
+      "windkanal_flugplatz/index.en.jsp"
+    ]
+  },
+  {
+    "key": "W1|04",
+    "slug": "w1-04",
+    "group": "w1",
+    "name": {
+      "de": "Flugtechnik (Windkanal und Halle)",
+      "en": "Flight technology (wind tunnel and hall)"
+    },
+    "address": {
+      "street": "Flughafenstraße 19",
+      "postalCode": "64347",
+      "city": "Griesheim"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "windkanal_flugplatz/index.de.jsp",
+      "windkanal_flugplatz/index.en.jsp"
+    ]
+  },
+  {
+    "key": "W1|05",
+    "slug": "w1-05",
+    "group": "w1",
+    "name": {
+      "de": "Minimaxoffice",
+      "en": "Minimaxoffice"
+    },
+    "address": {
+      "street": "Flughafenstraße 19",
+      "postalCode": "64347",
+      "city": "Griesheim"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "windkanal_flugplatz/index.de.jsp",
+      "windkanal_flugplatz/index.en.jsp"
+    ]
+  },
+  {
+    "key": "W1|06",
+    "slug": "w1-06",
+    "group": "w1",
+    "name": {
+      "de": "Prüfhalle Hochspannungstrasse (GIL-Halle)",
+      "en": "Test hall Hochspannungstrasse (GIL- Halle)"
+    },
+    "address": {
+      "street": "Flughafenstraße 23",
+      "postalCode": "64347",
+      "city": "Griesheim"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "FB Elektrotechnik und Informationstechnik: FG Hochspannungstechnik"
+      ],
+      "en": [
+        "Department of Electrical Engineering and Information Technology: High-Voltage Laboratories"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "windkanal_flugplatz/index.de.jsp",
+      "windkanal_flugplatz/index.en.jsp"
+    ]
+  },
+  {
+    "key": "W1|07",
+    "slug": "w1-07",
+    "group": "w1",
+    "name": {
+      "de": "Bürogebäude",
+      "en": "Office building"
+    },
+    "address": {
+      "street": "Flughafenstraße 15",
+      "postalCode": "64347",
+      "city": "Griesheim"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "windkanal_flugplatz/index.de.jsp",
+      "windkanal_flugplatz/index.en.jsp"
+    ]
+  },
+  {
+    "key": "W1|08",
+    "slug": "w1-08",
+    "group": "w1",
+    "name": {
+      "de": "Halle",
+      "en": "Hall"
+    },
+    "address": {
+      "street": "Flughafenstraße 15",
+      "postalCode": "64347",
+      "city": "Griesheim"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "windkanal_flugplatz/index.de.jsp",
+      "windkanal_flugplatz/index.en.jsp"
+    ]
+  },
+  {
+    "key": "W2|01",
+    "slug": "w2-01",
+    "group": "w2",
+    "name": {
+      "de": "Tower (August-Euler-Informationszentrum)",
+      "en": "Tower (August Euler information centre)"
+    },
+    "address": {
+      "street": "August-Euler-Flugplatz 7",
+      "postalCode": "64295",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "August-Euler-Flugplatz"
+      ],
+      "en": [
+        "August Euler Airfield"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "windkanal_flugplatz/index.de.jsp",
+      "windkanal_flugplatz/index.en.jsp"
+    ]
+  },
+  {
+    "key": "W2|02",
+    "slug": "w2-02",
+    "group": "w2",
+    "name": {
+      "de": "Halle 1",
+      "en": "Hall 1"
+    },
+    "address": {
+      "street": "August-Euler-Flugplatz 19",
+      "postalCode": "64295",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "windkanal_flugplatz/index.de.jsp",
+      "windkanal_flugplatz/index.en.jsp"
+    ]
+  },
+  {
+    "key": "W2|03",
+    "slug": "w2-03",
+    "group": "w2",
+    "name": {
+      "de": "Halle 2",
+      "en": "Hall 2"
+    },
+    "address": {
+      "street": "August-Euler-Flugplatz 9",
+      "postalCode": "64295",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "windkanal_flugplatz/index.de.jsp",
+      "windkanal_flugplatz/index.en.jsp"
+    ]
+  },
+  {
+    "key": "W2|04",
+    "slug": "w2-04",
+    "group": "w2",
+    "name": {
+      "de": "Halle 3",
+      "en": "Hall 3"
+    },
+    "address": {
+      "street": "August-Euler-Flugplatz 11",
+      "postalCode": "64295",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [],
+      "en": []
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "windkanal_flugplatz/index.de.jsp",
+      "windkanal_flugplatz/index.en.jsp"
+    ]
+  },
+  {
+    "key": "W2|05",
+    "slug": "w2-05",
+    "group": "w2",
+    "name": {
+      "de": "Douglas DC-8 (August-Euler-Informationszentrum)",
+      "en": "Douglas DC-8 (August Euler information centre)"
+    },
+    "address": {
+      "street": "August-Euler-Flugplatz 1",
+      "postalCode": "64295",
+      "city": "Darmstadt"
+    },
+    "addressDetails": {
+      "de": [],
+      "en": []
+    },
+    "occupants": {
+      "de": [
+        "August-Euler-Informationszentrum",
+        "August-Euler-Flugplatz 1"
+      ],
+      "en": [
+        "August Euler Information Centre",
+        "August-Euler-Flugplatz 1"
+      ]
+    },
+    "sources": [
+      "gebaeudeadressen_2/index.de.jsp",
+      "gebaeudeadressen_2/index.en.jsp",
+      "windkanal_flugplatz/index.de.jsp",
+      "windkanal_flugplatz/index.en.jsp"
+    ]
+  }
+]

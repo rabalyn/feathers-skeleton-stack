@@ -22,6 +22,7 @@ Rootless Podman can neither mount an NFS export inside a container nor run a ker
 | Object storage, `uploads` bucket | Read with read-only credentials over the `object` network into a mirror directory, which restic backs up | `objects` |
 | Valkey | Its RDB snapshot file, from a read-only mount of Valkey's volume ([0010](0010-sessions-postgres-ratelimits-valkey.md)) | `state` |
 | OpenBao | A raft snapshot through the OpenBao API, with a policy allowing nothing else ([0023](0023-secrets-management.md)) | `state` |
+| NetBox's database ([0031](0031-netbox-locations.md)) | `pg_dump` of `netbox`, like the application's | `netbox` |
 
 The `exports` bucket is **not** backed up. Exports can be regenerated and would otherwise outlive their seven-day retention inside backup snapshots ([0013](0013-gdpr-export-and-retention.md)).
 
@@ -39,7 +40,7 @@ The backup job itself is identical everywhere; it only ever writes to a director
 
 In `compose.yaml` the target is `${BACKUP_TARGET:-backups}`: the named volume, or the host directory `BACKUP_TARGET` names. The generated production unit mounts the host path `/srv/backups` instead and carries `RequiresMountsFor=/srv/backups`, so the NFS mount is a dependency of the backup unit alone. The export belongs to the host's subordinate UID that the container's `backup` user (UID 1100) maps to under rootless Podman, and is exported with `root_squash`.
 
-**A run never creates a repository.** An empty directory is what an export that failed to mount looks like. The repositories are created once, knowingly, by `init` (`scripts/backup.sh init`; locally `scripts/stack.sh up` does it for its volume, in CI the same on the NFS mount). Every run first checks that all three repositories exist and that a probe file can be written, and fails otherwise.
+**A run never creates a repository.** An empty directory is what an export that failed to mount looks like. The repositories are created once, knowingly, by `init` (`scripts/backup.sh init`; locally `scripts/stack.sh up` does it for its volume, in CI the same on the NFS mount). Every run first checks that all four repositories exist and that a probe file can be written, and fails otherwise.
 
 ### The backup service
 
@@ -57,6 +58,7 @@ As built:
 - Each repository is followed by `restic forget --keep-daily <retention> --prune`. restic also keeps the oldest snapshot while fewer days than the retention have one.
 - The bucket is mirrored into the service's own volume, a file per object: objects are immutable, so a run fetches only the new ones and deletes the files of objects that are gone. The mirror costs host disk equal to the bucket, bounded by the total upload quota ([0025](0025-runtime-settings.md)).
 - The `state` repository holds `valkey.rdb`, copied from Valkey's volume, and `openbao.snap`, fetched with the backup agent's token ([0023](0023-secrets-management.md)); both are staged, backed up together, and the staged files removed.
+- `netbox` holds NetBox's database apart from `db`, so the latest snapshot of each repository is one dump. Added with NetBox on 2026-09-30: a target made before then needs `scripts/backup.sh init` once more (idempotent) before the next run, which otherwise fails for the missing repository. `scripts/backup.sh restore-netbox` restores it into a fresh database owned by the `netbox` login, refused while NetBox runs; it has no post-steps, since `netbox-setup` re-seeds and re-issues the api's token at the next start. NetBox's uploaded images and attachments (the `netbox-media` volume) are not backed up yet: nothing the skeleton seeds uses them, and a product that stores attachments there adds them.
 - The S3 key of the backup service is granted read on `uploads` only. The s3 container's grant table is authoritative for write access too: a read grant takes away any write access a restore left behind.
 
 ### Database and objects need no coordination
@@ -76,11 +78,12 @@ CI runs a full cycle on every pipeline: create the backup role from scratch, bac
 | Target | `scripts/backup.sh` | How |
 | --- | --- | --- |
 | Database | `restore-db <database> [--replace]` | Created fresh like `app`, then `pg_restore` as the superuser over postgres's socket. `--replace` drops an existing database and is refused while the api or the worker runs |
+| NetBox's database | `restore-netbox <database> [--replace]` | Created fresh, owned by the `netbox` login, then `pg_restore` as that login. `--replace` is refused while `netbox` or `netbox-worker` runs ([0031](0031-netbox-locations.md)) |
 | Objects | `restore-objects <bucket> [--empty]` | Uploaded by the backup service with its own key, which the script grants write access to the bucket through Garage's admin API for the restore only, and takes back afterwards. `--empty` is refused for the production buckets |
 | Valkey | `restore-valkey <volume>` | The RDB becomes the base of a new AOF in the stopped Valkey's volume, since Valkey with AOF on ignores a lone RDB ([0010](0010-sessions-postgres-ratelimits-valkey.md)) |
 | OpenBao | `restore-openbao <container>` | `bao operator raft snapshot restore -force` with a root token from stdin, generated from the unseal key in production. OpenBao is then sealed and opens with the unseal key of the backed-up OpenBao |
 
-`scripts/backup-test.sh` is the CI check. It runs the service's own run over `app` and `uploads`; a missing, an empty and a read-only target, each of which must fail; then the whole cycle on a source of its own (a migrated database `backup_check` with seeded rows, and objects in `backup-check`), backed up into repositories of its own under the real target and restored through `scripts/backup.sh` into `restore_check`, `restore-check`, a throwaway Valkey and a throwaway OpenBao. It checks rows, references and settings, that a change made after the backup is absent, that every session and API token is revoked, that every file row's object exists byte for byte, that Valkey loads with AOF on, and that the restored OpenBao opens with the stack's unseal key and holds its secrets. The local app's data is only read, and everything the check creates is removed. Its own runs log to stdout only, so they neither raise nor satisfy the backup alerts.
+`scripts/backup-test.sh` is the CI check. It runs the service's own run over `app` and `uploads`; a missing, an empty and a read-only target, each of which must fail; then the whole cycle on a source of its own (a migrated database `backup_check` with seeded rows, and objects in `backup-check`), backed up into repositories of its own under the real target and restored through `scripts/backup.sh` into `restore_check`, `restore-check`, a throwaway Valkey and a throwaway OpenBao. It checks rows, references and settings, that a change made after the backup is absent, that every session and API token is revoked, that every file row's object exists byte for byte, that Valkey loads with AOF on, and that the restored OpenBao opens with the stack's unseal key and holds its secrets. NetBox's own database is backed up with the rest and restored into `restore_netbox_check`, where its sites must have the same ids and belong to the `netbox` login. The local app's data is only read, and everything the check creates is removed. Its own runs log to stdout only, so they neither raise nor satisfy the backup alerts.
 
 Every restore has two **mandatory post-steps**:
 

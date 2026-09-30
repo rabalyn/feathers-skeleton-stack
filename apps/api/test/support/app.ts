@@ -2,7 +2,17 @@ import { randomUUID } from 'node:crypto'
 import type { Redis } from 'ioredis'
 import { pino } from 'pino'
 import { createApp, type Application } from '../../src/app.js'
-import { LDAP_KEYS, S3_KEYS, VALKEY_KEYS, loadConfig, type LdapConfig, type S3Config, type ValkeyConfig } from '../../src/config.js'
+import {
+  LDAP_KEYS,
+  NETBOX_KEYS,
+  S3_KEYS,
+  VALKEY_KEYS,
+  loadConfig,
+  type LdapConfig,
+  type NetboxConfig,
+  type S3Config,
+  type ValkeyConfig
+} from '../../src/config.js'
 import { createKnex } from '../../src/db.js'
 import { createValkey } from '../../src/valkey.js'
 import { IDP_ENTITY_ID, IDP_SSO_URL, PUBLIC_ORIGIN, TestIdp, keyPair, type KeyPair } from './saml-idp.js'
@@ -33,6 +43,8 @@ export interface TestAppOptions {
   ldap?: Partial<LdapConfig>
   // E.g. a bucket of its own, or an endpoint nothing listens on.
   s3?: Partial<S3Config>
+  // E.g. an address nothing listens on.
+  netbox?: Partial<NetboxConfig>
 }
 
 // An application on this worker's database, not listening on any port, with
@@ -49,6 +61,8 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
   // The tests' own S3 key and bucket, `test-uploads` (ADR 0020), emptied by
   // global-setup.ts at the start and end of a run.
   const s3Config = await loadConfig(S3_KEYS)
+  // The stack's seeded NetBox, with the api's read-only token (ADR 0031).
+  const netboxConfig = await loadConfig(NETBOX_KEYS)
   const rateLimitPrefix = `test:${randomUUID()}`
   const app = createApp(
     {
@@ -58,6 +72,8 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
       ...options.ldap,
       ...s3Config,
       ...options.s3,
+      ...netboxConfig,
+      ...options.netbox,
       publicOrigin: PUBLIC_ORIGIN,
       authSigningSecret: 'test-only-signing-secret-that-is-long-enough',
       refreshTokenKey: 'test-only-refresh-token-key-that-is-long-enough',

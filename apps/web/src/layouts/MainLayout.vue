@@ -96,6 +96,7 @@ const links = computed(() =>
   [
     { name: 'profile', icon: 'person', label: 'nav.profile' },
     { name: 'documents', icon: 'description', label: 'nav.documents', requiresSome: ['read', 'documents'] },
+    { name: 'sites', icon: 'location_city', label: 'nav.sites', requires: ['read', 'sites'] },
     { name: 'users', icon: 'group', label: 'nav.users', requires: ['read', 'users'] },
     { name: 'permissions', icon: 'admin_panel_settings', label: 'nav.permissions', requires: ['create', 'roles'] },
     { name: 'settings', icon: 'tune', label: 'nav.settings', requires: ['read', 'settings'] },

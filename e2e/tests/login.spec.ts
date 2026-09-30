@@ -36,7 +36,7 @@ test('login, session restore, profile and immediate logout', async ({ page, cont
   await expect(page.locator('[data-field="tuId"]')).toHaveText('us01user')
 
   // A user sees only their profile.
-  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Dokumente'])
+  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Dokumente', 'Gebäude'])
   await page.goto('/users')
   await expect(page).toHaveURL(/\/profile$/)
 
@@ -66,7 +66,7 @@ test('login, session restore, profile and immediate logout', async ({ page, cont
 
 test('an operator reads users but changes nothing, and sees no settings', async ({ page }) => {
   await loginAs(page, OPERATOR)
-  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Dokumente', 'Benutzer', 'Verzeichnis', 'Sitzungen', 'Aktivitätsprotokoll'])
+  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Dokumente', 'Gebäude', 'Benutzer', 'Verzeichnis', 'Sitzungen', 'Aktivitätsprotokoll'])
 
   await nav(page).getByRole('link', { name: 'Benutzer' }).click()
   const row = page.getByRole('row').filter({ hasText: 'us01user' })

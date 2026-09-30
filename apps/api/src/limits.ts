@@ -7,3 +7,7 @@ export const DIRECTORY_MIN_TERM_LENGTH = 2
 export const DIRECTORY_MAX_TERM_LENGTH = 64
 // The most entries one search returns; the directory stops there.
 export const DIRECTORY_MAX_RESULTS = 50
+
+// The site lookup (ADR 0031): the longest search term and the largest page.
+export const SITE_SEARCH_MAX_LENGTH = 100
+export const SITE_PAGE_MAX = 50

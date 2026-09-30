@@ -61,6 +61,8 @@ const CATALOGUE_ENTRIES = [
   // Which fields a patch may carry is fixed by the users patch schema.
   entry('users.enable', 'users', (can) => can('patch', 'users')),
   entry('directory.read', 'users', (can) => can('read', 'directory')),
+  // Locations (ADR 0031): the university's buildings, from NetBox.
+  entry('sites.read', 'locations', (can) => can('read', 'sites')),
   // Read-only view as another person, bounded by one's own rights (ADR 0028).
   // `read` for feathers-casl's check of the create's result.
   entry('users.view-as', 'users', (can) => can(['create', 'read'], 'view-as')),

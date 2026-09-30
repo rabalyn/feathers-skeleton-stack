@@ -43,8 +43,16 @@ describe('roles: reading', () => {
     const byKey = Object.fromEntries(page.data.map((role) => [role.key, role]))
     expect(byKey.admin).toMatchObject({ kind: 'admin', name: { de: 'Administration' }, permissions: [...PERMISSION_KEYS] })
     expect(byKey.operator).toMatchObject({ kind: 'seeded', name: { en: 'Operations' } })
-    expect(byKey.operator?.permissions?.sort()).toEqual(['audit-events.read', 'directory.read', 'documents.all', 'sessions.read', 'users.read'])
-    expect(byKey.user).toMatchObject({ kind: 'seeded', permissions: ['documents.own'] })
+    expect(byKey.operator?.permissions?.sort()).toEqual([
+      'audit-events.read',
+      'directory.read',
+      'documents.all',
+      'sessions.read',
+      'sites.read',
+      'users.read'
+    ])
+    expect(byKey.user).toMatchObject({ kind: 'seeded' })
+    expect(byKey.user?.permissions?.sort()).toEqual(['documents.own', 'sites.read'])
   })
 
   it('shows whoever reads users the names only', async () => {
@@ -74,9 +82,9 @@ describe('roles: managing — admin only', () => {
 
   it("changes a seeded role's permissions and name, audited with what was added and removed", async () => {
     const userRole = await roleIdOf(app, 'user')
-    await app.service('roles').patch(userRole, { permissions: ['documents.own', 'directory.read'] }, as(admin))
+    await app.service('roles').patch(userRole, { permissions: ['documents.own', 'sites.read', 'directory.read'] }, as(admin))
     await expect(app.service('directory').find({ ...as(member), query: { q: 'zz' } })).resolves.toBeDefined()
-    await app.service('roles').patch(userRole, { permissions: ['documents.own'], name: { de: 'Mitglied', en: 'Member' } }, as(admin))
+    await app.service('roles').patch(userRole, { permissions: ['documents.own', 'sites.read'], name: { de: 'Mitglied', en: 'Member' } }, as(admin))
     await expect(app.service('directory').find({ ...as(member), query: { q: 'zz' } })).rejects.toMatchObject({ code: 403 })
 
     const events = await auditOf('roles.patch', userRole)
