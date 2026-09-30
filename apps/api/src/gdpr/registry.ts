@@ -70,7 +70,6 @@ export const PERSONAL_DATA: readonly RegistryEntry[] = [
             'givenName',
             'surname',
             'email',
-            'role',
             'enabled',
             'authSource',
             'locale',
@@ -84,8 +83,26 @@ export const PERSONAL_DATA: readonly RegistryEntry[] = [
   },
   {
     kind: 'table',
-    table: 'auth_sessions',
+    table: 'user_roles',
     userColumns: ['user_id'],
+    export: {
+      key: 'roles',
+      collect: (knex, userId) =>
+        knex('userRoles')
+          .join('roles', 'roles.id', 'userRoles.roleId')
+          .where('userRoles.userId', userId)
+          .orderBy('roles.key')
+          .select('roles.key', 'roles.name')
+    },
+    erasure: 'keep',
+    note: 'The roles the person holds (ADR 0011); they identify nobody, and the erased account is disabled'
+  },
+  {
+    kind: 'table',
+    table: 'auth_sessions',
+    // view_as_user_id: whom the session viewed as (ADR 0028), which the
+    // target learns from the audit events about their account.
+    userColumns: ['user_id', 'view_as_user_id'],
     export: {
       key: 'sessions',
       collect: (knex, userId) =>
@@ -101,7 +118,9 @@ export const PERSONAL_DATA: readonly RegistryEntry[] = [
             'revokedAt',
             'userAgent',
             'samlNameId',
-            'samlNameIdFormat'
+            'samlNameIdFormat',
+            'viewAsUserId',
+            'viewAsExpiresAt'
           )
     },
     erasure: 'delete',

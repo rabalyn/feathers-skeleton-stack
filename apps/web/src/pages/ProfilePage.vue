@@ -8,7 +8,7 @@
             <img v-if="avatarUrl" :src="avatarUrl" :alt="t('avatar.title')" />
             <q-icon v-else name="person" />
           </q-avatar>
-          <div class="column q-gutter-sm">
+          <div v-if="session.can('create', 'avatars')" class="column q-gutter-sm">
             <q-file
               v-model="picked"
               :accept="AVATAR_CONTENT_TYPES.join(',')"
@@ -40,7 +40,7 @@
           </q-item-section>
         </q-item>
       </q-list>
-      <q-card flat bordered data-test="my-data">
+      <q-card v-if="session.can('create', 'data-exports')" flat bordered data-test="my-data">
         <q-card-section>
           <h2 class="text-h6 q-my-none">{{ t('exports.title') }}</h2>
           <p class="text-body2 q-mb-none">{{ t('exports.explainOwn') }}</p>
@@ -49,7 +49,7 @@
           <DataExports :subject-id="user.id" />
         </q-card-section>
       </q-card>
-      <q-card flat bordered data-test="my-activity">
+      <q-card v-if="session.can('read', 'audit-events')" flat bordered data-test="my-activity">
         <q-card-section>
           <h2 class="text-h6 q-my-none">{{ t('audit.mine') }}</h2>
         </q-card-section>
@@ -70,12 +70,14 @@ import DataExports from '@/components/DataExports.vue'
 import { useAvatarUrl } from '@/composables/avatar'
 import { useFormat } from '@/composables/format'
 import { useNotify } from '@/composables/notify'
+import { useRoles } from '@/composables/roles'
 import { useSessionStore } from '@/stores/session'
 
 const session = useSessionStore()
 const { t } = useI18n()
 const { dateTime } = useFormat()
 const notify = useNotify()
+const { namesOf } = useRoles()
 
 const user = computed(() => session.user)
 const avatarUrl = useAvatarUrl(computed(() => user.value?.avatarFileId))
@@ -113,7 +115,7 @@ const clearAvatar = async () => {
 }
 
 // Directory fields come from the IdP and are refreshed on every login; the
-// role is assigned here (ADR 0009, 0011). Only the picture is the user's.
+// roles are assigned here (ADR 0009, 0011). Only the picture is the user's.
 const fields = computed(() => {
   const current = user.value
   if (!current) return []
@@ -122,7 +124,7 @@ const fields = computed(() => {
     { key: 'givenName', label: 'user.givenName', value: current.givenName },
     { key: 'surname', label: 'user.surname', value: current.surname },
     { key: 'email', label: 'user.email', value: current.email },
-    { key: 'role', label: 'user.role', value: t(`user.roles.${current.role}`) },
+    { key: 'role', label: 'user.role', value: namesOf(current.roleIds) },
     { key: 'createdAt', label: 'user.createdAt', value: dateTime(current.createdAt) }
   ] as const
 })

@@ -12,6 +12,7 @@ import type { QueueStatus } from '../../src/services/queues/queues.schema.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp, loadValkeyConfig } from '../support/app.js'
 import { PUBLIC_ORIGIN } from '../support/saml-idp.js'
+import { grantRoles, type SeededRole } from '../support/roles.js'
 
 // The queue view (ADR 0024): admins read every queue's state, nobody else
 // does; a change reaches admin sockets as a `status` event, coalesced, and
@@ -34,9 +35,9 @@ beforeAll(async () => {
   const connection = queueConnection(await loadValkeyConfig())
   for (const name of QUEUE_NAMES) queues.set(name, new Queue(name, { connection, prefix: app.get('config').queuePrefix }))
   const users = app.service('users')
-  const make = async (tuId: string, role: User['role']) => {
+  const make = async (tuId: string, role: SeededRole) => {
     const created = await users.create({ tuId, givenName: tuId, surname: 'Test', email: null, authSource: 'saml' })
-    return role === 'user' ? created : users.patch(created.id, { role })
+    return grantRoles(app, created.id, [role])
   }
   admin = await make('ad01admn', 'admin')
   operator = await make('op01oper', 'operator')
@@ -70,7 +71,7 @@ const listenAs = async (user: User) => {
   client.service('queues').on('status', (status: QueueStatus) => statuses.push(status))
   await new Promise<void>((resolve, reject) => socket.once('connect', resolve).once('connect_error', reject))
   const { session } = await app.get('sessions').issue(user.id)
-  const accessToken = await app.service('authentication').createAccessToken({ sid: session.id, role: user.role }, { subject: user.id })
+  const accessToken = await app.service('authentication').createAccessToken({ sid: session.id }, { subject: user.id })
   await client.authenticate({ strategy: 'jwt', accessToken })
   return statuses
 }
@@ -81,8 +82,8 @@ describe('reading the queues (ADR 0011)', () => {
     expect(all.map((each) => each.id)).toEqual([...QUEUE_NAMES])
     expect((await app.service('queues').get(MAIL_QUEUE, as(admin))).id).toBe(MAIL_QUEUE)
     for (const user of [operator, member]) {
-      await expect(app.service('queues').find(as(user)), user.role).rejects.toMatchObject({ code: 403 })
-      await expect(app.service('queues').get(MAIL_QUEUE, as(user)), user.role).rejects.toMatchObject({ code: 403 })
+      await expect(app.service('queues').find(as(user)), user.tuId ?? '').rejects.toMatchObject({ code: 403 })
+      await expect(app.service('queues').get(MAIL_QUEUE, as(user)), user.tuId ?? '').rejects.toMatchObject({ code: 403 })
     }
   })
 

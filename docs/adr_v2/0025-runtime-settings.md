@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-24
 - Scope: Required (v1)
-- Related: [0005](0005-typebox-schema-boundary.md), [0006](0006-feathersjs-typescript-api.md), [0011](0011-casl-role-authorization.md), [0013](0013-gdpr-export-and-retention.md), [0016](0016-nginx-and-tls-everywhere.md), [0017](0017-nfs-backup-storage.md), [0020](0020-object-storage-uploads.md), [0024](0024-background-jobs-bullmq.md)
+- Related: [0005](0005-typebox-schema-boundary.md), [0006](0006-feathersjs-typescript-api.md), [0011](0011-casl-role-authorization.md), [0013](0013-gdpr-export-and-retention.md), [0016](0016-nginx-and-tls-everywhere.md), [0017](0017-nfs-backup-storage.md), [0020](0020-object-storage-uploads.md), [0024](0024-background-jobs-bullmq.md), [0028](0028-read-only-view-as.md)
 
 ## Context
 
@@ -38,6 +38,7 @@ Every operational policy the application or its own services enforce is a runtim
 | Mail delivery log retention | `mailDeliveryRetentionDays` | 90 days | Worker ([0027](0027-email-templates-and-sending.md)) |
 | Feature flags | `featureFlags` | None (an empty map of name to boolean) | API |
 | Maintenance mode | `maintenanceMode` | Off | API |
+| View-as lifetime | `viewAsMinutes` | 30 minutes | API ([0028](0028-read-only-view-as.md)) |
 
 Durations are whole seconds or days and sizes are bytes, as each key's name says.
 
@@ -62,7 +63,7 @@ What stays **deployment configuration** is what the application cannot or should
 
 ### Access
 
-Only `admin` reads and writes settings through the UI; `operator` and `user` see none of them ([0011](0011-casl-role-authorization.md)). The backup service reads them through its read-only database role. Consumers cache values in process for **30 seconds**, so a change takes effect within that interval without a restart; the API process that made a change drops its own cache at once. A stored value that no longer matches its schema is treated like a missing one.
+Settings are read and written through the UI under the `settings.manage` permission, which only `admin` holds as seeded; `operator` and `user` see none of them unless an admin grants it ([0011](0011-casl-role-authorization.md)). The backup service reads them through its read-only database role. Consumers cache values in process for **30 seconds**, so a change takes effect within that interval without a restart; the API process that made a change drops its own cache at once. A stored value that no longer matches its schema is treated like a missing one.
 
 ## Consequences
 

@@ -56,7 +56,9 @@ const auditOf = (action: string) =>
 describe('the bootstrap command', () => {
   it('creates one local admin with no TU-ID, and an audit event', async () => {
     const user = await db()('users').where({ auth_source: 'local' }).first()
-    expect(user).toMatchObject({ email: EMAIL, role: 'admin', enabled: true, tu_id: null })
+    expect(user).toMatchObject({ email: EMAIL, enabled: true, tu_id: null })
+    const roles = await db()('user_roles').join('roles', 'roles.id', 'user_roles.role_id').where({ user_id: user.id }).pluck('kind')
+    expect(roles).toEqual(['admin'])
     expect(await auditOf('breakglass.create')).toMatchObject({ actor_id: null })
   })
 
@@ -83,7 +85,7 @@ describe('the password login', () => {
     expect(response.status).toBe(201)
     expect(response.headers.get('set-cookie')).toMatch(/^refresh_token=[^;]+; Path=\/api\/authentication;.*HttpOnly/)
     const body = (await response.json()) as { accessToken: string; user: Record<string, unknown> }
-    expect(body.user).toMatchObject({ email: EMAIL, role: 'admin', authSource: 'local', tuId: null })
+    expect(body.user).toMatchObject({ email: EMAIL, authSource: 'local', tuId: null, permissions: expect.arrayContaining(['roles.manage']) })
     expect(JSON.stringify(body)).not.toMatch(/argon2|passwordHash|refreshToken/)
 
     const settings = await fetch(`${base}/settings`, { headers: { authorization: `Bearer ${body.accessToken}` } })

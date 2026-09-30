@@ -5,7 +5,7 @@ import { hooks as schemaHooks } from '@feathersjs/schema'
 import type { Knex } from 'knex'
 import type { Application } from '../../app.js'
 import { recordAudit } from '../../audit.js'
-import { publishTo, roleChannel } from '../../channels.js'
+import { publishTo, subjectChannel } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
 import type { Locale } from '../../locales.js'
 import { templateVariables } from '../../mail/kind.js'
@@ -251,10 +251,9 @@ export const mailTemplates = (app: Application) => {
   app.use(MAIL_PREVIEWS_PATH, new MailPreviewService(app), { methods: [...MAIL_PREVIEW_EXTERNAL_METHODS] })
   app.service(MAIL_PREVIEWS_PATH).hooks({ before: { create: [schemaHooks.validateData(mailPreviewDataValidator)] } })
 
-  // The wording of the application's mail is the admin's alone.
-  const admins = publishTo(app, () => [roleChannel('admin')])
-  app.service(MAIL_TEMPLATES_PATH).publish(admins)
-  app.service(MAIL_TEMPLATE_REVISIONS_PATH).publish(admins)
+  // To whoever may read the wording of the application's mail (ADR 0012).
+  app.service(MAIL_TEMPLATES_PATH).publish(publishTo(app, () => [subjectChannel(MAIL_TEMPLATES_PATH)]))
+  app.service(MAIL_TEMPLATE_REVISIONS_PATH).publish(publishTo(app, () => [subjectChannel(MAIL_TEMPLATE_REVISIONS_PATH)]))
 }
 
 declare module '../../app.js' {

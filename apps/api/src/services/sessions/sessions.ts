@@ -7,12 +7,12 @@ import { hooks as schemaHooks, resolve, virtual } from '@feathersjs/schema'
 import { Type, getValidator, querySyntax, type Static } from '@feathersjs/typebox'
 import type { Application } from '../../app.js'
 import { recordAudit } from '../../audit.js'
-import { publishTo, roleChannel } from '../../channels.js'
+import { publishTo, subjectChannel } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
 import { PAGINATE } from '../../paginate.js'
 import { queryValidator } from '../../validators.js'
 
-// Sessions (ADR 0010, 0011): who is logged in, for admins and operators.
+// Sessions (ADR 0010, 0011): who is logged in, under `sessions.read`.
 // Only active sessions are listed; revoked and expired ones are in the audit
 // log, not here. Revoking is `remove`, which sets revoked_at and ends the
 // session's sockets but keeps the row, since reuse detection needs it until
@@ -150,7 +150,15 @@ const newestFirst = async (context: HookContext<SessionService>) => {
 export const sessions = (app: Application) => {
   app.use(
     SESSIONS_PATH,
-    new SessionService(app, { Model: app.get('knex'), name: 'auth_sessions', id: 'id', paginate: PAGINATE }),
+    new SessionService(app, {
+      Model: app.get('knex'),
+      name: 'auth_sessions',
+      id: 'id',
+      paginate: PAGINATE,
+      // Every field: feathers-casl otherwise takes a rule without fields to
+      // grant none, and one field rule would restrict every reader.
+      casl: { availableFields: [...SESSION_COLUMNS] }
+    } as ConstructorParameters<typeof KnexService<Session, never, SessionParams>>[0]),
     { methods: [...SESSION_EXTERNAL_METHODS] }
   )
   app.service(SESSIONS_PATH).hooks({
@@ -166,8 +174,8 @@ export const sessions = (app: Application) => {
     }
   })
 
-  // Sessions concern the admins and operators who see them (ADR 0011, 0012).
-  app.service(SESSIONS_PATH).publish(publishTo(app, () => [roleChannel('admin'), roleChannel('operator')]))
+  // Sessions concern whoever reads them (ADR 0011, 0012).
+  app.service(SESSIONS_PATH).publish(publishTo(app, () => [subjectChannel(SESSIONS_PATH)]))
 }
 
 declare module '../../app.js' {

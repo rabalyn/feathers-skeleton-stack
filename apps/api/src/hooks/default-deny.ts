@@ -2,7 +2,8 @@ import { NotAuthenticated } from '@feathersjs/errors'
 import { authenticate } from '@feathersjs/authentication'
 import type { NextFunction } from '@feathersjs/feathers'
 import { authorize } from 'feathers-casl'
-import { defineAbilitiesFor } from '../abilities.js'
+import { defineAbilitiesFor, defineViewAsAbility } from '../abilities.js'
+import { loadAccess } from '../permissions.js'
 import type { HookContext } from '../declarations.js'
 import { currentRequest } from '../request-context.js'
 
@@ -30,9 +31,18 @@ export const defaultDeny = async (context: HookContext, next: NextFunction) => {
   if (!user) {
     throw new NotAuthenticated('Not authenticated')
   }
-  // From here on, log lines of this call name the user (ADR 0021).
+  const knex = context.app.get('knex')
+  const viewer = context.params.viewer
+  // From here on, log lines of this call name the user, and whom they view
+  // as (ADR 0021, 0028).
   const request = currentRequest()
-  if (request) request.userRef = user.id
-  context.params.ability = defineAbilitiesFor(user)
+  if (request) request.userRef = (viewer ?? user).id
+  if (request && viewer) request.viewAsRef = user.id
+  // Loaded afresh for every call, so a changed role or assignment applies
+  // at once (ADR 0011); in a view-as, both people's.
+  const own = { id: user.id, ...(await loadAccess(knex, user.id)) }
+  context.params.ability = viewer
+    ? defineViewAsAbility({ id: viewer.id, ...(await loadAccess(knex, viewer.id)) }, own)
+    : defineAbilitiesFor(own)
   await casl(context, next)
 }

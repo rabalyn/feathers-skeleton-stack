@@ -12,12 +12,13 @@ import type { Application } from '../app.js'
 import { recordAudit } from '../audit.js'
 import { endSessionConnections } from '../channels.js'
 import { AUTHENTICATION_URL } from '../paths.js'
+import { assignDefaultRole } from '../permissions.js'
 import { publishSession } from '../services/sessions/sessions.js'
 import type { User } from '../services/users/users.schema.js'
 import { decoyHash, MAX_PASSWORD_LENGTH, verifyPassword } from './password.js'
 import { RateLimitUnavailable, TooManyRequests, type RateLimitBucket } from '../rate-limit.js'
 import { SamlRejected, ServiceProvider } from './saml.js'
-import { SessionStore, isActive, type AuthSession } from './sessions.js'
+import { SessionStore, isActive, viewingAs, type AuthSession } from './sessions.js'
 
 // Authentication (ADR 0008, 0010). Four strategies behind one Feathers
 // authentication service at /api/authentication:
@@ -88,19 +89,33 @@ class SessionJwtStrategy extends JWTStrategy {
 
   async authenticate(authentication: AuthenticationRequest, params: AuthenticationParams) {
     const result = await super.authenticate(authentication, params)
-    const payload = result.authentication?.payload as { sid?: string; role?: string; sub?: string } | undefined
-    const user = (result as { user?: { id: string; role: string; enabled: boolean } }).user
+    const payload = result.authentication?.payload as { sid?: string; sub?: string } | undefined
+    const user = (result as { user?: { id: string; enabled: boolean } }).user
     const session = payload?.sid ? await sessions(this.app).get(payload.sid) : undefined
 
-    // ADR 0010: revoked or expired session, disabled user, or a role that
-    // changed since the token was issued all end access immediately.
+    // ADR 0010: a revoked or expired session or a disabled user ends access
+    // immediately. Permissions are loaded afresh on every request (ADR 0011),
+    // so the token carries none.
     if (!session || !isActive(session) || !user || session.userId !== user.id) {
       throw new NotAuthenticated('Session is no longer valid')
     }
-    if (!user.enabled || user.role !== payload?.role) {
+    if (!user.enabled) {
       throw new NotAuthenticated('Session is no longer valid')
     }
-    return result
+
+    // A read-only view-as (ADR 0028): the call runs as the target, with the
+    // viewer beside it, whose rights bound what it may read (default-deny).
+    // An expired one ends here, and the session's sockets rejoin as the
+    // viewer's own.
+    if (session.viewAsUserId && !viewingAs(session)) {
+      await sessions(this.app).endViewAs(session.id, 'expired')
+      setImmediate(() => endSessionConnections(this.app, session.id))
+      return result
+    }
+    const targetId = viewingAs(session)
+    if (!targetId) return result
+    const target = await this.app.service('users').get(targetId)
+    return { ...result, user: target, viewer: user, viewAs: { expiresAt: session.viewAsExpiresAt?.toISOString() } }
   }
 }
 
@@ -193,13 +208,13 @@ class PasswordStrategy extends AuthenticationBaseStrategy {
 class AppAuthenticationService extends AuthenticationService {
   declare app: Application
 
-  // The access token names its session and the role it was issued for.
+  // The access token names its session.
   async getPayload(authResult: AuthenticationResult, params: AuthenticationParams) {
     const base = await super.getPayload(authResult, params)
     const sid =
       (authResult.authentication as { sessionId?: string; payload?: { sid?: string } } | undefined)?.sessionId ??
       (authResult.authentication as { payload?: { sid?: string } } | undefined)?.payload?.sid
-    return { ...base, sid, role: (authResult.user as { role: string }).role }
+    return { ...base, sid }
   }
 
   // Logout: revokes the session behind the cookie and, where the login came
@@ -211,7 +226,7 @@ class AppAuthenticationService extends AuthenticationService {
     const session: AuthSession | undefined = token ? await sessions(this.app).findByRefreshToken(token) : undefined
     let idpLogoutUrl: string | null = null
     if (session) {
-      await sessions(this.app).revoke(session.id)
+      await sessions(this.app).revoke(session.id, 'logout')
       await recordAudit(this.app.get('knex'), {
         actorId: session.userId,
         action: 'logout',
@@ -321,7 +336,7 @@ export const samlRoutes = (app: Application) => {
           const users = app.get('knex')<User>('users')
           // Just-in-time provisioning keyed by TU-ID; directory fields are
           // refreshed on every login (ADR 0009).
-          const [user] = await users
+          const [user]: { id: string; enabled: boolean; inserted: boolean }[] = await users
             .insert({
               tuId: identity.tuId,
               givenName: identity.givenName,
@@ -331,7 +346,10 @@ export const samlRoutes = (app: Application) => {
             })
             .onConflict('tuId')
             .merge(['givenName', 'surname', 'email', 'updatedAt'])
-            .returning(['id', 'enabled'])
+            // xmax is 0 for a row this statement inserted.
+            .returning(['id', 'enabled', app.get('knex').raw('(xmax = 0) AS inserted')])
+          // A new account gets `user` (ADR 0011).
+          if (user?.inserted) await assignDefaultRole(app.get('knex'), user.id)
           if (!user?.enabled) {
             logger().warn({ user_ref: user?.id }, 'login refused: account disabled')
             await recordAudit(app.get('knex'), {

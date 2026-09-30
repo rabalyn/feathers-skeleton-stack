@@ -98,7 +98,9 @@ describe('X-Forwarded-For from anyone but the proxy', () => {
   let base: string
 
   beforeAll(async () => {
-    ;({ app } = await createTestApp({ trustedProxyHost: 'nginx.invalid' }))
+    // A documentation address (RFC 5737): never the test's own, and resolved
+    // without DNS, which a stack without internet access cannot answer fast.
+    ;({ app } = await createTestApp({ trustedProxyHost: '192.0.2.1' }))
     base = await listen(app)
   })
   afterAll(async () => {

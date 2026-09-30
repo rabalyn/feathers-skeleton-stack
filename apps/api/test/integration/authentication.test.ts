@@ -80,7 +80,10 @@ describe('login at the ACS', () => {
     await login({ cn: 'jit00001', givenName: 'Jan', sn: 'Second', mail: 'jan.second@example.org' })
     const rows = await db()('users').where({ tu_id: 'jit00001' })
     expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ surname: 'Second', email: 'jan.second@example.org', role: 'user' })
+    expect(rows[0]).toMatchObject({ surname: 'Second', email: 'jan.second@example.org' })
+    // A new account gets `user`, once (ADR 0011).
+    const roles = await db()('user_roles').join('roles', 'roles.id', 'user_roles.role_id').where({ user_id: rows[0].id }).pluck('key')
+    expect(roles).toEqual(['user'])
   })
 
   it('stores the session without the token itself', async () => {
@@ -312,14 +315,16 @@ describe('every request re-checks the session (ADR 0010)', () => {
     expect((await getUser(token, user.id)).status).toBe(401)
   })
 
-  it('ends access immediately when the role changes', async () => {
+  it('applies changed roles on the very next request, with the same token', async () => {
     const { cookie } = await login({ cn: 'role0001', givenName: 'R', sn: 'Ole', mail: 'role@example.org' })
     const { accessToken: token, user } = await accessToken(cookie)
-    await db()('users').where({ id: user.id }).update({ role: 'operator' })
-    expect((await getUser(token, user.id)).status).toBe(401)
-    // A fresh token carries the new role and works.
-    const renewed = await accessToken(cookie)
-    expect((await getUser(renewed.accessToken, user.id)).status).toBe(200)
+    const list = () => fetch(`${base}/api/users`, { headers: { authorization: `Bearer ${token}` } })
+    expect(((await (await list()).json()) as { total: number }).total).toBe(1)
+    const operatorRole = await db()('roles').where({ key: 'operator' }).first('id')
+    await db()('user_roles').insert({ user_id: user.id, role_id: operatorRole.id })
+    expect(((await (await list()).json()) as { total: number }).total).toBeGreaterThan(1)
+    await db()('user_roles').where({ user_id: user.id, role_id: operatorRole.id }).delete()
+    expect(((await (await list()).json()) as { total: number }).total).toBe(1)
   })
 
   it('rejects a token signed with another secret', async () => {

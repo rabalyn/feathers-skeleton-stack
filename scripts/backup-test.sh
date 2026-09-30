@@ -162,11 +162,17 @@ bucket_write deny "$SOURCE_BUCKET"
 read -r f1 s1 z1 f2 s2 z2 f3 s3 z3 <<<"$(tr '\n' ' ' <<<"$objects")"
 [[ -n ${z3:-} ]] || die "seeding objects failed"
 psql_super "$SOURCE_DB" <<SQL >/dev/null
-INSERT INTO users (id, tu_id, given_name, surname, role, enabled, auth_source, avatar_file_id) VALUES
-  ('00000000-0000-7000-8000-000000000001', 'bk01chck', 'Bea', 'Backup', 'user', true, 'saml', NULL),
-  ('00000000-0000-7000-8000-000000000002', 'bk02chck', 'Rolf', 'Restore', 'admin', true, 'saml', NULL),
+INSERT INTO users (id, tu_id, given_name, surname, enabled, auth_source, avatar_file_id) VALUES
+  ('00000000-0000-7000-8000-000000000001', 'bk01chck', 'Bea', 'Backup', true, 'saml', NULL),
+  ('00000000-0000-7000-8000-000000000002', 'bk02chck', 'Rolf', 'Restore', true, 'saml', NULL),
   -- Erased after the backup: the restore must erase them again.
-  ('00000000-0000-7000-8000-000000000003', 'bk03chck', 'Erik', 'Erased', 'user', true, 'saml', NULL);
+  ('00000000-0000-7000-8000-000000000003', 'bk03chck', 'Erik', 'Erased', true, 'saml', NULL);
+INSERT INTO user_roles (user_id, role_id)
+  SELECT u.id::uuid, roles.id FROM (VALUES
+    ('00000000-0000-7000-8000-000000000001', 'user'),
+    ('00000000-0000-7000-8000-000000000002', 'admin'),
+    ('00000000-0000-7000-8000-000000000003', 'user')
+  ) AS u (id, role_key) JOIN roles ON roles.key = u.role_key;
 INSERT INTO files (id, owner_id, filename, content_type, size_bytes, sha256, state, attached_at, deleted_at) VALUES
   ('$f1', '00000000-0000-7000-8000-000000000001', 'a.pdf', 'application/pdf', $z1, '$s1', 'stored', now(), NULL),
   ('$f2', '00000000-0000-7000-8000-000000000001', 'b.png', 'image/png', $z2, '$s2', 'stored', now(), NULL),

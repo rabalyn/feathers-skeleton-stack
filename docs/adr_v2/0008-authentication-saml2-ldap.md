@@ -33,7 +33,7 @@ The TU-ID is carried in **`cn`**. The SP requests and maps: `cn` (TU-ID), `given
 The `ldap` container (OpenLDAP) serves **LDAPS only**, with a certificate from the local CA ([0016](0016-nginx-and-tls-everywhere.md)), so no bind credential crosses a network in plaintext and the API's LDAP client uses TLS exactly as it will against the university directory. It is seeded at startup with a small set of test users carrying `cn` (TU-ID), `givenName`, `sn`, `mail` and `userPassword`. It serves two consumers:
 
 - **Keycloak** binds to it as its user store, which is the shape the university deployment has.
-- **The API** binds to it with a read-only service account for **directory lookup**: finding a person who has not logged in yet. Lookup is available to `admin` and `operator` only ([0011](0011-casl-role-authorization.md)). The same kind of service account is already in use against the university directory by other applications. Every filter built from user input is escaped ([0018](0018-owasp-security-baseline.md)).
+- **The API** binds to it with a read-only service account for **directory lookup**: finding a person who has not logged in yet. Lookup needs the `directory.read` permission, which `admin` holds and `operator` is seeded with ([0011](0011-casl-role-authorization.md)). The same kind of service account is already in use against the university directory by other applications. Every filter built from user input is escaped ([0018](0018-owasp-security-baseline.md)).
 
 The API never uses LDAP to authenticate a user. Login is SAML2 only.
 

@@ -5,6 +5,7 @@ import { API_SETTINGS, SETTINGS, SETTING_KEYS } from '../../src/settings/registr
 import { SettingsStore, seedSettings } from '../../src/settings/store.js'
 import { BODY_SIZE_CEILING_BYTES, createTestApp } from '../support/app.js'
 import { db } from '../support/worker-database.js'
+import { grantRoles, roleIdOf, type SeededRole } from '../support/roles.js'
 
 // ADR 0025 (runtime settings) and the settings row of ADR 0011's matrix.
 
@@ -18,9 +19,9 @@ const as = (user: User) => ({ provider: 'rest' as const, user, authenticated: tr
 beforeAll(async () => {
   ;({ app } = await createTestApp())
   const users = app.service('users')
-  const make = async (tuId: string, role: User['role']) => {
+  const make = async (tuId: string, role: SeededRole) => {
     const created = await users.create({ tuId, givenName: tuId, surname: 'T', email: `${tuId}@example.org`, authSource: 'saml' })
-    return role === 'user' ? created : users.patch(created.id, { role })
+    return grantRoles(app, created.id, [role])
   }
   admin = await make('ad01admn', 'admin')
   operator = await make('op01oper', 'operator')
@@ -195,11 +196,22 @@ describe('cross-setting rules', () => {
 })
 
 describe('audit of administrative user changes', () => {
-  it('records a role change by an admin, with the changed fields only', async () => {
-    await app.service('users').patch(member.id, { role: 'operator' }, as(admin))
-    await app.service('users').patch(member.id, { role: 'user' }, as(admin))
+  it('records disabling and enabling by an admin, with the changed field only', async () => {
+    await app.service('users').patch(member.id, { enabled: false }, as(admin))
+    await app.service('users').patch(member.id, { enabled: true }, as(admin))
     const events = await db()('audit_events').where({ action: 'users.patch', resource_id: member.id }).orderBy('occurred_at')
-    expect(events.map((e) => e.detail)).toEqual([{ role: 'operator' }, { role: 'user' }])
+    expect(events.map((e) => e.detail)).toEqual([{ enabled: false }, { enabled: true }])
     expect(events[0]).toMatchObject({ actor_id: admin.id, resource_type: 'users' })
+  })
+
+  it('records a role assignment by an admin, with the roles added and removed', async () => {
+    const [operatorRole, userRole] = await Promise.all([roleIdOf(app, 'operator'), roleIdOf(app, 'user')])
+    await app.service('user-roles').patch(member.id, { roleIds: [operatorRole] }, as(admin))
+    await app.service('user-roles').patch(member.id, { roleIds: [userRole] }, as(admin))
+    const events = await db()('audit_events').where({ action: 'users.roles', resource_id: member.id, actor_id: admin.id }).orderBy('occurred_at')
+    expect(events.map((e) => e.detail)).toEqual([
+      { added: [operatorRole], removed: [userRole] },
+      { added: [userRole], removed: [operatorRole] }
+    ])
   })
 })

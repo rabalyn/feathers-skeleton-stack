@@ -4,6 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Application } from '../../src/app.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
+import {  } from '../support/roles.js'
+import { grantRoles } from '../support/roles.js'
 
 // ADR 0013 over HTTP: erasure is the admin's alone (ADR 0011), refused for
 // oneself and the break-glass account, audited, and ends the person's
@@ -19,7 +21,7 @@ const knex = () => app.get('knex')
 
 const tokenFor = async (user: User) => {
   const { session } = await app.get('sessions').issue(user.id)
-  return app.service('authentication').createAccessToken({ sid: session.id, role: user.role }, { subject: user.id })
+  return app.service('authentication').createAccessToken({ sid: session.id }, { subject: user.id })
 }
 
 const erase = async (actor: User, userId: string) =>
@@ -41,9 +43,9 @@ beforeAll(async () => {
   const server = await app.listen(0)
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`
   const users = app.service('users')
-  admin = await users.patch((await person()).id, { role: 'admin' })
-  operator = await users.patch((await person()).id, { role: 'operator' })
-  member = await person()
+  admin = await grantRoles(app, (await person()).id, ['admin'])
+  operator = await grantRoles(app, (await person()).id, ['operator'])
+  member = await grantRoles(app, (await person()).id, ['user'])
   breakGlass = await users.create({ tuId: null, givenName: null, surname: null, email: 'bg@example.test', authSource: 'local' })
 })
 

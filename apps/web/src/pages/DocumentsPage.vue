@@ -2,7 +2,7 @@
   <q-page padding>
     <h1 class="text-h5 q-mt-none">{{ t('nav.documents') }}</h1>
 
-    <q-form class="new-document row items-start q-gutter-sm q-mb-md" @submit="create">
+    <q-form v-if="session.can('create', 'documents')" class="new-document row items-start q-gutter-sm q-mb-md" @submit="create">
       <q-input
         v-model="title"
         :label="t('documents.title')"
@@ -49,6 +49,7 @@
             @click="download(props.row)"
           />
           <q-btn
+            v-if="session.can('delete', 'documents')"
             flat
             round
             dense

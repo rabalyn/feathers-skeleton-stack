@@ -7,6 +7,7 @@ import type { MailSender, Recipient } from '../../src/mail/sender.js'
 import type { RenderedMail } from '../../src/mail/render.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
+import { grantRoles, type SeededRole } from '../support/roles.js'
 
 // ADR 0027: an admin previews a campaign for an actual recipient, sends it
 // by hand, and what goes out is the wording previewed; the worker resolves
@@ -22,9 +23,9 @@ const KIND = 'documents.stale-reminder'
 // Older than anything another test file creates.
 const PARAMS = { olderThanDays: 3000 }
 
-const make = async (tuId: string, givenName: string, surname: string, role: User['role'] = 'user') => {
+const make = async (tuId: string, givenName: string, surname: string, role: SeededRole = 'user') => {
   const created = await app.service('users').create({ tuId, givenName, surname, email: `${tuId}@example.test`, authSource: 'saml' })
-  return role === 'user' ? created : app.service('users').patch(created.id, { role })
+  return grantRoles(app, created.id, [role])
 }
 
 const oldDocument = async (owner: User, title: string) => {

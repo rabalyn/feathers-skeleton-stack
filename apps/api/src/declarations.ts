@@ -11,6 +11,9 @@ declare module '@feathersjs/feathers' {
   interface Params {
     // Set by authentication for external calls; absent for internal ones.
     user?: User
+    // During a read-only view-as (ADR 0028), `user` is the person viewed as
+    // and `viewer` the one looking.
+    viewer?: User
     ability?: AppAbility
     // The client address as established from the proxy headers (ADR 0010).
     clientIp?: string

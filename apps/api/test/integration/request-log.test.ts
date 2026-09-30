@@ -12,6 +12,8 @@ import { createClient, SOCKET_PATH } from '../../src/client.js'
 import { createLogger, loggerOptions } from '../../src/logger.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
+import {  } from '../support/roles.js'
+import { grantRoles } from '../support/roles.js'
 
 // ADR 0021: one line per request with its route template, status and
 // duration; one request id shared by every line of the request, by its audit
@@ -39,7 +41,7 @@ beforeAll(async () => {
   const created = await app
     .service('users')
     .create({ tuId: 'rl01rlog', givenName: 'R', surname: 'L', email: null, authSource: 'saml' })
-  admin = await app.service('users').patch(created.id, { role: 'admin' })
+  admin = await grantRoles(app, created.id, ['admin'])
 })
 
 beforeEach(() => {
@@ -52,7 +54,7 @@ afterAll(async () => {
 
 const tokenFor = async (user: User) => {
   const { session } = await app.get('sessions').issue(user.id)
-  return app.service('authentication').createAccessToken({ sid: session.id, role: user.role }, { subject: user.id })
+  return app.service('authentication').createAccessToken({ sid: session.id }, { subject: user.id })
 }
 
 const requestLines = () => lines.filter((line) => line.msg === 'request')

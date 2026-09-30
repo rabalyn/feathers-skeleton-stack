@@ -37,7 +37,11 @@ export const loggerOptions = (service: string, level: string): LoggerOptions => 
   mixin: () => {
     const request = currentRequest()
     if (!request) return {}
-    return request.userRef ? { request_id: request.requestId, user_ref: request.userRef } : { request_id: request.requestId }
+    return {
+      request_id: request.requestId,
+      ...(request.userRef ? { user_ref: request.userRef } : {}),
+      ...(request.viewAsRef ? { view_as_ref: request.viewAsRef } : {})
+    }
   }
 })
 

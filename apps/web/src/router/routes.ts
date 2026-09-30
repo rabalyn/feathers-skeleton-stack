@@ -7,6 +7,9 @@ declare module 'vue-router' {
     // Hidden unless the user may do this to every record of the subject
     // (ADR 0011). The server enforces; this only avoids dead ends.
     requires?: [action: string, subject: string]
+    // Hidden unless the user may do this to some record of it, e.g. their
+    // own documents.
+    requiresSome?: [action: string, subject: string]
   }
 }
 
@@ -30,13 +33,26 @@ const routes: RouteRecordRaw[] = [
     children: [
       { path: '', redirect: { name: 'profile' } },
       { path: 'profile', name: 'profile', component: () => import('@/pages/ProfilePage.vue') },
-      // Every role has documents, if only their own (ADR 0011).
-      { path: 'documents', name: 'documents', component: () => import('@/pages/DocumentsPage.vue') },
+      // Under documents.own or documents.all (ADR 0011), and read-only in a
+      // view-as (ADR 0028).
+      {
+        path: 'documents',
+        name: 'documents',
+        component: () => import('@/pages/DocumentsPage.vue'),
+        meta: { requiresSome: ['read', 'documents'] }
+      },
       {
         path: 'users',
         name: 'users',
         component: () => import('@/pages/UsersPage.vue'),
         meta: { requires: ['read', 'users'] }
+      },
+      // Roles and what they grant: the admin's alone (ADR 0011).
+      {
+        path: 'permissions',
+        name: 'permissions',
+        component: () => import('@/pages/PermissionsPage.vue'),
+        meta: { requires: ['create', 'roles'] }
       },
       {
         path: 'settings',
@@ -44,7 +60,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/SettingsPage.vue'),
         meta: { requires: ['read', 'settings'] }
       },
-      // Every session, for admins and operators (ADR 0011).
+      // Every session, under sessions.read (ADR 0011).
       {
         path: 'sessions',
         name: 'sessions',
@@ -57,14 +73,14 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/AuditPage.vue'),
         meta: { requires: ['read', 'audit-events'] }
       },
-      // Data subject requests (ADR 0013): erasure is the admin's alone.
+      // Data subject requests (ADR 0013), under erasures.create.
       {
         path: 'gdpr',
         name: 'gdpr',
         component: () => import('@/pages/GdprPage.vue'),
         meta: { requires: ['create', 'erasures'] }
       },
-      // Mail (ADR 0027): wording and mailings are the admin's alone.
+      // Mail (ADR 0027), under mail.manage.
       {
         path: 'mail/templates',
         name: 'mail-templates',
@@ -77,7 +93,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/MailingsPage.vue'),
         meta: { requires: ['create', 'mail-campaigns'] }
       },
-      // The job queues (ADR 0024): runtime state, the admin's alone.
+      // The job queues (ADR 0024), under queues.read.
       {
         path: 'queues',
         name: 'queues',

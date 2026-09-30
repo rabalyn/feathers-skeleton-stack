@@ -5,7 +5,9 @@
 ARG NODE_IMAGE=docker.io/library/node:24.21.0-trixie-slim@sha256:b64fccfbcd1ae10d11b969a868b50e1c2530a7054813d5cdea04ac3bce551697
 
 FROM ${NODE_IMAGE}
-ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# corepack keeps pnpm in COREPACK_HOME, not in root's home, so `node` finds
+# it without a network (ADR 0015).
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH COREPACK_ENABLE_DOWNLOAD_PROMPT=0 COREPACK_HOME=/corepack
 # Dependencies are fixed when the image is built; pnpm's pre-run check would
 # see the build's lockfile and manifest writes as drift and try to reinstall
 # as the unprivileged user (ADR 0015).
@@ -13,6 +15,10 @@ ENV pnpm_config_verify_deps_before_run=false
 RUN corepack enable
 WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json eslint.config.js ./
+# The pnpm version package.json names, fetched once here; afterwards corepack
+# never reaches the network, so a missing copy fails loudly instead.
+RUN corepack install && chmod -R a+rX /corepack
+ENV COREPACK_ENABLE_NETWORK=0
 COPY apps/api/package.json apps/api/
 COPY packages/feathers-pinia/package.json packages/feathers-pinia/
 COPY apps/web/package.json apps/web/

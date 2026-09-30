@@ -47,7 +47,9 @@ export const SETTINGS = {
   // The delivery log: who got which mail, in which wording (ADR 0013).
   mailDeliveryRetentionDays: define(days, 90),
   featureFlags: define(Type.Record(Type.String({ pattern: '^[a-zA-Z][a-zA-Z0-9]*$' }), Type.Boolean()), {}),
-  maintenanceMode: define(Type.Boolean(), false)
+  maintenanceMode: define(Type.Boolean(), false),
+  // How long a read-only view-as lasts, in minutes; never extended (ADR 0028).
+  viewAsMinutes: define(Type.Integer({ minimum: 1, maximum: 480 }), 30)
 }
 
 export type SettingKey = keyof typeof SETTINGS
@@ -71,7 +73,8 @@ export const API_SETTINGS = [
   'rateLimitRefreshPerMinute',
   'rateLimitPasswordLoginPerMinute',
   'featureFlags',
-  'maintenanceMode'
+  'maintenanceMode',
+  'viewAsMinutes'
 ] as const satisfies readonly SettingKey[]
 
 export const WORKER_SETTINGS = [
