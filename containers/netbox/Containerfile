@@ -6,6 +6,12 @@ COPY containers/netbox/config/feathers.py /etc/netbox/config/feathers.py
 COPY containers/netbox/feathers_netbox /opt/netbox/netbox/feathers_netbox
 COPY containers/netbox/seed/tu-darmstadt /opt/feathers/seed/tu-darmstadt
 COPY containers/netbox/setup.sh /opt/feathers/setup.sh
+# Security fixes Ubuntu has released since the upstream image was built
+# (ADR 0018), until a NetBox image carries them.
+USER root
+RUN apt-get update \
+ && apt-get install -y --only-upgrade --no-install-recommends openssl libssl3t64 openssl-provider-legacy \
+ && rm -rf /var/lib/apt/lists/*
 # The image's own user; its group is root, as upstream runs it.
 USER 999:0
 EXPOSE 8443
