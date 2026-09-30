@@ -43,6 +43,7 @@ Enforced by pino's redaction configuration, not by discipline:
 
 ### GDPR constraints on log content
 
+- A call made with an API token also carries `api_token_ref`, the token's id, beside its owner's `user_ref` ([0029](0029-api-tokens.md)).
 - `user_ref` is the **surrogate user key**, never the TU-ID, per [0009](0009-tu-id-identity-model.md). Logs therefore contain no direct identifier, which is what makes a 14-day retention defensible without a per-record erasure path.
 - Client IP addresses appear only in security events (failed authentication, rate-limit rejections), not in ordinary request logs.
 - Log retention is **14 days**, enforced by Loki's compactor rather than by the application ([0013](0013-gdpr-export-and-retention.md)). It is deployment configuration of Loki, not a runtime setting, because Loki reads it from its own configuration.

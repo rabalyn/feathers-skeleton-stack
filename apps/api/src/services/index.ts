@@ -1,4 +1,5 @@
 import type { Application } from '../app.js'
+import { apiTokens } from './api-tokens/api-tokens.js'
 import { auditEvents } from './audit-events/audit-events.js'
 import { dataExports } from './data-exports/data-exports.js'
 import { directory } from './directory/directory.js'
@@ -33,6 +34,7 @@ export const services = (app: Application) => {
   app.configure(erasures)
   app.configure(auditEvents)
   app.configure(sessions)
+  app.configure(apiTokens)
   app.configure(mailTemplates)
   app.configure(mailCampaigns)
   app.configure(mailDeliveries)

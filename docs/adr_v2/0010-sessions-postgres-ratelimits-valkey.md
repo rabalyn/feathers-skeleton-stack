@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADRs 0023, 0024, 0025, 0028
-- Related: [0008](0008-authentication-saml2-ldap.md), [0011](0011-casl-role-authorization.md), [0013](0013-gdpr-export-and-retention.md), [0018](0018-owasp-security-baseline.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md), [0025](0025-runtime-settings.md), [0028](0028-read-only-view-as.md)
+- Related: [0008](0008-authentication-saml2-ldap.md), [0011](0011-casl-role-authorization.md), [0013](0013-gdpr-export-and-retention.md), [0018](0018-owasp-security-baseline.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md), [0025](0025-runtime-settings.md), [0028](0028-read-only-view-as.md), [0029](0029-api-tokens.md)
 
 ## Context
 
@@ -25,6 +25,7 @@ A JWT that is only checked by signature stays valid until it expires, so logout,
 - The **refresh token** is an opaque random value, stored server-side only as a hash. It is not a JWT and does not depend on the signing secret. It travels in an `HttpOnly; Secure; SameSite=Strict` cookie scoped to `Path=/api/authentication`, which covers both refresh and logout. The endpoint sits under the `/api` prefix like every API path ([0016](0016-nginx-and-tls-everywhere.md)).
 - A login session — one refresh token family — ends after **8 hours without a refresh** (idle) or **7 days after login** (absolute), whichever comes first; after that, a new SAML login is needed. Both are runtime settings ([0025](0025-runtime-settings.md)).
 - Rotating the signing secret therefore invalidates outstanding access tokens only. Clients refresh transparently and nobody is logged out. Revoking every session is a separate, explicit operation.
+- Scripts use neither: they hold an **API token**, which opens no session, is accepted on REST requests only and is checked against its row and its owner's permissions on every request ([0029](0029-api-tokens.md)).
 
 ### Refresh rotation and reuse detection
 
@@ -56,5 +57,5 @@ Sessions stay in PostgreSQL rather than Valkey because they must be SQL-queryabl
 
 - One indexed primary-key lookup is added to every authenticated request. At the expected user count this is not measurable, and it is the explicit trade that buys immediate revocation.
 - Sessions are SQL-queryable, so "which sessions does this user have" is answerable for the Sessions page and the GDPR export. Users see their own sessions only in their export, not on a screen ([0011](0011-casl-role-authorization.md)).
-- Restoring a database backup restores sessions that were revoked after the backup was taken. Revoking all sessions is therefore a mandatory step after any production restore ([0017](0017-nfs-backup-storage.md)).
+- Restoring a database backup restores sessions that were revoked after the backup was taken. Revoking all sessions is therefore a mandatory step after any production restore ([0017](0017-nfs-backup-storage.md)), and so is revoking every API token ([0029](0029-api-tokens.md)).
 - With rate limits and queues in one Valkey, memory pressure affects both. Memory use is visible in the metrics ([0022](0022-observability-and-alerting.md)); the job volume in scope is small.

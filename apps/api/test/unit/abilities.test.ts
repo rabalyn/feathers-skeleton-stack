@@ -1,6 +1,14 @@
 import { subject } from '@casl/ability'
 import { describe, expect, it } from 'vitest'
-import { ADMIN_PERMISSIONS, PERMISSIONS, defineAbilitiesFor, defineViewAsAbility, unconditionalReadSubjects } from '../../src/abilities.js'
+import {
+  ADMIN_PERMISSIONS,
+  PERMISSIONS,
+  TOKEN_PERMISSION_KEYS,
+  defineAbilitiesFor,
+  defineTokenAbility,
+  defineViewAsAbility,
+  unconditionalReadSubjects
+} from '../../src/abilities.js'
 
 // ADR 0011: the permission catalogue. Each entry grants something, rules of
 // several permissions add up, and field rules narrow only where no broader
@@ -100,5 +108,34 @@ describe('view-as (ADR 0028)', () => {
     expect(seen.can('create', 'view-as')).toBe(false)
     expect(seen.can('create', 'roles')).toBe(false)
     expect(seen.can('delete', 'view-as')).toBe(true)
+  })
+})
+
+describe('API tokens (ADR 0029)', () => {
+  const owner = (permissions: readonly string[]) => ({ id: 'owner', permissions, roleIds: ['o'] })
+
+  it('grants the chosen permissions, writes included, and no baseline', () => {
+    const token = defineTokenAbility(owner(ADMIN_PERMISSIONS), ['documents.own'])
+    expect(token.can('create', 'documents')).toBe(true)
+    expect(token.can('patch', subject('documents', { ownerId: 'owner' }))).toBe(true)
+    expect(token.can('read', subject('users', { id: 'owner' }))).toBe(false)
+    expect(token.can('read', subject('api-tokens', { userId: 'owner' }))).toBe(false)
+    expect(token.can('create', 'files')).toBe(false)
+    expect(token.can('create', 'roles')).toBe(false)
+  })
+
+  it("grants nothing its owner no longer holds, and nothing a token may not carry", () => {
+    expect(defineTokenAbility(owner(['documents.own']), ['users.read']).can('read', 'users')).toBe(false)
+    const excluded = defineTokenAbility(owner(ADMIN_PERMISSIONS), ['settings.manage', 'api-tokens.create', 'users.view-as', 'erasures.create'])
+    expect(excluded.rules).toEqual([])
+    expect(TOKEN_PERMISSION_KEYS).not.toContain('api-tokens.manage')
+  })
+
+  it('lets everybody see and revoke their own tokens, and api-tokens.manage everybody\'s', () => {
+    expect(ability([]).can('delete', subject('api-tokens', { userId: 'me' }))).toBe(true)
+    expect(ability([]).can('read', subject('api-tokens', { userId: 'other' }))).toBe(false)
+    expect(ability([]).can('create', 'api-tokens')).toBe(false)
+    expect(ability(['api-tokens.create']).can('create', 'api-tokens')).toBe(true)
+    expect(ability(['api-tokens.manage']).can('delete', subject('api-tokens', { userId: 'other' }))).toBe(true)
   })
 })

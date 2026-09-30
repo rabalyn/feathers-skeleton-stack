@@ -2,7 +2,7 @@
 
 This directory holds the architecture decisions for this project. It supersedes `docs/adr/`, which split a single planning document into seventy files and accumulated 433 open items before any business logic existed. See [0019](0019-adr-convention.md) for what changed and why.
 
-Twenty-eight ADRs, each covering a decision with real alternatives. Read [0001](0001-one-stack-every-environment.md) first — the parity rule it sets is the reason several later decisions look the way they do.
+Twenty-nine ADRs, each covering a decision with real alternatives. Read [0001](0001-one-stack-every-environment.md) first — the parity rule it sets is the reason several later decisions look the way they do.
 
 ## Index
 
@@ -36,6 +36,7 @@ Twenty-eight ADRs, each covering a decision with real alternatives. Read [0001](
 - [0012 — Real-time updates through ability-scoped Feathers channels](0012-role-scoped-channels.md)
 - [0013 — GDPR data export, retention as runtime settings, and erasure semantics](0013-gdpr-export-and-retention.md)
 - [0028 — Read-only view-as another user, bounded by the viewer's own rights](0028-read-only-view-as.md)
+- [0029 — API tokens for scripts, owned by a person and bounded by their rights](0029-api-tokens.md)
 - [0018 — OWASP-aligned security baseline](0018-owasp-security-baseline.md)
 
 ### Operations
@@ -104,10 +105,12 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 
 **Slice 12 — editable roles and view-as, done** ([0011](0011-casl-role-authorization.md), [0012](0012-role-scoped-channels.md), [0028](0028-read-only-view-as.md)): the permission catalogue and the baseline in the ability module; `roles`, `role_permissions` and `user_roles` seeded with the former matrix and backfilled from `users.role`, which the contract step `20260930000000_drop_users_role` then dropped ([0003](0003-postgresql-and-knex.md)); permissions loaded per request, the access token without a role; the `roles` and `user-roles` services with their safeguards and audit events; subject channels in place of role channels; field rules shadowed by a broader rule dropped, since feathers-casl intersects them; the permissions page with the role preview; several roles per person on the Users page; view-as as state of the viewer's session, with the intersected ability built by the same function on both sides, its banner, and `viewAsMinutes`. Unit tests for the catalogue and the intersection, integration tests for roles, assignments, safeguards and view-as, and `e2e/tests/permissions.spec.ts` and `view-as.spec.ts`.
 
+**Slice 13 — API tokens, done** ([0029](0029-api-tokens.md)): `api_tokens` with the SHA-256 of each token, never the token; the `api-token` strategy for `Authorization: Bearer apt_…` on REST only, parsed before the access token and never accepted by the authentication service; the token's ability built per request from its permissions that its owner holds, without the baseline, and only while the owner holds `api-tokens.create`; `api-tokens.create` and `api-tokens.manage` in the catalogue, own tokens in the baseline; the `api-tokens` service, whose `created` event carries no token; `api-tokens.create` and `api-tokens.revoke` audited, `api_token_ref` in the log lines; `erase_user()`, the registry and the export; every token deleted by the restore post-step, checked by `backup-test.sh`; the API tokens page with the token shown once. Unit tests for the token ability, `test/integration/api-tokens.test.ts`, and `e2e/tests/api-tokens.spec.ts`.
+
 **Later.** The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
 
 ## Status of this set
 
-All twenty-eight are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds ([0022](0022-observability-and-alerting.md)), the issuer of production certificates for internal listeners ([0016](0016-nginx-and-tls-everywhere.md)), and the university SMTP relay's sending limit ([0027](0027-email-templates-and-sending.md)).
+All twenty-nine are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds ([0022](0022-observability-and-alerting.md)), the issuer of production certificates for internal listeners ([0016](0016-nginx-and-tls-everywhere.md)), and the university SMTP relay's sending limit ([0027](0027-email-templates-and-sending.md)).
 
 The record of processing activities and the DPIA ([0013](0013-gdpr-export-and-retention.md)) are organisational deliverables to be prepared with the data protection officer before production; view-as ([0028](0028-read-only-view-as.md)) is part of them.

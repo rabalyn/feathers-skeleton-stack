@@ -14,6 +14,9 @@ declare module '@feathersjs/feathers' {
     // During a read-only view-as (ADR 0028), `user` is the person viewed as
     // and `viewer` the one looking.
     viewer?: User
+    // Set when the call authenticated with an API token (ADR 0029); `user`
+    // is the token's owner.
+    apiToken?: { id: string; permissions: string[] }
     ability?: AppAbility
     // The client address as established from the proxy headers (ADR 0010).
     clientIp?: string

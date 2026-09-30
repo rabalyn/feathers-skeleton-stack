@@ -182,6 +182,8 @@ INSERT INTO documents (owner_id, title, file_id) VALUES ('00000000-0000-7000-800
 UPDATE users SET avatar_file_id = '$f2' WHERE id = '00000000-0000-7000-8000-000000000001';
 INSERT INTO auth_sessions (user_id, idle_expires_at, family_expires_at)
   VALUES ('00000000-0000-7000-8000-000000000002', now() + interval '1 hour', now() + interval '1 day');
+INSERT INTO api_tokens (user_id, name, token_hash, hint, permissions)
+  VALUES ('00000000-0000-7000-8000-000000000002', 'script', repeat('0', 64), 'abcd', '{users.read}');
 SQL
 
 # --- backup ----------------------------------------------------------------
@@ -211,6 +213,7 @@ check "a change after the backup is not" test "$(q "SELECT string_agg(title, ','
 check "the runtime settings came with it" test "$(q 'SELECT count(*) FROM settings')" = "$(psql_super "$SOURCE_DB" <<<'SELECT count(*) FROM settings')"
 check "the schema is at the same migration" test "$(q 'SELECT max(name) FROM knex_migrations')" = "$(psql_super "$SOURCE_DB" <<<'SELECT max(name) FROM knex_migrations')"
 check "post-step: every session is revoked" test "$(q 'SELECT count(*) FROM auth_sessions WHERE revoked_at IS NULL')" = 0
+check "post-step: every API token is revoked" test "$(q 'SELECT count(*) FROM api_tokens')" = 0
 check "post-step: the erasure after the backup is re-applied" \
   test "$(q "SELECT coalesce(tu_id, '-') || enabled FROM users WHERE id = '00000000-0000-7000-8000-000000000003'")" = -false
 check "... and logged in the restored database, with its time" \

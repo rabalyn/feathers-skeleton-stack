@@ -40,7 +40,8 @@ export const loggerOptions = (service: string, level: string): LoggerOptions => 
     return {
       request_id: request.requestId,
       ...(request.userRef ? { user_ref: request.userRef } : {}),
-      ...(request.viewAsRef ? { view_as_ref: request.viewAsRef } : {})
+      ...(request.viewAsRef ? { view_as_ref: request.viewAsRef } : {}),
+      ...(request.apiTokenRef ? { api_token_ref: request.apiTokenRef } : {})
     }
   }
 })

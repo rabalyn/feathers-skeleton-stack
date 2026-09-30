@@ -13,11 +13,11 @@
 #       pg_restore of the `db` snapshot into <database>, created fresh, as
 #       the superuser over postgres's socket. --replace drops an existing
 #       database first; refused while the api or the worker runs. Then the
-#       mandatory post-steps: every session revoked (ADR 0010), erasures
-#       re-applied (ADR 0013). The log of erasures is read, before anything
-#       is dropped, from --erasures-from, else from <database> itself when it
-#       exists, else from `app`; a copy is kept in a file whose path is
-#       printed, for replay-erasures
+#       mandatory post-steps: every session and API token revoked (ADR 0010,
+#       0029), erasures re-applied (ADR 0013). The log of erasures is read,
+#       before anything is dropped, from --erasures-from, else from
+#       <database> itself when it exists, else from `app`; a copy is kept in
+#       a file whose path is printed, for replay-erasures
 #   scripts/backup.sh replay-erasures <database> --erasures-file <file>
 #       re-apply a kept log of erasures to <database>; for a restored schema
 #       too old to have erase_user(), once it is migrated
@@ -133,6 +133,11 @@ post_restore() { # <database>
   local revoked
   revoked=$(psql_super "$1" -tA <<<"WITH r AS (UPDATE auth_sessions SET revoked_at = now() WHERE revoked_at IS NULL RETURNING 1) SELECT count(*) FROM r")
   log "revoked every session in $1 ($revoked were live at the backup)"
+  # API tokens revoked after the backup would be live again (ADR 0029); a
+  # snapshot older than the table has none.
+  revoked=$(psql_super "$1" -tA <<<"SELECT CASE WHEN to_regclass('public.api_tokens') IS NULL THEN 0 ELSE (SELECT count(*) FROM api_tokens) END")
+  if [[ $revoked != 0 ]]; then psql_super "$1" <<<"DELETE FROM api_tokens"; fi
+  log "revoked every API token in $1 ($revoked existed at the backup)"
   replay_erasures "$1"
 }
 

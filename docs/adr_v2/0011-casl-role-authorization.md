@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADRs 0021, 0063
-- Related: [0005](0005-typebox-schema-boundary.md), [0007](0007-typed-client-from-api.md), [0008](0008-authentication-saml2-ldap.md), [0009](0009-tu-id-identity-model.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0012](0012-role-scoped-channels.md), [0013](0013-gdpr-export-and-retention.md), [0024](0024-background-jobs-bullmq.md), [0025](0025-runtime-settings.md), [0027](0027-email-templates-and-sending.md), [0028](0028-read-only-view-as.md)
+- Related: [0005](0005-typebox-schema-boundary.md), [0007](0007-typed-client-from-api.md), [0008](0008-authentication-saml2-ldap.md), [0009](0009-tu-id-identity-model.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0012](0012-role-scoped-channels.md), [0013](0013-gdpr-export-and-retention.md), [0024](0024-background-jobs-bullmq.md), [0025](0025-runtime-settings.md), [0027](0027-email-templates-and-sending.md), [0028](0028-read-only-view-as.md), [0029](0029-api-tokens.md)
 
 ## Context
 
@@ -17,7 +17,7 @@ What operators and users may see differs between the products built on this skel
 ### Permissions are declared in code, roles are composed in the database
 
 - A **permission catalogue** in the ability module declares every grantable permission: a stable key (`documents.all`), the group it is shown under, and a function from the user to its CASL rules, conditions and field lists included. It is the one place where rules are written. A product adds entries for its resources; labels and descriptions are the web app's translations, keyed by the permission key, and a test refuses a key without both.
-- A **baseline** of rules applies to every signed-in account and is not in the catalogue, so no role can withdraw it: the own user record, the own avatar and locale, uploading and reading one's own files, one's own GDPR export ([0013](0013-gdpr-export-and-retention.md)), one's own audit events, and the names of one's own roles. It is what the right of access and transparency require.
+- A **baseline** of rules applies to every signed-in account and is not in the catalogue, so no role can withdraw it: the own user record, the own avatar and locale, uploading and reading one's own files, one's own GDPR export ([0013](0013-gdpr-export-and-retention.md)), one's own audit events, the names of one's own roles, and seeing and revoking one's own API tokens ([0029](0029-api-tokens.md)). It is what the right of access and transparency require. An API token does not get it: it holds only the permissions chosen for it ([0029](0029-api-tokens.md)).
 - A **role** is a row of `roles`: a key, a name per locale (`de` and `en`, both required, [0027](0027-email-templates-and-sending.md)) and a kind. `role_permissions` holds the catalogue keys each role grants. A key that code no longer declares is ignored when abilities are built and dropped by the next migration.
 - Users hold **any number of roles** through `user_roles`; their permissions are the union of their roles' permissions, on top of the baseline. A user with no role has the baseline only.
 - There are three kinds of role:
@@ -38,7 +38,7 @@ The permission matrix, now as catalogue permissions. `admin` holds all of them. 
 
 | Permission | Covers | `operator` | `user` |
 | --- | --- | --- | --- |
-| (baseline) | Own user record read, own avatar and locale write; upload, own files read; own GDPR export; own audit events; own roles' names | ✓ | ✓ |
+| (baseline) | Own user record read, own avatar and locale write; upload, own files read; own GDPR export; own audit events; own roles' names; own API tokens read and revoke | ✓ | ✓ |
 | `users.read` | All user records and their avatars; role names | ✓ | — |
 | `users.enable` | Account enable / disable | — | — |
 | `directory.read` | Directory lookup (LDAP) | ✓ | — |
@@ -54,6 +54,8 @@ The permission matrix, now as catalogue permissions. `admin` holds all of them. 
 | `mail.manage` | Mail templates, campaigns, delivery log ([0027](0027-email-templates-and-sending.md)) | — | — |
 | `queues.read` | Job queues: state, schedules, jobs ([0024](0024-background-jobs-bullmq.md)) | — | — |
 | `users.view-as` | Read-only view as another user ([0028](0028-read-only-view-as.md)) | — | — |
+| `api-tokens.create` | Create API tokens of one's own, and use them ([0029](0029-api-tokens.md)) | — | — |
+| `api-tokens.manage` | Everybody's API tokens: read, revoke ([0029](0029-api-tokens.md)) | — | — |
 | (role management) | Roles, their permissions, role assignment | `admin` only, not grantable | |
 
 Directory-sourced user fields are never writable by anyone in the application ([0009](0009-tu-id-identity-model.md)). Backups are not triggered through the application at all: they run on their configured schedule ([0017](0017-nfs-backup-storage.md)), and their schedule and retention are runtime settings covered by `settings.manage`.
@@ -69,7 +71,7 @@ Directory-sourced user fields are never writable by anyone in the application ([
 ### Enforcement
 
 - `feathers-casl` enforces the ability built from the baseline and the catalogue entries of the caller's permissions. Rules are declared in one module, not scattered across services.
-- The caller's permissions are loaded on every request, beside the session check ([0010](0010-sessions-postgres-ratelimits-valkey.md)), in one query over `user_roles`, `roles` and `role_permissions`. There is no cache, so a changed role or assignment applies on the user's very next request.
+- The caller's permissions are loaded on every request, beside the session check ([0010](0010-sessions-postgres-ratelimits-valkey.md)), in one query over `user_roles`, `roles` and `role_permissions`. There is no cache, so a changed role or assignment applies on the user's very next request. A call with an API token is authorized by the token's permissions that its owner holds, loaded the same way ([0029](0029-api-tokens.md)).
 - A **global default-deny hook** requires authentication and authorization on every service. Public endpoints are an explicit allowlist, each rate-limited where it accepts credentials:
   - `GET /api/ping`,
   - the SAML routes under `/api/auth/saml/`: metadata, login, ACS and logout,
