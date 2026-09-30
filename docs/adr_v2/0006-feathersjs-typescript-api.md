@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADRs 0008, 0009, 0010
-- Related: [0005](0005-typebox-schema-boundary.md), [0007](0007-typed-client-from-api.md), [0008](0008-authentication-saml2-ldap.md), [0012](0012-role-scoped-channels.md), [0014](0014-frontend-quasar-vue.md), [0022](0022-observability-and-alerting.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md), [0025](0025-runtime-settings.md)
+- Related: [0005](0005-typebox-schema-boundary.md), [0007](0007-typed-client-from-api.md), [0008](0008-authentication-saml2-ldap.md), [0012](0012-role-scoped-channels.md), [0014](0014-frontend-quasar-vue.md), [0022](0022-observability-and-alerting.md), [0023](0023-secrets-management.md), [0024](0024-background-jobs-bullmq.md), [0025](0025-runtime-settings.md), [0030](0030-service-generator.md)
 
 ## Context
 
@@ -23,6 +23,7 @@ The API serves a Quasar frontend over REST and WebSocket, shares typed contracts
 - The API listens on two ports: the public one behind Nginx, and an **internal port** serving `/metrics` and the health and readiness endpoints, reachable only on the `observability` network and outside the Feathers authentication pipeline ([0022](0022-observability-and-alerting.md)). The only unauthenticated liveness signal on the public port is `GET /api/ping`, which returns a constant and reveals nothing about internal state.
 - **Shutdown on SIGTERM** finishes within Podman's 10-second stop timeout: both listeners stop accepting, idle keep-alive connections close at once, and Socket.IO connections close as a transport close, so clients reconnect to the next instance. Requests in flight get a grace period of **5 seconds**, after which their sockets are destroyed; should closing hang beyond that, the process exits anyway.
 - The `worker` runs the same image with a different entry point ([0024](0024-background-jobs-bullmq.md)), sharing services, schemas and configuration code.
+- **New services are created with `pnpm gen:service`**, the project-local generator, not by hand and not with `@feathersjs/cli` ([0030](0030-service-generator.md)).
 
 ## Consequences
 
