@@ -36,7 +36,7 @@ test('an admin creates, grants, previews and deletes a role', async ({ page }) =
   // documents has none, but its activity log.
   await page.locator('th').filter({ hasText: 'Prüfung' }).getByRole('button', { name: 'Vorschau' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Vorschau als „Prüfung“' })).toBeVisible()
-  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Gebäude', 'Aktivitätsprotokoll'])
+  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Aktivitätsprotokoll'])
   await page.getByRole('button', { name: 'Vorschau beenden' }).click()
   await expect(page).toHaveURL(/\/permissions$/)
   await expect(navLabels(page)).toContainText(['Rollen & Rechte'])

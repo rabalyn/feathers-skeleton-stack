@@ -83,9 +83,11 @@
     "search": "Kennung, Name oder Adresse",
     "hint": "Z. B. S1|01, Karolinenplatz oder Audimax",
     "occupants": "In diesem Gebäude",
-    "noOccupants": "Keine Nutzer angegeben",
     "openInNetbox": "In NetBox öffnen",
-    "empty": "Keine Treffer"
+    "empty": "Keine Treffer",
+    "key": "Kennung",
+    "name": "Gebäude",
+    "address": "Adresse"
   },
   "errors": {
     "notFound": "Diese Seite gibt es nicht.",
@@ -394,6 +396,7 @@
     "save": "Speichern",
     "groups": {
       "users": "Personen",
+      "locations": "Standorte",
       "documents": "Dokumente",
       "sessions": "Sitzungen",
       "privacy": "Datenschutz",
@@ -404,6 +407,7 @@
       "users_read": "Alle Personen sehen",
       "users_enable": "Konten aktivieren und sperren",
       "directory_read": "Im Verzeichnis nachschlagen",
+      "sites_read": "Gebäude sehen",
       "users_view-as": "Als andere ansehen",
       "documents_own": "Eigene Dokumente",
       "documents_all": "Alle Dokumente",
@@ -423,6 +427,7 @@
       "users_read": "Jedes Benutzerkonto mit Bild und die Namen der Rollen",
       "users_enable": "Konten ein- und ausschalten",
       "directory_read": "Im Hochschulverzeichnis nach Personen suchen, die sich noch nicht angemeldet haben",
+      "sites_read": "Die Gebäude der Universität mit Adresse und Nutzern nachschlagen (aus NetBox)",
       "users_view-as": "Die Anwendung so sehen, wie eine andere Person sie sieht, nur lesend und nie über die eigenen Rechte hinaus",
       "documents_own": "Dokumente anlegen und die eigenen lesen, ändern und löschen",
       "documents_all": "Dokumente aller lesen, umbenennen und löschen; die Datei ersetzt nur, wem es gehört",

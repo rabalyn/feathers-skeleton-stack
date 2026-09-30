@@ -61,6 +61,8 @@ const CATALOGUE_ENTRIES = [
   // Which fields a patch may carry is fixed by the users patch schema.
   entry('users.enable', 'users', (can) => can('patch', 'users')),
   entry('directory.read', 'users', (can) => can('read', 'directory')),
+  // Locations (ADR 0031): the university's buildings, from NetBox.
+  entry('sites.read', 'locations', (can) => can('read', 'sites')),
   // Read-only view as another person, bounded by one's own rights (ADR 0028).
   // `read` for feathers-casl's check of the create's result.
   entry('users.view-as', 'users', (can) => can(['create', 'read'], 'view-as')),
@@ -155,10 +157,6 @@ const grantBaseline = (can: Can, user: AbilityUser) => {
   // One's own API tokens, to see and revoke even after losing the right to
   // create them (ADR 0029).
   can(['read', 'delete'], 'api-tokens', { userId: user.id })
-
-  // Locations (ADR 0031): the university's buildings, public knowledge,
-  // looked up by everyone who records where something is.
-  can('read', 'sites')
 
   // The names of the caller's own roles, shown on their profile.
   if (user.roleIds?.length) can('read', 'roles', ROLE_NAME_FIELDS, { id: { $in: [...user.roleIds] } })

@@ -6,7 +6,8 @@ import { makeUser } from '../support/roles.js'
 
 // Locations (ADR 0031) against the stack's NetBox, seeded by netbox-setup
 // from containers/netbox/seed/tu-darmstadt, through the api's read-only
-// token. S1|01 is the University Centre at Karolinenplatz 5.
+// token. S1|01 is the University Centre at Karolinenplatz 5. The seeded
+// `user` role holds sites.read.
 
 let app: Application
 let unreachable: Application
@@ -74,8 +75,16 @@ describe('sites: the address lookup', () => {
     await expect(find({ $limit: 51 })).rejects.toMatchObject({ code: 400 })
   })
 
-  it('is read by every signed-in person, and only read (ADR 0011)', async () => {
+  it('is read under sites.read, which the seeded roles hold, and only read (ADR 0011)', async () => {
     await expect(app.service('sites').find({ provider: 'rest', query: {} })).rejects.toMatchObject({ code: 401 })
+    const roleless = await app.service('users').create({
+      tuId: 'no01role',
+      givenName: 'No',
+      surname: 'Role',
+      email: 'no01role@example.org',
+      authSource: 'saml'
+    })
+    await expect(find({}, roleless)).rejects.toMatchObject({ code: 403 })
     const server = await app.listen(0)
     const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/sites`
     expect((await fetch(base, { method: 'POST', body: '{}', headers: { 'content-type': 'application/json' } })).status).toBe(405)

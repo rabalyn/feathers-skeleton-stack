@@ -9,24 +9,30 @@ import { ADMIN, IDP_ORIGIN, OPERATOR, USER, loginAs, nav, type Account } from '.
 const NETBOX = 'https://netbox.localhost:8443'
 const OTHER: Account = { tuId: 'us02othr', password: 'other-test-password' }
 
-test('the Buildings page finds a building by its address, in the user\'s language', async ({ page }) => {
+test('the Buildings page finds a building by its address, a page at a time', async ({ page }) => {
   await loginAs(page, USER)
   await nav(page).getByRole('link', { name: 'Gebäude' }).click()
   await expect(page).toHaveURL(/\/sites$/)
-  // Every building, a page at a time, before anything is typed.
-  await expect(page.getByTestId('sites').locator('.q-expansion-item')).toHaveCount(20)
+  const table = page.locator('[data-test="sites-table"]')
+  const rows = table.locator('tbody tr')
+  // Every building, paginated on the server like the activity log.
+  await expect(rows).toHaveCount(25)
+  const first = await rows.first().innerText()
+  // Quasar's last button in the table's footer: the next page.
+  await table.locator('.q-table__bottom button').last().click()
+  await expect(rows.first()).not.toHaveText(first)
 
-  await page.getByLabel('Kennung, Name oder Adresse').fill('Karolinenplatz 5')
-  const karo5 = page.getByTestId('site-S1|01')
+  await table.getByLabel('Kennung, Name oder Adresse').fill('Karolinenplatz 5')
+  const karo5 = rows.filter({ hasText: 'S1|01' })
   await expect(karo5).toContainText('Universitätszentrum')
   await expect(karo5).toContainText('Karolinenplatz 5, 64289 Darmstadt')
-  await karo5.getByText('Universitätszentrum').click()
-  await expect(karo5).toContainText('In diesem Gebäude')
-  const link = karo5.getByRole('link', { name: 'In NetBox öffnen' })
-  await expect(link).toHaveAttribute('href', new RegExp(`^${NETBOX}/dcim/sites/\\d+/$`))
+  await expect(karo5.getByRole('link', { name: 'In NetBox öffnen' })).toHaveAttribute(
+    'href',
+    new RegExp(`^${NETBOX}/dcim/sites/\\d+/$`)
+  )
 
-  await page.getByLabel('Kennung, Name oder Adresse').fill('kein Gebäude heißt so')
-  await expect(page.getByText('Keine Treffer')).toBeVisible()
+  await table.getByLabel('Kennung, Name oder Adresse').fill('kein Gebäude heißt so')
+  await expect(table.getByText('Keine Treffer')).toBeVisible()
 })
 
 const netboxLogin = async (page: Page, who: Account) => {

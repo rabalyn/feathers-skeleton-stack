@@ -22,6 +22,17 @@ The frontend needs a component framework, a build tool, and state management tha
 - **Internationalisation from the first screen**: German is the default locale, English the second. All user-facing strings go through the i18n layer (`vue-i18n`, with Quasar's language packs for its own components); hard-coded UI text is a lint error. The catalogues are JSON files (`apps/web/src/i18n/<locale>.json`), because that is what the i18n lint reads: it rejects raw text in templates, a key the code uses that a catalogue lacks, and a key present in one catalogue but not the other. `vue/no-v-html` is an error as well.
 - The CASL ability definitions are imported from the client export to hide actions the user may not take ([0011](0011-casl-role-authorization.md)). The server remains the only enforcement point.
 
+### One style for lists
+
+Decided 2026-09-30, from the activity log. **Every list of records that can grow is a `QTable` paginated on the server**, the way `AuditPage.vue` does it, in every product on this skeleton:
+
+- `v-model:pagination` bound to a computed getter and setter over a `{ page, rowsPerPage }` ref, with `rowsNumber` the service's `total`, and `@request` writing into it. Two-way, because QTable reads a bound pagination only while it has an `update:pagination` listener and otherwise keeps the one it mounted with.
+- The page's `$limit` and `$skip` come from that ref; the table's own footer is the navigation (rows per page, "1–25 of N", previous and next). No `q-pagination`, no "show more", no infinite scroll.
+- Filters and searches sit in the table's `top-right` slot; changing one returns to the first page.
+- `rows-per-page-options` stay within the service's page maximum.
+
+Fixed, short sets (settings, queues, mail kinds) may be tables without server pagination. The directory lookup is still a capped list of at most 50 matches; aligning it is an open item (README).
+
 ### Two consequences of the authentication design the frontend must respect
 
 - **The access token is kept in memory only.** The Feathers authentication client stores tokens in `localStorage` by default and `feathers-pinia`'s auth store builds on it, so in-memory storage must be configured explicitly. Left at the default, the design in [0010](0010-sessions-postgres-ratelimits-valkey.md) is silently defeated.
