@@ -6,6 +6,7 @@ import type { Knex } from 'knex'
 import type { Application } from '../../app.js'
 import { recordAudit } from '../../audit.js'
 import { publishTo, subjectChannel } from '../../channels.js'
+import { maintenanceChanged } from '../../maintenance-mode.js'
 import { PAGINATE } from '../../paginate.js'
 import { CROSS_SETTING_RULES, SETTING_KEYS, isSettingKey, type SettingValues } from '../../settings/registry.js'
 import { settingError } from '../../settings/store.js'
@@ -30,8 +31,9 @@ export const SETTING_EXTERNAL_METHODS = ['find', 'get', 'patch'] as const
 export interface SettingServiceOptions {
   Model: Knex
   bodySizeCeilingBytes: number
-  // Called after a committed change, to drop the in-process cache.
-  changed: (key: string) => void
+  // Called after a committed change: drops the in-process cache and acts
+  // on what the change means, e.g. maintenance mode (ADR 0025).
+  changed: (key: string, change: { from: unknown; to: unknown; actorId: string | null }) => void | Promise<void>
 }
 
 export class SettingService extends KnexService<Setting, SettingPatch, SettingParams, SettingPatch> {
@@ -55,7 +57,7 @@ export class SettingService extends KnexService<Setting, SettingPatch, SettingPa
 
     const knex = this.settingOptions.Model
     const actorId = params?.user?.id ?? null
-    await knex.transaction(async (trx) => {
+    const from = await knex.transaction(async (trx) => {
       // Serialises concurrent writers, so two changes that are each valid
       // cannot together break a cross-setting rule.
       const rows: { key: string; value: unknown }[] = await trx('settings')
@@ -84,8 +86,9 @@ export class SettingService extends KnexService<Setting, SettingPatch, SettingPa
         resourceId: key,
         detail: { from: current.value, to: data.value }
       })
+      return current.value
     })
-    this.settingOptions.changed(key)
+    await this.settingOptions.changed(key, { from, to: data.value, actorId })
     return this._get(key, { ...params, query: {} })
   }
 }
@@ -96,7 +99,10 @@ export const settings = (app: Application) => {
     new SettingService({
       Model: app.get('knex'),
       bodySizeCeilingBytes: app.get('config').bodySizeCeilingBytes,
-      changed: (key) => app.get('settings').forget(isSettingKey(key) ? key : undefined)
+      changed: async (key, change) => {
+        app.get('settings').forget(isSettingKey(key) ? key : undefined)
+        if (key === 'maintenanceMode') await maintenanceChanged(app, change)
+      }
     }),
     { methods: [...SETTING_EXTERNAL_METHODS] }
   )

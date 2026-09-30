@@ -50,7 +50,7 @@ The permission matrix, now as catalogue permissions. `admin` holds all of them. 
 | `audit-events.read` | All audit / activity events | ✓ | — |
 | `data-exports.any` | GDPR export for any user | — | — |
 | `erasures.create` | GDPR erasure | — | — |
-| `settings.manage` | Runtime settings, feature flags, maintenance mode ([0025](0025-runtime-settings.md)) | — | — |
+| `settings.manage` | Runtime settings, feature flags, maintenance mode ([0025](0025-runtime-settings.md)); also what lets a person in while maintenance mode is on | — | — |
 | `mail.manage` | Mail templates, campaigns, delivery log ([0027](0027-email-templates-and-sending.md)) | — | — |
 | `queues.read` | Job queues: state, schedules, jobs ([0024](0024-background-jobs-bullmq.md)) | — | — |
 | `users.view-as` | Read-only view as another user ([0028](0028-read-only-view-as.md)) | — | — |

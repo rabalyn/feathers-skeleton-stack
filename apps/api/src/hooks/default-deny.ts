@@ -4,6 +4,7 @@ import type { NextFunction } from '@feathersjs/feathers'
 import { authorize } from 'feathers-casl'
 import { defineAbilitiesFor, defineTokenAbility, defineViewAsAbility } from '../abilities.js'
 import { API_TOKEN_STRATEGY } from '../auth/api-tokens.js'
+import { inMaintenance, maintenanceUnavailable, mayBypassMaintenance } from '../maintenance-mode.js'
 import { loadAccess } from '../permissions.js'
 import type { HookContext } from '../declarations.js'
 import { currentRequest } from '../request-context.js'
@@ -43,18 +44,22 @@ export const defaultDeny = async (context: HookContext, next: NextFunction) => {
   // Loaded afresh for every call, so a changed role or assignment applies
   // at once (ADR 0011); in a view-as, both people's.
   const own = { id: user.id, ...(await loadAccess(knex, user.id)) }
+  const viewerAccess = viewer ? { id: viewer.id, ...(await loadAccess(knex, viewer.id)) } : undefined
+  // During maintenance only those who may switch it off get through, never
+  // an API token (ADR 0025); in a view-as, that is the one looking.
+  const apiToken = context.params.apiToken
+  if (request && apiToken) request.apiTokenRef = apiToken.id
+  if (await inMaintenance(context.app)) {
+    if (apiToken || !mayBypassMaintenance((viewerAccess ?? own).permissions)) throw maintenanceUnavailable()
+  }
   // An API token: what was chosen for it, as far as its owner still holds
   // it, and only while the owner may create tokens at all (ADR 0029).
-  const apiToken = context.params.apiToken
   if (apiToken) {
-    if (request) request.apiTokenRef = apiToken.id
     if (!own.permissions.includes('api-tokens.create')) throw new NotAuthenticated('Invalid API token')
     context.params.ability = defineTokenAbility(own, apiToken.permissions)
     await casl(context, next)
     return
   }
-  context.params.ability = viewer
-    ? defineViewAsAbility({ id: viewer.id, ...(await loadAccess(knex, viewer.id)) }, own)
-    : defineAbilitiesFor(own)
+  context.params.ability = viewerAccess ? defineViewAsAbility(viewerAccess, own) : defineAbilitiesFor(own)
   await casl(context, next)
 }

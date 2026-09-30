@@ -21,6 +21,8 @@ export type AuditAction =
   | 'mail.campaign.send'
   | 'mail.template.activate'
   | 'mail.template.save'
+  | 'maintenance.disable'
+  | 'maintenance.enable'
   | 'roles.create'
   | 'roles.patch'
   | 'roles.remove'
