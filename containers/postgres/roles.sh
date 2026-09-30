@@ -52,6 +52,10 @@ SET client_min_messages = warning;
 GRANT app_rw TO app, test, worker;
 GRANT pg_monitor TO exporter;
 GRANT pg_read_all_data TO backup;
+-- DROP DATABASE ... WITH (FORCE) of a finished test_w<N> database must end
+-- an autovacuum worker that happens to be in it, which since PostgreSQL 17
+-- takes this role (seen 2026-09-30: an intermittent failed teardown).
+GRANT pg_signal_autovacuum_worker TO test;
 RESET client_min_messages;
 
 SELECT 'CREATE DATABASE app OWNER migrator'
