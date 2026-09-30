@@ -27,5 +27,11 @@ ensure_account() { # <cn> <secret file>
 ensure_account keycloak keycloak_password
 ensure_account api api_password
 
+# Group memberships for NetBox (ADR 0031), added once to any directory.
+if ! slapcat -f /run/slapd/slapd.conf -a "(ou=groups)" | grep -q '^dn:'; then
+  echo "ldap: adding the groups"
+  slapadd -f /run/slapd/slapd.conf -l /etc/openldap/seed/groups.ldif
+fi
+
 chown -R ldap:ldap /run/slapd /var/lib/openldap
 exec slapd -d 256 -u ldap -g ldap -f /run/slapd/slapd.conf -h "ldaps:///"

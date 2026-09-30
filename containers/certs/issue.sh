@@ -14,6 +14,7 @@
 #   /tls/s3             the s3 container's Nginx: S3 and metrics (ADR 0020)
 #   /tls/api            the api's internal listener: metrics, health (ADR 0022)
 #   /tls/worker         the worker's internal listener (ADR 0022)
+#   /tls/netbox         NetBox's listener (ADR 0031)
 #   /tls/<name>         every observability listener (ADR 0022): prometheus,
 #                       loki, grafana, mail, blackbox and the exporters
 #
@@ -37,6 +38,7 @@ NOBODY_OWNER="${NOBODY_OWNER:-65534:65534}"
 LOKI_OWNER="${LOKI_OWNER:-10001:10001}"
 GRAFANA_OWNER="${GRAFANA_OWNER:-472:0}"
 REDIS_EXPORTER_OWNER="${REDIS_EXPORTER_OWNER:-59000:59000}"
+NETBOX_OWNER="${NETBOX_OWNER:-999:0}"
 
 umask 077
 
@@ -103,6 +105,8 @@ issue /tls/s3 "s3,localhost" "$S3_OWNER"
 # `localhost` for the container healthcheck.
 issue /tls/api "api,localhost" "$NODE_OWNER"
 issue /tls/worker "worker,localhost" "$NODE_OWNER"
+# `localhost` for the container healthcheck.
+issue /tls/netbox "netbox,localhost" "$NETBOX_OWNER"
 issue /tls/prometheus "prometheus" "$NOBODY_OWNER"
 issue /tls/loki "loki" "$LOKI_OWNER"
 issue /tls/grafana "grafana" "$GRAFANA_OWNER"

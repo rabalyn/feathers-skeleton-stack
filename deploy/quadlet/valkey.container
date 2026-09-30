@@ -11,6 +11,7 @@ HealthRetries=10
 HealthTimeout=3s
 Image=docker.io/valkey/valkey@sha256:3b83b0b6a598bb390c8186a408a69949772f439548a81c5ea0ab7ccf102c248d
 Network=app-data.network
+Network=netbox-data.network
 Volume=../../containers/valkey/valkey.conf:/etc/valkey/valkey.conf:ro,Z
 Volume=valkey-data:/data
 Volume=valkey-secrets.volume:/run/secrets:ro

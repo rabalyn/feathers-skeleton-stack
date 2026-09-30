@@ -27,6 +27,7 @@ template {
   "test" "{{ .Data.data.test_password }}"
   "worker" "{{ .Data.data.worker_password }}"
   "stats" "{{ .Data.data.stats_password }}"
+  "netbox" "{{ .Data.data.netbox_password }}"
   {{ end }}
   EOT
   destination = "/run/secrets/userlist.txt"

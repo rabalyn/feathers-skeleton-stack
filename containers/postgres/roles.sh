@@ -19,6 +19,9 @@
 #             through pg_read_all_data, writes nothing.
 #   test      integration tests, through PgBouncer; DML via app_rw, and
 #             CREATEDB for the per-worker test_w<N> databases.
+#   netbox    NetBox (ADR 0031): owns the `netbox` database, which it
+#             migrates itself over a direct connection (netbox-setup) and
+#             uses through PgBouncer. No access to `app`.
 set -eu
 
 secret() { cat "/run/secrets/$1"; }
@@ -29,9 +32,10 @@ psql -v ON_ERROR_STOP=1 -q --username postgres --dbname postgres \
   --set=test_pw="$(secret test_password)" \
   --set=worker_pw="$(secret worker_password)" \
   --set=exporter_pw="$(secret exporter_password)" \
-  --set=backup_pw="$(secret backup_password)" <<'SQL'
+  --set=backup_pw="$(secret backup_password)" \
+  --set=netbox_pw="$(secret netbox_password)" <<'SQL'
 SELECT format('CREATE ROLE %I', name) FROM (VALUES
-  ('app_rw'), ('migrator'), ('app'), ('test'), ('worker'), ('exporter'), ('backup')
+  ('app_rw'), ('migrator'), ('app'), ('test'), ('worker'), ('exporter'), ('backup'), ('netbox')
 ) AS wanted (name)
 WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = name) \gexec
 
@@ -42,6 +46,7 @@ ALTER ROLE test LOGIN CREATEDB PASSWORD :'test_pw';
 ALTER ROLE worker LOGIN PASSWORD :'worker_pw';
 ALTER ROLE exporter LOGIN PASSWORD :'exporter_pw';
 ALTER ROLE backup LOGIN PASSWORD :'backup_pw';
+ALTER ROLE netbox LOGIN PASSWORD :'netbox_pw';
 
 SET client_min_messages = warning;
 GRANT app_rw TO app, test, worker;
@@ -55,6 +60,12 @@ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'app') \gexec
 REVOKE ALL ON DATABASE app FROM PUBLIC;
 GRANT CONNECT, TEMPORARY ON DATABASE app TO app_rw;
 GRANT CONNECT ON DATABASE app TO backup;
+
+SELECT 'CREATE DATABASE netbox OWNER netbox'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'netbox') \gexec
+
+REVOKE ALL ON DATABASE netbox FROM PUBLIC;
+GRANT CONNECT ON DATABASE netbox TO backup;
 SQL
 
 # Default privileges for app_rw are set by the first migration, so the

@@ -1,0 +1,24 @@
+# Groups the IdP sends to NetBox (ADR 0031): netbox-admins are NetBox
+# superusers; netbox-editors and netbox-readers are NetBox groups of the
+# same name. us02othr is in none. Added by entrypoint.sh to a directory
+# that lacks ou=groups, so directories seeded before it gain them too.
+
+dn: ou=groups,dc=feathers,dc=test
+objectClass: organizationalUnit
+ou: groups
+
+dn: cn=netbox-admins,ou=groups,dc=feathers,dc=test
+objectClass: groupOfNames
+cn: netbox-admins
+member: cn=ad01admn,ou=people,dc=feathers,dc=test
+
+dn: cn=netbox-editors,ou=groups,dc=feathers,dc=test
+objectClass: groupOfNames
+cn: netbox-editors
+member: cn=op01oper,ou=people,dc=feathers,dc=test
+
+dn: cn=netbox-readers,ou=groups,dc=feathers,dc=test
+objectClass: groupOfNames
+cn: netbox-readers
+member: cn=op01oper,ou=people,dc=feathers,dc=test
+member: cn=us01user,ou=people,dc=feathers,dc=test

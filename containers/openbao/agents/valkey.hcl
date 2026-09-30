@@ -26,6 +26,8 @@ template_config {
 #   test    any key: test files namespace their own
 #   probe   PING, for the healthcheck
 #   exporter  server statistics for Prometheus, no keys (ADR 0022)
+#   netbox  NetBox's job queue (rq:) and cache (:1:), in databases 0 and 1
+#           (ADR 0031)
 # INFO is @dangerous, and ioredis and BullMQ need it: the ready check, the
 # server version and the eviction policy.
 template {
@@ -35,6 +37,7 @@ template {
   user api on >{{ .Data.data.api_password }} ~rl:* ~bull:* &* +@all -@dangerous +info
   user worker on >{{ .Data.data.worker_password }} ~bull:* &* +@all -@dangerous +info
   user test on >{{ .Data.data.test_password }} ~* &* +@all -@admin
+  user netbox on >{{ .Data.data.netbox_password }} ~rq:* ~:1:* &* +@all -@dangerous +info
   user exporter on >{{ .Data.data.exporter_password }} -@all +ping +info +client|setname +config|get +slowlog|get +slowlog|len +latency|latest +latency|histogram +dbsize +select
   {{ end }}
   EOT
