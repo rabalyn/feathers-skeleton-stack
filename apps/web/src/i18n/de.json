@@ -16,6 +16,7 @@
     "directory": "Verzeichnis",
     "menu": "Menü",
     "documents": "Dokumente",
+    "sites": "Gebäude",
     "audit": "Aktivitätsprotokoll",
     "gdpr": "Datenanfragen",
     "mailTemplates": "E-Mail-Vorlagen",
@@ -77,6 +78,14 @@
     "empty": "Keine Treffer",
     "truncated": "Es gibt mehr Treffer, als angezeigt werden. Bitte die Suche eingrenzen.",
     "hasAccount": "Hat ein Konto"
+  },
+  "sites": {
+    "search": "Kennung, Name oder Adresse",
+    "hint": "Z. B. S1|01, Karolinenplatz oder Audimax",
+    "occupants": "In diesem Gebäude",
+    "noOccupants": "Keine Nutzer angegeben",
+    "openInNetbox": "In NetBox öffnen",
+    "empty": "Keine Treffer"
   },
   "errors": {
     "notFound": "Diese Seite gibt es nicht.",

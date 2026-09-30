@@ -15,7 +15,7 @@ test('an admin views the application as a user, read-only, and ends it', async (
   await expect(page.locator('[data-field="tuId"]')).toHaveText('us01user')
   await expect(page.locator('[data-field="role"]')).toHaveText('Benutzer')
   // What the user sees, and nothing to change: no picture upload, no export.
-  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Dokumente'])
+  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Dokumente', 'Gebäude'])
   await expect(page.locator('[data-test="avatar-input"]')).toHaveCount(0)
   await expect(page.locator('[data-test="my-data"]')).toHaveCount(0)
 

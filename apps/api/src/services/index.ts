@@ -18,6 +18,7 @@ import { roles } from './roles/roles.js'
 import { userRoles } from './roles/user-roles.js'
 import { viewAs } from './view-as/view-as.js'
 import { users } from './users/users.js'
+import { sites } from './sites/sites.js'
 // gen:service imports (ADR 0030)
 
 export const services = (app: Application) => {
@@ -40,5 +41,6 @@ export const services = (app: Application) => {
   app.configure(mailCampaigns)
   app.configure(mailDeliveries)
   app.configure(queues)
+  app.configure(sites)
   // gen:service configure (ADR 0030)
 }

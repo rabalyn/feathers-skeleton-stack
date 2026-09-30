@@ -16,6 +16,7 @@
     "directory": "Directory",
     "menu": "Menu",
     "documents": "Documents",
+    "sites": "Buildings",
     "audit": "Activity log",
     "gdpr": "Data requests",
     "mailTemplates": "Mail templates",
@@ -77,6 +78,14 @@
     "empty": "No matches",
     "truncated": "There are more matches than shown. Please narrow the search.",
     "hasAccount": "Has an account"
+  },
+  "sites": {
+    "search": "Key, name or address",
+    "hint": "E.g. S1|01, Karolinenplatz or Audimax",
+    "occupants": "In this building",
+    "noOccupants": "No occupants listed",
+    "openInNetbox": "Open in NetBox",
+    "empty": "No matches"
   },
   "errors": {
     "notFound": "This page does not exist.",

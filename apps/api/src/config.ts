@@ -122,6 +122,8 @@ const fields = {
   backupTargetDir: { schema: Type.String({ pattern: '^/' }), env: 'BACKUP_TARGET_DIR', default: '/srv/backups' },
   // The service's own volume: the bucket mirror, staged files, restic's cache.
   backupWorkDir: { schema: Type.String({ pattern: '^/' }), env: 'BACKUP_WORK_DIR', default: '/var/lib/backup' },
+  // NetBox's database (ADR 0031), dumped by the backup's own login too.
+  netboxDatabaseName: { schema: Type.String({ pattern: '^[a-z_][a-z0-9_]*$' }), env: 'NETBOX_DATABASE_NAME', default: 'netbox' },
   // Valkey's RDB snapshot, from a read-only mount of its volume (ADR 0010).
   valkeySnapshotFile: { schema: Type.String({ pattern: '^/' }), env: 'VALKEY_SNAPSHOT_FILE', default: '/var/lib/valkey/dump.rdb' },
   // OpenBao's raft snapshot (ADR 0023), with the token the backup-agent
@@ -138,6 +140,14 @@ const fields = {
   smtpCaFile: { schema: Type.String({ minLength: 1 }), env: 'SMTP_CA_FILE' },
   // The sender address; the product's name is its display name.
   mailFrom: { schema: Type.String({ pattern: '^[^@\\s<>]+@[^@\\s<>]+$' }), env: 'MAIL_FROM' },
+  // Locations (ADR 0031): NetBox's REST API over TLS, read with a v2 token
+  // whose key is configuration and whose secret comes from OpenBao; links
+  // for people point at its public origin.
+  netboxUrl: { schema: Type.String({ pattern: '^https://[^/]+$' }), env: 'NETBOX_URL' },
+  netboxPublicUrl: { schema: Type.String({ pattern: '^https://[^/]+$' }), env: 'NETBOX_PUBLIC_URL' },
+  netboxTokenKey: { schema: Type.String({ pattern: '^[A-Za-z0-9]{12}$' }), env: 'NETBOX_TOKEN_KEY' },
+  netboxToken: { schema: Type.String({ minLength: 32, pattern: '^[A-Za-z0-9_-]+$' }), env: 'NETBOX_TOKEN', secret: true },
+  netboxCaFile: { schema: Type.String({ minLength: 1 }), env: 'NETBOX_CA_FILE' },
   databasePoolMax: {
     schema: Type.Integer({ minimum: 1, maximum: 50 }),
     env: 'DATABASE_POOL_MAX',
@@ -188,6 +198,14 @@ export const S3_KEYS = [
   's3ExportsBucket'
 ] as const satisfies readonly ConfigKey[]
 
+export const NETBOX_KEYS = [
+  'netboxUrl',
+  'netboxPublicUrl',
+  'netboxTokenKey',
+  'netboxToken',
+  'netboxCaFile'
+] as const satisfies readonly ConfigKey[]
+
 export const API_KEYS = [
   'publicOrigin',
   'authSigningSecret',
@@ -206,6 +224,7 @@ export const API_KEYS = [
   ...VALKEY_KEYS,
   ...LDAP_KEYS,
   ...S3_KEYS,
+  ...NETBOX_KEYS,
   ...DATABASE_KEYS
 ] as const satisfies readonly ConfigKey[]
 
@@ -237,6 +256,7 @@ export const BACKUP_KEYS = [
   'backupTargetDir',
   'backupWorkDir',
   'valkeySnapshotFile',
+  'netboxDatabaseName',
   'openbaoAddr',
   'openbaoTokenFile',
   'openbaoCaFile',
@@ -305,6 +325,7 @@ export const loadConfig = async <K extends ConfigKey>(
 export type ApiConfig = Pick<Config, (typeof API_KEYS)[number]>
 export type DatabaseConfig = Pick<Config, (typeof DATABASE_KEYS)[number]>
 export type LdapConfig = Pick<Config, (typeof LDAP_KEYS)[number]>
+export type NetboxConfig = Pick<Config, (typeof NETBOX_KEYS)[number]>
 export type ValkeyConfig = Pick<Config, (typeof VALKEY_KEYS)[number]>
 export type WorkerConfig = Pick<Config, (typeof WORKER_KEYS)[number]>
 export type S3Config = Pick<Config, (typeof S3_KEYS)[number]>

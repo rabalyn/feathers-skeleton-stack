@@ -156,6 +156,10 @@ const grantBaseline = (can: Can, user: AbilityUser) => {
   // create them (ADR 0029).
   can(['read', 'delete'], 'api-tokens', { userId: user.id })
 
+  // Locations (ADR 0031): the university's buildings, public knowledge,
+  // looked up by everyone who records where something is.
+  can('read', 'sites')
+
   // The names of the caller's own roles, shown on their profile.
   if (user.roleIds?.length) can('read', 'roles', ROLE_NAME_FIELDS, { id: { $in: [...user.roleIds] } })
 }

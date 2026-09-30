@@ -18,7 +18,7 @@ const sessionRow = (page: Page, sessionId: string) =>
 
 test('a user sees no sessions', async ({ browser }) => {
   const { page } = await loggedIn(browser, USER, '/profile')
-  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Dokumente'])
+  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Dokumente', 'Gebäude'])
   await expect(page.locator('[data-test="session-list"]')).toHaveCount(0)
   await page.goto('/sessions')
   await expect(page).toHaveURL(/\/profile$/)

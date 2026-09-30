@@ -14,6 +14,7 @@ import type { ServiceProvider } from './auth/saml.js'
 import type { SessionStore } from './auth/sessions.js'
 import { TrustedProxy } from './client-ip.js'
 import { Directory } from './directory.js'
+import { Netbox } from './netbox.js'
 import { queueConnection } from './jobs/queues.js'
 import { MailOutbox } from './mail/outbox.js'
 import { defaultDeny } from './hooks/default-deny.js'
@@ -43,6 +44,8 @@ export interface AppSettings {
   valkey: Redis
   rateLimiter: RateLimiter
   directory: Directory
+  // Locations (ADR 0031).
+  netbox: Netbox
   metrics: Registry
   readiness: Readiness
   storage: Storage
@@ -79,6 +82,7 @@ export const createApp = (
   app.set('valkey', valkey)
   app.set('rateLimiter', new RateLimiter(valkey, app.get('settings'), options.rateLimitPrefix))
   app.set('directory', new Directory(config))
+  app.set('netbox', new Netbox(config))
   app.set('storage', new Storage(config))
   app.set('exports', new Storage(config, config.s3ExportsBucket))
   app.set('mail', new MailOutbox(queueConnection(config), logger, config.queuePrefix))
