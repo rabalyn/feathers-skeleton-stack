@@ -168,8 +168,8 @@ const moveRoleFilter = async (context: HookContext<UserService>) => {
   context.params = { ...context.params, query: rest, roleId }
 }
 
-// External patches carry role and account state only; the avatar arrives
-// from the avatars service as an internal patch.
+// External patches carry the account state only; the avatar, the locale and
+// the roles arrive from their own services as internal patches.
 const validateExternalPatch = schemaHooks.validateData(userPatchValidator)
 const validateInternalPatch = schemaHooks.validateData(userInternalPatchValidator)
 const validatePatch = async (context: HookContext<UserService>, next: NextFunction) => {

@@ -4,7 +4,7 @@ import { irreversible } from '../migration-support.js'
 // Editable roles (ADR 0011), expand step: roles are rows composed of
 // permission keys from the catalogue in code, and a user holds any number
 // of them. users.role is backfilled into user_roles and no longer read; it
-// is dropped by the contract step (ADR 0003).
+// is dropped by the contract step, 20260930000000 (ADR 0003).
 //
 //   admin    fixed: every permission and role management, none stored
 //   seeded   operator and user: stored, editable, not deletable
