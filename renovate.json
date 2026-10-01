@@ -27,6 +27,13 @@
   ],
   "packageRules": [
     {
+      "description": "Image pins are copied into generated files that Renovate cannot regenerate: the reviewer runs the scripts on the branch (ADR 0018)",
+      "matchDatasources": ["docker"],
+      "prBodyNotes": [
+        "**Before merging:** this PR changes an image pin, which `deploy/quadlet/` and `apps/api/src/system/inventory.ts` carry too. Their drift checks in `scripts/ci.sh` fail until they are regenerated on this branch:\n\n```bash\nscripts/quadlet.sh && scripts/inventory.sh\n```\n\nCommit the result to this branch. Renovate then stops rebasing it; to start over, tick the rebase checkbox, which discards the commit."
+      ]
+    },
+    {
       "description": "Feathers packages move together",
       "matchPackageNames": ["@feathersjs/**"],
       "groupName": "feathers"
