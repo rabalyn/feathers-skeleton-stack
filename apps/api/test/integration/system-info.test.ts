@@ -48,7 +48,7 @@ describe('system-info', () => {
     // Nothing reports OpenBao's version.
     expect(component(report, 'openbao')).toMatchObject({ running: null, runningMissing: 'not-reported' })
     // The tests run with the check off; nothing has been checked.
-    expect(report).toMatchObject({ updateCheck: 'off', attemptedAt: null })
+    expect(report).toMatchObject({ updateCheck: 'off', checkRunning: false, attemptedAt: null })
   })
 
   it('includes the update check’s results', async () => {

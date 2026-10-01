@@ -423,7 +423,8 @@
       "queues_read": "See job queues",
       "api-tokens_create": "Create API tokens",
       "api-tokens_manage": "Manage everybody’s API tokens",
-      "system-info_read": "See system information"
+      "system-info_read": "See system information",
+      "system-info_check": "Run the update check now"
     },
     "descriptions": {
       "users_read": "Every user record with its picture, and the names of the roles",
@@ -444,7 +445,8 @@
       "queues_read": "State, schedules and jobs of the background queues",
       "api-tokens_create": "Create tokens for scripts, carrying chosen permissions one holds oneself; they stop working when this permission is withdrawn",
       "api-tokens_manage": "See and revoke the API tokens of every person",
-      "system-info_read": "The versions that run, the updates available for them and their end of life"
+      "system-info_read": "The versions that run, the updates available for them and their end of life",
+      "system-info_check": "Start the check for newer versions at once instead of at night; it asks Docker Hub, quay.io and endoflife.date"
     }
   },
   "viewAs": {
@@ -471,7 +473,8 @@
     "loginHint": "Maintenance mode is on: only administrators can log in."
   },
   "systemInfo": {
-    "refresh": "Refresh",
+    "refresh": "Reload",
+    "checkNow": "Check now",
     "app": "Application",
     "dirty": "uncommitted changes",
     "committed": "committed {time}",
@@ -479,6 +482,7 @@
     "updateCheck": "Update check",
     "checkOff": "Switched off in this deployment",
     "lastCheck": "last run {time}",
+    "checkRunning": "Check running …",
     "notCheckedYet": "not run yet",
     "patchesWaiting": "No patch waiting | One patch waiting to be deployed | {n} patches waiting to be deployed",
     "eolSoon": "No end of life soon | One release line ends within 90 days | {n} release lines end within 90 days",

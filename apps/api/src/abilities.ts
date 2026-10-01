@@ -101,6 +101,9 @@ const CATALOGUE_ENTRIES = [
   entry('queues.read', 'configuration', (can) => can('read', 'queues')),
   // What runs and which updates are out (ADR 0032).
   entry('system-info.read', 'configuration', (can) => can('read', 'system-info')),
+  // Running the update check now, an outbound request (ADR 0032). `read`
+  // for feathers-casl's check of the create's result.
+  entry('system-info.check', 'configuration', (can) => can(['create', 'read'], 'update-checks')),
   // API tokens (ADR 0029): creating one's own, bounded by one's own rights
   // on every request; seeing and revoking one's own is the baseline.
   entry('api-tokens.create', 'api', (can) => can('create', 'api-tokens')),
