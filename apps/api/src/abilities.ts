@@ -51,6 +51,28 @@ type Grant = PermissionEntry['grant']
 const entry = <K extends string>(key: K, group: string, grant: Grant): PermissionEntry & { key: K } => ({ key, group, grant })
 
 const CATALOGUE_ENTRIES = [
+  // One's own data beyond the fixed core (ADR 0011). The `everyone` role,
+  // which every signed-in account holds, is seeded with all of them; an
+  // admin may withdraw them there, or grant them through other roles only.
+  entry('profile.avatar', 'self', (can) => {
+    // `read` too, which feathers-casl checks on a create's result: the
+    // caller's own user record.
+    can(['create', 'read'], 'avatars')
+  }),
+  // The language mail reaches the caller in (ADR 0027).
+  entry('profile.locale', 'self', (can) => can(['create', 'read'], 'locales')),
+  // Uploads (ADR 0020). The caller owns what they upload.
+  entry('files.upload', 'self', (can) => can('create', 'files')),
+  entry('files.own', 'self', (can, user) => can('read', 'files', { ownerId: user.id })),
+  // What the caller did (ADR 0011, 0013); their export holds it regardless.
+  entry('audit-events.own', 'self', (can, user) => can('read', 'audit-events', { actorId: user.id })),
+  // The names of the caller's own roles, shown on their profile.
+  entry('roles.own-names', 'self', (can, user) => {
+    if (user.roleIds?.length) can('read', 'roles', ROLE_NAME_FIELDS, { id: { $in: [...user.roleIds] } })
+  }),
+  // Seeing and revoking one's own API tokens, even after losing the right
+  // to create them (ADR 0029).
+  entry('api-tokens.own', 'self', (can, user) => can(['read', 'delete'], 'api-tokens', { userId: user.id })),
   entry('users.read', 'users', (can) => {
     can('read', 'users')
     // Their avatars. Files carry no mark of what they are attached to, so
@@ -105,7 +127,7 @@ const CATALOGUE_ENTRIES = [
   // for feathers-casl's check of the create's result.
   entry('system-info.check', 'configuration', (can) => can(['create', 'read'], 'update-checks')),
   // API tokens (ADR 0029): creating one's own, bounded by one's own rights
-  // on every request; seeing and revoking one's own is the baseline.
+  // on every request; seeing and revoking one's own is `api-tokens.own`.
   entry('api-tokens.create', 'api', (can) => can('create', 'api-tokens')),
   entry('api-tokens.manage', 'api', (can) => can(['read', 'delete'], 'api-tokens')),
   // gen:service permissions (ADR 0030)
@@ -123,48 +145,33 @@ export const isPermissionKey = (key: string): key is PermissionKey => CATALOGUE.
 export const ROLE_MANAGEMENT = 'roles.manage'
 
 // The kinds of role (ADR 0011).
-export const ROLE_KINDS = ['admin', 'seeded', 'custom'] as const
+export const ROLE_KINDS = ['admin', 'everyone', 'seeded', 'custom'] as const
 export type RoleKind = (typeof ROLE_KINDS)[number]
 
-// What every signed-in account may do, whatever its roles: its own record,
-// avatar, locale and files, its own GDPR export, its own audit events and
-// the names of its own roles.
-// No role can withdraw it (ADR 0011, 0013).
-const grantBaseline = (can: Can, user: AbilityUser) => {
+// What every signed-in account may do, whatever its roles: the fixed core,
+// which the right of access requires and no role can withdraw (ADR 0011,
+// 0013, decided 2026-10-01). The own user record, which also carries the
+// caller's permissions; the own GDPR export, the full copy of their data
+// (Art. 15, 20 GDPR); and ending one's own view-as. Everything else that
+// was once given to everyone is a catalogue permission of the `everyone`
+// role.
+const grantFixedCore = (can: Can, user: AbilityUser) => {
   can('read', 'users', { id: user.id })
-  // `read` too, which feathers-casl checks on a create's result: the
-  // caller's own user record.
-  can(['create', 'read'], 'avatars')
-  // The language mail reaches the caller in (ADR 0027), likewise their own.
-  can(['create', 'read'], 'locales')
-
-  // Uploads (ADR 0020): everyone uploads; a file is readable where its
-  // owner's records are. `file-contents` checks the `files` rule on the
-  // record itself, so it is open here.
-  can('create', 'files')
-  can('read', 'files', { ownerId: user.id })
-  can('read', 'file-contents')
 
   // GDPR export (ADR 0013): every account exports itself. An export is seen
   // and fetched by the account that asked for it only.
   can('create', 'data-exports', { subjectId: user.id })
   can('read', 'data-exports', { requestedBy: user.id })
-  // Checks the `data-exports` rule on the record itself, like file-contents.
+  // Checks the `data-exports` rule on the record itself.
   can('read', 'data-export-contents')
 
-  // Audit events (ADR 0011, 0013): what the caller did.
-  can('read', 'audit-events', { actorId: user.id })
+  // Checks the `files` rule on the record itself, so it grants nothing that
+  // a permission over files does not (ADR 0020).
+  can('read', 'file-contents')
 
   // Ending one's own view-as (ADR 0028), whatever one may do meanwhile;
   // `read` for feathers-casl's check of the result.
   can(['delete', 'read'], 'view-as')
-
-  // One's own API tokens, to see and revoke even after losing the right to
-  // create them (ADR 0029).
-  can(['read', 'delete'], 'api-tokens', { userId: user.id })
-
-  // The names of the caller's own roles, shown on their profile.
-  if (user.roleIds?.length) can('read', 'roles', ROLE_NAME_FIELDS, { id: { $in: [...user.roleIds] } })
 }
 
 const grantRoleManagement = (can: Can) => {
@@ -190,7 +197,7 @@ const withoutShadowedFieldRules = (rules: Rule[]): Rule[] => {
 
 export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
   const { can, rules } = new AbilityBuilder<AppAbility>(createMongoAbility)
-  grantBaseline(can, user)
+  grantFixedCore(can, user)
   for (const key of user.permissions) {
     if (key === ROLE_MANAGEMENT) grantRoleManagement(can)
     // A key code no longer declares grants nothing (ADR 0011).
@@ -238,6 +245,14 @@ export const defineViewAsAbility = (viewer: AbilityUser, target: AbilityUser): A
 // person in the UI (running the update check now among them, an outbound
 // request a script should not repeat).
 export const TOKEN_EXCLUDED_PERMISSIONS: readonly PermissionKey[] = [
+  // One's own data stays with browser sessions (decided 2026-10-01).
+  'profile.avatar',
+  'profile.locale',
+  'files.upload',
+  'files.own',
+  'audit-events.own',
+  'roles.own-names',
+  'api-tokens.own',
   'api-tokens.create',
   'api-tokens.manage',
   'users.view-as',
@@ -249,7 +264,7 @@ export const TOKEN_PERMISSION_KEYS: readonly PermissionKey[] = PERMISSION_KEYS.f
 export const isTokenPermission = (key: string): boolean => (TOKEN_PERMISSION_KEYS as readonly string[]).includes(key)
 
 // A token's ability: the permissions chosen for it that its owner still
-// holds, and nothing else, not even the baseline. Built on every request
+// holds, and nothing else, not even the fixed core. Built on every request
 // from the owner's current permissions, so it never exceeds them.
 export const defineTokenAbility = (owner: AbilityUser, tokenPermissions: readonly string[]): AppAbility => {
   const held = new Set(owner.permissions)

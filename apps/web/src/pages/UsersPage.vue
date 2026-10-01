@@ -121,7 +121,10 @@ const viewAs = async (id: string) => {
 
 const { roles, name, namesOf } = useRoles()
 const roleFilter = ref<string | null>(null)
-const roleOptions = computed(() => roles.value.map((role) => ({ value: role.id, label: name(role) })))
+// `everyone` is held without an assignment (ADR 0011).
+const roleOptions = computed(() =>
+  roles.value.filter((role) => role.kind !== 'everyone').map((role) => ({ value: role.id, label: name(role) }))
+)
 
 // Server-side paging: the table shows one page; the API sorts and counts.
 const paging = ref({ page: 1, rowsPerPage: 25, sortBy: 'surname', descending: false })

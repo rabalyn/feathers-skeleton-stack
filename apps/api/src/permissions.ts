@@ -1,20 +1,24 @@
 import type { Knex } from 'knex'
 import { ADMIN_PERMISSIONS, isPermissionKey } from './abilities.js'
 
-// A user's permissions: the union of their roles' (ADR 0011). Loaded on every
-// request rather than cached, so a changed role or assignment applies on the
-// next one. Holding `admin` yields the whole catalogue and role management;
-// a stored key the catalogue no longer declares is left out.
+// A user's permissions: the union of their roles' and the `everyone` role's,
+// which every account holds without an assignment (ADR 0011). Loaded on
+// every request rather than cached, so a changed role or assignment applies
+// on the next one. Holding `admin` yields the whole catalogue and role
+// management; a stored key the catalogue no longer declares is left out.
+// `roleIds` are the assigned roles only.
 export const loadAccess = async (
   knex: Knex | Knex.Transaction,
   userId: string
 ): Promise<{ roleIds: string[]; permissions: string[] }> => {
-  const rows: { id: string; kind: string; permission: string | null }[] = await knex('userRoles')
-    .join('roles', 'roles.id', 'userRoles.roleId')
+  const rows: { id: string; kind: string; permission: string | null; assigned: boolean }[] = await knex('roles')
+    .leftJoin('userRoles', (join) => join.on('userRoles.roleId', 'roles.id').andOnVal('userRoles.userId', userId))
     .leftJoin('rolePermissions', 'rolePermissions.roleId', 'roles.id')
-    .where('userRoles.userId', userId)
-    .select('roles.id', 'roles.kind', 'rolePermissions.permission')
-  const roleIds = [...new Set(rows.map((row) => row.id))].sort()
+    .where((where) => {
+      void where.whereNotNull('userRoles.userId').orWhere('roles.kind', 'everyone')
+    })
+    .select('roles.id', 'roles.kind', 'rolePermissions.permission', knex.raw('user_roles.user_id IS NOT NULL AS assigned'))
+  const roleIds = [...new Set(rows.filter((row) => row.assigned).map((row) => row.id))].sort()
   if (rows.some((row) => row.kind === 'admin')) return { roleIds, permissions: [...ADMIN_PERMISSIONS] }
   const keys = new Set<string>()
   for (const { permission } of rows) if (permission && isPermissionKey(permission)) keys.add(permission)

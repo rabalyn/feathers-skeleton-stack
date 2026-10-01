@@ -23,7 +23,7 @@ The alternatives were a service account (a principal of its own, whose permissio
 ### What a token may do
 
 - Its ability is built on every request, like a session's ([0010](0010-sessions-postgres-ratelimits-valkey.md), [0011](0011-casl-role-authorization.md)), from **the permissions chosen for it that its owner still holds**. Writes are included where those permissions grant them. So a token never exceeds its owner's current rights, and a change to the owner's roles, or to what they grant, applies to the token on its next request.
-- A token has **no baseline**: not the owner's own record, avatar, files, export or activity. It has exactly what was chosen for it. Nor does it have role management, which is not a catalogue permission.
+- A token has **no fixed core** and no own-data permission ([0011](0011-casl-role-authorization.md)): not the owner's own record, avatar, files, export or activity. The own-data permissions `everyone` is seeded with are not token permissions (decided 2026-10-01). It has exactly what was chosen for it. Nor does it have role management, which is not a catalogue permission.
 - Some permissions may **never be put on a token**, and asking for them is a **400**:
   - `api-tokens.create` and `api-tokens.manage`, so that a leaked token cannot mint successors that survive its revocation;
   - `users.view-as`, which is state of a browser session ([0028](0028-read-only-view-as.md));
@@ -34,7 +34,7 @@ The alternatives were a service account (a principal of its own, whose permissio
 ### Creating, seeing and revoking
 
 - `api-tokens.create` creates tokens of one's own. It is a catalogue permission, so `admin` holds it and no seeded role does until an admin grants it ([0011](0011-casl-role-authorization.md)). A token carries only permissions its creator holds when creating it; any other is a **403**.
-- Everybody sees and revokes **their own** tokens. That is part of the baseline, so a person who has lost `api-tokens.create` can still clean up. `api-tokens.manage` (seeded for nobody but `admin`) lists and revokes everybody's.
+- Everybody sees and revokes **their own** tokens. That is `api-tokens.own`, which `everyone` holds as seeded, so a person who has lost `api-tokens.create` can still clean up; an admin who withdraws it from `everyone` takes that away, while the tokens themselves stop working with `api-tokens.create` anyway. `api-tokens.manage` (seeded for nobody but `admin`) lists and revokes everybody's.
 - The `api-tokens` service offers `find`, `get`, `create` and `remove`. Revoking **deletes** the row. The token is in the result of `create` and nowhere else: never in a later read, never in a published event. The `created` event carries the record without it ([0012](0012-role-scoped-channels.md)), and the hash is never selected ([0005](0005-typebox-schema-boundary.md)).
 - The API tokens page lists tokens with their permissions, expiry and last use, and shows the owner to those who see everybody's. It creates a token from the permissions its user holds that a token may carry, shows the token once with a copy button, and revokes. It appears for holders of `api-tokens.create` or `api-tokens.manage`.
 

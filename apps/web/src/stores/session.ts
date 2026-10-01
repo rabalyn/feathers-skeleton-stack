@@ -98,9 +98,12 @@ export const useSessionStore = defineStore('session', () => {
       : defineAbilitiesFor(own)
   }
 
-  const startPreview = (role: Role) => {
+  // `everyone`: the permissions of the role every account holds besides.
+  const startPreview = (role: Role, everyone: readonly string[] = []) => {
     if (!user.value) return
-    preview.value = { role, ability: defineAbilitiesFor({ id: user.value.id, permissions: role.permissions ?? [], roleIds: [role.id] }) }
+    const permissions = [...new Set([...(role.permissions ?? []), ...everyone])]
+    const roleIds = role.kind === 'everyone' ? [] : [role.id]
+    preview.value = { role, ability: defineAbilitiesFor({ id: user.value.id, permissions, roleIds }) }
   }
   const endPreview = () => (preview.value = null)
 

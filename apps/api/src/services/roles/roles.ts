@@ -6,7 +6,7 @@ import type { Knex } from 'knex'
 import { PERMISSION_KEYS, isPermissionKey } from '../../abilities.js'
 import type { Application } from '../../app.js'
 import { recordAudit } from '../../audit.js'
-import { endUsersConnections, publishTo, subjectChannel } from '../../channels.js'
+import { endConnections, endUsersConnections, publishTo, subjectChannel } from '../../channels.js'
 import { PAGINATE, type PaginationOptions } from '../../paginate.js'
 import { holdersOf } from '../../permissions.js'
 import {
@@ -24,8 +24,9 @@ import {
 } from './roles.schema.js'
 
 // Roles (ADR 0011). Managing them is `admin`'s alone: creating, renaming,
-// changing what they grant, deleting. `admin` itself is fixed; `operator`
-// and `user` are editable but stay. Every change and its audit event commit
+// changing what they grant, deleting. `admin` itself is fixed; `everyone`,
+// which every account holds without an assignment, `operator` and `user`
+// are editable but stay. Every change and its audit event commit
 // together, and a change to what a role grants ends the connections of
 // everyone holding it (ADR 0012).
 
@@ -145,8 +146,14 @@ export class RoleService extends KnexService<Role, RoleData, RoleParams, RolePat
       })
       return added.length || removed.length ? holdersOf(trx, before.id) : []
     })
-    // Nobody keeps a socket authorized under what the role granted before.
-    if (holders.length) endUsersConnections(this.app, holders)
+    // Nobody keeps a socket authorized under what the role granted before;
+    // for `everyone`, that is every signed-in connection but the caller's:
+    // only `admin` changes roles, whose rights do not depend on `everyone`,
+    // and ending it would drop this call's answer.
+    if (before.kind === 'everyone' && (added.length || removed.length)) {
+      endConnections(this.app, (connection) => connection.user !== undefined && connection !== params?.connection)
+    }
+    else if (holders.length) endUsersConnections(this.app, holders)
     return this._get(before.id)
   }
 

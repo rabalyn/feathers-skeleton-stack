@@ -12,7 +12,7 @@
           <th class="text-left permission">{{ t('permissions.permission') }}</th>
           <th v-for="role in roles" :key="role.id" class="text-center role">
             <div class="text-weight-medium">{{ name(role) }}</div>
-            <div class="text-caption text-grey-7">{{ t(`permissions.${role.kind}`) }}</div>
+            <div class="text-caption text-grey-7">{{ t(KIND_LABEL[role.kind]) }}</div>
             <div class="row justify-center no-wrap q-mt-xs">
               <q-btn
                 flat
@@ -22,7 +22,7 @@
                 icon="visibility"
                 :aria-label="t('permissions.preview')"
                 :title="t('permissions.preview')"
-                @click="session.startPreview(role)"
+                @click="startPreview(role)"
               />
               <q-btn
                 v-if="role.kind !== 'admin'"
@@ -121,7 +121,8 @@ import { useSessionStore } from '@/stores/session'
 
 // Roles and what they grant (ADR 0011), admin only: the catalogue as rows,
 // grouped as the API declares it, the roles as columns. `admin` is fixed and
-// holds everything; `operator` and `user` are editable but stay.
+// holds everything; `everyone`, which every account holds without an
+// assignment, `operator` and `user` are editable but stay.
 const api = useApi()
 const session = useSessionStore()
 const $q = useQuasar()
@@ -130,7 +131,13 @@ const notify = useNotify()
 const labels = usePermissionLabels()
 const { roles: all, name } = useRoles()
 
-const KIND_ORDER = { admin: 0, seeded: 1, custom: 2 } as const
+const KIND_ORDER = { admin: 0, everyone: 1, seeded: 2, custom: 3 } as const
+const KIND_LABEL = {
+  admin: 'permissions.fixed',
+  everyone: 'permissions.everyone',
+  seeded: 'permissions.seeded',
+  custom: 'permissions.custom'
+} as const
 const roles = computed(() => [...all.value].sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.key.localeCompare(b.key)))
 
 const groups = computed(() => {
@@ -138,6 +145,12 @@ const groups = computed(() => {
   for (const entry of PERMISSIONS) byGroup.set(entry.group, [...(byGroup.get(entry.group) ?? []), entry.key])
   return [...byGroup].map(([group, keys]) => ({ name: group, keys }))
 })
+
+// A role's holder also holds `everyone`, so the preview shows both.
+const startPreview = (role: Role) => {
+  const everyone = all.value.find((candidate) => candidate.kind === 'everyone')
+  session.startPreview(role, everyone?.permissions ?? [])
+}
 
 const granted = (role: Role, key: string) => role.kind === 'admin' || (role.permissions ?? []).includes(key)
 
