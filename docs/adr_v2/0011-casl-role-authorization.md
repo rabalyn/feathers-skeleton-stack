@@ -72,6 +72,7 @@ Directory-sourced user fields are never writable by anyone in the application ([
 ### Enforcement
 
 - `feathers-casl` enforces the ability built from the baseline and the catalogue entries of the caller's permissions. Rules are declared in one module, not scattered across services.
+- `@casl/ability` stays on 6.x while feathers-casl 3 is current: CASL 7 removed `rulesToQuery`, which feathers-casl 3 imports, and patching feathers-casl locally was rejected, since it would make us the maintainers of a fork of the authorization layer. Renovate holds the CASL major (`allowedVersions`) until a feathers-casl release supports CASL 7, which then moves together with it. Decided 2026-10-01.
 - The caller's permissions are loaded on every request, beside the session check ([0010](0010-sessions-postgres-ratelimits-valkey.md)), in one query over `user_roles`, `roles` and `role_permissions`. There is no cache, so a changed role or assignment applies on the user's very next request. A call with an API token is authorized by the token's permissions that its owner holds, loaded the same way ([0029](0029-api-tokens.md)).
 - A **global default-deny hook** requires authentication and authorization on every service. Public endpoints are an explicit allowlist, each rate-limited where it accepts credentials:
   - `GET /api/ping`,
