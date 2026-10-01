@@ -89,7 +89,7 @@ describe('creating a token', () => {
 
   it('refuses unknown and excluded permissions, and permissions the creator does not hold', async () => {
     expect((await create(adminLogin, { name: 'x', permissions: ['nope'] })).status).toBe(400)
-    for (const key of ['api-tokens.create', 'api-tokens.manage', 'users.view-as', 'erasures.create', 'settings.manage']) {
+    for (const key of ['api-tokens.create', 'api-tokens.manage', 'users.view-as', 'erasures.create', 'settings.manage', 'system-info.check']) {
       expect((await create(adminLogin, { name: 'x', permissions: [key] })).status, key).toBe(400)
     }
     expect((await create(operatorLogin, { name: 'x', permissions: ['queues.read'] })).status).toBe(403)

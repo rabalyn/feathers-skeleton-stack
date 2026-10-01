@@ -27,7 +27,8 @@ The alternatives were a service account (a principal of its own, whose permissio
 - Some permissions may **never be put on a token**, and asking for them is a **400**:
   - `api-tokens.create` and `api-tokens.manage`, so that a leaked token cannot mint successors that survive its revocation;
   - `users.view-as`, which is state of a browser session ([0028](0028-read-only-view-as.md));
-  - `erasures.create` and `settings.manage`, which need a person in the UI.
+  - `erasures.create` and `settings.manage`, which need a person in the UI;
+  - `system-info.check`, which starts outbound requests to third parties ([0032](0032-system-info-and-update-check.md)) that a script should not repeat; decided 2026-10-01.
 - A token is accepted only while its owner is enabled and **holds `api-tokens.create`**, checked on every request. Withdrawing that permission stops every token the person has, at once; restoring it brings back those not revoked meanwhile. An unknown, expired or thus disabled token is a **401**. While maintenance mode is on, every token is a **503**, an admin's included ([0025](0025-runtime-settings.md)).
 
 ### Creating, seeing and revoking
