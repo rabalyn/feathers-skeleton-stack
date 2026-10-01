@@ -1,5 +1,5 @@
 import type { HookContext, NextFunction } from '@feathersjs/feathers'
-import fastCopy from 'fast-copy'
+import { copy as fastCopy } from 'fast-copy'
 import { diff, pickDiff } from '../utils/index.js'
 
 export function patchDiffing() {

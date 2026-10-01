@@ -1,5 +1,5 @@
 import { del as vueDelete } from '../utils/vue2-compat.js'
-import fastCopy from 'fast-copy'
+import { copy as fastCopy } from 'fast-copy'
 import type { AnyData, MakeCopyOptions } from '../types.js'
 import type { CloneOptions, beforeWriteFn, onReadFn } from './types.js'
 import type { StorageMapUtils } from './storage.js'
