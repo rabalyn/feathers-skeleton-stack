@@ -17,7 +17,7 @@ Knowing that an update exists needs information from outside the stack. Until no
 
 ### The page
 
-- `/system-info` in the application, for **admins only**: a catalogue permission `system.read` ([0011](0011-casl-role-authorization.md)), which only `admin` holds as seeded. Read-only.
+- `/system-info` in the application, for **admins only**: a catalogue permission `system-info.read` ([0011](0011-casl-role-authorization.md)), which only `admin` holds as seeded. Read-only.
 - One row per component that production runs (the units in `deploy/quadlet/`), plus the host's operating system. Local-only services (Mailpit, Dozzle, Keycloak, the LDAP fixture, the e2e and MCP containers) aren't listed: they never run in production.
 - Per row: the component, its image, the **declared** version (what this build pins), the **running** version (what the component reports), the newest **patch** of the running line, the newest **minor**, the newest **major**, and the **end of life** of the running line where known. A newer patch is the highlighted case, "deploy this"; a newer minor or major is shown but is a planning matter.
 - When declared and running differ, the row says so. That happens when an image was rebuilt but its service not restarted, or when a production drop-in overrides an image.
@@ -25,10 +25,11 @@ Knowing that an update exists needs information from outside the stack. Until no
 
 ### Declared versions: generated from the repository, checked for drift
 
-- `scripts/inventory.sh` writes `apps/api/src/system/inventory.json` from the files that already pin every image: the `# version` comments in `compose.yaml` and the `tag@digest` lines in the Containerfiles, the same patterns Renovate's managers read. The set of components is the units in `deploy/quadlet/`.
+- `scripts/inventory.sh` writes `apps/api/src/system/inventory.json` from the files that already pin every image: the `# version` comments in `compose.yaml` and the `tag@digest` lines in the Containerfiles, the same patterns Renovate's managers read. A pin without a tag takes its version from an adjacent comment that is a bare version or names the image (Garage's `# v2.4.1`, `# restic 0.19.1`). The script (`scripts/inventory.mjs`, no dependencies) runs in the pinned Node image without a network.
+- The components are listed in that script, each with the files that pin it, which must agree (the Alpine base of PgBouncer and of the S3 front). The script fails when an image a unit in `deploy/quadlet/` runs, or that a Containerfile of a locally built production image pins, belongs to no component.
 - `scripts/inventory.sh --check` fails when the file differs from a fresh run. It joins the static checks in `scripts/ci.sh`, like the Quadlet drift check.
-- An image pinned by digest alone gets a version comment, so that both the inventory and Renovate can read it. Garage's `FROM` in `containers/s3/Containerfile` is the one case today.
-- Software installed from Alpine packages (Nginx, PgBouncer) has no version in the repository. Its declared version is the Alpine base image's, and its own version comes only from the running component.
+- An image pinned by digest alone needs such a comment; without one the script fails.
+- PgBouncer is installed from Alpine packages and has no version in the repository. It gets its own row, with the version it reports, while the Alpine base image is a row of its own with its update and end-of-life columns. The Nginx in front of Garage is an Alpine package as well, and is covered by that Alpine row; the main Nginx runs the official image and is a row of its own.
 
 ### The application's own version
 
@@ -84,5 +85,5 @@ Minor and major updates don't alert.
 - [0018](0018-owasp-security-baseline.md)'s A10 row gains four hosts, fixed in code and never from user input. This is the first outbound request to a third party; it carries no data about the deployment except the source address and the image names it asks about, which are public anyway.
 - The check depends on Docker Hub's anonymous rate limits. One daily run lists tags for about fifteen repositories, far below them. A repository with thousands of tags (`library/node`) needs several pages per run.
 - A tag the parser misreads gives a wrong "update available". The unit tests pin the comparison against real tag lists, and a component whose scheme doesn't fit declares its own rule.
-- The inventory is one more generated file with a drift check. Adding an image to `compose.yaml` without regenerating it fails CI, which is the point.
+- The inventory is one more generated file with a drift check. Adding an image to `compose.yaml` without regenerating it fails CI, which is the point. Renovate bumps pins without running scripts, so its image pull requests fail this check until `scripts/inventory.sh` is run on them, as they already do for `scripts/quadlet.sh`, whose units carry the digests too.
 - Without a route to the internet, the page still shows declared and running versions, and the update columns say why they're empty.

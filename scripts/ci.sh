@@ -10,7 +10,8 @@
 #
 # Static: gitleaks over the whole history, ESLint, the client dependency
 # boundary, typecheck, unit tests that need no stack, the service generator's
-# drift check (ADR 0030), pnpm audit, the Quadlet drift check, the
+# drift check (ADR 0030), pnpm audit, the Quadlet and inventory drift checks
+# (ADR 0032), the
 # production OpenBao procedure against a throwaway OpenBao.
 # Stack: up, Vitest, Playwright, the alert delivery check, the backup and
 # restore cycle (scripts/backup-test.sh), then the vulnerability scan of
@@ -88,6 +89,7 @@ check "unit tests" in_ci_image pnpm test:unit
 check "service generator output typechecks" in_ci_image pnpm --filter @app/api gen:check
 check "pnpm audit (high and above)" in_ci_image pnpm audit --audit-level=high
 check "Quadlet units match compose.yaml" "$ROOT/scripts/quadlet.sh" --check
+check "inventory matches the image pins" "$ROOT/scripts/inventory.sh" --check
 check "production OpenBao procedure" "$ROOT/scripts/openbao-test.sh"
 
 # --- stack ---------------------------------------------------------------
