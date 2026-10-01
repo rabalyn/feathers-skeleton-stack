@@ -23,8 +23,8 @@ export const INVENTORY = [
   {
     "id": "openbao",
     "image": "docker.io/openbao/openbao",
-    "version": "2.7.0",
-    "digest": "sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4"
+    "version": "2.7.1",
+    "digest": "sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005"
   },
   {
     "id": "garage",
@@ -35,14 +35,14 @@ export const INVENTORY = [
   {
     "id": "nginx",
     "image": "docker.io/library/nginx",
-    "version": "1.30.5-alpine",
-    "digest": "sha256:8f84ed99befc3891b8f329c5c202785278a2cfb7c25107d57fb2a134a3117433"
+    "version": "1.31.6-alpine",
+    "digest": "sha256:0530961ff0592b58c10f767535cc0abdfccf9e389ff7cc90f87320c1bc7e8506"
   },
   {
     "id": "netbox",
     "image": "docker.io/netboxcommunity/netbox",
     "version": "v4.7.2-5.1.1",
-    "digest": "sha256:ad038bdb0e3498e5bf81c2c8becf396d62cbdc118d0b491b4d58014968033066"
+    "digest": "sha256:5a651e29340570b69585a56224ef5023ed1c6339cee6c7028c336e35099291bc"
   },
   {
     "id": "node",
@@ -77,14 +77,14 @@ export const INVENTORY = [
   {
     "id": "grafana",
     "image": "docker.io/grafana/grafana",
-    "version": "13.2.2",
-    "digest": "sha256:ac461fb352abc50da10a51c7d02462e9c05488f11f53f14b3ad79a8145f638a0"
+    "version": "13.2.3",
+    "digest": "sha256:b28bae15e219c998fb0e0424ed724930cc61b1f61fb404d47c862f9a23f9e572"
   },
   {
     "id": "alloy",
     "image": "docker.io/grafana/alloy",
-    "version": "v1.20.0",
-    "digest": "sha256:f111cce835516c5f99166342be7038496b52ced16667be5a11e19258a3e4cd30"
+    "version": "v1.20.1",
+    "digest": "sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f"
   },
   {
     "id": "node-exporter",
@@ -113,8 +113,8 @@ export const INVENTORY = [
   {
     "id": "redis-exporter",
     "image": "docker.io/oliver006/redis_exporter",
-    "version": "v1.92.0",
-    "digest": "sha256:ca3abd5f19da6c87e96038ba08aaa3dfaab34dc649834584c4d6880b05952fef"
+    "version": "v1.93.0",
+    "digest": "sha256:6ca518a72f30f7f576ef92963de1b91d3c3f5fd3aeac949f878bfda183587820"
   },
   {
     "id": "host",

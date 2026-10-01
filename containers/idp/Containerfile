@@ -1,4 +1,4 @@
-FROM quay.io/keycloak/keycloak:26.7.5@sha256:6529db34610ce6328824218dce3bbe55c4ba4757bc5c8a09b5a4c746e28b6e9d
+FROM quay.io/keycloak/keycloak:26.8.0@sha256:d79bc4bf1c54e802735ef91926b5c003de1fbb50b1a93382611972277219c9ad
 COPY --chown=1000:0 containers/idp/realm-feathers.json /opt/keycloak/data/import/realm-feathers.json
 COPY --chown=1000:0 containers/idp/entrypoint.sh /opt/keycloak/bin/entrypoint.sh
 ENTRYPOINT ["/bin/bash", "/opt/keycloak/bin/entrypoint.sh"]
