@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The declared versions of what production runs (ADR 0032).
 #
-#   scripts/inventory.sh          regenerate apps/api/src/system/inventory.json
+#   scripts/inventory.sh          regenerate apps/api/src/system/inventory.ts
 #   scripts/inventory.sh --check  fail if it differs from a fresh run
 #
 # scripts/inventory.mjs reads compose.yaml, the Containerfiles and
@@ -11,7 +11,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-OUT=$ROOT/apps/api/src/system/inventory.json
+OUT=$ROOT/apps/api/src/system/inventory.ts
 # One Node pin for the scripts: stack.sh's.
 NODE_IMAGE=$(sed -n 's/^NODE_IMAGE=//p' "$ROOT/scripts/stack.sh")
 [[ -n $NODE_IMAGE ]] || { echo "inventory: no NODE_IMAGE in scripts/stack.sh" >&2; exit 1; }

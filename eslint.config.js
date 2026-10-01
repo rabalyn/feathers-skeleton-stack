@@ -49,6 +49,14 @@ export default tseslint.config(
     }
   },
   {
+    // Command-line scripts beside the shell scripts (scripts/inventory.mjs,
+    // ADR 0032): untyped Node in no TypeScript project, so without the
+    // type-aware rules; printing is their output.
+    ...tseslint.configs.disableTypeChecked,
+    files: ['scripts/*.mjs'],
+    rules: { ...tseslint.configs.disableTypeChecked.rules, 'no-console': 'off' }
+  },
+  {
     // Transaction-mode pooling (ADR 0004): a session-level SET or advisory
     // lock stays on a server connection the next transaction may belong to
     // someone else. `migrate` connects directly and is the one exception.
