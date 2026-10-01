@@ -18,7 +18,12 @@ test('an admin reads what a setting means', async ({ page }) => {
   await page.mouse.move(0, 0)
   await expect(page.getByRole('tooltip')).toHaveCount(0)
 
-  await info.focus()
+  // Quasar opens it on :focus-visible, which a Tab gives and a scripted
+  // focus after the mouse does not: tab in from the row above's edit button.
+  const rowAbove = page.getByRole('row').filter({ hasText: 'maxUploadBytes' })
+  await rowAbove.getByRole('button', { name: 'Bearbeiten' }).focus()
+  await page.keyboard.press('Tab')
+  await expect(info).toBeFocused()
   await expect(page.getByRole('tooltip')).toContainText(PURGE_HELP)
   await page.keyboard.press('Escape')
   await expect(page.getByRole('tooltip')).toHaveCount(0)
