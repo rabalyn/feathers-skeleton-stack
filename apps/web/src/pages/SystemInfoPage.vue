@@ -18,7 +18,7 @@
     <template v-if="report">
       <q-card flat bordered class="q-mb-md">
         <q-card-section class="row q-col-gutter-md">
-          <div class="col-12 col-md-6" data-test="system-info-app">
+          <div class="col-12 col-md-4" data-test="system-info-app">
             <div class="text-subtitle2">{{ t('systemInfo.app') }}</div>
             <template v-if="report.app.commit">
               <span class="text-mono">{{ report.app.commit }}</span>
@@ -29,7 +29,12 @@
             </template>
             <span v-else class="text-grey-7">{{ t('systemInfo.unknown') }}</span>
           </div>
-          <div class="col-12 col-md-6" data-test="system-info-check">
+          <div class="col-12 col-md-4" data-test="system-info-public-origin">
+            <div class="text-subtitle2">{{ t('systemInfo.publicOrigin') }}</div>
+            <span class="text-mono">{{ report.app.publicOrigin }}</span>
+            <div class="text-caption text-grey-7">{{ t('systemInfo.publicOriginHint') }}</div>
+          </div>
+          <div class="col-12 col-md-4" data-test="system-info-check">
             <div class="text-subtitle2">{{ t('systemInfo.updateCheck') }}</div>
             <template v-if="report.updateCheck === 'off'">{{ t('systemInfo.checkOff') }}</template>
             <div v-else-if="report.checkRunning" data-test="system-info-check-running">

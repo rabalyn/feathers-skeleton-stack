@@ -49,6 +49,7 @@ describe('system-info', () => {
     expect(component(report, 'openbao')).toMatchObject({ running: null, runningMissing: 'not-reported' })
     // The tests run with the check off; nothing has been checked.
     expect(report).toMatchObject({ updateCheck: 'off', checkRunning: false, attemptedAt: null })
+    expect(report.app.publicOrigin).toBe(app.get('config').publicOrigin)
   })
 
   it('includes the update check’s results', async () => {
