@@ -130,7 +130,12 @@ export {
   SAML_LOGIN_URL,
   SOCKET_PATH
 } from './paths.js'
-export { DIRECTORY_MAX_RESULTS, DIRECTORY_MAX_TERM_LENGTH, DIRECTORY_MIN_TERM_LENGTH } from './limits.js'
+export {
+  DIRECTORY_MAX_RESULTS,
+  DIRECTORY_MAX_TERM_LENGTH,
+  DIRECTORY_MIN_TERM_LENGTH,
+  DIRECTORY_PAGE_MAX
+} from './limits.js'
 
 type External<S, M extends readonly (keyof S)[]> = Pick<S, M[number]>
 

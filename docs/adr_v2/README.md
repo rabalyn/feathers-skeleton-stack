@@ -69,7 +69,6 @@ Covered in v1 but not carried forward, or deliberately deferred. Listed so nothi
 | Distributed tracing | Deferred; `request_id` correlation is in place and should stay `traceparent`-compatible ([0021](0021-structured-logging.md)) |
 | Multi-host scale-out | Deferred, as in v1 |
 | Every API call configurable on the permissions page | Wanted (2026-09-30). The catalogue covers every service method but the baseline, which [0011](0011-casl-role-authorization.md) keeps outside it on purpose, so that no role can withdraw a person's access to their own record, export, files, audit events and tokens. Making those configurable needs a decision on which of them the right of access requires, and a safeguard against locking everybody out of their own data |
-| Directory lookup in the list style of [0014](0014-frontend-quasar-vue.md) | To do: a server-paginated table, which LDAP's capped search makes a design question |
 | Offering a product's own services over MCP | Left to each product; the skeleton uses MCP for local development tooling only ([0026](0026-mcp-development-tooling.md)) |
 
 ## Implementation slices

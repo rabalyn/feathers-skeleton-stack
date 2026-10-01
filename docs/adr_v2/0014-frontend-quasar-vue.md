@@ -31,7 +31,7 @@ Decided 2026-09-30, from the activity log. **Every list of records that can grow
 - Filters and searches sit in the table's `top-right` slot; changing one returns to the first page.
 - `rows-per-page-options` stay within the service's page maximum.
 
-Fixed, short sets (settings, queues, mail kinds) may be tables without server pagination. The directory lookup is still a capped list of at most 50 matches; aligning it is an open item (README).
+Fixed, short sets (settings, queues, mail kinds) may be tables without server pagination. The directory lookup is paginated on the server too, within the at most 100 entries one LDAP search returns and at most 50 per page ([0008](0008-authentication-saml2-ldap.md)); decided 2026-10-01.
 
 ### Two consequences of the authentication design the frontend must respect
 

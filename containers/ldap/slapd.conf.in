@@ -26,6 +26,10 @@ index cn          eq,sub
 index mail        eq,sub
 index sn,givenName eq,sub
 
+# The university directory returns at most 100 entries per search to the
+# api's service account (ADR 0008); so does this one.
+limits dn.exact="cn=api,ou=services,dc=feathers,dc=test" size=100
+
 # Passwords are only ever used to bind; nobody reads them.
 access to attrs=userPassword
   by self =xw
