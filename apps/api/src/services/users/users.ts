@@ -132,6 +132,8 @@ const withRoles = async (context: HookContext<UserService>, next: NextFunction) 
   await context.app.get('knex').transaction(async (trx) => {
     const roles: { id: string; kind: string }[] = roleIds.length ? await trx('roles').whereIn('id', roleIds).select('id', 'kind') : []
     if (roles.length !== roleIds.length) throw new BadRequest('Unknown role')
+    // Everyone holds it already, without an assignment (ADR 0011).
+    if (roles.some((role) => role.kind === 'everyone')) throw new BadRequest('The everyone role is not assigned')
     const user: { authSource: string } | undefined = await trx('users').where({ id: userId }).first('authSource')
     if (user?.authSource === 'local' && !roles.some((role) => role.kind === 'admin')) {
       throw new BadRequest('The break-glass account keeps the admin role')

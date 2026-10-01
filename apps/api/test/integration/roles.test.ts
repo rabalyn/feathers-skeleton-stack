@@ -20,6 +20,18 @@ const as = (user: User) => ({ provider: 'rest' as const, user, authenticated: tr
 
 const NAME = { de: 'Prüfung', en: 'Review' }
 
+// What the migration seeds `everyone` with: the former baseline beyond the
+// fixed core (decided 2026-10-01).
+const EVERYONE_SEEDED = [
+  'api-tokens.own',
+  'audit-events.own',
+  'files.own',
+  'files.upload',
+  'profile.avatar',
+  'profile.locale',
+  'roles.own-names'
+]
+
 beforeAll(async () => {
   ;({ app } = await createTestApp())
   admin = await makeUser(app, 'ad01admn', 'admin')
@@ -53,6 +65,8 @@ describe('roles: reading', () => {
     ])
     expect(byKey.user).toMatchObject({ kind: 'seeded' })
     expect(byKey.user?.permissions?.sort()).toEqual(['documents.own', 'sites.read'])
+    expect(byKey.everyone).toMatchObject({ kind: 'everyone', name: { en: 'Everyone signed in' } })
+    expect(byKey.everyone?.permissions?.sort()).toEqual(EVERYONE_SEEDED)
   })
 
   it('shows whoever reads users the names only', async () => {
@@ -176,7 +190,7 @@ describe('roles: safeguards', () => {
 })
 
 describe('user-roles: several roles add up', () => {
-  it('grants the union of the roles, and none leaves just the baseline', async () => {
+  it('grants the union of the roles, and none leaves what everyone holds', async () => {
     const [operatorRole, userRole] = await Promise.all([roleIdOf(app, 'operator'), roleIdOf(app, 'user')])
     const both = await app.service('user-roles').patch(other.id, { roleIds: [userRole, operatorRole] }, as(admin))
     expect(both.roleIds.sort()).toEqual([operatorRole, userRole].sort())
@@ -186,8 +200,8 @@ describe('user-roles: several roles add up', () => {
 
     await app.service('user-roles').patch(other.id, { roleIds: [] }, as(admin))
     const bare = await app.service('users').get(other.id, as(other))
-    expect(bare.permissions).toEqual([])
-    // The baseline stays: the own record, but no documents.
+    expect(bare.permissions).toEqual(EVERYONE_SEEDED)
+    // The own record stays, but no documents.
     expect((await app.service('users').find(as(other))).total).toBe(1)
     await expect(app.service('documents').find(as(other))).rejects.toMatchObject({ code: 403 })
 
@@ -200,11 +214,46 @@ describe('user-roles: several roles add up', () => {
   })
 })
 
-describe('roles: the baseline', () => {
+describe('roles: the names of one\'s own', () => {
   it("lets everybody read the names of their own roles, and no other role", async () => {
     const page = await app.service('roles').find(as(member))
     expect(page.data.map((role) => role.key)).toEqual(['user'])
     expect(Object.keys(page.data[0]!).sort()).toEqual(['id', 'key', 'kind', 'name'])
     await expect(app.service('roles').get(await roleIdOf(app, 'admin'), as(member))).rejects.toMatchObject({ code: 404 })
+  })
+})
+
+// ADR 0011, decided 2026-10-01: `everyone` is held without an assignment,
+// edited like any role, never deleted; the fixed core stays whatever it
+// grants.
+describe('the everyone role', () => {
+  it('cannot be assigned or deleted', async () => {
+    const everyone = await roleIdOf(app, 'everyone')
+    await expect(app.service('user-roles').patch(member.id, { roleIds: [everyone] }, as(admin))).rejects.toMatchObject({ code: 400 })
+    await expect(app.service('roles').remove(everyone, as(admin))).rejects.toMatchObject({ code: 403 })
+  })
+
+  it('withdraws from everybody what it stops granting, but never the fixed core', async () => {
+    const everyone = await roleIdOf(app, 'everyone')
+    const ownAudit = () => app.service('audit-events').find({ ...as(member), query: { actorId: member.id } })
+    await expect(ownAudit()).resolves.toBeDefined()
+
+    await app.service('roles').patch(everyone, { permissions: [] }, as(admin))
+    try {
+      expect((await app.service('users').get(member.id, as(member))).permissions).toEqual(['documents.own', 'sites.read'])
+      await expect(ownAudit()).rejects.toMatchObject({ code: 403 })
+      await expect(app.service('api-tokens').find(as(member))).rejects.toMatchObject({ code: 403 })
+      // The fixed core: the own record and the own export's list.
+      await expect(app.service('users').get(member.id, as(member))).resolves.toMatchObject({ id: member.id })
+      await expect(app.service('data-exports').find({ ...as(member), query: { requestedBy: member.id } })).resolves.toBeDefined()
+
+      // Another role can give it back.
+      const user = await roleIdOf(app, 'user')
+      await app.service('roles').patch(user, { permissions: ['documents.own', 'sites.read', 'audit-events.own'] }, as(admin))
+      await expect(ownAudit()).resolves.toBeDefined()
+      await app.service('roles').patch(user, { permissions: ['documents.own', 'sites.read'] }, as(admin))
+    } finally {
+      await app.service('roles').patch(everyone, { permissions: EVERYONE_SEEDED }, as(admin))
+    }
   })
 })

@@ -10,7 +10,7 @@ import { db } from '../support/worker-database.js'
 // ADR 0029: API tokens, created by whoever holds `api-tokens.create`, used
 // over REST with `Authorization: Bearer`, bounded by the owner's rights on
 // every request, never beyond the permissions chosen for them, and never
-// with the baseline.
+// with the fixed core.
 
 let app: Application
 let base: string
@@ -123,7 +123,7 @@ describe('using a token', () => {
     expect(row).toBeDefined()
   })
 
-  it('has no baseline: not even its own tokens or its owner’s activity', async () => {
+  it('has no fixed core and no own-data permissions: not even its own tokens or its owner’s activity', async () => {
     const { token } = await createToken(adminLogin, ['documents.all'])
     expect((await call(token!, '/api-tokens')).status).toBe(403)
     expect((await call(token!, '/audit-events')).status).toBe(403)

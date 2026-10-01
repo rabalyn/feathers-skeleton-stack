@@ -374,7 +374,7 @@
   },
   "permissions": {
     "title": "Roles & permissions",
-    "intro": "A role is a set of permissions; a person has all permissions of all their roles. Administration always has every permission and alone manages roles.",
+    "intro": "A role is a set of permissions; a person has all permissions of all their roles and of “Everyone signed in”. Their own user record, their data export and ending a view-as no role can take from anybody. Administration always has every permission and alone manages roles.",
     "permission": "Permission",
     "newRole": "New role",
     "key": "Key",
@@ -396,6 +396,7 @@
     "cancel": "Cancel",
     "save": "Save",
     "groups": {
+      "self": "Own data",
       "users": "People",
       "locations": "Locations",
       "documents": "Documents",
@@ -405,6 +406,13 @@
       "api": "API"
     },
     "keys": {
+      "profile_avatar": "Own picture",
+      "profile_locale": "Own language",
+      "files_upload": "Upload files",
+      "files_own": "Own files",
+      "audit-events_own": "Own activity",
+      "roles_own-names": "Own roles' names",
+      "api-tokens_own": "Own API tokens",
       "users_read": "See all people",
       "users_enable": "Enable and disable accounts",
       "directory_read": "Look people up in the directory",
@@ -427,6 +435,13 @@
       "system-info_check": "Run the update check now"
     },
     "descriptions": {
+      "profile_avatar": "Set and remove one's own profile picture",
+      "profile_locale": "Choose the language one's mail is written in",
+      "files_upload": "Upload files, e.g. a picture or a document's file",
+      "files_own": "Read and download the files one has uploaded",
+      "audit-events_own": "See what one has done in the activity log; the data export contains it regardless",
+      "roles_own-names": "See the names of one's own roles on the profile",
+      "api-tokens_own": "See and revoke one's own API tokens, even without the right to create them",
       "users_read": "Every user record with its picture, and the names of the roles",
       "users_enable": "Switch accounts on and off",
       "directory_read": "Search the university directory for people who have not logged in yet",
@@ -447,7 +462,8 @@
       "api-tokens_manage": "See and revoke the API tokens of every person",
       "system-info_read": "The versions that run, the updates available for them and their end of life",
       "system-info_check": "Start the check for newer versions at once instead of at night; it asks Docker Hub, quay.io and endoflife.date"
-    }
+    },
+    "everyone": "Everyone signed in holds it without an assignment; editable, not deletable"
   },
   "viewAs": {
     "start": "View as this person",

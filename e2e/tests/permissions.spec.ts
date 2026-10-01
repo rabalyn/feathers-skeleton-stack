@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ADMIN, OPERATOR, loginAs, nav, navLabels } from './support.js'
+import { ADMIN, OPERATOR, USER, loginAs, nav, navLabels } from './support.js'
 
 // Roles and permissions (ADR 0011): an admin creates a role, grants it a
 // permission, previews it, and deletes it once nobody holds it. Nobody else
@@ -14,6 +14,8 @@ test('an admin creates, grants, previews and deletes a role', async ({ page }) =
   await expect(header).toContainText('Administration')
   await expect(header).toContainText('Betrieb')
   await expect(header).toContainText('Benutzer')
+  await expect(header).toContainText('Fest: stets jedes Recht')
+  await expect(header).toContainText('Alle Angemeldeten')
   await expect(page.getByRole('checkbox', { name: 'Administration: Einstellungen ändern' })).toBeDisabled()
 
   await page.getByRole('button', { name: 'Neue Rolle' }).click()
@@ -52,4 +54,26 @@ test('an operator does not reach the permissions page', async ({ page }) => {
   await expect(nav(page)).not.toContainText('Rollen & Rechte')
   await page.goto('/permissions')
   await expect(page).toHaveURL(/\/profile$/)
+})
+
+// ADR 0011, decided 2026-10-01: what everyone holds is the `everyone` role,
+// editable like any other; the own export is the fixed core and stays.
+test('an admin withdraws own activity from everyone, and a user loses it but keeps the export', async ({ page, browser }) => {
+  await loginAs(page, ADMIN)
+  await nav(page).getByRole('link', { name: 'Rollen & Rechte' }).click()
+  const own = page.getByRole('checkbox', { name: 'Alle Angemeldeten: Eigene Aktivitäten' })
+  await expect(own).toBeChecked()
+  await own.click()
+  await expect(own).not.toBeChecked()
+
+  const user = await (await browser.newContext()).newPage()
+  try {
+    await loginAs(user, USER)
+    await expect(user.getByRole('heading', { name: 'Meine Daten' })).toBeVisible()
+    await expect(user.getByRole('heading', { name: 'Meine Aktivitäten' })).toHaveCount(0)
+  } finally {
+    await own.click()
+    await expect(own).toBeChecked()
+    await user.context().close()
+  }
 })

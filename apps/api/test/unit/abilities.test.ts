@@ -17,7 +17,7 @@ import {
 const ability = (permissions: readonly string[]) => defineAbilitiesFor({ id: 'me', permissions, roleIds: ['r1'] })
 
 describe('the permission catalogue', () => {
-  it.each(PERMISSIONS.map((entry) => entry.key))('%s grants something beyond the baseline', (key) => {
+  it.each(PERMISSIONS.map((entry) => entry.key))('%s grants something beyond the fixed core', (key) => {
     expect(ability([key]).rules.length).toBeGreaterThan(ability([]).rules.length)
   })
 
@@ -56,16 +56,44 @@ describe('field rules add up', () => {
     expect(ability(ADMIN_PERMISSIONS).can('read', role, 'permissions')).toBe(true)
   })
 
-  it('the baseline reads the names of the own roles only', () => {
-    expect(ability([]).can('read', subject('roles', { id: 'r1' }), 'name')).toBe(true)
-    expect(ability([]).can('read', subject('roles', { id: 'r1' }), 'permissions')).toBe(false)
-    expect(ability([]).can('read', subject('roles', { id: 'r2' }), 'name')).toBe(false)
+  it('roles.own-names reads the names of the own roles only', () => {
+    const own = ability(['roles.own-names'])
+    expect(own.can('read', subject('roles', { id: 'r1' }), 'name')).toBe(true)
+    expect(own.can('read', subject('roles', { id: 'r1' }), 'permissions')).toBe(false)
+    expect(own.can('read', subject('roles', { id: 'r2' }), 'name')).toBe(false)
+    expect(ability([]).can('read', subject('roles', { id: 'r1' }), 'name')).toBe(false)
+  })
+})
+
+// ADR 0011, decided 2026-10-01: what no role can withdraw.
+describe('the fixed core', () => {
+  const core = ability([])
+
+  it('keeps the own record, the own export and ending a view-as', () => {
+    expect(core.can('read', subject('users', { id: 'me' }))).toBe(true)
+    expect(core.can('read', subject('users', { id: 'other' }))).toBe(false)
+    expect(core.can('create', subject('data-exports', { subjectId: 'me' }))).toBe(true)
+    expect(core.can('create', subject('data-exports', { subjectId: 'other' }))).toBe(false)
+    expect(core.can('read', subject('data-exports', { requestedBy: 'me' }))).toBe(true)
+    expect(core.can('read', 'data-export-contents')).toBe(true)
+    expect(core.can('remove', 'view-as')).toBe(true)
+  })
+
+  it('leaves everything else of one\'s own to the catalogue', () => {
+    expect(core.can('create', 'avatars')).toBe(false)
+    expect(core.can('create', 'locales')).toBe(false)
+    expect(core.can('create', 'files')).toBe(false)
+    expect(core.can('read', subject('files', { ownerId: 'me' }))).toBe(false)
+    expect(core.can('read', subject('audit-events', { actorId: 'me' }))).toBe(false)
+    expect(core.can('read', subject('api-tokens', { userId: 'me' }))).toBe(false)
+    expect(core.can('remove', subject('api-tokens', { userId: 'me' }))).toBe(false)
   })
 })
 
 describe('subject channels', () => {
   it('are the services read without conditions', () => {
-    expect(unconditionalReadSubjects(ability([])).sort()).toEqual(['avatars', 'data-export-contents', 'file-contents', 'locales', 'view-as'])
+    expect(unconditionalReadSubjects(ability([])).sort()).toEqual(['data-export-contents', 'file-contents', 'view-as'])
+    expect(unconditionalReadSubjects(ability(['profile.avatar', 'profile.locale']))).toEqual(expect.arrayContaining(['avatars', 'locales']))
     expect(unconditionalReadSubjects(ability(['documents.own']))).not.toContain('documents')
     expect(unconditionalReadSubjects(ability(['documents.all']))).toContain('documents')
     expect(unconditionalReadSubjects(ability(['users.read']))).toEqual(expect.arrayContaining(['users', 'files', 'roles']))
@@ -91,7 +119,7 @@ describe('view-as (ADR 0028)', () => {
     expect(seen.can('read', 'documents')).toBe(false)
     // The target's own activity needs the viewer to read everybody's.
     expect(seen.can('read', subject('audit-events', { actorId: 'target' }))).toBe(false)
-    expect(defineViewAsAbility(viewer(['audit-events.read']), target([])).can('read', subject('audit-events', { actorId: 'target' }))).toBe(
+    expect(defineViewAsAbility(viewer(['audit-events.read']), target(['audit-events.own'])).can('read', subject('audit-events', { actorId: 'target' }))).toBe(
       true
     )
   })
@@ -114,7 +142,7 @@ describe('view-as (ADR 0028)', () => {
 describe('API tokens (ADR 0029)', () => {
   const owner = (permissions: readonly string[]) => ({ id: 'owner', permissions, roleIds: ['o'] })
 
-  it('grants the chosen permissions, writes included, and no baseline', () => {
+  it('grants the chosen permissions, writes included, and no fixed core', () => {
     const token = defineTokenAbility(owner(ADMIN_PERMISSIONS), ['documents.own'])
     expect(token.can('create', 'documents')).toBe(true)
     expect(token.can('patch', subject('documents', { ownerId: 'owner' }))).toBe(true)
@@ -131,9 +159,9 @@ describe('API tokens (ADR 0029)', () => {
     expect(TOKEN_PERMISSION_KEYS).not.toContain('api-tokens.manage')
   })
 
-  it('lets everybody see and revoke their own tokens, and api-tokens.manage everybody\'s', () => {
-    expect(ability([]).can('delete', subject('api-tokens', { userId: 'me' }))).toBe(true)
-    expect(ability([]).can('read', subject('api-tokens', { userId: 'other' }))).toBe(false)
+  it('lets api-tokens.own see and revoke one\'s own tokens, and api-tokens.manage everybody\'s', () => {
+    expect(ability(['api-tokens.own']).can('delete', subject('api-tokens', { userId: 'me' }))).toBe(true)
+    expect(ability(['api-tokens.own']).can('read', subject('api-tokens', { userId: 'other' }))).toBe(false)
     expect(ability([]).can('create', 'api-tokens')).toBe(false)
     expect(ability(['api-tokens.create']).can('create', 'api-tokens')).toBe(true)
     expect(ability(['api-tokens.manage']).can('delete', subject('api-tokens', { userId: 'other' }))).toBe(true)
