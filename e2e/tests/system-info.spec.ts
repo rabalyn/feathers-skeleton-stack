@@ -4,7 +4,8 @@ import { ADMIN, OPERATOR, loginAs, nav, navLabels } from './support.js'
 // The system-info page (ADR 0032): an admin sees what the stack runs, read
 // live from Prometheus, Valkey and NetBox, and the commit the api was built
 // from. The e2e api runs with the update check off, so the suite never
-// reaches the internet. Nobody else has the page.
+// reaches the internet, and offers no button to run it now. Nobody else
+// has the page.
 
 test('an admin sees what runs', async ({ page }) => {
   await loginAs(page, ADMIN)
@@ -13,6 +14,9 @@ test('an admin sees what runs', async ({ page }) => {
 
   await expect(page.locator('[data-test="system-info-app"]')).toContainText(/[0-9a-f]{12}/)
   await expect(page.locator('[data-test="system-info-check"]')).toContainText('In dieser Installation abgeschaltet')
+  // With the check off there is nothing to run now; reloading stays.
+  await expect(page.getByRole('button', { name: 'Neu laden' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Jetzt prüfen' })).toHaveCount(0)
 
   for (const id of ['postgresql', 'pgbouncer', 'valkey', 'netbox', 'node']) {
     await expect(page.locator(`[data-test="component-${id}-running"]`), id).toHaveText(/\d+\.\d+/)

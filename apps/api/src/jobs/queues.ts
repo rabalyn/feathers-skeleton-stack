@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import type { JobsOptions, RedisOptions } from 'bullmq'
+import type { JobsOptions, Queue, RedisOptions } from 'bullmq'
 import type { ValkeyConfig } from '../config.js'
 
 // What the api and the worker share about the queues (ADR 0024): the api
@@ -32,6 +32,31 @@ export const EXPORT_JOB_OPTIONS: JobsOptions = {
 // (ADR 0024, 0027); job schedulers live in jobs/maintenance.ts.
 export const MAINTENANCE_QUEUE = 'maintenance'
 export const RESOLVE_CAMPAIGN = 'resolve-campaign'
+
+// The check for newer versions (ADR 0032), on the maintenance queue: daily
+// from a job scheduler, once at the worker's start when the last result is
+// stale, and when an admin asks for one. An asked-for check has one id, so
+// two clicks queue one; it runs once, and the next daily run is its retry.
+export const UPDATE_CHECK = 'update-check'
+export const UPDATE_CHECK_ON_START_ID = `${UPDATE_CHECK}-on-start`
+export const UPDATE_CHECK_ASKED_ID = `${UPDATE_CHECK}-asked`
+export const UPDATE_CHECK_ASKED_OPTIONS: JobsOptions = { jobId: UPDATE_CHECK_ASKED_ID, attempts: 1, removeOnComplete: true, removeOnFail: true }
+
+// Whether a job id is one of the update check's; BullMQ names a scheduler's
+// jobs `repeat:<scheduler>:<due time>`.
+export const isUpdateCheckJob = (jobId: string) =>
+  jobId === UPDATE_CHECK_ASKED_ID || jobId === UPDATE_CHECK_ON_START_ID || jobId.startsWith(`repeat:${UPDATE_CHECK}:`)
+
+// Whether a check runs or waits to: one that is active or queued, or
+// retrying after a failure. The scheduler's next run, delayed until night
+// and not yet attempted, does not count.
+export const updateCheckRunning = async (queue: Queue) => {
+  const [queued, delayed] = await Promise.all([queue.getJobs(['active', 'waiting', 'prioritized']), queue.getDelayed()])
+  // A job removed between listing and reading comes back undefined.
+  return (
+    queued.some((job) => job?.name === UPDATE_CHECK) || delayed.some((job) => job?.name === UPDATE_CHECK && job.attemptsMade > 0)
+  )
+}
 
 // The job id is the campaign's id.
 export interface CampaignJob {

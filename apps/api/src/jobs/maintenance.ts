@@ -18,6 +18,8 @@ import {
   QUEUE_PREFIX,
   RESOLVE_CAMPAIGN,
   SEND_MAIL,
+  UPDATE_CHECK,
+  UPDATE_CHECK_ON_START_ID,
   type CampaignJob,
   type ExportJob,
   type MailJob
@@ -35,14 +37,13 @@ import type { UpdateSources } from '../system/update-sources.js'
 // however many workers run; and `data-exports`, filled by the api on request
 // (ADR 0013).
 
-export { BUILD_EXPORT, DATA_EXPORTS_QUEUE, MAINTENANCE_QUEUE, QUEUE_PREFIX, queueConnection } from './queues.js'
+export { BUILD_EXPORT, DATA_EXPORTS_QUEUE, MAINTENANCE_QUEUE, QUEUE_PREFIX, UPDATE_CHECK, queueConnection } from './queues.js'
 
 export const RETENTION_CLEANUP = 'retention-cleanup'
 export const OBJECT_PURGE = 'object-purge'
 export const EXPORT_EXPIRY = 'export-expiry'
-// The check for newer versions (ADR 0032): daily, and once at start when the
-// last result is older than a day.
-export const UPDATE_CHECK = 'update-check'
+// The check for newer versions (ADR 0032) runs once at start when the last
+// result is older than this.
 export const UPDATE_CHECK_STALE_MS = 24 * 60 * 60 * 1000
 // The mail outbox's sweep (ADR 0027): every minute, one attempt; the next
 // run is the retry.
@@ -334,7 +335,7 @@ export const startMaintenance = ({
           await queue.add(
             UPDATE_CHECK,
             {},
-            { ...JOB_OPTIONS, jobId: `${UPDATE_CHECK}-on-start`, removeOnComplete: true, removeOnFail: true }
+            { ...JOB_OPTIONS, jobId: UPDATE_CHECK_ON_START_ID, removeOnComplete: true, removeOnFail: true }
           )
         }
       } else {

@@ -2,6 +2,16 @@
   <q-page padding>
     <div class="row items-center q-mb-md">
       <h1 class="text-h5 q-my-none col">{{ t('nav.systemInfo') }}</h1>
+      <q-btn
+        v-if="mayCheck"
+        flat
+        color="primary"
+        icon="update"
+        :label="t('systemInfo.checkNow')"
+        :loading="asking || !!report?.checkRunning"
+        data-test="system-info-check-now"
+        @click="checkNow"
+      />
       <q-btn flat icon="refresh" :label="t('systemInfo.refresh')" :loading="loading" data-test="system-info-refresh" @click="load" />
     </div>
 
@@ -22,6 +32,9 @@
           <div class="col-12 col-md-6" data-test="system-info-check">
             <div class="text-subtitle2">{{ t('systemInfo.updateCheck') }}</div>
             <template v-if="report.updateCheck === 'off'">{{ t('systemInfo.checkOff') }}</template>
+            <div v-else-if="report.checkRunning" data-test="system-info-check-running">
+              <q-spinner class="q-mr-xs" /> {{ t('systemInfo.checkRunning') }}
+            </div>
             <template v-else-if="report.attemptedAt">{{ t('systemInfo.lastCheck', { time: dateTime(report.attemptedAt) }) }}</template>
             <template v-else>{{ t('systemInfo.notCheckedYet') }}</template>
           </div>
@@ -91,20 +104,25 @@
 
 <script setup lang="ts">
 import type { SystemInfoReport } from '@app/api/client'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { client } from '@/api/feathers'
 import { useFormat } from '@/composables/format'
 import { useNotify } from '@/composables/notify'
+import { useSessionStore } from '@/stores/session'
 
 // What runs and which updates are out (ADR 0032), the admin's alone: per
 // component the pinned version, the running one, the newest patch, minor and
 // major the daily check found, and the end of life of the running line.
 // A patch is what to deploy; a minor or major is a planning matter.
+// Whoever holds `system-info.check` may run the check now; the api's `check`
+// event says when a check starts and ends, however it was started, and the
+// page reads the report again when one has ended (ADR 0012).
 
 const { t, locale } = useI18n()
 const { dateTime } = useFormat()
 const notify = useNotify()
+const session = useSessionStore()
 
 // The Grafana alert's horizon (ADR 0032).
 const EOL_WARNING_DAYS = 90
@@ -112,6 +130,9 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 const report = ref<SystemInfoReport>()
 const loading = ref(false)
+const asking = ref(false)
+
+const mayCheck = computed(() => report.value?.updateCheck === 'on' && session.can('create', 'update-checks'))
 
 const date = (value: string) => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(value))
 const daysUntil = (value: string) => (Date.parse(value) - Date.now()) / DAY_MS
@@ -138,7 +159,47 @@ const load = async () => {
   }
 }
 
-onMounted(load)
+const checkNow = async () => {
+  asking.value = true
+  try {
+    await client.service('update-checks').create({})
+    if (report.value) report.value.checkRunning = true
+  } catch (error) {
+    // Somebody else's check, or the night's, is already under way.
+    if ((error as { code?: number }).code === 409) {
+      if (report.value) report.value.checkRunning = true
+    } else notify.failure(error)
+  } finally {
+    asking.value = false
+  }
+}
+
+// The events arrive in order, each from a read after the queue changed; a
+// report read in between can be older than the latest event.
+let lastRunning = false
+const onCheck = ({ running }: { running: boolean }) => {
+  lastRunning = running
+  if (!report.value) return
+  const ended = report.value.checkRunning && !running
+  report.value.checkRunning = running
+  if (!ended) return
+  void load().then(() => {
+    if (report.value) report.value.checkRunning = lastRunning
+  })
+}
+// The session store re-authenticates a reconnected socket; events may have
+// been missed meanwhile.
+const onLogin = () => void load()
+
+onMounted(() => {
+  client.service('system-info').on('check', onCheck)
+  client.on('login', onLogin)
+  void load()
+})
+onUnmounted(() => {
+  client.service('system-info').removeListener('check', onCheck)
+  client.removeListener('login', onLogin)
+})
 </script>
 
 <style scoped>

@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-01
 - Scope: Required (v1)
-- Related: [0001](0001-one-stack-every-environment.md), [0002](0002-service-inventory-and-networks.md), [0006](0006-feathersjs-typescript-api.md), [0011](0011-casl-role-authorization.md), [0018](0018-owasp-security-baseline.md), [0022](0022-observability-and-alerting.md), [0024](0024-background-jobs-bullmq.md)
+- Related: [0001](0001-one-stack-every-environment.md), [0002](0002-service-inventory-and-networks.md), [0006](0006-feathersjs-typescript-api.md), [0011](0011-casl-role-authorization.md), [0012](0012-role-scoped-channels.md), [0018](0018-owasp-security-baseline.md), [0022](0022-observability-and-alerting.md), [0024](0024-background-jobs-bullmq.md)
 
 ## Context
 
@@ -17,7 +17,7 @@ Knowing that an update exists needs information from outside the stack. Until no
 
 ### The page
 
-- `/system-info` in the application, for **admins only**: a catalogue permission `system-info.read` ([0011](0011-casl-role-authorization.md)), which only `admin` holds as seeded. Read-only.
+- `/system-info` in the application, for **admins only**: a catalogue permission `system-info.read` ([0011](0011-casl-role-authorization.md)), which only `admin` holds as seeded. Read-only, except for running the update check now (below).
 - One row per component that production runs (the units in `deploy/quadlet/`), plus the host's operating system. Local-only services (Mailpit, Dozzle, Keycloak, the LDAP fixture, the e2e and MCP containers) aren't listed: they never run in production.
 - Per row: the component, its image, the **declared** version (what this build pins), the **running** version (what the component reports), the newest **patch** of the running line, the newest **minor**, the newest **major**, and the **end of life** of the running line where known. A newer patch is the highlighted case, "deploy this"; a newer minor or major is shown but is a planning matter.
 - When declared and running differ, the row says so. That happens when an image was rebuilt but its service not restarted, or when a production drop-in overrides an image.
@@ -55,6 +55,7 @@ The api is already on the `observability` network. Its query to Prometheus is a 
 - End-of-life dates come from endoflife.date for the products it knows: PostgreSQL, Valkey, Node.js, Grafana, Loki, Prometheus, Nginx, OpenBao, Alpine, Debian, and the usual server distributions for the host. For NetBox, Garage, PgBouncer, restic and Alloy the column stays empty, stating that no source is known.
 - The outbound hosts are a **fixed allowlist in code**: `registry-1.docker.io` and `auth.docker.io` (Docker Hub), `quay.io`, and `endoflife.date`. Requests go **directly**, with no proxy: a host without a route out gets "check failed: no route". Responses are parsed as data and never followed elsewhere, and each request has a timeout and a size cap.
 - The check can be switched off in deployment configuration (`UPDATE_CHECK=off`). The page then says so instead of showing stale data.
+- An admin can run the check **now** with a button on the page instead of waiting for the night: the `update-checks` service's `create`, under its own catalogue permission `system-info.check`, which only `admin` holds as seeded, so a role can read the page without starting outbound requests; no API token may carry it ([0029](0029-api-tokens.md)). It queues the check on the `maintenance` queue under one job id, run once without retries. It is **refused while a check runs or waits to** (queued, running, or the daily one waiting for a retry; not the scheduler's next run at night), so Docker Hub's anonymous limits are never spent on two runs at once, and refused when the check is off. The report says whether a check is under way; while somebody who reads the page is connected, the api follows the check's jobs and publishes a `check` event with `running` to the page's subject channel ([0012](0012-role-scoped-channels.md)) when one starts or ends, however it was started, and the page reads the report again when one has ended. The page's other button only reloads the report. Decided 2026-10-01.
 - Results are stored in PostgreSQL (one row per component: latest patch, minor and major, end of life, checked at, error), so the page and the metrics read the same state and a worker restart loses nothing.
 
 ### Metrics and alerts

@@ -57,6 +57,7 @@ import type { ViewAs, ViewAsData, VIEW_AS_EXTERNAL_METHODS } from './services/vi
 import type { Site, SitePage, SiteQuery } from './services/sites/sites.schema.js'
 import type { SITE_EXTERNAL_METHODS } from './services/sites/sites.js'
 import type { SystemInfoReport, SYSTEM_INFO_REPORT_EXTERNAL_METHODS } from './services/system-info/system-info.js'
+import type { UpdateCheck, UpdateCheckData, UPDATE_CHECK_EXTERNAL_METHODS } from './services/update-checks/update-checks.js'
 // gen:service imports (ADR 0030)
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
@@ -97,6 +98,7 @@ export type { QueueJob, QueueJobState, QueueScheduler, QueueStatus } from './ser
 export type { Site, SiteGroup, SitePage, SiteQuery } from './services/sites/sites.schema.js'
 export { SITE_PAGE_MAX, SITE_SEARCH_MAX_LENGTH } from './limits.js'
 export type { SystemComponent, SystemInfoReport } from './services/system-info/system-info.js'
+export type { UpdateCheck, UpdateCheckData } from './services/update-checks/update-checks.js'
 // gen:service exports (ADR 0030)
 export { ALLOWED_CONTENT_TYPES, AVATAR_CONTENT_TYPES, FILENAME_HEADER, type AllowedContentType } from './uploads.js'
 export {
@@ -224,6 +226,10 @@ export interface ClientServiceTypes {
   'system-info': External<
     ClientService<SystemInfoReport, never, never, SystemInfoReport, Params>,
     typeof SYSTEM_INFO_REPORT_EXTERNAL_METHODS
+  >
+  'update-checks': External<
+    ClientService<UpdateCheck, UpdateCheckData, never, never, Params>,
+    typeof UPDATE_CHECK_EXTERNAL_METHODS
   >
   // gen:service client-types (ADR 0030)
 }

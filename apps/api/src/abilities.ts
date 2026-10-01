@@ -101,6 +101,9 @@ const CATALOGUE_ENTRIES = [
   entry('queues.read', 'configuration', (can) => can('read', 'queues')),
   // What runs and which updates are out (ADR 0032).
   entry('system-info.read', 'configuration', (can) => can('read', 'system-info')),
+  // Running the update check now, an outbound request (ADR 0032). `read`
+  // for feathers-casl's check of the create's result.
+  entry('system-info.check', 'configuration', (can) => can(['create', 'read'], 'update-checks')),
   // API tokens (ADR 0029): creating one's own, bounded by one's own rights
   // on every request; seeing and revoking one's own is the baseline.
   entry('api-tokens.create', 'api', (can) => can('create', 'api-tokens')),
@@ -232,13 +235,15 @@ export const defineViewAsAbility = (viewer: AbilityUser, target: AbilityUser): A
 // API tokens (ADR 0029). What a token may never carry: tokens themselves,
 // so a leaked one cannot mint successors; view-as, which is state of a
 // browser session; and the irreversible or operational ones, which need a
-// person in the UI.
+// person in the UI (running the update check now among them, an outbound
+// request a script should not repeat).
 export const TOKEN_EXCLUDED_PERMISSIONS: readonly PermissionKey[] = [
   'api-tokens.create',
   'api-tokens.manage',
   'users.view-as',
   'erasures.create',
-  'settings.manage'
+  'settings.manage',
+  'system-info.check'
 ]
 export const TOKEN_PERMISSION_KEYS: readonly PermissionKey[] = PERMISSION_KEYS.filter((key) => !TOKEN_EXCLUDED_PERMISSIONS.includes(key))
 export const isTokenPermission = (key: string): boolean => (TOKEN_PERMISSION_KEYS as readonly string[]).includes(key)

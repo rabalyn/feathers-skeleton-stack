@@ -126,7 +126,7 @@ describe('API tokens (ADR 0029)', () => {
 
   it("grants nothing its owner no longer holds, and nothing a token may not carry", () => {
     expect(defineTokenAbility(owner(['documents.own']), ['users.read']).can('read', 'users')).toBe(false)
-    const excluded = defineTokenAbility(owner(ADMIN_PERMISSIONS), ['settings.manage', 'api-tokens.create', 'users.view-as', 'erasures.create'])
+    const excluded = defineTokenAbility(owner(ADMIN_PERMISSIONS), ['settings.manage', 'api-tokens.create', 'users.view-as', 'erasures.create', 'system-info.check'])
     expect(excluded.rules).toEqual([])
     expect(TOKEN_PERMISSION_KEYS).not.toContain('api-tokens.manage')
   })

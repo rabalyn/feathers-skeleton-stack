@@ -1,6 +1,16 @@
+import { BadRequest, Conflict, Unavailable } from '@feathersjs/errors'
 import type { Params } from '@feathersjs/feathers'
+import { Queue, QueueEvents } from 'bullmq'
 import type { Application } from '../../app.js'
-import { publishNothing } from '../../channels.js'
+import { publishNothing, publishTo, subjectChannel } from '../../channels.js'
+import {
+  MAINTENANCE_QUEUE,
+  UPDATE_CHECK,
+  UPDATE_CHECK_ASKED_OPTIONS,
+  isUpdateCheckJob,
+  queueConnection,
+  updateCheckRunning
+} from '../../jobs/queues.js'
 import { Netbox } from '../../netbox.js'
 import { COMPONENTS, inventoryById, type Component } from '../../system/components.js'
 import { Prometheus, type Labels } from '../../system/prometheus.js'
@@ -12,9 +22,22 @@ import { parseTag } from '../../system/versions.js'
 // check found. Read-only. The running versions are asked for on every read,
 // each source with a short timeout; one that fails leaves its rows without a
 // running version and says why.
+//
+// An admin may also ask for a check now (`update-checks`, ADR 0032). While
+// somebody who reads the page is connected, the api follows the check's
+// jobs on the maintenance queue and publishes a `check` event to the
+// subject channel whenever one starts or ends (ADR 0012).
 
 export const SYSTEM_INFO_PATH = 'system-info'
 export const SYSTEM_INFO_REPORT_EXTERNAL_METHODS = ['find'] as const
+export const SYSTEM_INFO_CHECK_EVENT = 'check'
+
+export interface SystemInfoCheckStatus {
+  running: boolean
+}
+
+// The queue events that start or end a check's job.
+const CHECK_CHANGES = ['added', 'active', 'completed', 'failed', 'removed'] as const
 
 export interface SystemComponent {
   id: string
@@ -40,6 +63,8 @@ export interface SystemInfoReport {
   // The commit the api image was built from.
   app: { commit: string | null; commitTime: string | null; dirty: boolean }
   updateCheck: 'on' | 'off'
+  // A check runs or waits to, however it was started.
+  checkRunning: boolean
   // The latest attempt of the update check, of any component.
   attemptedAt: string | null
   components: SystemComponent[]
@@ -83,6 +108,9 @@ const SOURCE_TIMEOUT_MS = 3000
 export class SystemInfoReportService {
   private readonly prometheus: Prometheus
   private readonly netbox: Netbox
+  private queue?: Queue
+  private events?: QueueEvents
+  private closed = false
 
   constructor(private readonly app: Application) {
     const config = app.get('config')
@@ -90,10 +118,69 @@ export class SystemInfoReportService {
     this.netbox = new Netbox(config)
   }
 
+  // The connections are opened by the first read, which is somebody opening
+  // the page: an api nobody looks at holds none of them.
+  private open() {
+    if (this.queue || this.closed) return this.queue
+    const config = this.app.get('config')
+    const connection = queueConnection(config)
+    this.queue = new Queue(MAINTENANCE_QUEUE, { connection, prefix: config.queuePrefix })
+    this.events = new QueueEvents(MAINTENANCE_QUEUE, { connection, prefix: config.queuePrefix })
+    for (const change of CHECK_CHANGES) {
+      this.events.on(change, ({ jobId }: { jobId: string }) => {
+        if (isUpdateCheckJob(jobId)) this.changed()
+      })
+    }
+    this.events.on('error', (error: Error) =>
+      this.app.get('logger').warn({ err: { message: error.message } }, 'update check events unavailable')
+    )
+    return this.queue
+  }
+
+  async teardown() {
+    this.closed = true
+    await Promise.all([this.events?.close(), this.queue?.close()])
+  }
+
+  async checkRunning() {
+    const queue = this.open()
+    if (!queue) throw new Unavailable('The queues are shut down')
+    return updateCheckRunning(queue)
+  }
+
+  // Queues a check now (ADR 0032), unless one runs or waits to: each run
+  // asks Docker Hub, whose anonymous limits are not to be spent twice.
+  async askForCheck() {
+    if (this.app.get('config').updateCheck === 'off') throw new BadRequest('The update check is off')
+    if (await this.checkRunning()) throw new Conflict('An update check is already running')
+    await this.queue!.add(UPDATE_CHECK, {}, UPDATE_CHECK_ASKED_OPTIONS)
+  }
+
+  private changed() {
+    if (this.closed || !this.anyReader()) return
+    this.checkRunning()
+      .then((running) => {
+        if (this.closed) return
+        // A custom event carries no hook context; this one gives the
+        // publisher what it needs.
+        const status: SystemInfoCheckStatus = { running }
+        const service = this.app.service(SYSTEM_INFO_PATH)
+        const context = { app: this.app, path: SYSTEM_INFO_PATH, service, event: SYSTEM_INFO_CHECK_EVENT, result: status, dispatch: status }
+        service.emit(SYSTEM_INFO_CHECK_EVENT, status, context)
+      })
+      .catch((error: Error) => this.app.get('logger').warn({ err: { message: error.message } }, 'update check status not published'))
+  }
+
+  private anyReader() {
+    const channel = subjectChannel(SYSTEM_INFO_PATH)
+    return this.app.channels.includes(channel) && this.app.channel(channel).length > 0
+  }
+
   async find(_params?: Params): Promise<SystemInfoReport> {
-    const [running, rows] = await Promise.all([
+    const [running, rows, checkRunning] = await Promise.all([
       this.running(),
-      this.app.get('knex')<UpdateRow>(COMPONENT_UPDATES_TABLE).select('*')
+      this.app.get('knex')<UpdateRow>(COMPONENT_UPDATES_TABLE).select('*'),
+      this.checkRunning()
     ])
     const byComponent = new Map(rows.map((row) => [row.component, row]))
     const attempted = rows.map((row) => row.attemptedAt.getTime())
@@ -104,6 +191,7 @@ export class SystemInfoReportService {
         dirty: process.env.APP_DIRTY === 'true'
       },
       updateCheck: this.app.get('config').updateCheck,
+      checkRunning,
       attemptedAt: attempted.length ? new Date(Math.max(...attempted)).toISOString() : null,
       components: COMPONENTS.map((component) => {
         const declared = inventoryById.get(component.id)
@@ -182,9 +270,14 @@ const withTimeout = <T>(promise: Promise<T>) =>
   ])
 
 export const systemInfo = (app: Application) => {
-  app.use(SYSTEM_INFO_PATH, new SystemInfoReportService(app), { methods: [...SYSTEM_INFO_REPORT_EXTERNAL_METHODS] })
-  // The result goes to the caller only (ADR 0012).
+  app.use(SYSTEM_INFO_PATH, new SystemInfoReportService(app), {
+    methods: [...SYSTEM_INFO_REPORT_EXTERNAL_METHODS],
+    events: [SYSTEM_INFO_CHECK_EVENT]
+  })
+  // The report goes to the caller only; whether a check runs, to whoever
+  // reads the page (ADR 0012).
   app.service(SYSTEM_INFO_PATH).publish(publishNothing)
+  app.service(SYSTEM_INFO_PATH).publish(SYSTEM_INFO_CHECK_EVENT, publishTo(app, () => [subjectChannel(SYSTEM_INFO_PATH)]))
 }
 
 declare module '../../app.js' {
