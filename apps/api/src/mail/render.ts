@@ -3,7 +3,7 @@ import MarkdownIt, { type Token } from 'markdown-it'
 import type { Locale } from '../locales.js'
 import { layout } from './layout.js'
 
-// Rendering a mail (ADR 0027): Liquid, then Markdown, then the MJML layout
+// Rendering a mail (ADR 0027): Liquid, then Markdown, then the HTML layout
 // in code. Admins write the subject and the Markdown body; they never touch
 // the HTML frame, reach anything but the variables given, or output a value
 // as markup.
@@ -153,8 +153,9 @@ export const templateVariablePaths = (locale: Locale, part: 'subject' | 'body', 
 }
 
 // Markdown without raw HTML, images or automatic links; a link must point
-// into the application.
-const markdown = new MarkdownIt('commonmark', { html: false, linkify: false, typographer: false }).disable(['image'])
+// into the application. No thematic break either: <hr> is not rendered in
+// full by every client, so `---` stays text (or underlines a heading).
+const markdown = new MarkdownIt('commonmark', { html: false, linkify: false, typographer: false }).disable(['image', 'hr'])
 
 // Lines are those of the rendered Markdown, which match the template's
 // unless Liquid added or removed some before the link.
@@ -240,9 +241,6 @@ const toText = (tokens: Token[]): string => {
       case 'fence':
         out += `${token.content}\n`
         break
-      case 'hr':
-        out += '----\n\n'
-        break
     }
   }
   return out.replace(/\n{3,}/g, '\n\n').trim() + '\n'
@@ -282,7 +280,7 @@ export const renderMail = async ({ locale, subject, body, variables }: RenderInp
   const content = markdown.renderer.render(tokens, markdown.options, {})
   return {
     subject: renderedSubject,
-    html: await layout(locale, { subject: renderedSubject, content, app: variables.app }),
+    html: layout(locale, { subject: renderedSubject, content, app: variables.app }),
     text: `${toText(tokens)}\n-- \n${variables.app.name}: ${variables.app.url}\n`
   }
 }

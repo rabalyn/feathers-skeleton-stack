@@ -403,10 +403,16 @@ wait_alert_quiet() {
 
 # Waits for the rule's [FIRING] mail created after $2.
 wait_alert_mail() {
-  local title=$1 since=$2 deadline=$((SECONDS + 300)) subject
+  local title=$1 since=$2 deadline=$((SECONDS + 300)) subject html
   while ((SECONDS < deadline)); do
     subject=$(alert_mails "$title" "$since" | grep -m 1 '^\[FIRING:' || true)
     if [[ -n $subject ]]; then
+      # Plain text only (ADR 0022): Grafana's HTML loads a font from Google.
+      html=$(curl -s --cacert "$ALERT_DIR/ca.crt" -G https://mail.localhost:8443/api/v1/search --data-urlencode "query=subject:\"$title\"" |
+        jq -r --arg subject "$subject" --arg since "$since" \
+          '[.messages[] | select(.Created > $since and .Subject == $subject)][0].ID' |
+        xargs -I{} curl -s --cacert "$ALERT_DIR/ca.crt" https://mail.localhost:8443/api/v1/message/{} | jq -r '.HTML | length')
+      [[ $html == 0 ]] || die "\"$title\" was mailed with an HTML part; Grafana must send plain text only (GF_EMAILS_CONTENT_TYPES)"
       log "alert mail arrived: $subject"
       return
     fi
