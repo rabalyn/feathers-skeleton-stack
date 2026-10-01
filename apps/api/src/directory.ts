@@ -14,6 +14,7 @@ import { DIRECTORY_MAX_RESULTS as MAX_RESULTS } from './limits.js'
 
 export {
   DIRECTORY_MAX_RESULTS as MAX_RESULTS,
+  DIRECTORY_PAGE_MAX as PAGE_MAX,
   DIRECTORY_MAX_TERM_LENGTH as MAX_TERM_LENGTH,
   DIRECTORY_MIN_TERM_LENGTH as MIN_TERM_LENGTH
 } from './limits.js'
@@ -30,7 +31,8 @@ export interface DirectoryEntry {
 
 export interface DirectoryResult {
   entries: DirectoryEntry[]
-  // The directory had more matches than MAX_RESULTS.
+  // The search reached MAX_RESULTS, the directory's size limit, so there
+  // may be more matches than it returned.
   truncated: boolean
 }
 
@@ -44,6 +46,14 @@ export const searchFilter = (term: string): string => {
   })
   return `(&(objectClass=person)${clauses.join('')})`
 }
+
+// Pages are cut from one sorted list, so a page turn neither repeats nor
+// skips anybody: the directory itself returns entries in no stated order.
+const collator = new Intl.Collator('de', { sensitivity: 'base' })
+const byName = (a: DirectoryEntry, b: DirectoryEntry) =>
+  collator.compare(a.surname ?? '', b.surname ?? '') ||
+  collator.compare(a.givenName ?? '', b.givenName ?? '') ||
+  collator.compare(a.tuId, b.tuId)
 
 const first = (value: unknown): string | null => {
   const single: unknown = Array.isArray(value) ? (value as unknown[])[0] : value
@@ -74,8 +84,12 @@ export class Directory {
         scope: 'sub',
         filter: searchFilter(term),
         attributes: ATTRIBUTES,
-        // One more than returned, to tell whether there were more.
-        sizeLimit: MAX_RESULTS + 1,
+        // Never more than the directory's own limit allows. A search that
+        // reaches it may have had more matches: the server answers
+        // sizeLimitExceeded, which ldapts returns as a result when a
+        // sizeLimit was asked for, but without telling it from exactly
+        // MAX_RESULTS matches.
+        sizeLimit: MAX_RESULTS,
         timeLimit: 5
       })
       const entries = searchEntries
@@ -86,7 +100,8 @@ export class Directory {
           email: first(entry.mail)
         }))
         .filter((entry): entry is DirectoryEntry => entry.tuId !== null)
-      return { entries: entries.slice(0, MAX_RESULTS), truncated: entries.length > MAX_RESULTS }
+        .sort(byName)
+      return { entries, truncated: searchEntries.length >= MAX_RESULTS }
     } catch (error) {
       throw new DirectoryUnavailable((error as Error).message)
     } finally {

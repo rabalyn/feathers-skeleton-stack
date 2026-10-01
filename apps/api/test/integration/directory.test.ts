@@ -90,6 +90,22 @@ describe('searching', () => {
     expect(Object.keys(page.data[0] ?? {}).sort()).toEqual(['email', 'givenName', 'surname', 'tuId', 'userId'])
   })
 
+  it('stops at the directory size limit of 100 and pages within it, sorted by name', async () => {
+    // containers/ldap/seed/bulk.ldif: 120 people with surnames Bulk001..Bulk120.
+    const first = await find(admin, { q: 'Bulk', $limit: 50 })
+    expect(first).toMatchObject({ total: 100, limit: 50, skip: 0, truncated: true })
+    expect(first.data.map((e) => e.surname)).toEqual(first.data.map((e) => e.surname).sort())
+    const second = await find(admin, { q: 'Bulk', $limit: 50, $skip: 50 })
+    expect(second).toMatchObject({ total: 100, skip: 50, truncated: true })
+    expect(second.data).toHaveLength(50)
+    const seen = new Set([...first.data, ...second.data].map((e) => e.tuId))
+    expect(seen.size).toBe(100)
+  })
+
+  it('is not truncated below the size limit', async () => {
+    expect(await find(admin, { q: 'Bulk11' })).toMatchObject({ total: 10, truncated: false })
+  })
+
   it('pages within the matches', async () => {
     const page = await find(admin, { q: 'us0', $limit: 1, $skip: 1 })
     expect(page).toMatchObject({ total: 2, limit: 1, skip: 1 })

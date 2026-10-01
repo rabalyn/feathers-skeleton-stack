@@ -77,8 +77,12 @@
     "search": "Name, TU-ID or email",
     "hint": "At least {min} characters",
     "empty": "No matches",
-    "truncated": "There are more matches than shown. Please narrow the search.",
-    "hasAccount": "Has an account"
+    "truncated": "The directory returns at most {max} matches per search, and this search reached that limit. Please narrow it.",
+    "hasAccount": "Has an account",
+    "enterTerm": "Enter a search term",
+    "name": "Name",
+    "tuId": "TU-ID",
+    "email": "Email"
   },
   "sites": {
     "search": "Key, name or address",

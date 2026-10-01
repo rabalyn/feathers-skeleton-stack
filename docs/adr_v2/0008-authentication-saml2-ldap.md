@@ -41,11 +41,11 @@ The API never uses LDAP to authenticate a user. Login is SAML2 only.
 
 - One search term of at least **two** characters (historical TU-IDs have two), split into words. Every word must be a **prefix** of the TU-ID (`cn`), given name, surname or mail, so `Uma Us` finds Uma User. Prefix matching uses the directory's initial-substring indexes even for two-character words, where a "contains" match would scan the whole directory.
 - Every word is escaped before it enters the filter. The search asks only for `cn`, `givenName`, `sn` and `mail`.
-- The directory returns at most **50** entries per search. The answer uses the usual page shape plus `truncated`, which says there were more and the term should be narrowed.
+- One search returns at most **100** entries: the university directory's size limit for the service account, which the API asks for and never exceeds. The API sorts them by surname, given name and TU-ID and pages within them on the server, like every list ([0014](0014-frontend-quasar-vue.md)): `$limit` and `$skip`, at most **50** entries per page, for anything LDAP-related. A page turn searches again rather than keeping results between requests. The answer uses the usual page shape plus `truncated`, which says the search reached the limit, so there may be more matches and the term should be narrowed; LDAP does not tell exactly 100 matches from more. Decided 2026-10-01; before that, one search returned 50 entries in one unpaginated list.
 - Each result carries the `userId` of the person's account if they have logged in before, and `null` otherwise. Lookup creates nothing: a person gets an account only by logging in ([0009](0009-tu-id-identity-model.md)).
 - A directory that is unreachable or refuses the service account is answered with **503**.
 - Lookups are not audit events, like reading user records; the search term is never logged.
-- Locally the service account is `cn=api,ou=services` in the test directory, readable only on the people subtree and never on passwords. Its password is generated at setup and delivered through OpenBao. Service accounts are added to an existing local directory at start when missing.
+- Locally the service account is `cn=api,ou=services` in the test directory, readable only on the people subtree and never on passwords, with the same size limit of 100 as the university directory; 120 bulk people without passwords (`containers/ldap/seed/bulk.ldif`) let the tests reach it. Its password is generated at setup and delivered through OpenBao. Service accounts are added to an existing local directory at start when missing.
 
 ### Break-glass superadmin
 

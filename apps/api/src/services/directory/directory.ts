@@ -4,7 +4,7 @@ import type { Params } from '@feathersjs/feathers'
 import type { Knex } from 'knex'
 import type { Application } from '../../app.js'
 import { publishNothing } from '../../channels.js'
-import { DirectoryUnavailable, type Directory } from '../../directory.js'
+import { DirectoryUnavailable, PAGE_MAX, type Directory } from '../../directory.js'
 import { PAGINATE } from '../../paginate.js'
 import { directoryQueryValidator, type DirectoryPage, type DirectoryQuery } from './directory.schema.js'
 
@@ -30,7 +30,8 @@ export class DirectoryService {
       if (error instanceof DirectoryUnavailable) throw new Unavailable('Directory unavailable')
       throw error
     }
-    const limit = Math.min(query.$limit ?? PAGINATE.default, PAGINATE.max)
+    // LDAP pages hold at most PAGE_MAX entries (ADR 0008).
+    const limit = Math.min(query.$limit ?? PAGINATE.default, PAGE_MAX)
     const skip = query.$skip ?? 0
     const page = result.entries.slice(skip, skip + limit)
 
