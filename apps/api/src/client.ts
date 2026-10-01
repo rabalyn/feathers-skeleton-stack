@@ -56,7 +56,7 @@ import type { UserRoles, UserRolesPatch, USER_ROLE_EXTERNAL_METHODS } from './se
 import type { ViewAs, ViewAsData, VIEW_AS_EXTERNAL_METHODS } from './services/view-as/view-as.js'
 import type { Site, SitePage, SiteQuery } from './services/sites/sites.schema.js'
 import type { SITE_EXTERNAL_METHODS } from './services/sites/sites.js'
-import type { SystemComponent, SystemInfoReport, SYSTEM_INFO_REPORT_EXTERNAL_METHODS } from './services/system-info/system-info.js'
+import type { SystemInfoReport, SYSTEM_INFO_REPORT_EXTERNAL_METHODS } from './services/system-info/system-info.js'
 // gen:service imports (ADR 0030)
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
