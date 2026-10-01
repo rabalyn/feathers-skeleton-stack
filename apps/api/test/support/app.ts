@@ -6,11 +6,13 @@ import {
   LDAP_KEYS,
   NETBOX_KEYS,
   S3_KEYS,
+  SYSTEM_KEYS,
   VALKEY_KEYS,
   loadConfig,
   type LdapConfig,
   type NetboxConfig,
   type S3Config,
+  type SystemConfig,
   type ValkeyConfig
 } from '../../src/config.js'
 import { createKnex } from '../../src/db.js'
@@ -45,6 +47,8 @@ export interface TestAppOptions {
   s3?: Partial<S3Config>
   // E.g. an address nothing listens on.
   netbox?: Partial<NetboxConfig>
+  // E.g. a Prometheus nothing listens on, or the update check off.
+  system?: Partial<SystemConfig>
 }
 
 // An application on this worker's database, not listening on any port, with
@@ -63,6 +67,8 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
   const s3Config = await loadConfig(S3_KEYS)
   // The stack's seeded NetBox, with the api's read-only token (ADR 0031).
   const netboxConfig = await loadConfig(NETBOX_KEYS)
+  // The stack's Prometheus, for the running versions (ADR 0032).
+  const systemConfig = await loadConfig(SYSTEM_KEYS)
   const rateLimitPrefix = `test:${randomUUID()}`
   const app = createApp(
     {
@@ -74,6 +80,8 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
       ...options.s3,
       ...netboxConfig,
       ...options.netbox,
+      ...systemConfig,
+      ...options.system,
       publicOrigin: PUBLIC_ORIGIN,
       authSigningSecret: 'test-only-signing-secret-that-is-long-enough',
       refreshTokenKey: 'test-only-refresh-token-key-that-is-long-enough',

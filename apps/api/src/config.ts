@@ -148,6 +148,14 @@ const fields = {
   netboxTokenKey: { schema: Type.String({ pattern: '^[A-Za-z0-9]{12}$' }), env: 'NETBOX_TOKEN_KEY' },
   netboxToken: { schema: Type.String({ minLength: 32, pattern: '^[A-Za-z0-9_-]+$' }), env: 'NETBOX_TOKEN', secret: true },
   netboxCaFile: { schema: Type.String({ minLength: 1 }), env: 'NETBOX_CA_FILE' },
+  // System info (ADR 0032): the running versions most components report to
+  // Prometheus, read over TLS like every observability hop (ADR 0022).
+  prometheusUrl: { schema: Type.String({ pattern: '^https://[^/]+$' }), env: 'PROMETHEUS_URL' },
+  prometheusCaFile: { schema: Type.String({ minLength: 1 }), env: 'PROMETHEUS_CA_FILE' },
+  // The worker's daily check for newer versions, the one request to the
+  // internet (ADR 0018, 0032); `off` where the host has no route out or the
+  // deployment does not want it.
+  updateCheck: { schema: Type.Union([Type.Literal('on'), Type.Literal('off')]), env: 'UPDATE_CHECK', default: 'on' },
   databasePoolMax: {
     schema: Type.Integer({ minimum: 1, maximum: 50 }),
     env: 'DATABASE_POOL_MAX',
@@ -206,6 +214,8 @@ export const NETBOX_KEYS = [
   'netboxCaFile'
 ] as const satisfies readonly ConfigKey[]
 
+export const SYSTEM_KEYS = ['prometheusUrl', 'prometheusCaFile', 'updateCheck'] as const satisfies readonly ConfigKey[]
+
 export const API_KEYS = [
   'publicOrigin',
   'authSigningSecret',
@@ -225,6 +235,7 @@ export const API_KEYS = [
   ...LDAP_KEYS,
   ...S3_KEYS,
   ...NETBOX_KEYS,
+  ...SYSTEM_KEYS,
   ...DATABASE_KEYS
 ] as const satisfies readonly ConfigKey[]
 
@@ -244,6 +255,7 @@ export const WORKER_KEYS = [
   'queuePrefix',
   ...VALKEY_KEYS,
   ...S3_KEYS,
+  ...SYSTEM_KEYS,
   ...DATABASE_KEYS
 ] as const satisfies readonly ConfigKey[]
 
@@ -330,4 +342,5 @@ export type ValkeyConfig = Pick<Config, (typeof VALKEY_KEYS)[number]>
 export type WorkerConfig = Pick<Config, (typeof WORKER_KEYS)[number]>
 export type S3Config = Pick<Config, (typeof S3_KEYS)[number]>
 export type SmtpConfig = Pick<Config, (typeof SMTP_KEYS)[number]>
+export type SystemConfig = Pick<Config, (typeof SYSTEM_KEYS)[number]>
 export type BackupConfig = Pick<Config, (typeof BACKUP_KEYS)[number]>

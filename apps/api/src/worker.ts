@@ -9,6 +9,7 @@ import { SHUTDOWN_GRACE_MS, closeServer, withDeadline } from './shutdown.js'
 import { WORKER_SETTINGS } from './settings/registry.js'
 import { SettingsError, SettingsStore } from './settings/store.js'
 import { Storage } from './storage.js'
+import { updateCheckSources } from './system/update-sources.js'
 
 // The worker container (ADR 0024): the api's image, this entry point. It runs
 // the jobs; the api only enqueues.
@@ -54,7 +55,8 @@ const main = async () => {
     logger,
     prefix: config.queuePrefix,
     metrics,
-    mail: { sender: createSender(config), publicOrigin: config.publicOrigin }
+    mail: { sender: createSender(config), publicOrigin: config.publicOrigin },
+    updateCheck: updateCheckSources(config)
   })
   await maintenance.schedule()
   const internal = createInternalServer({
