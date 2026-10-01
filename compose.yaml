@@ -134,6 +134,11 @@ services:
       context: .
       dockerfile: containers/api/Containerfile
       target: runtime
+      # Set by scripts/stack.sh from git (ADR 0032).
+      args:
+        APP_COMMIT: ${APP_COMMIT:-unknown}
+        APP_COMMIT_TIME: ${APP_COMMIT_TIME:-unknown}
+        APP_DIRTY: ${APP_DIRTY:-false}
     image: localhost/feathers-api:dev
     container_name: api
     # The api refuses to start before migrate has seeded the runtime

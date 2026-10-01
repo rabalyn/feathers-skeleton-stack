@@ -47,7 +47,7 @@ CMD ["pnpm", "exec", "vitest", "run"]
 FROM base AS prod-deps
 RUN pnpm install --frozen-lockfile --prod --filter @app/api...
 
-FROM ${NODE_IMAGE} AS runtime
+FROM ${NODE_IMAGE} AS runtime-base
 ENV NODE_ENV=production
 # OpenSSL from the distribution's security updates, until the pinned base
 # image carries it (CVE-2026-75804, CVE-2026-84782; ADR 0018). Remove once
@@ -67,13 +67,23 @@ USER node
 EXPOSE 3030 9090
 CMD ["node", "dist/index.js"]
 
+# The commit the image was built from, for the system-info page (ADR 0032).
+# Last, and not in the backup image, so a new commit rebuilds one layer.
+# The commit time, not the build time: an unchanged tree builds the same
+# image, and `stack.sh up` restarts nothing.
+FROM runtime-base AS runtime
+ARG APP_COMMIT=unknown
+ARG APP_COMMIT_TIME=unknown
+ARG APP_DIRTY=false
+ENV APP_COMMIT=${APP_COMMIT} APP_COMMIT_TIME=${APP_COMMIT_TIME} APP_DIRTY=${APP_DIRTY}
+
 # The backup service (ADR 0017): the runtime, plus restic and the pg_dump of
 # PostgreSQL 18 from the PostgreSQL project's Debian repository (Debian 13
 # ships 17, which refuses to dump an 18 server). Its own user and group:
 # Debian's system user `backup`, moved to an ID of its own, and a member of
 # GID 1000, Valkey's group in its image (ADR 0010), to read Valkey's
 # snapshot file (in this image, 1000 is the group `node`).
-FROM runtime AS backup
+FROM runtime-base AS backup
 USER root
 RUN export DEBIAN_FRONTEND=noninteractive \
  && apt-get update \
