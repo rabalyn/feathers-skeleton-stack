@@ -231,7 +231,9 @@ services:
       UPDATE_CHECK: "off"
       # Stdout only: its lines stay out of Loki and the alert rules.
       LOG_FILE: ""
-    networks: [edge, app-data, identity, object, netbox-api]
+    # `observability` for Prometheus, where the system-info page reads the
+    # running versions (ADR 0032).
+    networks: [edge, app-data, identity, object, observability, netbox-api]
     volumes:
       - api-secrets:/run/secrets:ro
       - trust:/trust:ro

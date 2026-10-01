@@ -576,3 +576,122 @@ groups:
       severity: critical
     annotations:
       summary: No backup has completed in the last 26 hours
+# The update check's results (ADR 0032), from the worker's metrics. Days
+# pass between changes, so they are evaluated every 10 minutes; thresholds
+# confirmed on 2026-10-01. Minor and major updates do not alert.
+- orgId: 1
+  name: updates
+  folder: Application
+  interval: 10m
+  rules:
+  - uid: update-patch-waiting
+    title: Patch waiting
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: prometheus
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: max by (component) (time() - stack_update_available_since_timestamp_seconds{kind="patch"})
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 604800
+    for: 0s
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: warning
+    annotations:
+      summary: A patch for {{ .Labels.component }} has been available for more than 7 days; see /system-info
+  - uid: update-eol-near
+    title: End of life near
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: prometheus
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: min by (component) (stack_eol_timestamp_seconds - time())
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 7776000
+    for: 0s
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: warning
+    annotations:
+      summary: The release line {{ .Labels.component }} runs reaches end of life within 90 days; see /system-info
+  - uid: update-check-failing
+    title: Update check failing
+    condition: C
+    data:
+    - refId: A
+      datasourceUid: prometheus
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: max by (component) (time() - stack_update_check_failing_since_timestamp_seconds)
+        instant: true
+        range: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 259200
+    for: 0s
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: warning
+    annotations:
+      summary: The update check has failed for {{ .Labels.component }} for more than 3 days; see /system-info
