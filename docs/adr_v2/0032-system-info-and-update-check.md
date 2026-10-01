@@ -1,0 +1,89 @@
+# 0032: A system-info page shows what runs and which updates are out, from a daily check
+
+- Status: Proposed
+- Date: 2026-10-01
+- Scope: Required (v1)
+- Related: [0001](0001-one-stack-every-environment.md), [0002](0002-service-inventory-and-networks.md), [0006](0006-feathersjs-typescript-api.md), [0011](0011-casl-role-authorization.md), [0018](0018-owasp-security-baseline.md), [0022](0022-observability-and-alerting.md), [0024](0024-background-jobs-bullmq.md)
+
+## Context
+
+A product built on this skeleton runs about twenty third-party components: PostgreSQL, PgBouncer, Valkey, OpenBao, Garage, Nginx, NetBox, Node, Prometheus, Loki, Grafana, Alloy, the exporters, restic, and the host's operating system. Each publishes patch releases and reaches end of life on its own schedule. Today nothing in a deployment shows which versions run or that a patch is out. Renovate opens pull requests against the repository, but it doesn't say which deployment still runs what, and it can't report that a release line is about to reach end of life.
+
+GitLab's admin area is the model: it shows the version that runs, the versions of its dependencies, and whether an update is available. The same view, inside the application, tells an admin whether patches need to be deployed.
+
+Knowing that an update exists needs information from outside the stack. Until now the application made no outbound request except to the IdP, the LDAP directory and the SMTP relay ([0018](0018-owasp-security-baseline.md), A10), and Grafana's own update check is off. This ADR adds one more outbound path, on purpose and narrowly.
+
+## Decision
+
+### The page
+
+- `/system-info` in the application, for **admins only**: a catalogue permission `system.read` ([0011](0011-casl-role-authorization.md)), which only `admin` holds as seeded. Read-only.
+- One row per component that production runs (the units in `deploy/quadlet/`), plus the host's operating system. Local-only services (Mailpit, Dozzle, Keycloak, the LDAP fixture, the e2e and MCP containers) aren't listed: they never run in production.
+- Per row: the component, its image, the **declared** version (what this build pins), the **running** version (what the component reports), the newest **patch** of the running line, the newest **minor**, the newest **major**, and the **end of life** of the running line where known. A newer patch is the highlighted case, "deploy this"; a newer minor or major is shown but is a planning matter.
+- When declared and running differ, the row says so. That happens when an image was rebuilt but its service not restarted, or when a production drop-in overrides an image.
+- The page shows when the last check ran and, per row, why a value is missing (not reported, not known to the source, check failed, check off).
+
+### Declared versions: generated from the repository, checked for drift
+
+- `scripts/inventory.sh` writes `apps/api/src/system/inventory.json` from the files that already pin every image: the `# version` comments in `compose.yaml` and the `tag@digest` lines in the Containerfiles, the same patterns Renovate's managers read. The set of components is the units in `deploy/quadlet/`.
+- `scripts/inventory.sh --check` fails when the file differs from a fresh run. It joins the static checks in `scripts/ci.sh`, like the Quadlet drift check.
+- An image pinned by digest alone gets a version comment, so that both the inventory and Renovate can read it. Garage's `FROM` in `containers/s3/Containerfile` is the one case today.
+- Software installed from Alpine packages (Nginx, PgBouncer) has no version in the repository. Its declared version is the Alpine base image's, and its own version comes only from the running component.
+
+### Running versions: asked live when the page loads
+
+The api gathers them on each page load, with a short timeout per source, so the page shows what runs right now:
+
+| Source | Components |
+|---|---|
+| Prometheus' query API (`*_build_info`, `pg_static`, `pgbouncer_version_info`, `node_os_info`, …) | PostgreSQL, PgBouncer, Garage, Grafana, Loki, Prometheus, the exporters, the host OS |
+| Valkey `INFO server` (`valkey_version`; the exporter reports only the Redis compatibility version) | Valkey |
+| NetBox `GET /api/status/` | NetBox |
+| The process itself | Node, the api |
+
+The api is already on the `observability` network. Its query to Prometheus is a new hop and, like every hop, uses TLS verified against the CA root ([0022](0022-observability-and-alerting.md)). OpenBao, Alloy, blackbox and Nginx report no version to any of these sources and show their declared version only.
+
+### Available updates: a daily check in the worker, with a fixed allowlist
+
+- A job scheduler on the worker's `maintenance` queue runs the check once a day at night ([0024](0024-background-jobs-bullmq.md)), and once when the worker starts if the last result is older than a day.
+- For each component it lists the tags of its image's repository in the registry and compares them with the declared tag. Tags count as versions when they parse as a numeric version with an optional `v`; a candidate must carry the same suffix as the declared tag (`-alpine`, `-trixie-slim`), and pre-releases (`rc`, `beta`, `alpha`) are ignored. A component whose tags follow another scheme (NetBox's `v4.7.2-5.1.1`: the upstream version, then the image's own revision) declares its rule in code.
+- End-of-life dates come from endoflife.date for the products it knows: PostgreSQL, Valkey, Node.js, Grafana, Loki, Prometheus, Nginx, OpenBao, Alpine, Debian, and the usual server distributions for the host. For NetBox, Garage, PgBouncer, restic and Alloy the column stays empty, stating that no source is known.
+- The outbound hosts are a **fixed allowlist in code**: `registry-1.docker.io` and `auth.docker.io` (Docker Hub), `quay.io`, and `endoflife.date`. Requests go **directly**, with no proxy: a host without a route out gets "check failed: no route". Responses are parsed as data and never followed elsewhere, and each request has a timeout and a size cap.
+- The check can be switched off in deployment configuration (`UPDATE_CHECK=off`). The page then says so instead of showing stale data.
+- Results are stored in PostgreSQL (one row per component: latest patch, minor and major, end of life, checked at, error), so the page and the metrics read the same state and a worker restart loses nothing.
+
+### Metrics and alerts
+
+The worker exports, computed from the stored results on each scrape:
+
+- `stack_update_available{component, kind="patch"|"minor"|"major"}`: 1 while a newer version of that kind exists, with the first time it was seen kept in the table;
+- `stack_eol_timestamp_seconds{component}` for the running line;
+- `stack_update_check_last_success_timestamp_seconds`.
+
+Grafana mails the operators ([0022](0022-observability-and-alerting.md)) through three rules:
+
+- **Patch available:** for 7 days.
+- **End of life near:** the running line reaches end of life within 90 days.
+- **Update check failing:** no successful check for 3 days. Otherwise a check that stopped working would look like "everything is current".
+
+Minor and major updates don't alert.
+
+### What this does not do
+
+- No vulnerability scanning at runtime. Trivy in CI stays the source for findings in images ([0018](0018-owasp-security-baseline.md)), and this page doesn't repeat them.
+- No npm dependency versions: Renovate covers those, and the page would grow long without telling an admin anything they could act on in production.
+- Nothing is updated automatically. Deploying stays a person's decision.
+
+## Consequences
+
+- Admins see in one place what runs, what is behind, and what is about to lose support. Operators get a mail when a patch has waited a week, without having to visit the page.
+- [0018](0018-owasp-security-baseline.md)'s A10 row gains four hosts, fixed in code and never from user input. This is the first outbound request to a third party; it carries no data about the deployment except the source address and the image names it asks about, which are public anyway.
+- The check depends on Docker Hub's anonymous rate limits. One daily run lists tags for about fifteen repositories, far below them. A repository with thousands of tags (`library/node`) needs several pages per run.
+- A tag the parser misreads gives a wrong "update available". The unit tests pin the comparison against real tag lists, and a component whose scheme doesn't fit declares its own rule.
+- The inventory is one more generated file with a drift check. Adding an image to `compose.yaml` without regenerating it fails CI, which is the point.
+- Without a route to the internet, the page still shows declared and running versions, and the update columns say why they're empty.
+
+## Open questions
+
+- **The application's own version.** Production builds its images on the host (`localhost/feathers-*:dev`), so there is no release number. The page could show the git commit and build time, passed into the image as build arguments, but how production builds and tags images isn't decided anywhere yet.
+- **Alert thresholds.** 7 days for a patch, 90 days before end of life and 3 days of failed checks are proposals to confirm.
