@@ -71,11 +71,20 @@ describe('shutdown', () => {
   }, 15_000)
 
   it('closes the internal listener, cutting off requests in flight after the grace period', async () => {
-    const server = createServer((_req, res) => res.end('ok')).listen(0)
+    // /stuck is never answered: a request the server has received and is
+    // still handling. Waiting for it is deterministic; a connection whose
+    // bytes the server has not read yet counts as idle, and Node 26 may read
+    // them only after close() has run.
+    const server = createServer((req, res) => {
+      if (req.url !== '/stuck') res.end('ok')
+    }).listen(0)
     await new Promise((resolve) => server.once('listening', resolve))
     const port = (server.address() as AddressInfo).port
     const agent = await idleKeepAlive(port)
-    await stuckRequest(port)
+    const received = new Promise((resolve) => server.once('request', resolve))
+    const stuck = connect(port, '127.0.0.1', () => stuck.write('GET /stuck HTTP/1.1\r\nHost: localhost\r\n\r\n'))
+    stuck.on('error', () => {})
+    await received
 
     const elapsed = await timed(() => closeServer(server, { graceMs: 200 }))
     expect(elapsed).toBeGreaterThanOrEqual(150)

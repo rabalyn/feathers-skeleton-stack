@@ -31,7 +31,7 @@
     "@intlify/unplugin-vue-i18n": "^11.2.5",
     "@quasar/app-vite": "3.10.0",
     "@quasar/mcp": "1.1.0",
-    "@types/node": "^24.13.6",
+    "@types/node": "^26.6.3",
     "@vue/test-utils": "^2.5.1",
     "autoprefixer": "^10.6.1",
     "happy-dom": "^20.14.5",
