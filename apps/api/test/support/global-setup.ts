@@ -9,9 +9,17 @@ export const PURGE_TEST_BUCKET = 'test-purge'
 // orphan sweep (data-exports.test.ts).
 export const DATA_EXPORTS_TEST_BUCKET = 'test-data-exports'
 
+// Every DROP DATABASE waits for a checkpoint. Right after a run, with every
+// worker database freshly written, one checkpoint has taken over a minute on
+// a busy disk, while the other drops queue for the pool past knex's default
+// 60 s to acquire a connection. They wait as long as the checkpoints take:
+// the run has passed or failed by now, and a timeout here only leaves the
+// databases to the next run, making its cleanup slower still.
+const DROP_ACQUIRE_TIMEOUT_MS = 10 * 60_000
+
 // A crashed run must not leak state into the next one (ADR 0015).
 const dropWorkerDatabases = async () => {
-  const knex = await maintenanceKnex(8)
+  const knex = await maintenanceKnex(8, { acquireConnectionTimeout: DROP_ACQUIRE_TIMEOUT_MS })
   try {
     const { rows } = await knex.raw<{ rows: { datname: string }[] }>(
       `SELECT datname FROM pg_database WHERE datname LIKE ? AND datdba = (SELECT oid FROM pg_roles WHERE rolname = current_user)`,

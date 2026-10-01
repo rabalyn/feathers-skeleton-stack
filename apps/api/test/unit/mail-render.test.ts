@@ -4,7 +4,7 @@ import { APP_NAME } from '../../src/mail/layout.js'
 import { MAIL_KINDS } from '../../src/mail/registry.js'
 import { TemplateError, escapeMarkdown, renderMail, templateVariablePaths } from '../../src/mail/render.js'
 
-// ADR 0027: Liquid, then Markdown, then the MJML layout, with every output
+// ADR 0027: Liquid, then Markdown, then the HTML layout, with every output
 // escaped.
 
 const app = { name: APP_NAME, url: 'https://app.example.org' }
@@ -26,6 +26,14 @@ describe('renderMail', () => {
       expect(mail.text).not.toMatch(/[<>]/)
     }
   )
+
+  it('uses only markup every client renders in full', async () => {
+    const mail = await render('# Titel\n\nText\n\n---\n\n- a\n- b\n\n***\n\n[Öffnen](https://app.example.org/x)')
+    expect(mail.html).not.toMatch(/<(body|style|link|hr)\b/)
+    expect(mail.html).not.toMatch(/(margin|padding|width|background|line-height|font-weight|border)\s*:/)
+    expect(mail.html).toContain('<p>---</p>')
+    expect(mail.html).toContain('<li>a</li>')
+  })
 
   it('shows markup and Markdown in values as text, never as links or HTML', async () => {
     const evil = { givenName: '[x](https://evil.example) <img src=x onerror=alert(1)>', surname: '# *bold*\n\n- item' }
