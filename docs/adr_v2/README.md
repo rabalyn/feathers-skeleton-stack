@@ -28,6 +28,7 @@ Thirty-one ADRs, each covering a decision with real alternatives. Read [0001](00
 - [0027 — E-mail from code-declared mail kinds, with admin-edited Liquid templates, sent by the worker](0027-email-templates-and-sending.md)
 - [0031 — NetBox holds the university's locations, seeded from its published building list](0031-netbox-locations.md)
 - [0032 — A system-info page shows what runs and which updates are out, from a daily check](0032-system-info-and-update-check.md)
+- [0033 — Feature branches are deleted once merged, on GitHub and locally](0033-branches-and-pull-requests.md)
 
 ### Identity, access and privacy
 
@@ -122,6 +123,6 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 
 ## Status of this set
 
-All thirty-two are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds ([0022](0022-observability-and-alerting.md)), the issuer of production certificates for internal listeners ([0016](0016-nginx-and-tls-everywhere.md)), the university SMTP relay's sending limit ([0027](0027-email-templates-and-sending.md)), and the group attribute the university IdP releases to NetBox ([0031](0031-netbox-locations.md)).
+All thirty-three are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds ([0022](0022-observability-and-alerting.md)), the issuer of production certificates for internal listeners ([0016](0016-nginx-and-tls-everywhere.md)), the university SMTP relay's sending limit ([0027](0027-email-templates-and-sending.md)), and the group attribute the university IdP releases to NetBox ([0031](0031-netbox-locations.md)).
 
 The record of processing activities and the DPIA ([0013](0013-gdpr-export-and-retention.md)) are organisational deliverables to be prepared with the data protection officer before production; view-as ([0028](0028-read-only-view-as.md)) is part of them.
