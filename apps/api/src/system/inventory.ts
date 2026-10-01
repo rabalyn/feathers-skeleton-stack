@@ -47,8 +47,8 @@ export const INVENTORY = [
   {
     "id": "node",
     "image": "docker.io/library/node",
-    "version": "24.21.0-trixie-slim",
-    "digest": "sha256:b64fccfbcd1ae10d11b969a868b50e1c2530a7054813d5cdea04ac3bce551697"
+    "version": "26.10.0-trixie-slim",
+    "digest": "sha256:0e6e6feab3409d135561b2dac7f75dad902ceb5e14c35de4521155779ae70cee"
   },
   {
     "id": "restic",
