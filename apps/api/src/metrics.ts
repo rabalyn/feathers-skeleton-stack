@@ -1,5 +1,5 @@
 import type { Knex } from 'knex'
-import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from 'prom-client'
+import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from '@prometheus-io/client'
 import type { CompletedRequest } from './request-log.js'
 
 // Prometheus metrics (ADR 0022), one registry per process, served on the

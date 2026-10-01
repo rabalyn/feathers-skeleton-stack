@@ -1,7 +1,7 @@
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http'
 import { createServer as createHttpsServer } from 'node:https'
 import { readFileSync } from 'node:fs'
-import type { Registry } from 'prom-client'
+import type { Registry } from '@prometheus-io/client'
 import type { Readiness } from './readiness.js'
 
 // Internal listener (ADR 0006, 0022): reachable only on the observability

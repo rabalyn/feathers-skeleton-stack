@@ -7,7 +7,7 @@ Entrypoint=["bao"]
 Environment=BAO_ADDR=https://127.0.0.1:8200 BAO_CACERT=/openbao/trust/ca.crt
 Exec=server '-config=/openbao/config/server.hcl'
 Group=1000
-Image=docker.io/openbao/openbao@sha256:6d575d906d70d40b9d789149c8dc09897291c5a1707d4d0ba8a459eaaa94c8c4
+Image=docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005
 Network=secrets.network
 User=100
 Volume=../../containers/openbao/server.hcl:/openbao/config/server.hcl:ro,Z

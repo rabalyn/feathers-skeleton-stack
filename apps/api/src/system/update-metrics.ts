@@ -1,5 +1,5 @@
 import type { Knex } from 'knex'
-import { Gauge, type Registry } from 'prom-client'
+import { Gauge, type Registry } from '@prometheus-io/client'
 import { COMPONENT_UPDATES_TABLE } from './update-check.js'
 
 // The update check's results as metrics (ADR 0032), read from the table at

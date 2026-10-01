@@ -49,6 +49,16 @@
       "groupName": "playwright"
     },
     {
+      "description": "TypeScript 7 has no compiler API yet, which typescript-eslint, vue-tsc and Quasar need (ADR 0006)",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7"
+    },
+    {
+      "description": "feathers-casl 3 imports rulesToQuery, which CASL 7 removed; move both together once feathers-casl supports CASL 7 (ADR 0011)",
+      "matchPackageNames": ["@casl/ability"],
+      "allowedVersions": "<7"
+    },
+    {
       "description": "The OpenBao server and its agents run one image and must stay on one version",
       "matchPackageNames": ["docker.io/openbao/openbao"],
       "groupName": "openbao"

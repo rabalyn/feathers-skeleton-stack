@@ -2,7 +2,7 @@
 # image it belongs to, says why it is accepted, and expires: after
 # `expired_at` it blocks the gate again and has to be looked at.
 vulnerabilities:
-  # Keycloak 26.7.4 is the local and CI identity provider only (ADR 0008);
+  # Keycloak 26.8.0 is the local and CI identity provider only (ADR 0008);
   # it never runs in production, where the university IdP is used, and it is
   # the newest release. These are jars Keycloak bundles; they go when a
   # Keycloak release updates them.
@@ -30,7 +30,7 @@ vulnerabilities:
     purls: ["pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.5"]
     statement: "local IdP only (localhost/feathers-idp); fixed in Keycloak's next jar update"
     expired_at: 2026-10-31
-  # Dozzle v11.1.1 (newest) is a local-only log viewer (ADR 0002), never
+  # Dozzle v11.1.3 (newest) is a local-only log viewer (ADR 0002), never
   # deployed, reachable only through Nginx on the developer's machine.
   - id: CVE-2026-84445
     purls: ["pkg:golang/google.golang.org/grpc@v1.84.0"]
@@ -42,7 +42,7 @@ vulnerabilities:
   # while the stack runs only on developer machines; they expire before the
   # first production release, by which the upstream releases should have
   # them. If not, trim or rebuild those images then (decided 2026-09-25).
-  # Grafana 13.2.2: 33 advisories.
+  # Grafana 13.2.3: 33 advisories.
   - id: CVE-2026-14456
     purls: ["pkg:apk/alpine/libcrypto3@3.5.7-r0?arch=x86_64&distro=3.24.1", "pkg:apk/alpine/libssl3@3.5.7-r0?arch=x86_64&distro=3.24.1"]
     statement: "Grafana, fixed upstream, not yet released; local stack only until production"
@@ -52,7 +52,7 @@ vulnerabilities:
     statement: "Grafana, fixed upstream, not yet released; local stack only until production"
     expired_at: 2026-10-25
   - id: CVE-2026-84445
-    purls: ["pkg:golang/google.golang.org/grpc@v1.79.3", "pkg:golang/google.golang.org/grpc@v1.81.1", "pkg:golang/google.golang.org/grpc@v1.82.1", "pkg:golang/google.golang.org/grpc@v1.83.1"]
+    purls: ["pkg:golang/google.golang.org/grpc@v1.79.3", "pkg:golang/google.golang.org/grpc@v1.81.1", "pkg:golang/google.golang.org/grpc@v1.82.1", "pkg:golang/google.golang.org/grpc@v1.83.0", "pkg:golang/google.golang.org/grpc@v1.83.1"]
     statement: "Grafana, fixed upstream, not yet released; local stack only until production"
     expired_at: 2026-10-25
   - id: CVE-2026-46600
@@ -64,7 +64,7 @@ vulnerabilities:
     statement: "Grafana, fixed upstream, not yet released; local stack only until production"
     expired_at: 2026-10-25
   - id: CVE-2026-84304
-    purls: ["pkg:golang/google.golang.org/grpc@v1.79.3", "pkg:golang/google.golang.org/grpc@v1.81.1", "pkg:golang/google.golang.org/grpc@v1.82.1"]
+    purls: ["pkg:golang/google.golang.org/grpc@v1.79.3", "pkg:golang/google.golang.org/grpc@v1.81.1", "pkg:golang/google.golang.org/grpc@v1.82.1", "pkg:golang/google.golang.org/grpc@v1.83.0"]
     statement: "Grafana, fixed upstream, not yet released; local stack only until production"
     expired_at: 2026-10-25
   - id: GHSA-hrxh-6v49-42gf
@@ -168,11 +168,11 @@ vulnerabilities:
     statement: "Grafana, fixed upstream, not yet released; local stack only until production"
     expired_at: 2026-10-25
   - id: CVE-2026-21728
-    purls: ["pkg:golang/github.com/grafana/tempo@v1.5.1-0.20250529124718-87c2dc380cec"]
+    purls: ["pkg:golang/github.com/grafana/tempo@v1.5.1-0.20250529124718-87c2dc380cec", "pkg:golang/github.com/grafana/tempo@v1.5.1-0.20260910130453-bcfe9f230c1d"]
     statement: "Grafana, fixed upstream, not yet released; local stack only until production"
     expired_at: 2026-10-25
   - id: CVE-2026-28377
-    purls: ["pkg:golang/github.com/grafana/tempo@v1.5.1-0.20250529124718-87c2dc380cec"]
+    purls: ["pkg:golang/github.com/grafana/tempo@v1.5.1-0.20250529124718-87c2dc380cec", "pkg:golang/github.com/grafana/tempo@v1.5.1-0.20260910130453-bcfe9f230c1d"]
     statement: "Grafana, fixed upstream, not yet released; local stack only until production"
     expired_at: 2026-10-25
   # blackbox_exporter v0.28.0: 39 advisories.
@@ -496,7 +496,7 @@ vulnerabilities:
     statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
     expired_at: 2026-10-25
 
-  # Grafana Alloy v1.20.0 (newest) is built on Ubuntu 24.04, whose OpenSSL
+  # Grafana Alloy v1.20.1 (newest) is built on Ubuntu 24.04, whose OpenSSL
   # fix is released but not yet in a rebuilt Alloy image. Our own images
   # upgrade OpenSSL in their Containerfiles instead (decided 2026-09-30).
   - id: CVE-2026-84782

@@ -36,8 +36,8 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-TRIVY=docker.io/aquasec/trivy@sha256:ee940acbf1f58ebadb42d01434ce4609530bf1b52536afbd1eee66cd7123c5c9 # 0.74.0
-YQ=docker.io/mikefarah/yq:4.53.6@sha256:127185429860d8240ba879fd96db7b33fe4895609864f0ab21b93e4d2ac20b5e
+TRIVY=docker.io/aquasec/trivy@sha256:9db099105405c648166e6b94155eb32f8da12673cf1f455207f7385cc9a77283 # 0.75.0
+YQ=docker.io/mikefarah/yq:4.54.1@sha256:2d6a23c682c574ae49320fdf2419441b6f10658588d44b6d8739d673b96903e5
 CI_IMAGE=localhost/feathers-ci:dev
 TRIVY_CACHE=feathers-trivy-cache
 

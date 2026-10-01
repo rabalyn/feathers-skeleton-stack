@@ -1,4 +1,4 @@
-import fastCopy from 'fast-copy'
+import { copy as fastCopy } from 'fast-copy'
 import { _ } from '@feathersjs/commons'
 import type { AnyData } from '../types.js'
 

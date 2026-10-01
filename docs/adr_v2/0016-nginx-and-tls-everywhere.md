@@ -35,6 +35,8 @@ Nginx reads its certificate from one path in every environment and reloads when 
 
 ### Nginx responsibilities
 
+- Runs the official image's **mainline** line (odd minor, `1.31.x-alpine`), not stable: nginx itself recommends mainline, fixes land there first, and the image is rebuilt and scanned like every other pin ([0018](0018-owasp-security-baseline.md)). Decided 2026-10-01, when the update moved it from 1.30.5.
+
 - Terminates TLS; TLS 1.2 and 1.3 only.
 - Serves the built frontend bundle, which is part of the `nginx` image, with the SPA history fallback; hashed assets cached immutably and `index.html` not cached. Under the `dev` profile, proxies to the Vite dev server instead ([0014](0014-frontend-quasar-vue.md)).
 - Proxies `/api` to the API and upgrades `/api/socket.io` to WebSocket, with an idle timeout longer than the Socket.io ping interval.

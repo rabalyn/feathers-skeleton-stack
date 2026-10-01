@@ -38,7 +38,7 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT=$ROOT/deploy/quadlet
-YQ=docker.io/mikefarah/yq:4.53.6@sha256:127185429860d8240ba879fd96db7b33fe4895609864f0ab21b93e4d2ac20b5e
+YQ=docker.io/mikefarah/yq:4.54.1@sha256:2d6a23c682c574ae49320fdf2419441b6f10658588d44b6d8739d673b96903e5
 PODLET=ghcr.io/containers/podlet:v0.3.2@sha256:7c257b788818bc040fe3555e0507ff913df66620470d05a55fd8e59343064221
 HEADER='# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
 # production settings in a drop-in directory next to this file.'
