@@ -1,7 +1,7 @@
 import { Queue, UnrecoverableError, Worker, type JobsOptions, type RedisOptions } from 'bullmq'
 import type { Knex } from 'knex'
 import type { Logger } from 'pino'
-import { Counter, Gauge, Histogram, type Registry } from 'prom-client'
+import { Counter, Gauge, Histogram, type Registry } from '@prometheus-io/client'
 import type { SettingsStore } from '../settings/store.js'
 import type { Storage } from '../storage.js'
 import { buildExport } from '../gdpr/export.js'

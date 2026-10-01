@@ -1,6 +1,6 @@
 import type { Redis } from 'ioredis'
 import type { Knex } from 'knex'
-import { Gauge, type Registry } from 'prom-client'
+import { Gauge, type Registry } from '@prometheus-io/client'
 import type { Storage } from './storage.js'
 
 // Readiness (ADR 0022): whether the API can serve its requests right now.

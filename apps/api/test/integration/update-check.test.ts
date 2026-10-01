@@ -1,5 +1,5 @@
 import { pino } from 'pino'
-import { Registry } from 'prom-client'
+import { Registry } from '@prometheus-io/client'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { Application } from '../../src/app.js'
 import { INVENTORY } from '../../src/system/components.js'
