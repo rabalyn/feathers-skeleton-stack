@@ -29,6 +29,7 @@ const EVERYONE_SEEDED = [
   'files.upload',
   'profile.avatar',
   'profile.locale',
+  'profile.preferences',
   'roles.own-names'
 ]
 

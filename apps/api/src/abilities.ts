@@ -61,6 +61,12 @@ const CATALOGUE_ENTRIES = [
   }),
   // The language mail reaches the caller in (ADR 0027).
   entry('profile.locale', 'self', (can) => can(['create', 'read'], 'locales')),
+  // Personal preferences, such as the order of the navigation (decided
+  // 2026-10-02, ADR 0014). A create sets the caller's own row.
+  entry('profile.preferences', 'self', (can, user) => {
+    can('create', 'preferences')
+    can(['read', 'delete'], 'preferences', { userId: user.id })
+  }),
   // Uploads (ADR 0020). The caller owns what they upload.
   entry('files.upload', 'self', (can) => can('create', 'files')),
   entry('files.own', 'self', (can, user) => can('read', 'files', { ownerId: user.id })),
@@ -248,6 +254,7 @@ export const TOKEN_EXCLUDED_PERMISSIONS: readonly PermissionKey[] = [
   // One's own data stays with browser sessions (decided 2026-10-01).
   'profile.avatar',
   'profile.locale',
+  'profile.preferences',
   'files.upload',
   'files.own',
   'audit-events.own',

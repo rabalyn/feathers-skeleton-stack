@@ -58,6 +58,8 @@ import type { Site, SitePage, SiteQuery } from './services/sites/sites.schema.js
 import type { SITE_EXTERNAL_METHODS } from './services/sites/sites.js'
 import type { SystemInfoReport, SYSTEM_INFO_REPORT_EXTERNAL_METHODS } from './services/system-info/system-info.js'
 import type { UpdateCheck, UpdateCheckData, UPDATE_CHECK_EXTERNAL_METHODS } from './services/update-checks/update-checks.js'
+import type { Preference, PreferenceData, PreferenceQuery } from './services/preferences/preferences.schema.js'
+import type { PREFERENCE_EXTERNAL_METHODS } from './services/preferences/preferences.js'
 // gen:service imports (ADR 0030)
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
@@ -99,6 +101,8 @@ export type { Site, SiteGroup, SitePage, SiteQuery } from './services/sites/site
 export { SITE_PAGE_MAX, SITE_SEARCH_MAX_LENGTH } from './limits.js'
 export type { SystemComponent, SystemInfoReport } from './services/system-info/system-info.js'
 export type { UpdateCheck, UpdateCheckData } from './services/update-checks/update-checks.js'
+export type { Preference, PreferenceData, PreferenceQuery } from './services/preferences/preferences.schema.js'
+export type { PreferenceKey, PreferenceValues } from './preferences/registry.js'
 // gen:service exports (ADR 0030)
 export { ALLOWED_CONTENT_TYPES, AVATAR_CONTENT_TYPES, FILENAME_HEADER, type AllowedContentType } from './uploads.js'
 export {
@@ -235,6 +239,10 @@ export interface ClientServiceTypes {
   'update-checks': External<
     ClientService<UpdateCheck, UpdateCheckData, never, never, Params>,
     typeof UPDATE_CHECK_EXTERNAL_METHODS
+  >
+  preferences: External<
+    ClientService<Preference, PreferenceData, never, Paginated<Preference>, Params<PreferenceQuery>>,
+    typeof PREFERENCE_EXTERNAL_METHODS
   >
   // gen:service client-types (ADR 0030)
 }

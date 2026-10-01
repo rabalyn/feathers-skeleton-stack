@@ -30,10 +30,72 @@
 
     <q-drawer v-model="drawer" show-if-above bordered>
       <q-list>
-        <q-item v-for="link in links" :key="link.name" clickable :to="{ name: link.name }">
-          <q-item-section avatar><q-icon :name="link.icon" /></q-item-section>
-          <q-item-section>{{ t(link.label) }}</q-item-section>
-        </q-item>
+        <!-- Outside the items, so the links stay the drawer's only items. -->
+        <div v-if="canArrange" class="row items-center no-wrap q-pr-sm">
+          <q-item-label header class="col">{{ t(arranging ? 'nav.arranging' : 'nav.title') }}</q-item-label>
+          <q-btn
+            flat
+            dense
+            round
+            size="sm"
+            :icon="arranging ? 'check' : 'edit'"
+            :aria-label="t(arranging ? 'nav.done' : 'nav.arrange')"
+            :aria-pressed="arranging"
+            data-testid="nav-arrange"
+            @click="arranging = !arranging"
+          />
+        </div>
+        <template v-if="arranging">
+          <q-item
+            v-for="(link, index) in arranged"
+            :key="link.name"
+            draggable="true"
+            class="nav-arrange-item"
+            :class="{ 'nav-drop-target': dropIndex === index && dragIndex !== index }"
+            :data-testid="`nav-item-${link.name}`"
+            @dragstart="dragStart($event, index)"
+            @dragover.prevent="dropIndex = index"
+            @dragleave="dropIndex = dropIndex === index ? null : dropIndex"
+            @drop.prevent="drop(index)"
+            @dragend="dragIndex = dropIndex = null"
+          >
+            <q-item-section avatar><q-icon name="drag_indicator" /></q-item-section>
+            <q-item-section>{{ t(link.label) }}</q-item-section>
+            <q-item-section side class="row no-wrap">
+              <q-btn
+                flat
+                dense
+                round
+                size="sm"
+                icon="arrow_upward"
+                :disable="index === 0"
+                :aria-label="t('nav.moveUp', { name: t(link.label) })"
+                @click="move(index, index - 1)"
+              />
+              <q-btn
+                flat
+                dense
+                round
+                size="sm"
+                icon="arrow_downward"
+                :disable="index === arranged.length - 1"
+                :aria-label="t('nav.moveDown', { name: t(link.label) })"
+                @click="move(index, index + 1)"
+              />
+            </q-item-section>
+          </q-item>
+          <q-item>
+            <q-item-section>
+              <q-btn flat dense no-caps icon="restart_alt" :label="t('nav.reset')" data-testid="nav-reset" @click="reset" />
+            </q-item-section>
+          </q-item>
+        </template>
+        <template v-else>
+          <q-item v-for="link in arranged" :key="link.name" clickable :to="{ name: link.name }" :data-testid="`nav-item-${link.name}`">
+            <q-item-section avatar><q-icon :name="link.icon" /></q-item-section>
+            <q-item-section>{{ t(link.label) }}</q-item-section>
+          </q-item>
+        </template>
       </q-list>
     </q-drawer>
 
@@ -45,10 +107,12 @@
 
 <script setup lang="ts">
 import type { Locale, Role } from '@app/api/client'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
+import { useNavOrder } from '@/composables/nav-order'
+import { arrange, moved } from '@/composables/order'
 import { useNotify } from '@/composables/notify'
 import { useSessionStore } from '@/stores/session'
 
@@ -124,4 +188,47 @@ const links = computed(() =>
       (!link.requiresAny || link.requiresAny.some(([action, subject]) => session.canAll(action!, subject!)))
   )
 )
+
+// The person's own order (decided 2026-10-02, ADR 0014): arranged in place,
+// with buttons or by dragging, and stored at once. Not while viewing as
+// somebody or previewing a role: the order is the person's own.
+const navOrder = useNavOrder()
+const arranging = ref(false)
+const canArrange = computed(() => !session.viewAs && !session.preview && session.can('create', 'preferences'))
+const arranged = computed(() => arrange(links.value, navOrder.order()))
+
+const move = (from: number, to: number) => {
+  const names = arranged.value.map((link) => link.name)
+  void navOrder.save(moved(names, from, to))
+}
+
+const reset = () => void navOrder.reset()
+
+const dragIndex = ref<number | null>(null)
+const dropIndex = ref<number | null>(null)
+const dragStart = (event: DragEvent, index: number) => {
+  dragIndex.value = index
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    // Firefox starts a drag only with data set.
+    event.dataTransfer.setData('text/plain', arranged.value[index]?.name ?? '')
+  }
+}
+const drop = (index: number) => {
+  if (dragIndex.value !== null && dragIndex.value !== index) move(dragIndex.value, index)
+  dragIndex.value = dropIndex.value = null
+}
+
+watch(canArrange, (allowed) => {
+  if (!allowed) arranging.value = false
+})
 </script>
+
+<style scoped>
+.nav-arrange-item {
+  cursor: grab;
+}
+.nav-drop-target {
+  box-shadow: inset 0 2px 0 var(--q-primary);
+}
+</style>

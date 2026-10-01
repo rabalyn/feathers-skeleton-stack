@@ -25,7 +25,14 @@
     "sessions": "Sessions",
     "apiTokens": "API tokens",
     "permissions": "Roles & permissions",
-    "systemInfo": "System info"
+    "systemInfo": "System info",
+    "title": "Navigation",
+    "arrange": "Arrange navigation",
+    "arranging": "Arrange navigation",
+    "done": "Done arranging",
+    "moveUp": "Move {name} up",
+    "moveDown": "Move {name} down",
+    "reset": "Reset to default order"
   },
   "auth": {
     "login": "Log in",
@@ -412,6 +419,7 @@
     "keys": {
       "profile_avatar": "Own picture",
       "profile_locale": "Own language",
+      "profile_preferences": "Own preferences",
       "files_upload": "Upload files",
       "files_own": "Own files",
       "audit-events_own": "Own activity",
@@ -441,6 +449,7 @@
     "descriptions": {
       "profile_avatar": "Set and remove one's own profile picture",
       "profile_locale": "Choose the language one's mail is written in",
+      "profile_preferences": "Keep one's own preferences, such as the order of the navigation, across browsers",
       "files_upload": "Upload files, e.g. a picture or a document's file",
       "files_own": "Read and download the files one has uploaded",
       "audit-events_own": "See what one has done in the activity log; the data export contains it regardless",

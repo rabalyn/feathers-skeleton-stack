@@ -42,6 +42,7 @@ The permission matrix, now as catalogue permissions. `admin` holds all of them. 
 | (fixed core) | Own user record read; own GDPR export: request, list, download; ending one's own view-as | always | always | always |
 | `profile.avatar` | Own avatar: set, remove | ✓ | — | — |
 | `profile.locale` | Own mail language | ✓ | — | — |
+| `profile.preferences` | Own preferences, such as the navigation order ([0014](0014-frontend-quasar-vue.md), decided 2026-10-02) | ✓ | — | — |
 | `files.upload` | Upload files ([0020](0020-object-storage-uploads.md)) | ✓ | — | — |
 | `files.own` | Own files: read, download | ✓ | — | — |
 | `audit-events.own` | Own audit events, those one caused | ✓ | — | — |

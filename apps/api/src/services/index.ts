@@ -21,6 +21,7 @@ import { users } from './users/users.js'
 import { sites } from './sites/sites.js'
 import { systemInfo } from './system-info/system-info.js'
 import { updateChecks } from './update-checks/update-checks.js'
+import { preferences } from './preferences/preferences.js'
 // gen:service imports (ADR 0030)
 
 export const services = (app: Application) => {
@@ -46,5 +47,6 @@ export const services = (app: Application) => {
   app.configure(sites)
   app.configure(systemInfo)
   app.configure(updateChecks)
+  app.configure(preferences)
   // gen:service configure (ADR 0030)
 }

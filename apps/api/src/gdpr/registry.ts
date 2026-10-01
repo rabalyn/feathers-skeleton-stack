@@ -150,6 +150,17 @@ export const PERSONAL_DATA: readonly RegistryEntry[] = [
   },
   {
     kind: 'table',
+    table: 'preferences',
+    userColumns: ['user_id'],
+    export: {
+      key: 'preferences',
+      collect: (knex, userId) => knex('preferences').where({ userId }).orderBy('key').select('key', 'value', 'createdAt', 'updatedAt')
+    },
+    erasure: 'delete',
+    note: 'Personal preferences such as the order of the navigation (decided 2026-10-02)'
+  },
+  {
+    kind: 'table',
     table: 'local_credentials',
     userColumns: ['user_id'],
     erasure: 'keep',
