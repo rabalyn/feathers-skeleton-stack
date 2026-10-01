@@ -99,6 +99,8 @@ const CATALOGUE_ENTRIES = [
     can('read', 'mail-deliveries')
   }),
   entry('queues.read', 'configuration', (can) => can('read', 'queues')),
+  // What runs and which updates are out (ADR 0032).
+  entry('system-info.read', 'configuration', (can) => can('read', 'system-info')),
   // API tokens (ADR 0029): creating one's own, bounded by one's own rights
   // on every request; seeing and revoking one's own is the baseline.
   entry('api-tokens.create', 'api', (can) => can('create', 'api-tokens')),

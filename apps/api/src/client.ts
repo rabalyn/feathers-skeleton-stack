@@ -56,6 +56,7 @@ import type { UserRoles, UserRolesPatch, USER_ROLE_EXTERNAL_METHODS } from './se
 import type { ViewAs, ViewAsData, VIEW_AS_EXTERNAL_METHODS } from './services/view-as/view-as.js'
 import type { Site, SitePage, SiteQuery } from './services/sites/sites.schema.js'
 import type { SITE_EXTERNAL_METHODS } from './services/sites/sites.js'
+import type { SystemInfoReport, SYSTEM_INFO_REPORT_EXTERNAL_METHODS } from './services/system-info/system-info.js'
 // gen:service imports (ADR 0030)
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
@@ -95,6 +96,7 @@ export type {
 export type { QueueJob, QueueJobState, QueueScheduler, QueueStatus } from './services/queues/queues.schema.js'
 export type { Site, SiteGroup, SitePage, SiteQuery } from './services/sites/sites.schema.js'
 export { SITE_PAGE_MAX, SITE_SEARCH_MAX_LENGTH } from './limits.js'
+export type { SystemComponent, SystemInfoReport } from './services/system-info/system-info.js'
 // gen:service exports (ADR 0030)
 export { ALLOWED_CONTENT_TYPES, AVATAR_CONTENT_TYPES, FILENAME_HEADER, type AllowedContentType } from './uploads.js'
 export {
@@ -218,6 +220,11 @@ export interface ClientServiceTypes {
   queues: External<ClientService<QueueStatus, never, never, QueueStatus[], Params>, typeof QUEUE_EXTERNAL_METHODS>
   // Locations (ADR 0031): the university's buildings from NetBox, read only.
   sites: External<ClientService<Site, never, never, SitePage, Params<SiteQuery>>, typeof SITE_EXTERNAL_METHODS>
+  // What runs and which updates are out (ADR 0032), read only.
+  'system-info': External<
+    ClientService<SystemInfoReport, never, never, SystemInfoReport, Params>,
+    typeof SYSTEM_INFO_REPORT_EXTERNAL_METHODS
+  >
   // gen:service client-types (ADR 0030)
 }
 

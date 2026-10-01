@@ -134,6 +134,11 @@ services:
       context: .
       dockerfile: containers/api/Containerfile
       target: runtime
+      # Set by scripts/stack.sh from git (ADR 0032).
+      args:
+        APP_COMMIT: ${APP_COMMIT:-unknown}
+        APP_COMMIT_TIME: ${APP_COMMIT_TIME:-unknown}
+        APP_DIRTY: ${APP_DIRTY:-false}
     image: localhost/feathers-api:dev
     container_name: api
     # The api refuses to start before migrate has seeded the runtime
@@ -188,6 +193,9 @@ services:
       NETBOX_TOKEN_KEY: &netbox-token-key feathersapi1
       NETBOX_TOKEN_FILE: /run/secrets/netbox_token
       NETBOX_CA_FILE: /trust/ca.crt
+      # System info (ADR 0032): the running versions from Prometheus.
+      PROMETHEUS_URL: https://prometheus:9090
+      PROMETHEUS_CA_FILE: /trust/ca.crt
     networks: [edge, app-data, identity, object, observability, netbox-api]
     volumes:
       - api-secrets:/run/secrets:ro
@@ -219,9 +227,13 @@ services:
       S3_EXPORTS_BUCKET: e2e-exports
       # Its exports go to worker-e2e, not to the local worker (ADR 0024).
       QUEUE_PREFIX: bull:e2e
+      # Like worker-e2e's: the suite never reaches the internet (ADR 0032).
+      UPDATE_CHECK: "off"
       # Stdout only: its lines stay out of Loki and the alert rules.
       LOG_FILE: ""
-    networks: [edge, app-data, identity, object, netbox-api]
+    # `observability` for Prometheus, where the system-info page reads the
+    # running versions (ADR 0032).
+    networks: [edge, app-data, identity, object, observability, netbox-api]
     volumes:
       - api-secrets:/run/secrets:ro
       - trust:/trust:ro
@@ -266,6 +278,11 @@ services:
       SMTP_PORT: "1025"
       SMTP_CA_FILE: /trust/ca.crt
       MAIL_FROM: noreply@app.localhost
+      # System info (ADR 0032): the host's OS version from Prometheus, and
+      # the daily check for newer versions, the one request to the internet.
+      PROMETHEUS_URL: https://prometheus:9090
+      PROMETHEUS_CA_FILE: /trust/ca.crt
+      UPDATE_CHECK: "on"
     networks: [app-data, object, observability]
     volumes:
       - worker-secrets:/run/secrets:ro
@@ -295,6 +312,8 @@ services:
       PUBLIC_ORIGIN: https://e2e.localhost:8443
       # Stdout only: its lines stay out of Loki and the alert rules.
       LOG_FILE: ""
+      # The suite never reaches the internet (ADR 0032).
+      UPDATE_CHECK: "off"
     # `observability` for Mailpit, where the suite finds its mail (ADR 0027).
     networks: [app-data, object, observability]
     volumes:
@@ -615,6 +634,11 @@ services:
       NETBOX_TOKEN_KEY: *netbox-token-key
       NETBOX_TOKEN_FILE: /run/secrets/netbox_token
       NETBOX_CA_FILE: /trust/ca.crt
+      # The stack's Prometheus (ADR 0032); the update check's sources are
+      # faked in the tests, never the internet.
+      PROMETHEUS_URL: https://prometheus:9090
+      PROMETHEUS_CA_FILE: /trust/ca.crt
+      UPDATE_CHECK: "off"
     networks: [app-data, identity, object, observability, netbox-api]
     volumes:
       - test-secrets:/run/secrets:ro

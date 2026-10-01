@@ -25,6 +25,10 @@ import {
 import { exportExpiry } from './export-expiry.js'
 import { objectPurge } from './object-purge.js'
 import { retentionCleanup } from './retention.js'
+import type { Labels } from '../system/prometheus.js'
+import { COMPONENT_UPDATES_TABLE, runUpdateCheck } from '../system/update-check.js'
+import { observeUpdates } from '../system/update-metrics.js'
+import type { UpdateSources } from '../system/update-sources.js'
 
 // The worker's queues and their workers (ADR 0024): `maintenance`, whose
 // recurring jobs are job schedulers, so a schedule exists once in Valkey
@@ -36,6 +40,10 @@ export { BUILD_EXPORT, DATA_EXPORTS_QUEUE, MAINTENANCE_QUEUE, QUEUE_PREFIX, queu
 export const RETENTION_CLEANUP = 'retention-cleanup'
 export const OBJECT_PURGE = 'object-purge'
 export const EXPORT_EXPIRY = 'export-expiry'
+// The check for newer versions (ADR 0032): daily, and once at start when the
+// last result is older than a day.
+export const UPDATE_CHECK = 'update-check'
+export const UPDATE_CHECK_STALE_MS = 24 * 60 * 60 * 1000
 // The mail outbox's sweep (ADR 0027): every minute, one attempt; the next
 // run is the retry.
 export const MAIL_SWEEP = 'mail-sweep'
@@ -79,6 +87,9 @@ export interface MaintenanceOptions {
   // with. Without it, deliveries wait in the mail queue for a worker that
   // has one.
   mail?: { sender: MailSender; publicOrigin: string }
+  // The update check's sources (ADR 0032); without them it is off, its
+  // schedule removed and its metrics not exported.
+  updateCheck?: { sources: UpdateSources; hostOs: () => Promise<Labels | null> }
 }
 
 // How often the worker re-reads the sending limit; a change applies to
@@ -96,7 +107,8 @@ export const startMaintenance = ({
   logger,
   prefix = QUEUE_PREFIX,
   metrics,
-  mail: sending
+  mail: sending,
+  updateCheck
 }: MaintenanceOptions) => {
   const queue = new Queue(MAINTENANCE_QUEUE, { connection, prefix, defaultJobOptions: JOB_OPTIONS })
   const exportQueue = new Queue<ExportJob>(DATA_EXPORTS_QUEUE, { connection, prefix, defaultJobOptions: EXPORT_JOB_OPTIONS })
@@ -129,6 +141,8 @@ export const startMaintenance = ({
       }
     }
   })
+
+  if (metrics && updateCheck) observeUpdates(metrics, knex)
 
   // Logs and counts what a worker's jobs do.
   const observe = (worker: Worker) => {
@@ -181,6 +195,10 @@ export const startMaintenance = ({
             return mail.sweep(knex)
           case RESOLVE_CAMPAIGN:
             return resolveCampaign(knex, mail, (job.data as CampaignJob).campaignId)
+          case UPDATE_CHECK:
+            // A job queued before the check was switched off.
+            if (!updateCheck) return 'off'
+            return runUpdateCheck({ knex, logger, ...updateCheck })
           default:
             throw new UnrecoverableError(`unknown job ${job.name}`)
         }
@@ -307,6 +325,21 @@ export const startMaintenance = ({
         await queue.upsertJobScheduler(name, DAILY, { name, opts: JOB_OPTIONS })
       }
       await queue.upsertJobScheduler(MAIL_SWEEP, MAIL_SWEEP_EVERY, { name: MAIL_SWEEP, opts: MAIL_SWEEP_OPTIONS })
+      if (updateCheck) {
+        await queue.upsertJobScheduler(UPDATE_CHECK, DAILY, { name: UPDATE_CHECK, opts: JOB_OPTIONS })
+        const latest = await knex(COMPONENT_UPDATES_TABLE).max<{ max: Date | null }>('attemptedAt as max').first()
+        if (!latest?.max || Date.now() - new Date(latest.max).getTime() > UPDATE_CHECK_STALE_MS) {
+          // One id: workers starting together queue one check. Removed when
+          // done, so the id is free for the next stale start.
+          await queue.add(
+            UPDATE_CHECK,
+            {},
+            { ...JOB_OPTIONS, jobId: `${UPDATE_CHECK}-on-start`, removeOnComplete: true, removeOnFail: true }
+          )
+        }
+      } else {
+        await queue.removeJobScheduler(UPDATE_CHECK)
+      }
       if (mailWorker) {
         // The limit is in place before the first mail goes.
         await applyMailLimit()
