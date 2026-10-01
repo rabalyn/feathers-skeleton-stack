@@ -12,8 +12,8 @@ export const WORKER_PREFIX = 'test_w'
 export const loadTestDatabaseConfig = () => loadConfig(DATABASE_KEYS)
 
 // The maintenance connection used to create and drop worker databases.
-export const maintenanceKnex = async (poolMax = 1): Promise<Knex> =>
-  createKnex({ ...(await loadTestDatabaseConfig()), databaseName: 'postgres', databasePoolMax: poolMax })
+export const maintenanceKnex = async (poolMax = 1, overrides?: Partial<Knex.Config>): Promise<Knex> =>
+  createKnex({ ...(await loadTestDatabaseConfig()), databaseName: 'postgres', databasePoolMax: poolMax }, { overrides })
 
 // A new name for every test file: dropping a database waits for a
 // checkpoint, which with every worker writing can outlast the hook timeout,
