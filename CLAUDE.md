@@ -12,6 +12,7 @@
 - A decision that changes an ADR is recorded in that ADR as part of the same change, following the convention in `docs/adr_v2/0019-adr-convention.md`.
 - This repository is a skeleton for future products: keep product-specific logic out, and keep infrastructure generic.
 - New Feathers services are created with `pnpm gen:service`, not by hand and not with `@feathersjs/cli` (`docs/adr_v2/0030-service-generator.md`).
+- Frontend work uses the `quasar` MCP server: look up every Quasar component, plugin, directive, composable or app-vite option you use before writing or changing code with it. Before writing or changing an end-to-end test, open its pages through the `playwright` MCP server and read them with `browser_snapshot`. If a server isn't connected, say so instead of working from memory (`docs/adr_v2/0026-mcp-development-tooling.md`, *When an agent must use them*).
 
 ## Implementation approach
 
