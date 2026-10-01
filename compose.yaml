@@ -1098,6 +1098,10 @@ services:
       GF_SMTP_FROM_ADDRESS: grafana@app.localhost
       GF_SMTP_FROM_NAME: claude-feathers alerts
       GF_SMTP_STARTTLS_POLICY: MandatoryStartTLS
+      # Plain text only: Grafana's HTML template loads its font from Google
+      # (against ADR 0001) and uses markup many mail clients render only in
+      # part; its text template carries the same alert, links and labels.
+      GF_EMAILS_CONTENT_TYPES: text/plain
       # Deployment configuration (ADR 0022); may be a distribution list.
       ALERT_EMAIL: operators@app.localhost
       # Alertmanager's grouping times, short here so `stack.sh alerts` is

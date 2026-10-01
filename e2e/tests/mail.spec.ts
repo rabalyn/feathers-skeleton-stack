@@ -4,7 +4,8 @@ import { ADMIN, USER, loginAs, nav } from './support.js'
 // Mail end to end (ADR 0027): the export-ready notification and a mailing
 // sent from the Mailings page leave through worker-e2e and arrive in
 // Mailpit, read here through Nginx at mail.localhost like a person would;
-// and the template editor refuses wording that cannot work.
+// that its HTML is rendered in full by every mail client Mailpit's check
+// knows; and the template editor refuses wording that cannot work.
 
 const MAILPIT = 'https://mail.localhost:8443'
 const UMA = 'uma.user@example.org'
@@ -23,7 +24,8 @@ const mailpit = async (browser: Browser) => {
 }
 
 // The text of the first mail to `address` with `subject` created since
-// `since`, once it has arrived.
+// `since`, once it has arrived. Its HTML must pass Mailpit's HTML check
+// without a single warning (ADR 0027).
 const arrived = async (inbox: Page, address: string, subject: string, since: Date): Promise<string> => {
   let found: Message | undefined
   await expect
@@ -40,6 +42,12 @@ const arrived = async (inbox: Page, address: string, subject: string, since: Dat
       { timeout: 60_000, intervals: [1000] }
     )
     .toBe(true)
+  const warnings = await inbox.evaluate(
+    async (id) =>
+      ((await (await fetch(`/api/v1/message/${id}/html-check`)).json()) as { Warnings: { Title: string }[] }).Warnings.map((w) => w.Title),
+    found!.ID
+  )
+  expect(warnings).toEqual([])
   return inbox.evaluate(async (id) => ((await (await fetch(`/api/v1/message/${id}`)).json()) as { Text: string }).Text, found!.ID)
 }
 
