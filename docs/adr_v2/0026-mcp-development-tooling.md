@@ -58,6 +58,14 @@ What a developer needs, in Claude Code's terminal and in the desktop app alike, 
 
 An action such as a click answers with the page's state and a link to a snapshot file inside the container, which the agent cannot open; `browser_snapshot` returns the accessibility tree itself. Other MCP clients read `.mcp.json` differently or not at all; they are not configured by this repository.
 
+### When an agent must use them
+
+Having the servers available doesn't mean an agent uses them. Agents decide per session whether to look something up, and they don't read this ADR unless something points them to it. So the use is a rule, and `CLAUDE.md`, which agents load at the start of every session, states it and links here:
+
+- **Before writing or changing frontend code that uses a Quasar component, plugin, directive or composable, or `@quasar/app-vite` configuration**, the agent looks up the parts it uses through `quasar` (`get_api` for props, slots, events and methods; `search_docs` and `get_page` for usage). It doesn't rely on memory, because memory may describe another Quasar version.
+- **Before writing or changing an end-to-end test**, the agent opens the pages the test covers through `playwright` and reads them with `browser_snapshot`, so the test's locators come from the real UI.
+- If a server fails to connect, the agent tells the developer and doesn't silently fall back to memory. For `playwright` the usual cause is a stack that isn't running (see *Using them*).
+
 ### What MCP is not used for
 
 | Not used for | Why |
