@@ -67,6 +67,11 @@ export class Netbox {
     return this.get(`/api/dcim/sites/${id}/`)
   }
 
+  // NetBox's own version, for the system-info page (ADR 0032).
+  status(): Promise<{ 'netbox-version'?: string }> {
+    return this.get('/api/status/')
+  }
+
   private get<T>(path: string): Promise<T> {
     const url = new URL(path, this.config.netboxUrl)
     return new Promise<T>((resolve, reject) => {

@@ -421,7 +421,8 @@
       "mail_manage": "Mailvorlagen und Rundmails",
       "queues_read": "Warteschlangen sehen",
       "api-tokens_create": "API-Tokens erstellen",
-      "api-tokens_manage": "API-Tokens aller verwalten"
+      "api-tokens_manage": "API-Tokens aller verwalten",
+      "system-info_read": "Systeminformationen sehen"
     },
     "descriptions": {
       "users_read": "Jedes Benutzerkonto mit Bild und die Namen der Rollen",
@@ -441,7 +442,8 @@
       "mail_manage": "Den Wortlaut von Mails bearbeiten, Rundmails senden und das Versandprotokoll lesen",
       "queues_read": "Zustand, Zeitpläne und Jobs der Hintergrund-Warteschlangen",
       "api-tokens_create": "Tokens für Skripte erstellen, mit gewählten Berechtigungen, die man selbst hat; sie hören auf zu wirken, wenn diese Berechtigung entzogen wird",
-      "api-tokens_manage": "Die API-Tokens aller Personen sehen und widerrufen"
+      "api-tokens_manage": "Die API-Tokens aller Personen sehen und widerrufen",
+      "system-info_read": "Die laufenden Versionen, verfügbare Updates und das Ende ihrer Unterstützung"
     }
   },
   "viewAs": {

@@ -421,7 +421,8 @@
       "mail_manage": "Mail templates and mailings",
       "queues_read": "See job queues",
       "api-tokens_create": "Create API tokens",
-      "api-tokens_manage": "Manage everybody’s API tokens"
+      "api-tokens_manage": "Manage everybody’s API tokens",
+      "system-info_read": "See system information"
     },
     "descriptions": {
       "users_read": "Every user record with its picture, and the names of the roles",
@@ -441,7 +442,8 @@
       "mail_manage": "Edit the wording of mails, send mailings and read the delivery log",
       "queues_read": "State, schedules and jobs of the background queues",
       "api-tokens_create": "Create tokens for scripts, carrying chosen permissions one holds oneself; they stop working when this permission is withdrawn",
-      "api-tokens_manage": "See and revoke the API tokens of every person"
+      "api-tokens_manage": "See and revoke the API tokens of every person",
+      "system-info_read": "The versions that run, the updates available for them and their end of life"
     }
   },
   "viewAs": {
