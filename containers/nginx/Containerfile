@@ -4,12 +4,12 @@ ARG NODE_IMAGE=docker.io/library/node:26.10.0-trixie-slim@sha256:0e6e6feab3409d1
 # The frontend's dependencies and the built types it imports: the API client
 # (ADR 0007) and the feathers-pinia fork (ADR 0014).
 FROM ${NODE_IMAGE} AS web-deps
-# OpenSSL from the distribution's security updates, until the pinned base
-# image carries it (CVE-2026-75804, CVE-2026-84782; ADR 0018). Remove once
-# a rebuilt base is pinned.
+# OpenSSL and PCRE2 from the distribution's security updates, until the
+# pinned base image carries them (CVE-2026-75804, CVE-2026-84782,
+# CVE-2026-103111; ADR 0018). Remove once a rebuilt base is pinned.
 RUN export DEBIAN_FRONTEND=noninteractive \
  && apt-get update \
- && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl \
+ && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl libpcre2-8-0 \
  && rm -rf /var/lib/apt/lists/*
 # pnpm at the version package.json names (packageManager), installed with
 # the npm bundled with Node, which is then removed: Node 25 and later ship no

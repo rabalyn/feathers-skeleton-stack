@@ -6,12 +6,12 @@ ARG RESTIC_IMAGE=docker.io/restic/restic@sha256:136600b6ff6843d61d355f7f71f460a1
 FROM ${RESTIC_IMAGE} AS restic
 
 FROM ${NODE_IMAGE} AS base
-# OpenSSL from the distribution's security updates, until the pinned base
-# image carries it (CVE-2026-75804, CVE-2026-84782; ADR 0018). Remove once
-# a rebuilt base is pinned.
+# OpenSSL and PCRE2 from the distribution's security updates, until the
+# pinned base image carries them (CVE-2026-75804, CVE-2026-84782,
+# CVE-2026-103111; ADR 0018). Remove once a rebuilt base is pinned.
 RUN export DEBIAN_FRONTEND=noninteractive \
  && apt-get update \
- && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl \
+ && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl libpcre2-8-0 \
  && rm -rf /var/lib/apt/lists/*
 # Dependencies are fixed when the image is built; pnpm's pre-run check would
 # see the build's lockfile and manifest writes as drift and try to reinstall
@@ -49,12 +49,12 @@ RUN pnpm install --frozen-lockfile --prod --filter @app/api...
 
 FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production
-# OpenSSL from the distribution's security updates, until the pinned base
-# image carries it (CVE-2026-75804, CVE-2026-84782; ADR 0018). Remove once
-# a rebuilt base is pinned.
+# OpenSSL and PCRE2 from the distribution's security updates, until the
+# pinned base image carries them (CVE-2026-75804, CVE-2026-84782,
+# CVE-2026-103111; ADR 0018). Remove once a rebuilt base is pinned.
 RUN export DEBIAN_FRONTEND=noninteractive \
  && apt-get update \
- && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl \
+ && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl libpcre2-8-0 \
  && rm -rf /var/lib/apt/lists/*
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 WORKDIR /repo
