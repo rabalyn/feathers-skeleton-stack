@@ -25,7 +25,14 @@
     "sessions": "Sitzungen",
     "apiTokens": "API-Tokens",
     "permissions": "Rollen & Rechte",
-    "systemInfo": "Systeminfo"
+    "systemInfo": "Systeminfo",
+    "title": "Navigation",
+    "arrange": "Navigation anordnen",
+    "arranging": "Navigation anordnen",
+    "done": "Anordnen beenden",
+    "moveUp": "{name} nach oben",
+    "moveDown": "{name} nach unten",
+    "reset": "Standardreihenfolge wiederherstellen"
   },
   "auth": {
     "login": "Anmelden",
@@ -412,6 +419,7 @@
     "keys": {
       "profile_avatar": "Eigenes Bild",
       "profile_locale": "Eigene Sprache",
+      "profile_preferences": "Eigene Einstellungen",
       "files_upload": "Dateien hochladen",
       "files_own": "Eigene Dateien",
       "audit-events_own": "Eigene Aktivitäten",
@@ -441,6 +449,7 @@
     "descriptions": {
       "profile_avatar": "Das eigene Profilbild setzen und entfernen",
       "profile_locale": "Die Sprache wählen, in der Mails geschrieben werden",
+      "profile_preferences": "Eigene Einstellungen wie die Reihenfolge der Navigation speichern, für jeden Browser",
       "files_upload": "Dateien hochladen, z. B. ein Bild oder die Datei eines Dokuments",
       "files_own": "Die selbst hochgeladenen Dateien lesen und herunterladen",
       "audit-events_own": "Im Aktivitätsprotokoll sehen, was man selbst getan hat; die Datenauskunft enthält es ohnehin",
