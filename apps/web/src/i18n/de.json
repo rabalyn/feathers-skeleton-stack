@@ -24,7 +24,8 @@
     "queues": "Warteschlangen",
     "sessions": "Sitzungen",
     "apiTokens": "API-Tokens",
-    "permissions": "Rollen & Rechte"
+    "permissions": "Rollen & Rechte",
+    "systemInfo": "Systeminfo"
   },
   "auth": {
     "login": "Anmelden",
@@ -468,5 +469,34 @@
     "confirmDisableTitle": "Wartungsmodus ausschalten?",
     "confirmDisable": "Alle können sich wieder anmelden, API-Tokens funktionieren wieder und der Worker setzt seine Aufträge fort.",
     "loginHint": "Der Wartungsmodus ist aktiv: nur Administratoren können sich anmelden."
+  },
+  "systemInfo": {
+    "refresh": "Aktualisieren",
+    "app": "Anwendung",
+    "dirty": "nicht eingecheckte Änderungen",
+    "committed": "eingecheckt {time}",
+    "unknown": "unbekannt",
+    "updateCheck": "Update-Prüfung",
+    "checkOff": "In dieser Installation abgeschaltet",
+    "lastCheck": "zuletzt {time}",
+    "notCheckedYet": "noch nicht gelaufen",
+    "patchesWaiting": "Kein Patch ausstehend | Ein Patch wartet auf das Einspielen | {n} Patches warten auf das Einspielen",
+    "eolSoon": "Kein baldiges Supportende | Eine Release-Linie endet in den nächsten 90 Tagen | {n} Release-Linien enden in den nächsten 90 Tagen",
+    "component": "Komponente",
+    "declared": "Festgelegt",
+    "running": "Läuft",
+    "patch": "Patch",
+    "minor": "Neueres Minor",
+    "major": "Neueres Major",
+    "eol": "Supportende",
+    "checkFailed": "Prüfung fehlgeschlagen",
+    "sourceFailed": "Quelle nicht erreichbar",
+    "notReported": "nicht gemeldet",
+    "drift": "weicht ab",
+    "driftHint": "Die laufende Version ist nicht die festgelegte: ein neu gebautes, aber nicht neu gestartetes Image oder eine Abweichung in der Produktion.",
+    "since": "seit {date}",
+    "current": "aktuell",
+    "noEolDate": "kein Datum angekündigt",
+    "line": "Linie {line}"
   }
 }

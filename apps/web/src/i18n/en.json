@@ -24,7 +24,8 @@
     "queues": "Queues",
     "sessions": "Sessions",
     "apiTokens": "API tokens",
-    "permissions": "Roles & permissions"
+    "permissions": "Roles & permissions",
+    "systemInfo": "System info"
   },
   "auth": {
     "login": "Log in",
@@ -468,5 +469,34 @@
     "confirmDisableTitle": "Switch maintenance mode off?",
     "confirmDisable": "Everyone can log in again, API tokens work again and the worker resumes its jobs.",
     "loginHint": "Maintenance mode is on: only administrators can log in."
+  },
+  "systemInfo": {
+    "refresh": "Refresh",
+    "app": "Application",
+    "dirty": "uncommitted changes",
+    "committed": "committed {time}",
+    "unknown": "unknown",
+    "updateCheck": "Update check",
+    "checkOff": "Switched off in this deployment",
+    "lastCheck": "last run {time}",
+    "notCheckedYet": "not run yet",
+    "patchesWaiting": "No patch waiting | One patch waiting to be deployed | {n} patches waiting to be deployed",
+    "eolSoon": "No end of life soon | One release line ends within 90 days | {n} release lines end within 90 days",
+    "component": "Component",
+    "declared": "Pinned",
+    "running": "Running",
+    "patch": "Patch",
+    "minor": "Newer minor",
+    "major": "Newer major",
+    "eol": "End of life",
+    "checkFailed": "check failed",
+    "sourceFailed": "source unavailable",
+    "notReported": "not reported",
+    "drift": "differs",
+    "driftHint": "The running version is not the pinned one: an image rebuilt but not restarted, or overridden in production.",
+    "since": "since {date}",
+    "current": "current",
+    "noEolDate": "no date announced",
+    "line": "line {line}"
   }
 }

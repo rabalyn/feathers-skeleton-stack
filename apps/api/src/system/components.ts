@@ -55,7 +55,7 @@ export const COMPONENTS: readonly Component[] = [
   { id: 'netbox', name: 'NetBox', rule: { lineDepth: 2, revision: true }, live: { kind: 'netbox' } },
   { id: 'node', name: 'Node.js', rule: { lineDepth: 1 }, eol: 'nodejs', live: { kind: 'process' } },
   { id: 'restic', name: 'restic', rule: { lineDepth: 2 }, live: { kind: 'none' } },
-  { id: 'alpine', name: 'Alpine Linux (base image)', rule: { lineDepth: 2 }, eol: 'alpine-linux', live: { kind: 'none' } },
+  { id: 'alpine', name: 'Alpine Linux', rule: { lineDepth: 2 }, eol: 'alpine-linux', live: { kind: 'none' } },
   { id: 'prometheus', name: 'Prometheus', rule: { lineDepth: 2 }, eol: 'prometheus', live: build('prometheus_build_info') },
   { id: 'loki', name: 'Loki', rule: { lineDepth: 2 }, eol: 'grafana-loki', live: build('loki_build_info') },
   { id: 'grafana', name: 'Grafana', rule: { lineDepth: 2 }, eol: 'grafana', live: build('grafana_build_info') },
@@ -66,8 +66,9 @@ export const COMPONENTS: readonly Component[] = [
   { id: 'pgbouncer-exporter', name: 'pgbouncer_exporter', rule: { lineDepth: 2 }, live: build('pgbouncer_exporter_build_info') },
   { id: 'redis-exporter', name: 'redis_exporter', rule: { lineDepth: 2 }, live: build('redis_exporter_build_info') },
   // The host's operating system: no image, no update check, only its end of
-  // life, from what node_exporter reports.
-  { id: 'host', name: 'Host OS', rule: { lineDepth: 1 }, live: { kind: 'prometheus', query: 'node_os_info', label: 'version_id' } }
+  // life, from what node_exporter reports. Its readable name is shown: a
+  // rolling distribution has no version at all.
+  { id: 'host', name: 'Host OS', rule: { lineDepth: 1 }, live: { kind: 'prometheus', query: 'node_os_info', label: 'pretty_name' } }
 ]
 
 export const INVENTORY: readonly InventoryEntry[] = GENERATED

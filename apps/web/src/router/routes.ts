@@ -123,6 +123,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/QueuesPage.vue'),
         meta: { requires: ['read', 'queues'] }
       },
+      // What runs and which updates are out (ADR 0032), under system-info.read.
+      {
+        path: 'system-info',
+        name: 'system-info',
+        component: () => import('@/pages/SystemInfoPage.vue'),
+        meta: { requires: ['read', 'system-info'] }
+      },
       // The address lookup (ADR 0031): every signed-in person.
       {
         path: 'sites',
