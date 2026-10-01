@@ -44,6 +44,9 @@
 #                            the way .mcp.json starts them: Quasar's answers
 #                            offline, the browser reaches the local origins
 #                            over trusted TLS and nothing beyond them
+#   scripts/stack.sh prune   remove this project's stale images and report
+#                            anonymous volume leaks (scripts/prune.sh, ADR
+#                            0015); `up` runs it at the end
 #
 # The OpenBao unseal key lives in a local-only podman volume that no compose
 # service mounts. Production never runs this script: an administrator unseals
@@ -719,6 +722,8 @@ case $cmd in
     ensure_breakglass
     seed_test_accounts app
     log "test accounts have their roles: ad01admn admin, op01oper operator, us01user and us02othr user"
+    # A leak report does not fail `up`; scripts/ci.sh fails on it.
+    "$ROOT/scripts/prune.sh" || true
     ;;
   setup) setup ;;
   idp) idp_setup ;;
@@ -770,6 +775,7 @@ case $cmd in
     [[ -z $failed ]] || die "an alert check failed; see above"
     ;;
   mcp) mcp_check ;;
+  prune) "$ROOT/scripts/prune.sh" ;;
   down) stack_down ;;
   reset)
     case ${2:-} in
@@ -792,5 +798,5 @@ case $cmd in
       --keep-data) log "kept the local root CA, the app's database, its objects and OpenBao; '$0 reset' deletes them" ;;
     esac
     ;;
-  *) sed -n '2,46p' "$0"; exit 2 ;;
+  *) sed -n '2,49p' "$0"; exit 2 ;;
 esac

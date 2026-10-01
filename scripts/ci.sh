@@ -15,6 +15,8 @@
 # Stack: up, Vitest, Playwright, the alert delivery check, the backup and
 # restore cycle (scripts/backup-test.sh), then the vulnerability scan of
 # every image compose.yaml names.
+# Last, in every mode: scripts/prune.sh removes this project's stale images
+# and fails on anonymous volume leaks.
 #
 # The backup target is a named volume unless BACKUP_TARGET names a host
 # directory; scripts/ci-nfs-runner.sh runs this script with it on real NFS,
@@ -112,6 +114,7 @@ if [[ $mode != --static ]]; then
   (cd "$ROOT" && podman-compose --profile dev build web >/dev/null) || failed+=("dev server image build")
   check "image vulnerability scan" scan_images
 fi
+check "stale images and anonymous volumes" "$ROOT/scripts/prune.sh"
 
 if ((${#failed[@]})); then
   printf '\n\033[1;31mci: failed:\033[0m\n' >&2

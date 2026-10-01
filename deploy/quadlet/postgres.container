@@ -13,6 +13,7 @@ HealthRetries=10
 HealthTimeout=3s
 Image=docker.io/library/postgres@sha256:d8703cd7fba306b9fec9268ecedfa8a966846c053036a60e3635791957eb2f66
 Network=db.network
+Tmpfs=/var/lib/postgresql
 Volume=postgres-data:/var/lib/postgresql/data
 Volume=postgres-secrets.volume:/run/secrets:ro
 Volume=tls-postgres:/tls:ro
