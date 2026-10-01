@@ -68,7 +68,6 @@ Covered in v1 but not carried forward, or deliberately deferred. Listed so nothi
 | Off-site backup copy | Accepted risk for now ([0017](0017-nfs-backup-storage.md)) |
 | Distributed tracing | Deferred; `request_id` correlation is in place and should stay `traceparent`-compatible ([0021](0021-structured-logging.md)) |
 | Multi-host scale-out | Deferred, as in v1 |
-| Directory lookup in the list style of [0014](0014-frontend-quasar-vue.md) | To do: a server-paginated table, which LDAP's capped search makes a design question |
 | Offering a product's own services over MCP | Left to each product; the skeleton uses MCP for local development tooling only ([0026](0026-mcp-development-tooling.md)) |
 
 ## Implementation slices

@@ -95,6 +95,17 @@ test('an admin adds a role, and the directory finds people', async ({ page }) =>
   await page.getByLabel('Name, TU-ID oder E-Mail').fill('us0')
   await expect(page.getByText('us01user', { exact: false })).toBeVisible()
   await expect(page.getByText('us02othr', { exact: false })).toBeVisible()
+
+  // 120 bulk people: one search stops at the directory's 100, paged on the
+  // server (ADR 0008).
+  await page.getByLabel('Name, TU-ID oder E-Mail').fill('Bulk')
+  await expect(page.getByRole('status')).toContainText('höchstens 100 Treffer')
+  await expect(page.getByText('1–25 von 100')).toBeVisible()
+  // Which 100 of the 120 the directory returns is its own choice.
+  await expect(page.getByRole('row').filter({ hasText: 'Bea Bulk' })).toHaveCount(25)
+  await page.getByRole('button', { name: 'Letzte Seite' }).click()
+  await expect(page.getByText('76–100 von 100')).toBeVisible()
+  await expect(page.getByRole('row').filter({ hasText: 'Bea Bulk' })).toHaveCount(25)
 })
 
 test('a wrong password never reaches the application', async ({ page, context }) => {

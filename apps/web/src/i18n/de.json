@@ -77,8 +77,12 @@
     "search": "Name, TU-ID oder E-Mail",
     "hint": "Mindestens {min} Zeichen",
     "empty": "Keine Treffer",
-    "truncated": "Es gibt mehr Treffer, als angezeigt werden. Bitte die Suche eingrenzen.",
-    "hasAccount": "Hat ein Konto"
+    "truncated": "Das Verzeichnis liefert je Suche höchstens {max} Treffer, und diese Suche hat die Grenze erreicht. Bitte die Suche eingrenzen.",
+    "hasAccount": "Hat ein Konto",
+    "enterTerm": "Bitte einen Suchbegriff eingeben",
+    "name": "Name",
+    "tuId": "TU-ID",
+    "email": "E-Mail"
   },
   "sites": {
     "search": "Kennung, Name oder Adresse",

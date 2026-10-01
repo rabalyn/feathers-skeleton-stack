@@ -1,5 +1,5 @@
 import { Type, getValidator, type Static } from '@feathersjs/typebox'
-import { MAX_RESULTS, MAX_TERM_LENGTH, MIN_TERM_LENGTH } from '../../directory.js'
+import { MAX_RESULTS, MAX_TERM_LENGTH, MIN_TERM_LENGTH, PAGE_MAX } from '../../directory.js'
 import { queryValidator } from '../../validators.js'
 
 // ADR 0008. Directory entries are not records of this application; `userId`
@@ -17,8 +17,8 @@ export const directoryEntrySchema = Type.Object(
 )
 export type DirectoryEntry = Static<typeof directoryEntrySchema>
 
-// The page shape of every find (ADR 0005), plus whether the directory had
-// more matches than one search returns.
+// The page shape of every find (ADR 0005), plus whether the search reached
+// the directory's size limit, so there may be more matches.
 export interface DirectoryPage {
   total: number
   limit: number
@@ -30,7 +30,7 @@ export interface DirectoryPage {
 export const directoryQuerySchema = Type.Object(
   {
     q: Type.String({ minLength: MIN_TERM_LENGTH, maxLength: MAX_TERM_LENGTH, pattern: '\\S' }),
-    $limit: Type.Optional(Type.Integer({ minimum: 0, maximum: MAX_RESULTS })),
+    $limit: Type.Optional(Type.Integer({ minimum: 0, maximum: PAGE_MAX })),
     $skip: Type.Optional(Type.Integer({ minimum: 0, maximum: MAX_RESULTS }))
   },
   { $id: 'DirectoryQuery', additionalProperties: false }

@@ -41,4 +41,15 @@ describe('directory service paging', () => {
     expect(page).toMatchObject({ total: 50, limit: 10, skip: 45, truncated: true })
     expect(page.data.map((e) => e.tuId)).toEqual(['bulk0045', 'bulk0046', 'bulk0047', 'bulk0048', 'bulk0049'])
   })
+
+  it('never answers more than 50 entries per page', async () => {
+    const { DirectoryService } = await import('../../src/services/directory/directory.js')
+    const entries = Array.from({ length: 100 }, (_, i) => ({ tuId: `b${i}`, givenName: null, surname: null, email: null }))
+    const directory = { search: async () => ({ entries, truncated: true }) }
+    const knex = () => ({ whereIn: () => ({ select: async () => [] }) })
+    const service = new DirectoryService(directory as never, knex as never)
+    const page = await service.find({ query: { q: 'b0', $limit: 100 } })
+    expect(page).toMatchObject({ total: 100, limit: 50 })
+    expect(page.data).toHaveLength(50)
+  })
 })
