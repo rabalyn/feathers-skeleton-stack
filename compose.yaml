@@ -147,7 +147,12 @@ services:
       migrate:
         condition: service_completed_successfully
     environment: &api-environment
-      PUBLIC_ORIGIN: https://app.localhost:8443
+      # The one public address of the app: every link it hands out, the
+      # Origin check, the token audience and the SAML entity ID (ADR 0016).
+      # Defined once here; the worker and scripts/stack.sh take it from this
+      # line. The IdP realm (containers/idp/realm-feathers.json) and the
+      # uptime probe (containers/prometheus/targets/uptime.yml) repeat it.
+      PUBLIC_ORIGIN: &public-origin https://app.localhost:8443
       # Rotated JSON log files, read by the collector (ADR 0021).
       LOG_FILE: /var/log/app/api
       # Metrics and health on the internal port, over TLS (ADR 0022).
@@ -273,7 +278,7 @@ services:
       S3_CA_FILE: /trust/ca.crt
       # Mail (ADR 0027): Mailpit locally, the university relay in production;
       # links in mail start with the public origin.
-      PUBLIC_ORIGIN: https://app.localhost:8443
+      PUBLIC_ORIGIN: *public-origin
       SMTP_HOST: mail
       SMTP_PORT: "1025"
       SMTP_CA_FILE: /trust/ca.crt

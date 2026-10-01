@@ -60,8 +60,9 @@ export interface SystemComponent {
 }
 
 export interface SystemInfoReport {
-  // The commit the api image was built from.
-  app: { commit: string | null; commitTime: string | null; dirty: boolean }
+  // The commit the api image was built from, and the public origin every
+  // link the application hands out starts with (PUBLIC_ORIGIN).
+  app: { commit: string | null; commitTime: string | null; dirty: boolean; publicOrigin: string }
   updateCheck: 'on' | 'off'
   // A check runs or waits to, however it was started.
   checkRunning: boolean
@@ -188,7 +189,8 @@ export class SystemInfoReportService {
       app: {
         commit: process.env.APP_COMMIT && process.env.APP_COMMIT !== 'unknown' ? process.env.APP_COMMIT : null,
         commitTime: process.env.APP_COMMIT_TIME && process.env.APP_COMMIT_TIME !== 'unknown' ? process.env.APP_COMMIT_TIME : null,
-        dirty: process.env.APP_DIRTY === 'true'
+        dirty: process.env.APP_DIRTY === 'true',
+        publicOrigin: this.app.get('config').publicOrigin
       },
       updateCheck: this.app.get('config').updateCheck,
       checkRunning,

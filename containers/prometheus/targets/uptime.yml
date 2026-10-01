@@ -1,3 +1,4 @@
 # The public endpoints the uptime check probes (ADR 0022). Local and CI:
 # Nginx under its local host name, which the edge network resolves to it.
+# The app's target repeats PUBLIC_ORIGIN (compose.yaml, &public-origin).
 - targets: ['https://app.localhost:8443/api/ping']

@@ -332,6 +332,9 @@ idp_setup() {
 # path only this script reads, so `$0 breakglass` can show it; an account
 # without a stored password gets a new one.
 BREAKGLASS_EMAIL=breakglass@app.localhost
+# The local app's public origin, from its one definition in compose.yaml.
+APP_ORIGIN=$(sed -n 's/^ *PUBLIC_ORIGIN: &public-origin //p' "$ROOT/compose.yaml")
+[[ -n $APP_ORIGIN ]] || { echo "compose.yaml defines no &public-origin" >&2; exit 1; }
 ensure_breakglass() {
   local count password
   count=$(podman exec -u postgres postgres psql -tAq -d app -c "SELECT count(*) FROM users WHERE auth_source = 'local'")
@@ -469,14 +472,14 @@ breakglass_alert_check() {
   alert_setup
   wait_alert_quiet breakglass-login "Break-glass login"
   local -a request=(curl -s --cacert "$ALERT_DIR/ca.crt" --cookie-jar "$ALERT_DIR/cookies" --cookie "$ALERT_DIR/cookies"
-    -H 'Origin: https://app.localhost:8443' -o /dev/null -w '%{http_code}')
+    -H "Origin: $APP_ORIGIN" -o /dev/null -w '%{http_code}')
   since=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
   # The password goes through stdin, never an argument.
   answer=$(printf '%s' "$password" |
     jq -Rs --arg email "$BREAKGLASS_EMAIL" '{strategy: "password", email: $email, password: .}' |
-    "${request[@]}" -H 'Content-Type: application/json' --data-binary @- https://app.localhost:8443/api/authentication)
+    "${request[@]}" -H 'Content-Type: application/json' --data-binary @- "$APP_ORIGIN/api/authentication")
   [[ $answer == 201 ]] || die "the break-glass login answered $answer"
-  answer=$("${request[@]}" -X DELETE https://app.localhost:8443/api/authentication)
+  answer=$("${request[@]}" -X DELETE "$APP_ORIGIN/api/authentication")
   [[ $answer == 200 ]] || die "the break-glass logout answered $answer"
   wait_alert_mail "Break-glass login" "$since"
 }
@@ -656,7 +659,7 @@ mcp_check() {
   running mcp-browser || die "mcp-browser is not running; run '$0 up'"
   log "playwright: the local origins over trusted TLS, nothing beyond"
   mcp_start podman exec -i mcp-browser node mcp-server.js --config mcp.config.json
-  mcp_tool browser_navigate '{"url": "https://app.localhost:8443/login"}' ||
+  mcp_tool browser_navigate "{\"url\": \"$APP_ORIGIN/login\"}" ||
     die "playwright: the app did not load: $MCP_REPLY"
   mcp_tool browser_navigate '{"url": "https://idp.localhost:8443/realms/feathers/"}' ||
     die "playwright: the IdP did not load: $MCP_REPLY"

@@ -44,6 +44,8 @@ Durations are whole seconds or days and sizes are bytes, as each key's name says
 
 What stays **deployment configuration** is what the application cannot or should not change about its surroundings: host names, endpoints, secret file paths, Loki and Prometheus retention (their own configuration files), the Nginx body size ceiling, and Grafana alert rules and recipients (provisioned as code, [0022](0022-observability-and-alerting.md)).
 
+The **public origin** (`PUBLIC_ORIGIN`) is one of those host names, and stays one. Decided 2026-10-02, when a runtime setting for the app's public address was considered: the same value builds every link the application hands out, mails included ([0027](0027-email-templates-and-sending.md)), and is the Origin check, the access token's audience and issuer ([0010](0010-sessions-postgres-ratelimits-valkey.md)) and the SAML entity ID the IdP is configured for ([0008](0008-authentication-saml2-ldap.md)). Splitting off a setting for the links would let the two drift apart, and moving all of it into the database would let one wrong value lock everyone out, the break-glass account included, until somebody edits the row by hand. It is defined once in `compose.yaml` (the `&public-origin` anchor), which the worker and `scripts/stack.sh` take it from; the IdP realm and the uptime probe repeat it. The system-info page shows it read-only ([0032](0032-system-info-and-update-check.md)).
+
 ### Storage and validation
 
 - One `settings` table: a key, a JSON value, and who changed it when. Every key has a TypeBox schema in one registry module ([0005](0005-typebox-schema-boundary.md)); a value that does not match its schema is rejected on write.
@@ -64,6 +66,8 @@ What stays **deployment configuration** is what the application cannot or should
 ### Access
 
 Settings are read and written through the UI under the `settings.manage` permission, which only `admin` holds as seeded; `operator` and `user` see none of them unless an admin grants it ([0011](0011-casl-role-authorization.md)). The backup service reads them through its read-only database role. Consumers cache values in process for **30 seconds**, so a change takes effect within that interval without a restart; the API process that made a change drops its own cache at once. A stored value that no longer matches its schema is treated like a missing one.
+
+**Every key is explained on the Settings page.** Decided 2026-10-02: an info icon next to each key shows what it means and what it must agree with in a tooltip, on hover and on keyboard focus, and the edit dialog repeats the text. The texts are user-facing, so they live in the web app's catalogues under `settings.help.<key>`, in every locale ([0014](0014-frontend-quasar-vue.md)); a unit test fails when a registered key lacks one or a text names a key the registry no longer has. A product that adds a key adds its text with it.
 
 ### Maintenance mode
 

@@ -67,6 +67,7 @@ export type { Role, RoleData, RolePatch, RoleQuery } from './services/roles/role
 export type { UserRoles, UserRolesPatch } from './services/roles/user-roles.js'
 export type { ViewAs, ViewAsData } from './services/view-as/view-as.js'
 export type { Setting, SettingPatch, SettingQuery } from './services/settings/settings.schema.js'
+export type { SettingKey } from './settings/registry.js'
 export type { DirectoryEntry, DirectoryPage, DirectoryQuery } from './services/directory/directory.schema.js'
 export type { Document, DocumentData, DocumentPatch, DocumentQuery } from './services/documents/documents.schema.js'
 export type { File } from './services/files/files.schema.js'

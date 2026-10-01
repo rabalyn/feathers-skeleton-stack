@@ -35,6 +35,8 @@ Knowing that an update exists needs information from outside the stack. Until no
 
 Production builds its images on the host (`localhost/feathers-*:dev`), so there is no release number. The page shows the **git commit** the api image was built from instead, with the commit's time and whether the work tree had uncommitted changes. `scripts/stack.sh` passes them as build arguments (`APP_COMMIT`, `APP_COMMIT_TIME`, `APP_DIRTY`), set in the image's last stage, which the backup image doesn't inherit. The commit time was chosen over the build time: a build time makes every build a new image, so every `stack.sh up` would restart the api, the worker and migrate without a code change. A build outside a git checkout shows "unknown". Decided 2026-10-01.
 
+Beside it the page shows the **public origin** the api runs with (`PUBLIC_ORIGIN`), the address every link the application hands out starts with, mails included. Read-only: it is deployment configuration ([0025](0025-runtime-settings.md)). Decided 2026-10-02.
+
 ### Running versions: asked live when the page loads
 
 The api gathers them on each page load, with a short timeout per source, so the page shows what runs right now:

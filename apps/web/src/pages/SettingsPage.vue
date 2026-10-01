@@ -27,6 +27,28 @@
       flat
       bordered
     >
+      <template #body-cell-key="props">
+        <q-td :props="props">
+          {{ props.row.key }}
+          <!-- Focusable, so the explanation shows on keyboard focus as on hover. -->
+          <q-icon
+            v-if="help(props.row.key)"
+            name="info_outline"
+            size="xs"
+            color="grey-7"
+            class="q-ml-xs cursor-pointer"
+            tabindex="0"
+            role="img"
+            aria-hidden="false"
+            :aria-label="t('settings.about', { key: props.row.key })"
+            :data-test="`setting-help-${props.row.key}`"
+          >
+            <q-tooltip max-width="320px" anchor="center right" self="center left" class="text-body2">
+              {{ help(props.row.key) }}
+            </q-tooltip>
+          </q-icon>
+        </q-td>
+      </template>
       <template #body-cell-value="props">
         <q-td :props="props">
           <code class="value">{{ show(props.row.value) }}</code>
@@ -51,6 +73,7 @@
       <q-card class="editor">
         <q-card-section>
           <div class="text-h6">{{ draftKey }}</div>
+          <div v-if="help(draftKey)" class="text-caption text-grey-8">{{ help(draftKey) }}</div>
         </q-card-section>
         <q-card-section>
           <q-input
@@ -107,10 +130,13 @@ import { useSessionStore } from '@/stores/session'
 
 // Runtime settings (ADR 0025), for admins only (ADR 0011). Each
 // value is JSON whose shape depends on the key; the API validates it against
-// the registry and the cross-setting rules and says what is wrong.
+// the registry and the cross-setting rules and says what is wrong. What a
+// key means is in the catalogues under `settings.help`, one text per
+// registered key (test/settings-i18n.test.ts).
 const api = useApi()
 const session = useSessionStore()
-const { t } = useI18n()
+const i18n = useI18n()
+const { t } = i18n
 const { dateTime } = useFormat()
 const notify = useNotify()
 
@@ -135,6 +161,8 @@ const columns = computed<NonNullable<QTableProps['columns']>>(() => [
 ])
 
 const show = (value: unknown) => JSON.stringify(value)
+// A key a product added without a text gets no icon.
+const help = (key: string) => (i18n.te(`settings.help.${key}`) ? t(`settings.help.${key}`) : null)
 
 // Maintenance mode has a switch of its own, with a confirmation, rather than
 // the JSON editor: switching it on ends everyone else's sessions (ADR 0025).
