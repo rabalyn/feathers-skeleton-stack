@@ -1,6 +1,6 @@
 # 0032: A system-info page shows what runs and which updates are out, from a daily check
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-01
 - Scope: Required (v1)
 - Related: [0001](0001-one-stack-every-environment.md), [0002](0002-service-inventory-and-networks.md), [0006](0006-feathersjs-typescript-api.md), [0011](0011-casl-role-authorization.md), [0018](0018-owasp-security-baseline.md), [0022](0022-observability-and-alerting.md), [0024](0024-background-jobs-bullmq.md)
@@ -29,6 +29,10 @@ Knowing that an update exists needs information from outside the stack. Until no
 - `scripts/inventory.sh --check` fails when the file differs from a fresh run. It joins the static checks in `scripts/ci.sh`, like the Quadlet drift check.
 - An image pinned by digest alone gets a version comment, so that both the inventory and Renovate can read it. Garage's `FROM` in `containers/s3/Containerfile` is the one case today.
 - Software installed from Alpine packages (Nginx, PgBouncer) has no version in the repository. Its declared version is the Alpine base image's, and its own version comes only from the running component.
+
+### The application's own version
+
+Production builds its images on the host (`localhost/feathers-*:dev`), so there is no release number. The page shows the **git commit and build time** the api image was built from instead. `scripts/stack.sh` passes them as build arguments; they are set in the image's last stage, so a new commit doesn't invalidate the cached dependency layers. A build outside a git checkout shows "unknown". Decided 2026-10-01.
 
 ### Running versions: asked live when the page loads
 
@@ -60,7 +64,7 @@ The worker exports, computed from the stored results on each scrape:
 - `stack_eol_timestamp_seconds{component}` for the running line;
 - `stack_update_check_last_success_timestamp_seconds`.
 
-Grafana mails the operators ([0022](0022-observability-and-alerting.md)) through three rules:
+Grafana mails the operators ([0022](0022-observability-and-alerting.md)) through three rules, with thresholds confirmed on 2026-10-01:
 
 - **Patch available:** for 7 days.
 - **End of life near:** the running line reaches end of life within 90 days.
@@ -82,8 +86,3 @@ Minor and major updates don't alert.
 - A tag the parser misreads gives a wrong "update available". The unit tests pin the comparison against real tag lists, and a component whose scheme doesn't fit declares its own rule.
 - The inventory is one more generated file with a drift check. Adding an image to `compose.yaml` without regenerating it fails CI, which is the point.
 - Without a route to the internet, the page still shows declared and running versions, and the update columns say why they're empty.
-
-## Open questions
-
-- **The application's own version.** Production builds its images on the host (`localhost/feathers-*:dev`), so there is no release number. The page could show the git commit and build time, passed into the image as build arguments, but how production builds and tags images isn't decided anywhere yet.
-- **Alert thresholds.** 7 days for a patch, 90 days before end of life and 3 days of failed checks are proposals to confirm.
