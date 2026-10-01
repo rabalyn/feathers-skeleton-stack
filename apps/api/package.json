@@ -44,7 +44,6 @@
     "ldapts": "9.2.0",
     "liquidjs": "10.29.0",
     "markdown-it": "15.0.2",
-    "mjml": "5.4.1",
     "nodemailer": "10.0.10",
     "pg": "8.23.0",
     "pino": "10.3.1",
@@ -56,7 +55,7 @@
   "devDependencies": {
     "@featherscloud/pinion": "0.5.7",
     "@feathersjs/socketio-client": "5.0.50",
-    "@types/node": "^24.13.6",
+    "@types/node": "^26.6.3",
     "@types/pg": "^8.23.1",
     "@types/xml-encryption": "^1.2.4",
     "@types/yauzl": "3.4.0",

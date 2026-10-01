@@ -1,18 +1,26 @@
 # Build context: repository root.
-ARG NODE_IMAGE=docker.io/library/node:24.21.0-trixie-slim@sha256:b64fccfbcd1ae10d11b969a868b50e1c2530a7054813d5cdea04ac3bce551697
+ARG NODE_IMAGE=docker.io/library/node:26.10.0-trixie-slim@sha256:0e6e6feab3409d135561b2dac7f75dad902ceb5e14c35de4521155779ae70cee
 
 # The frontend's dependencies and the built types it imports: the API client
 # (ADR 0007) and the feathers-pinia fork (ADR 0014).
 FROM ${NODE_IMAGE} AS web-deps
-# OpenSSL from the distribution's security updates, until the pinned base
-# image carries it (CVE-2026-75804, CVE-2026-84782; ADR 0018). Remove once
-# a rebuilt base is pinned.
+# OpenSSL and PCRE2 from the distribution's security updates, until the
+# pinned base image carries them (CVE-2026-75804, CVE-2026-84782,
+# CVE-2026-103111; ADR 0018). Remove once a rebuilt base is pinned.
 RUN export DEBIAN_FRONTEND=noninteractive \
  && apt-get update \
- && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl \
+ && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl libpcre2-8-0 \
  && rm -rf /var/lib/apt/lists/*
-ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+# pnpm at the version package.json names (packageManager), installed with
+# the npm bundled with Node, which is then removed: Node 25 and later ship no
+# corepack, and npm only carries its own vulnerabilities into the image
+# (ADR 0018). /usr/local is readable by every user, so unprivileged targets
+# find pnpm without a network (ADR 0015).
+COPY package.json /tmp/pnpm-version/
+RUN npm install -g --no-fund --no-audit --no-update-notifier \
+      "pnpm@$(node -p 'require("/tmp/pnpm-version/package.json").packageManager.split("@")[1].split("+")[0]')" \
+ && rm -rf /tmp/pnpm-version /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+ && pnpm --version
 WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY apps/api/package.json apps/api/

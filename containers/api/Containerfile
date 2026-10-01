@@ -1,35 +1,35 @@
 # Build context: repository root.
-ARG NODE_IMAGE=docker.io/library/node:24.21.0-trixie-slim@sha256:b64fccfbcd1ae10d11b969a868b50e1c2530a7054813d5cdea04ac3bce551697
+ARG NODE_IMAGE=docker.io/library/node:26.10.0-trixie-slim@sha256:0e6e6feab3409d135561b2dac7f75dad902ceb5e14c35de4521155779ae70cee
 # restic 0.19.1, a static binary (ADR 0017).
 ARG RESTIC_IMAGE=docker.io/restic/restic@sha256:136600b6ff6843d61d355f7f71f460a166429f35de6fd11b568fece3c9a4d510
 
 FROM ${RESTIC_IMAGE} AS restic
 
 FROM ${NODE_IMAGE} AS base
-# OpenSSL from the distribution's security updates, until the pinned base
-# image carries it (CVE-2026-75804, CVE-2026-84782; ADR 0018). Remove once
-# a rebuilt base is pinned.
+# OpenSSL and PCRE2 from the distribution's security updates, until the
+# pinned base image carries them (CVE-2026-75804, CVE-2026-84782,
+# CVE-2026-103111; ADR 0018). Remove once a rebuilt base is pinned.
 RUN export DEBIAN_FRONTEND=noninteractive \
  && apt-get update \
- && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl \
+ && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl libpcre2-8-0 \
  && rm -rf /var/lib/apt/lists/*
-# corepack keeps pnpm in COREPACK_HOME, not in root's home, so the
-# unprivileged `test` target finds it without a network (ADR 0015).
-ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH COREPACK_ENABLE_DOWNLOAD_PROMPT=0 COREPACK_HOME=/corepack
 # Dependencies are fixed when the image is built; pnpm's pre-run check would
 # see the build's lockfile and manifest writes as drift and try to reinstall
 # as the unprivileged user (ADR 0015).
 ENV pnpm_config_verify_deps_before_run=false
-# pnpm comes through corepack; the npm bundled with Node is never used and
-# only carries its own vulnerabilities into the image (ADR 0018).
-RUN corepack enable && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+# pnpm at the version package.json names (packageManager), installed with
+# the npm bundled with Node, which is then removed: Node 25 and later ship no
+# corepack, and npm only carries its own vulnerabilities into the image
+# (ADR 0018). /usr/local is readable by every user, so unprivileged targets
+# find pnpm without a network (ADR 0015).
+COPY package.json /tmp/pnpm-version/
+RUN npm install -g --no-fund --no-audit --no-update-notifier \
+      "pnpm@$(node -p 'require("/tmp/pnpm-version/package.json").packageManager.split("@")[1].split("+")[0]')" \
+ && rm -rf /tmp/pnpm-version /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+ && pnpm --version
 WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
-# The pnpm version package.json names, fetched once here; afterwards corepack
-# never reaches the network, so a missing copy fails loudly instead.
-RUN corepack install && chmod -R a+rX /corepack
-ENV COREPACK_ENABLE_NETWORK=0
 
 # Full dependency set; also the base of the `test` target (ADR 0015).
 FROM base AS build
@@ -49,12 +49,12 @@ RUN pnpm install --frozen-lockfile --prod --filter @app/api...
 
 FROM ${NODE_IMAGE} AS runtime-base
 ENV NODE_ENV=production
-# OpenSSL from the distribution's security updates, until the pinned base
-# image carries it (CVE-2026-75804, CVE-2026-84782; ADR 0018). Remove once
-# a rebuilt base is pinned.
+# OpenSSL and PCRE2 from the distribution's security updates, until the
+# pinned base image carries them (CVE-2026-75804, CVE-2026-84782,
+# CVE-2026-103111; ADR 0018). Remove once a rebuilt base is pinned.
 RUN export DEBIAN_FRONTEND=noninteractive \
  && apt-get update \
- && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl \
+ && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl libpcre2-8-0 \
  && rm -rf /var/lib/apt/lists/*
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 WORKDIR /repo
