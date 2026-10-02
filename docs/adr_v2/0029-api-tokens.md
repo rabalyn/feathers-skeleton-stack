@@ -18,7 +18,7 @@ The alternatives were a service account (a principal of its own, whose permissio
 - An **API token** is `apt_` followed by 32 random bytes in base64url. The prefix tells it apart from an access token and gives secret scanners a pattern to match. It is shown **once**, in the answer to its creation, and stored only as its **SHA-256**. At 256 bits nobody can guess it, so a slow hash like the break-glass password's argon2id would buy nothing and cost a hash per request. Its last four characters are kept as a hint, so its owner can tell tokens apart.
 - An `api_tokens` row holds the owner's surrogate id, a name, the hash, the hint, the chosen **catalogue permission keys** (at least one), the creation time, an optional expiry and the last use, which moves at most once a minute.
 - It is sent as `Authorization: Bearer apt_…` on **REST requests only**. It opens no session and yields no access token: the authentication service does not accept it (it is not in `authStrategies`, only in `parseStrategies`), so no WebSocket authenticates with it and it joins no channel ([0012](0012-role-scoped-channels.md)).
-- The **expiry is optional**. A token without one lasts until it is revoked, its owner is disabled or erased, or its owner loses `api-tokens.create`.
+- The **expiry is optional**. A token without one lasts until it is revoked, its owner is disabled or erased, or its owner loses `api-tokens.create`. The break-glass account's tokens also end with every rotation of its password ([0008](0008-authentication-saml2-ldap.md), decided 2026-10-02).
 
 ### What a token may do
 

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { SOCKET_PATH } from '../../src/client.js'
 import { SHUTDOWN_GRACE_MS, closeServer } from '../../src/shutdown.js'
 import { createTestApp } from '../support/app.js'
+import { PUBLIC_ORIGIN } from '../support/saml-idp.js'
 
 // ADR 0006: shutdown finishes well before Podman's SIGKILL, whatever
 // connections are open.
@@ -48,7 +49,7 @@ const timed = async (work: () => Promise<unknown>) => {
 describe('shutdown', () => {
   it('closes WebSockets and idle keep-alive connections at once, as a transport close', async () => {
     const { app, port } = await listening()
-    const socket = io(`http://127.0.0.1:${port}`, { path: SOCKET_PATH, transports: ['websocket'], reconnection: false })
+    const socket = io(`http://127.0.0.1:${port}`, { path: SOCKET_PATH, transports: ['websocket'], reconnection: false, extraHeaders: { origin: PUBLIC_ORIGIN } })
     await new Promise<void>((resolve) => socket.once('connect', resolve))
     const disconnected = new Promise<string>((resolve) => socket.once('disconnect', resolve))
     const agent = await idleKeepAlive(port)

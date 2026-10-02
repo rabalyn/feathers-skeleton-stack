@@ -12,6 +12,7 @@ import { createClient, SOCKET_PATH } from '../../src/client.js'
 import { createLogger, loggerOptions } from '../../src/logger.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
+import { PUBLIC_ORIGIN } from '../support/saml-idp.js'
 import {  } from '../support/roles.js'
 import { grantRoles } from '../support/roles.js'
 
@@ -123,7 +124,7 @@ describe('HTTP request log', () => {
 
 describe('WebSocket call log', () => {
   it('logs each call with a request id of its own', async () => {
-    const socket = io(base, { path: SOCKET_PATH, transports: ['websocket'], forceNew: true, reconnection: false })
+    const socket = io(base, { path: SOCKET_PATH, transports: ['websocket'], forceNew: true, reconnection: false, extraHeaders: { origin: PUBLIC_ORIGIN } })
     try {
       const client = createClient(socketio.default(socket as never))
       await client.authenticate({ strategy: 'jwt', accessToken: await tokenFor(admin) })

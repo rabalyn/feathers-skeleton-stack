@@ -39,8 +39,9 @@ export const createBreakGlass = async (knex: Knex, email: string): Promise<{ use
   })
 }
 
-// A new password; every session of the account ends, so a leaked password or
-// token stops working (ADR 0010: the next request is refused).
+// A new password; every session and every API token of the account ends, so
+// nothing obtained with the old password keeps working (ADR 0008, 0010: the
+// next request is refused; ADR 0029).
 export const rotateBreakGlass = async (knex: Knex): Promise<{ userId: string; email: string; password: string }> => {
   const password = generatePassword()
   const passwordHash = await hashPassword(password)
@@ -51,8 +52,18 @@ export const rotateBreakGlass = async (knex: Knex): Promise<{ userId: string; em
       .insert({ userId: user.id, passwordHash })
       .onConflict('userId')
       .merge({ passwordHash, updatedAt: trx.fn.now() })
-    await trx('authSessions').where({ userId: user.id }).whereNull('revokedAt').update({ revokedAt: trx.fn.now() })
-    await recordAudit(trx, { actorId: null, action: 'breakglass.rotate', resourceType: 'users', resourceId: user.id })
+    const sessionsRevoked = await trx('authSessions')
+      .where({ userId: user.id })
+      .whereNull('revokedAt')
+      .update({ revokedAt: trx.fn.now() })
+    const apiTokensRevoked = await trx('apiTokens').where({ userId: user.id }).delete()
+    await recordAudit(trx, {
+      actorId: null,
+      action: 'breakglass.rotate',
+      resourceType: 'users',
+      resourceId: user.id,
+      detail: { sessionsRevoked, apiTokensRevoked }
+    })
     return { userId: user.id, email: user.email ?? '', password }
   })
 }

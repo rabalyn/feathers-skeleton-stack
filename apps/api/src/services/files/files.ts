@@ -3,6 +3,7 @@ import { BadRequest, MethodNotAllowed, NotFound } from '@feathersjs/errors'
 import type { NextFunction, Params } from '@feathersjs/feathers'
 import type { Middleware } from '@feathersjs/koa'
 import { KnexService } from '@feathersjs/knex'
+import type { Knex } from 'knex'
 import { hooks as schemaHooks } from '@feathersjs/schema'
 import { subject } from '@casl/ability'
 import type { Application } from '../../app.js'
@@ -101,19 +102,39 @@ export interface FileContent {
   inline: boolean
 }
 
-// get(id) streams the object. Readable exactly where the file's metadata is
-// (the `files` rule, checked on the record); anything else is a 404, like a
-// file that does not exist (ADR 0011).
+type Ability = { can(action: string, subject: unknown): boolean }
+
+// Whether the caller may read a file's bytes (ADR 0020): their own file
+// (`files.own`), or the file of a record they may read, which is what a
+// reference is for: the avatar of a user, the file of a document. Each is
+// checked on the record itself, so it is exactly the caller's rule over that
+// record, in a view-as the intersected one (ADR 0028). Nobody reads a file
+// because they know its id.
+const mayRead = async (knex: Knex, ability: Ability | undefined, file: File, avatarOf: object | undefined) => {
+  if (!ability) return false
+  if (ability.can('read', subject(FILES_PATH, { ...file }))) return true
+  if (avatarOf && ability.can('read', subject('users', { ...avatarOf }))) return true
+  const document = await knex('documents').where({ fileId: file.id }).first<object | undefined>()
+  return Boolean(document && ability.can('read', subject('documents', { ...document })))
+}
+
+// get(id) streams the object to whoever may read it (mayRead); to anybody
+// else it is a 404, worded like a file that does not exist, so the answer
+// tells nothing about which ids exist (ADR 0011).
 export class FileContentService {
   constructor(private readonly app: Application) {}
 
   async get(id: string, params?: Params): Promise<FileContent> {
+    const knex = this.app.get('knex')
     const files = this.app.service(FILES_PATH)
     const file = await files
       ._get(id, { query: { state: 'stored', deletedAt: null } as FileQuery })
       .catch(() => undefined)
-    const ability = params?.ability as { can(action: string, subject: unknown): boolean } | undefined
-    if (!file || (params?.provider && !ability?.can('read', subject(FILES_PATH, { ...file })))) {
+    // Only a current avatar is shown inline, and only a verified raster
+    // image can be one (ADR 0020).
+    const avatarOf = file ? await knex('users').where({ avatarFileId: id }).first<object | undefined>() : undefined
+    const ability = params?.ability as Ability | undefined
+    if (!file || (params?.provider && !(await mayRead(knex, ability, file, avatarOf)))) {
       throw new NotFound(`No record found for id '${id}'`)
     }
     const stored = await this.app.get('storage').get(id)
@@ -121,12 +142,15 @@ export class FileContentService {
       this.app.get('logger').error({ fileId: id }, 'object missing for a stored file')
       throw new NotFound(`No record found for id '${id}'`)
     }
-    // Only a current avatar is shown inline, and only a verified raster
-    // image can be one (ADR 0020).
-    const avatarOf = await this.app.get('knex')('users').where({ avatarFileId: id }).first<{ id: string } | undefined>('id')
     return { file: await fileResolver.resolve(file, {} as HookContext), body: stored.body, inline: Boolean(avatarOf) }
   }
 }
+
+// An avatar, shown inline, goes out under a name of the server's choosing
+// with the extension of its verified type, so saving it never yields a file
+// a desktop would open as something else (decided 2026-10-02, ADR 0020).
+const AVATAR_EXTENSIONS: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }
+export const avatarFilename = (contentType: string) => `avatar.${AVATAR_EXTENSIONS[contentType] ?? 'bin'}`
 
 // Bytes are only ever sent over HTTP, with headers that keep a browser from
 // running them: nosniff, the verified type, attachment unless an avatar, and
@@ -142,7 +166,9 @@ const sendContent = async (context: HookContext<FileContentService>, next: NextF
     headers: {
       'content-type': file.contentType,
       'content-length': String(file.sizeBytes),
-      'content-disposition': contentDisposition(inline ? 'inline' : 'attachment', file.filename),
+      'content-disposition': inline
+        ? contentDisposition('inline', avatarFilename(file.contentType))
+        : contentDisposition('attachment', file.filename),
       'x-content-type-options': 'nosniff',
       'content-security-policy': "default-src 'none'; sandbox",
       'cache-control': 'private, no-store'

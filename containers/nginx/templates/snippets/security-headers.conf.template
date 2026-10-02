@@ -4,3 +4,9 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style
 add_header Strict-Transport-Security "max-age=31536000" always;
 add_header X-Content-Type-Options "nosniff" always;
 add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+# No browser feature the application does not use (decided 2026-10-02).
+add_header Permissions-Policy "accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=()" always;
+# A window this origin opens, or that opens it, shares no browsing context
+# group with another origin. The SAML flow uses redirects and form posts,
+# never popups.
+add_header Cross-Origin-Opener-Policy "same-origin" always;

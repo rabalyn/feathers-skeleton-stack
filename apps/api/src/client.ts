@@ -104,6 +104,8 @@ export type { SystemComponent, SystemInfoReport } from './services/system-info/s
 export type { UpdateCheck, UpdateCheckData } from './services/update-checks/update-checks.js'
 export type { Preference, PreferenceData, PreferenceQuery } from './services/preferences/preferences.schema.js'
 export type { PreferenceKey, PreferenceValues } from './preferences/registry.js'
+// A 400 for refused data or query (ADR 0005).
+export type { ValidationError } from './validation-error.js'
 // gen:service exports (ADR 0030)
 export { ALLOWED_CONTENT_TYPES, AVATAR_CONTENT_TYPES, FILENAME_HEADER, type AllowedContentType } from './uploads.js'
 export {

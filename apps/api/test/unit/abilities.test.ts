@@ -96,7 +96,9 @@ describe('subject channels', () => {
     expect(unconditionalReadSubjects(ability(['profile.avatar', 'profile.locale']))).toEqual(expect.arrayContaining(['avatars', 'locales']))
     expect(unconditionalReadSubjects(ability(['documents.own']))).not.toContain('documents')
     expect(unconditionalReadSubjects(ability(['documents.all']))).toContain('documents')
-    expect(unconditionalReadSubjects(ability(['users.read']))).toEqual(expect.arrayContaining(['users', 'files', 'roles']))
+    expect(unconditionalReadSubjects(ability(['users.read']))).toEqual(expect.arrayContaining(['users', 'roles']))
+    // Files are read through what attaches them (ADR 0020), never wholesale.
+    expect(unconditionalReadSubjects(ability(['users.read', 'documents.all']))).not.toContain('files')
   })
 })
 

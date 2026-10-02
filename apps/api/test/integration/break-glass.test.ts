@@ -103,17 +103,6 @@ describe('the password login', () => {
     expect(await auditOf('login.refused')).toMatchObject({ detail: { method: 'password', reason } })
   })
 
-  it('refuses a disabled account', async () => {
-    await db()('users').where({ auth_source: 'local' }).update({ enabled: false })
-    try {
-      const response = await login({ email: EMAIL, password }, { ip: '192.0.2.11' })
-      expect(response.status).toBe(401)
-      expect(await auditOf('login.refused')).toMatchObject({ detail: { reason: 'account disabled' } })
-    } finally {
-      await db()('users').where({ auth_source: 'local' }).update({ enabled: true })
-    }
-  })
-
   it('refuses a request from another origin', async () => {
     expect((await login({ email: EMAIL, password }, { ip: '192.0.2.12', origin: 'https://evil.test' })).status).toBe(403)
     expect((await login({ email: EMAIL, password }, { ip: '192.0.2.12', origin: null })).status).toBe(403)
@@ -148,6 +137,27 @@ describe('the password login', () => {
   })
 })
 
+const accessTokenOf = async (response: Response) => ((await response.json()) as { accessToken: string }).accessToken
+
+// Decided 2026-10-02: the way in when the IdP fails is never switched off,
+// by anybody, through any path.
+describe('the account is never disabled', () => {
+  it('refuses the users patch, external and internal, and a direct update', async () => {
+    const { id } = await db()('users').where({ auth_source: 'local' }).first('id')
+    const token = await accessTokenOf(await login({ email: EMAIL, password }, { ip: '192.0.2.40' }))
+    const patch = await fetch(`${base}/users/${id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify({ enabled: false })
+    })
+    expect(patch.status).toBe(400)
+    expect(await patch.json()).toMatchObject({ message: 'The break-glass account cannot be disabled' })
+    await expect(app.service('users').patch(id, { enabled: false })).rejects.toMatchObject({ code: 400 })
+    await expect(db()('users').where({ id }).update({ enabled: false })).rejects.toThrow(/users_break_glass_enabled/)
+    expect(await db()('users').where({ id }).first('enabled')).toMatchObject({ enabled: true })
+  })
+})
+
 describe('rotation', () => {
   it('replaces the password and ends every session of the account', async () => {
     const response = await login({ email: EMAIL, password }, { ip: '192.0.2.30' })
@@ -167,5 +177,26 @@ describe('rotation', () => {
     expect((await login({ email: EMAIL, password }, { ip: '192.0.2.31' })).status).toBe(401)
     expect((await login({ email: EMAIL, password: rotated.password }, { ip: '192.0.2.31' })).status).toBe(201)
     password = rotated.password
+  })
+
+  it('revokes every API token of the account, which the old password could have minted', async () => {
+    const token = await accessTokenOf(await login({ email: EMAIL, password }, { ip: '192.0.2.32' }))
+    const created = await fetch(`${base}/api-tokens`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name: 'leaked', permissions: ['users.read'] })
+    })
+    expect(created.status).toBe(201)
+    const { token: apiToken } = (await created.json()) as { token: string }
+    const usersWith = (bearer: string) => fetch(`${base}/users?$limit=1`, { headers: { authorization: `Bearer ${bearer}` } })
+    expect((await usersWith(apiToken)).status).toBe(200)
+
+    const rotated = await rotateBreakGlass(app.get('knex'))
+    password = rotated.password
+    expect((await usersWith(apiToken)).status).toBe(401)
+    expect((await usersWith(token)).status).toBe(401)
+    const { id } = await db()('users').where({ auth_source: 'local' }).first('id')
+    expect(await db()('api_tokens').where({ user_id: id }).count().first()).toMatchObject({ count: '0' })
+    expect(await auditOf('breakglass.rotate')).toMatchObject({ detail: { apiTokensRevoked: 1 } })
   })
 })
