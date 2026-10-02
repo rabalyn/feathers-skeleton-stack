@@ -10,9 +10,10 @@
 # response is never a document and carries no CSP; a file-contents response
 # carries its own stricter policy, set by the api so it holds however the
 # bytes are reached, and is the single CSP on that response (ADR 0020).
-add_header Strict-Transport-Security "max-age=31536000" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+#
+# HSTS, nosniff and Referrer-Policy are in base-headers.conf, shared with the
+# third-party virtual hosts; what follows is for the application only.
+include /etc/nginx/conf.d/snippets/base-headers.conf;
 # No browser feature the application does not use (decided 2026-10-02).
 add_header Permissions-Policy "accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=()" always;
 # A window this origin opens, or that opens it, shares no browsing context

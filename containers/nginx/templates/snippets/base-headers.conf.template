@@ -1,0 +1,13 @@
+# ADR 0016, 0018. The headers every virtual host sends, the third-party UIs
+# (Grafana, NetBox, the IdP, Mailpit, Dozzle) included: none of them depends
+# on what the page is. Included at server level by those virtual hosts, and
+# through security-headers.conf by the application's. A location that sets an
+# add_header of its own discards these and must include this file again.
+#
+# A proxied location hides the upstream's own Strict-Transport-Security and
+# X-Content-Type-Options, so these are the only ones on the response; the
+# upstream's Referrer-Policy is kept when it sends one ($referrer_policy,
+# nginx.conf).
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy $referrer_policy always;

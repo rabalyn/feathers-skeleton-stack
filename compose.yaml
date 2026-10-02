@@ -66,8 +66,15 @@ services:
       NGINX_ENTRYPOINT_LOCAL_RESOLVERS: "1"
       NGINX_TLS_DIR: /etc/nginx/tls
       NGINX_APP_HOST: app.localhost
-      NGINX_IDP_HOST: idp.localhost
+      # The local IdP (ADR 0008), Dozzle (ADR 0002) and Mailpit's inbox
+      # (ADR 0022) are local only, like the e2e origin below: interpolated
+      # values never reach the production units, so production has none of
+      # these virtual hosts unless a drop-in sets one on purpose.
+      NGINX_IDP_HOST: ${NGINX_IDP_HOST:-idp.localhost}
       NGINX_PUBLIC_PORT: "8443"
+      # Plain HTTP, which only redirects to HTTPS (ADR 0016); production
+      # publishes it as port 80.
+      NGINX_HTTP_PORT: "8080"
       # Mirrored in bytes as the api's BODY_SIZE_CEILING_BYTES (ADR 0025).
       NGINX_BODY_SIZE_LIMIT: 10m
       NGINX_API_UPSTREAM: api:3030
@@ -75,15 +82,15 @@ services:
       # reach the production units.
       NGINX_E2E_HOST: ${NGINX_E2E_HOST:-e2e.localhost}
       NGINX_E2E_API_UPSTREAM: ${NGINX_E2E_API_UPSTREAM:-api-e2e:3030}
-      NGINX_IDP_UPSTREAM: idp:8080
-      NGINX_DOZZLE_HOST: dozzle.localhost
-      NGINX_DOZZLE_UPSTREAM: dozzle:8080
+      NGINX_IDP_UPSTREAM: ${NGINX_IDP_UPSTREAM:-idp:8080}
+      NGINX_DOZZLE_HOST: ${NGINX_DOZZLE_HOST:-dozzle.localhost}
+      NGINX_DOZZLE_UPSTREAM: ${NGINX_DOZZLE_UPSTREAM:-dozzle:8080}
       # Grafana in every environment, Mailpit's inbox locally (ADR 0022);
       # production sets its own Grafana host name and no mail host.
       NGINX_GRAFANA_HOST: grafana.localhost
       NGINX_GRAFANA_UPSTREAM: grafana:3000
-      NGINX_MAIL_HOST: mail.localhost
-      NGINX_MAIL_UPSTREAM: mail:8025
+      NGINX_MAIL_HOST: ${NGINX_MAIL_HOST:-mail.localhost}
+      NGINX_MAIL_UPSTREAM: ${NGINX_MAIL_UPSTREAM:-mail:8025}
       # NetBox (ADR 0031) in every environment; production sets its host.
       NGINX_NETBOX_HOST: netbox.localhost
       NGINX_NETBOX_UPSTREAM: netbox:8443
@@ -93,6 +100,7 @@ services:
       # Nginx listens on the public port itself, so inside the networks
       # nginx:8443 is the same origin a browser uses (the e2e container).
       - "127.0.0.1:8443:8443"
+      - "127.0.0.1:8080:8080"
     networks:
       edge:
         # The public name, for clients inside the stack: the uptime probe
