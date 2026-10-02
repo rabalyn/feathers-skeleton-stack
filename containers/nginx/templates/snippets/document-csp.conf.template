@@ -1,0 +1,6 @@
+# ADR 0018. The Content-Security-Policy for the application's documents: the
+# SPA's HTML and the pages served in its place (the history fallback, the
+# maintenance page). Included only by the web locations, beside
+# security-headers.conf, so it never lands on an API response, which is not a
+# document and whose file-contents carries its own stricter policy (ADR 0020).
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' wss://$server_name:${NGINX_PUBLIC_PORT}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;

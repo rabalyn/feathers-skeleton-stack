@@ -3,6 +3,7 @@ location /assets/ {
   root /usr/share/nginx/html;
   add_header Cache-Control "public, max-age=31536000, immutable" always;
   include /etc/nginx/conf.d/snippets/security-headers.conf;
+  include /etc/nginx/conf.d/snippets/document-csp.conf;
   try_files $uri =404;
 }
 
@@ -12,4 +13,5 @@ location / {
   try_files $uri /index.html;
   add_header Cache-Control "no-store" always;
   include /etc/nginx/conf.d/snippets/security-headers.conf;
+  include /etc/nginx/conf.d/snippets/document-csp.conf;
 }

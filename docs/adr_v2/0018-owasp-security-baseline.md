@@ -29,9 +29,14 @@ This system holds identifiable data about university members behind a university
 
 Set by Nginx ([0016](0016-nginx-and-tls-everywhere.md)) so they apply to every response including error pages:
 
-- `Content-Security-Policy` with no `unsafe-eval`; `connect-src` covering the API origin and `wss:`; `frame-ancestors 'none'`
 - `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`
 - `Permissions-Policy` switching off every browser feature the application does not use (camera, microphone, geolocation, payment, USB and the like; fullscreen for itself only), and `Cross-Origin-Opener-Policy: same-origin`, which the SAML flow allows since it uses redirects and form posts, never popups. Decided 2026-10-02.
+
+The `Content-Security-Policy` is scoped to the responses it governs rather than added to every response, so no response carries two conflicting policies (decided 2026-10-02):
+
+- The **document** policy — no `unsafe-eval`; `connect-src` covering the API origin and `wss:`; `frame-ancestors 'none'` — is set by Nginx on the documents only: the SPA's HTML and the pages served in its place (the history fallback, the maintenance page). It is in the `document-csp.conf` snippet, included beside `security-headers.conf` by the web locations.
+- A **file-contents** response carries its own stricter policy, `default-src 'none'; sandbox`, set by the api so it holds however the bytes are reached ([0020](0020-object-storage-uploads.md)); Nginx adds no document policy to `/api/`, so that is the single policy on the response. The api also sets `X-Content-Type-Options` on those bytes for the same reason, and Nginx drops that copy at `/api/` (`proxy_hide_header`) so the one it adds to every response is the only one.
+- An **API JSON** response is never a browsing context and carries no `Content-Security-Policy` at all.
 
 ### Cross-origin and CSRF
 
