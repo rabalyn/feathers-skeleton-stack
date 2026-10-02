@@ -18,6 +18,13 @@ describe('fetchMaintenanceState', () => {
     expect(await fetchMaintenanceState(async () => json(503, { active: null }))).toBe('unknown')
     expect(await fetchMaintenanceState(async () => new Response('<html>', { status: 200 }))).toBe('unknown')
   })
+
+  it('knows nothing when the answer does not come in time', async () => {
+    // A proxy holding the request open: only the abort ends it.
+    const hanging = (_url: RequestInfo | URL, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => init?.signal?.addEventListener('abort', () => reject(new DOMException('timed out', 'TimeoutError'))))
+    expect(await fetchMaintenanceState(hanging, 10)).toBe('unknown')
+  })
 })
 
 describe('isMaintenanceRefusal', () => {
