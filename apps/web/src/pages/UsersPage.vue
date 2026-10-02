@@ -50,7 +50,7 @@
         <q-td :props="props">
           <q-toggle
             :model-value="props.row.enabled"
-            :disable="!mayEnable"
+            :disable="!mayEnable || props.row.authSource === 'local'"
             :aria-label="props.row.enabled ? t('users.disable') : t('users.enable')"
             @update:model-value="(enabled: boolean) => patch(props.row.id, { enabled })"
           />

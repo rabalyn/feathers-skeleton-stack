@@ -2,6 +2,7 @@ import type { Server } from 'node:http'
 import { feathers, type HookContext, type NextFunction } from '@feathersjs/feathers'
 import { koa, rest, bodyParser, errorHandler, type Application as KoaApplication } from '@feathersjs/koa'
 import socketio from '@feathersjs/socketio'
+import { MethodNotAllowed } from '@feathersjs/errors'
 import { disallow } from 'feathers-utils/hooks'
 import type { Logger } from 'pino'
 import type { Knex } from 'knex'
@@ -18,7 +19,7 @@ import { Netbox } from './netbox.js'
 import { queueConnection } from './jobs/queues.js'
 import { MailOutbox } from './mail/outbox.js'
 import { defaultDeny } from './hooks/default-deny.js'
-import { sanitizeHttpErrors, sanitizeServiceErrors } from './hooks/errors.js'
+import { rejectBody, sanitizeHttpErrors, sanitizeServiceErrors } from './hooks/errors.js'
 import { inMaintenance } from './maintenance-mode.js'
 import { API_PREFIX, MAINTENANCE_URL, SOCKET_PATH } from './paths.js'
 import { RateLimiter } from './rate-limit.js'
@@ -66,6 +67,22 @@ export interface AppOptions {
 }
 
 export type Application = KoaApplication<ServiceTypes, AppSettings>
+
+// Feathers listens on a socket for the names of the methods its services
+// offer. Anything else (`update`, which no service offers, a private
+// `_find`, a name nobody knows) would get no answer at all and leave the
+// caller's acknowledgement pending, so it gets MethodNotAllowed.
+interface EventSocket {
+  onAny(listener: (event: string, ...args: unknown[]) => void): unknown
+  listeners(event: string): unknown[]
+}
+const answerUnknownEvents = (socket: EventSocket) => {
+  socket.onAny((event: string, ...args: unknown[]) => {
+    if (socket.listeners(event).length > 0) return
+    const ack = args.at(-1)
+    if (typeof ack === 'function') (ack as (error: unknown) => void)(new MethodNotAllowed(`Method '${event}' is not allowed`).toJSON())
+  })
+}
 
 export const createApp = (
   config: ApiConfig,
@@ -146,11 +163,23 @@ export const createApp = (
     await next()
   })
 
-  app.use(bodyParser())
+  app.use(bodyParser({ onError: rejectBody }))
   // SAML needs real HTTP routes the IdP redirects browsers to (ADR 0006).
   samlRoutes(app)
   app.configure(rest())
-  app.configure(socketio({ path: SOCKET_PATH, transports: ['websocket'] }))
+  // WebSocket handshakes only from the application's own origin, like the
+  // cookie-carrying authentication calls (ADR 0018); and every event no
+  // method handles is answered with an error rather than left unanswered.
+  app.configure(
+    socketio(
+      {
+        path: SOCKET_PATH,
+        transports: ['websocket'],
+        allowRequest: (req, callback) => callback(null, req.headers.origin === config.publicOrigin)
+      },
+      (io) => io.on('connection', answerUnknownEvents)
+    )
+  )
   app.configure(channels)
   app.configure(services)
   app.configure(authentication)

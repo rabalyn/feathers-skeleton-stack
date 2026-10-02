@@ -188,13 +188,45 @@ describe('files: upload', () => {
 })
 
 describe('files: reading', () => {
-  it('lets the owner, operators and admins read a file; others get a 404', async () => {
+  // Decided 2026-10-02: nobody reads a file because they know its id.
+  it('lets only the owner read a file nothing attaches; everybody else, admins included, gets a 404', async () => {
     const file = await uploaded(member, PDF, 'application/pdf')
     await expect(app.service('files').get(file.id, as(member))).resolves.toMatchObject({ id: file.id })
-    await expect(app.service('files').get(file.id, as(operator))).resolves.toMatchObject({ id: file.id })
-    await expect(app.service('files').get(file.id, as(admin))).resolves.toMatchObject({ id: file.id })
-    await expect(app.service('files').get(file.id, as(other))).rejects.toMatchObject({ code: 404 })
+    expect((await download(member, file.id)).status).toBe(200)
+    for (const user of [other, operator, admin]) {
+      await expect(app.service('files').get(file.id, as(user))).rejects.toMatchObject({ code: 404 })
+      const response = await download(user, file.id)
+      expect(response.status).toBe(404)
+      // Worded like an id that does not exist.
+      expect(await response.json()).toMatchObject({ message: `No record found for id '${file.id}'` })
+    }
+    const missing = await download(other, '01a0d950-4ccc-71d2-bc85-40a1a963e526')
+    expect(await missing.json()).toMatchObject({ message: "No record found for id '01a0d950-4ccc-71d2-bc85-40a1a963e526'" })
+  })
+
+  it("serves a document's file to whoever may read the document, and to nobody else", async () => {
+    const file = await uploaded(member, PDF, 'application/pdf')
+    const document = await app.service('documents').create({ title: 'by reference', fileId: file.id }, as(member))
+    for (const user of [member, operator, admin]) expect((await download(user, file.id)).status).toBe(200)
     expect((await download(other, file.id)).status).toBe(404)
+    // Its metadata stays the owner's: others see it in the document.
+    await expect(app.service('files').get(file.id, as(operator))).rejects.toMatchObject({ code: 404 })
+    await app.service('documents').remove(document.id, as(member))
+    expect((await download(operator, file.id)).status).toBe(404)
+  })
+
+  it('serves an avatar to whoever may read its user, under a name of the server’s choosing', async () => {
+    const file = await uploaded(member, PNG, 'image/png', 'avatar.html')
+    await app.service('avatars').create({ fileId: file.id }, as(member))
+    for (const user of [member, operator, admin]) {
+      const response = await download(user, file.id)
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-disposition')).toBe(`inline; filename="avatar.png"; filename*=UTF-8''avatar.png`)
+    }
+    // `user` reads no other user, so no other user's avatar.
+    expect((await download(other, file.id)).status).toBe(404)
+    await app.service('avatars').create({ fileId: null }, as(member))
+    expect((await download(operator, file.id)).status).toBe(404)
   })
 
   it('serves a document as an attachment, with nosniff and its verified type', async () => {

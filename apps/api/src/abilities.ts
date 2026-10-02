@@ -80,10 +80,9 @@ const CATALOGUE_ENTRIES = [
   // to create them (ADR 0029).
   entry('api-tokens.own', 'self', (can, user) => can(['read', 'delete'], 'api-tokens', { userId: user.id })),
   entry('users.read', 'users', (can) => {
+    // Their avatars come with them: file-contents follows the reference
+    // (ADR 0020), so no rule over files is needed.
     can('read', 'users')
-    // Their avatars. Files carry no mark of what they are attached to, so
-    // this reaches every file whose id the reader knows.
-    can('read', 'files')
     can('read', 'roles', ROLE_NAME_FIELDS)
   }),
   // Which fields a patch may carry is fixed by the users patch schema.
@@ -101,8 +100,8 @@ const CATALOGUE_ENTRIES = [
     can(['read', 'write', 'delete'], 'documents', { ownerId: user.id })
   }),
   entry('documents.all', 'documents', (can) => {
+    // Their files come with them, through the document (ADR 0020).
     can(['read', 'write', 'delete'], 'documents')
-    can('read', 'files')
   }),
   entry('sessions.read', 'sessions', (can) => can('read', 'sessions', SESSION_FIELDS_WITHOUT_USER_AGENT)),
   entry('sessions.read-user-agent', 'sessions', (can) => can('read', 'sessions')),
@@ -171,8 +170,8 @@ const grantFixedCore = (can: Can, user: AbilityUser) => {
   // Checks the `data-exports` rule on the record itself.
   can('read', 'data-export-contents')
 
-  // Checks the `files` rule on the record itself, so it grants nothing that
-  // a permission over files does not (ADR 0020).
+  // Checks the file's owner or the record attaching it, so it grants nothing
+  // that a permission over files, documents or users does not (ADR 0020).
   can('read', 'file-contents')
 
   // Ending one's own view-as (ADR 0028), whatever one may do meanwhile;

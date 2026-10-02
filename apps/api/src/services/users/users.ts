@@ -162,6 +162,19 @@ const withRoles = async (context: HookContext<UserService>, next: NextFunction) 
   })
 }
 
+// The break-glass account is the way in when the IdP fails, so it is never
+// disabled, by anybody (decided 2026-10-02, ADR 0008); a CHECK constraint
+// holds the same for writers outside this service.
+const keepBreakGlassEnabled = async (context: HookContext<UserService>) => {
+  const data = context.data as UserInternalPatch | undefined
+  if (data?.enabled !== false || context.id === null || context.id === undefined) return
+  const user: { authSource: string } | undefined = await context.app
+    .get('knex')('users')
+    .where({ id: String(context.id) })
+    .first('authSource')
+  if (user?.authSource === 'local') throw new BadRequest('The break-glass account cannot be disabled')
+}
+
 // `roleId` filters by a join, not a column.
 const moveRoleFilter = async (context: HookContext<UserService>) => {
   const query = context.params.query
@@ -224,6 +237,7 @@ export const users = (app: Application) => {
     },
     before: {
       all: [schemaHooks.validateQuery(userQueryValidator), schemaHooks.resolveQuery(userQueryResolver), moveRoleFilter],
+      patch: [keepBreakGlassEnabled],
       create: [schemaHooks.validateData(userDataValidator), schemaHooks.resolveData(userDataResolver)]
     },
     after: {

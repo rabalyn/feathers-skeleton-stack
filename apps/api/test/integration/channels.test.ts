@@ -388,3 +388,49 @@ describe('forced re-authentication', () => {
     expect(connection.events).toEqual([])
   })
 })
+
+// Decided 2026-10-02 (ADR 0018): a WebSocket is opened from the
+// application's own origin only, and every call gets an answer.
+describe('socket transport', () => {
+  const handshake = (origin?: string) =>
+    new Promise<string>((resolve) => {
+      const socket = io(base, {
+        path: SOCKET_PATH,
+        transports: ['websocket'],
+        reconnection: false,
+        forceNew: true,
+        ...(origin ? { extraHeaders: { origin } } : {})
+      })
+      socket.once('connect', () => {
+        socket.disconnect()
+        resolve('connected')
+      })
+      socket.once('connect_error', () => {
+        socket.disconnect()
+        resolve('refused')
+      })
+    })
+
+  it('refuses a handshake from another origin, or without one', async () => {
+    expect(await handshake('https://evil.test')).toBe('refused')
+    expect(await handshake()).toBe('refused')
+    expect(await handshake(PUBLIC_ORIGIN)).toBe('connected')
+  })
+
+  it('answers a method no service offers with MethodNotAllowed instead of leaving it pending', async () => {
+    const { socket } = await connectAs(member)
+    const call = (...args: unknown[]) =>
+      new Promise<unknown>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('no answer')), 2000)
+        socket.emit(...(args as [string]), (error: unknown) => {
+          clearTimeout(timer)
+          resolve(error)
+        })
+      })
+    for (const method of ['update', '_find', 'nonsense']) {
+      expect(await call(method, 'documents', 'x', {})).toMatchObject({ name: 'MethodNotAllowed', code: 405 })
+    }
+    // Real methods are untouched.
+    expect(await call('find', 'documents', {})).toBeNull()
+  })
+})
