@@ -1,8 +1,11 @@
 # The built frontend bundle (ADR 0014, 0016). Included by app.conf.
 location /assets/ {
   root /usr/share/nginx/html;
-  add_header Cache-Control "public, max-age=31536000, immutable" always;
+  # Not `always`: a 404 for an asset (one asked for mid-deploy, say) must not
+  # be cached for a year. The security headers below stay on every status.
+  add_header Cache-Control "public, max-age=31536000, immutable";
   include /etc/nginx/conf.d/snippets/security-headers.conf;
+  include /etc/nginx/conf.d/snippets/document-csp.conf;
   try_files $uri =404;
 }
 
@@ -12,4 +15,5 @@ location / {
   try_files $uri /index.html;
   add_header Cache-Control "no-store" always;
   include /etc/nginx/conf.d/snippets/security-headers.conf;
+  include /etc/nginx/conf.d/snippets/document-csp.conf;
 }

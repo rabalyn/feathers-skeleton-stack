@@ -12,4 +12,5 @@ location / {
   proxy_hide_header Cache-Control;
   add_header Cache-Control "no-store" always;
   include /etc/nginx/conf.d/snippets/security-headers.conf;
+  include /etc/nginx/conf.d/snippets/document-csp.conf;
 }

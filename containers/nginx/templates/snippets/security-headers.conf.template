@@ -1,9 +1,19 @@
-# ADR 0018. Included in every location of the app server, because an
-# add_header inside a location discards all headers inherited from above.
-add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' wss://$server_name:${NGINX_PUBLIC_PORT}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
-add_header Strict-Transport-Security "max-age=31536000" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+# ADR 0018. The headers that belong on every response the application makes,
+# whatever its body: HTML pages, API JSON, downloaded file bytes and error
+# pages alike. Included in every location that sets any add_header of its own,
+# because an add_header inside a location discards all headers inherited from
+# above.
+#
+# The document Content-Security-Policy is NOT here: it governs how a browsing
+# context loads resources, so it belongs only on the responses that are a
+# document (document-csp.conf, included by the web locations). An API JSON
+# response is never a document and carries no CSP; a file-contents response
+# carries its own stricter policy, set by the api so it holds however the
+# bytes are reached, and is the single CSP on that response (ADR 0020).
+#
+# HSTS, nosniff and Referrer-Policy are in base-headers.conf, shared with the
+# third-party virtual hosts; what follows is for the application only.
+include /etc/nginx/conf.d/snippets/base-headers.conf;
 # No browser feature the application does not use (decided 2026-10-02).
 add_header Permissions-Policy "accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=()" always;
 # A window this origin opens, or that opens it, shares no browsing context

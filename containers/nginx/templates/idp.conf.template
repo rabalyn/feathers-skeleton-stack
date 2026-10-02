@@ -8,11 +8,19 @@ server {
   ssl_certificate     ${NGINX_TLS_DIR}/fullchain.crt;
   ssl_certificate_key ${NGINX_TLS_DIR}/tls.key;
 
+  # HSTS, nosniff and Referrer-Policy only: the application's CSP,
+  # Permissions-Policy and COOP are written for the application, not
+  # for this UI (ADR 0016).
+  include /etc/nginx/conf.d/snippets/base-headers.conf;
+
   set $idp_upstream http://${NGINX_IDP_UPSTREAM};
 
   location / {
     proxy_pass $idp_upstream;
     proxy_http_version 1.1;
+    # Ours are the only ones on the response (base-headers.conf).
+    proxy_hide_header Strict-Transport-Security;
+    proxy_hide_header X-Content-Type-Options;
     proxy_set_header Host $http_host;
     proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header X-Forwarded-Proto https;
@@ -21,4 +29,12 @@ server {
     proxy_buffer_size 16k;
     proxy_buffers 8 16k;
   }
+}
+
+# Plain HTTP for this name: a permanent redirect to HTTPS, to the matched
+# name rather than the request's Host (ADR 0016).
+server {
+  listen ${NGINX_HTTP_PORT};
+  server_name ${NGINX_IDP_HOST};
+  return 301 https://$server_name:${NGINX_PUBLIC_PORT}$request_uri;
 }

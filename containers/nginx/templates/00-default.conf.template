@@ -5,4 +5,15 @@ server {
   ssl_certificate     ${NGINX_TLS_DIR}/fullchain.crt;
   ssl_certificate_key ${NGINX_TLS_DIR}/tls.key;
   ssl_reject_handshake on;
+  # A handshake for a known name followed by a Host that names none lands
+  # here: 421 tells the client this connection serves no such host.
+  return 421;
+}
+
+# Plain HTTP only redirects, and only for a name a virtual host serves: each
+# virtual host carries its own redirect server (ADR 0016). Anything else is
+# closed without an answer.
+server {
+  listen ${NGINX_HTTP_PORT} default_server;
+  return 444;
 }

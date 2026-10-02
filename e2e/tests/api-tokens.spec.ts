@@ -15,7 +15,7 @@ const callWith = (script: Page, token: string, path: string) =>
       const response = await fetch(url, { headers: { authorization: `Bearer ${bearer}` } })
       return { status: response.status, body: response.ok ? ((await response.json()) as { total?: number }) : null }
     },
-    [path, token]
+    [path, token] as const
   )
 
 test('an admin creates a token, uses it over REST and revokes it', async ({ page, browser }) => {
