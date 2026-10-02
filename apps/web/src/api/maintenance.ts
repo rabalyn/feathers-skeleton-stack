@@ -6,13 +6,25 @@ import { MAINTENANCE_URL } from '@app/api/client'
 // How often the maintenance page asks whether the mode is over.
 export const MAINTENANCE_POLL_MS = 30_000
 
+// How long a check waits for an answer. A proxy in front of a stopped API
+// may hold the request rather than refuse it; without a limit the page
+// would never learn that the API is gone.
+export const MAINTENANCE_TIMEOUT_MS = 10_000
+
 // `unknown`: the API did not answer, or could not say. The API is expected
 // to be down for part of a maintenance window, so this counts as one.
 export type MaintenanceState = 'active' | 'inactive' | 'unknown'
 
-export const fetchMaintenanceState = async (fetcher: typeof fetch = globalThis.fetch.bind(globalThis)): Promise<MaintenanceState> => {
+export const fetchMaintenanceState = async (
+  fetcher: typeof fetch = globalThis.fetch.bind(globalThis),
+  timeoutMs = MAINTENANCE_TIMEOUT_MS
+): Promise<MaintenanceState> => {
   try {
-    const response = await fetcher(MAINTENANCE_URL, { cache: 'no-store', headers: { accept: 'application/json' } })
+    const response = await fetcher(MAINTENANCE_URL, {
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+      signal: AbortSignal.timeout(timeoutMs)
+    })
     if (!response.ok) return 'unknown'
     const { active } = (await response.json()) as { active?: unknown }
     return active === true ? 'active' : active === false ? 'inactive' : 'unknown'

@@ -4,5 +4,11 @@
 # is gone fails after 2 s instead of the default 60 s, so a reconnecting
 # Socket.IO client reaches the new api within seconds. On the container
 # network a connect that works takes well under a millisecond.
+# A stopped container's name is unknown to Podman's DNS, which then asks the
+# host's resolvers and may not answer for many seconds: the lookup gives up
+# after 2 s instead of the default 30 s, so a request to a stopped api gets
+# its 502 in time for the browser to wait on the maintenance page (ADR 0025).
+# A name Podman knows is answered at once.
 resolver ${NGINX_LOCAL_RESOLVERS} valid=1s ipv6=off;
+resolver_timeout 2s;
 proxy_connect_timeout 2s;
