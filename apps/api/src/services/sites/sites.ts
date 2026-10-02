@@ -5,6 +5,7 @@ import type { Application } from '../../app.js'
 import { publishNothing } from '../../channels.js'
 import { NetboxNotFound, NetboxUnavailable, type Netbox, type NetboxSite } from '../../netbox.js'
 import { PAGINATE } from '../../paginate.js'
+import { limitPerUser } from '../../rate-limit.js'
 import { SITE_PAGE_MAX, siteQueryValidator, type Site, type SitePage, type SiteQuery } from './sites.schema.js'
 
 export type SiteParams = Params<SiteQuery>
@@ -78,6 +79,8 @@ export const sites = (app: Application) => {
     methods: [...SITE_EXTERNAL_METHODS]
   })
   app.service(SITES_PATH).hooks({
+    // Each call is a NetBox request (ADR 0010).
+    around: { all: [limitPerUser('siteLookup')] },
     before: { find: [schemaHooks.validateQuery(siteQueryValidator)] }
   })
   // Read only.

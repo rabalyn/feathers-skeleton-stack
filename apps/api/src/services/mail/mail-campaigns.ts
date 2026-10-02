@@ -10,6 +10,7 @@ import { CampaignError, campaignKind, campaignParamsError, createCampaign, previ
 import type { CampaignKind } from '../../mail/kind.js'
 import { TemplateError } from '../../mail/render.js'
 import { PAGINATE } from '../../paginate.js'
+import { limitPerUser } from '../../rate-limit.js'
 import {
   mailCampaignDataValidator,
   mailCampaignExternalResolver,
@@ -118,7 +119,8 @@ export const mailCampaigns = (app: Application) => {
   app.service(MAIL_CAMPAIGNS_PATH).hooks({
     around: {
       all: [schemaHooks.resolveExternal(mailCampaignExternalResolver), schemaHooks.resolveResult(mailCampaignResolver)],
-      create: [schemaHooks.validateData(mailCampaignDataValidator), sendCampaign]
+      // A campaign mails many people (ADR 0010).
+      create: [limitPerUser('mailCampaigns'), schemaHooks.validateData(mailCampaignDataValidator), sendCampaign]
     },
     before: {
       all: [schemaHooks.validateQuery(mailCampaignQueryValidator)],

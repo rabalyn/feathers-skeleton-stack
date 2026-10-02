@@ -33,6 +33,12 @@ Every operational policy the application or its own services enforce is a runtim
 | Rate limit, SAML ACS | `rateLimitSamlAcsPerMinute` | 60 per client IP and minute | API |
 | Rate limit, refresh | `rateLimitRefreshPerMinute` | 600 per client IP and minute | API |
 | Rate limit, break-glass password login | `rateLimitPasswordLoginPerMinute` | 5 per account, client IP and minute | API ([0008](0008-authentication-saml2-ldap.md)) |
+| Rate limit, uploads | `rateLimitUploadsPerMinute` | 30 per user and minute | API ([0020](0020-object-storage-uploads.md)) |
+| Rate limit, data exports started | `rateLimitDataExportsPerMinute` | 5 per user and minute | API ([0013](0013-gdpr-export-and-retention.md)) |
+| Rate limit, mail campaigns sent | `rateLimitMailCampaignsPerMinute` | 5 per user and minute | API ([0027](0027-email-templates-and-sending.md)) |
+| Rate limit, update checks asked for | `rateLimitUpdateChecksPerMinute` | 5 per user and minute | API ([0032](0032-system-info-and-update-check.md)) |
+| Rate limit, directory searches | `rateLimitDirectorySearchPerMinute` | 60 per user and minute | API ([0008](0008-authentication-saml2-ldap.md)) |
+| Rate limit, location lookups | `rateLimitSiteLookupPerMinute` | 120 per user and minute | API ([0031](0031-netbox-locations.md)) |
 | Mail sending limit, count | `mailSendLimitCount` | 10 mails per window, across all worker processes | Worker ([0027](0027-email-templates-and-sending.md)) |
 | Mail sending limit, window | `mailSendLimitWindowSeconds` | 300 seconds | Worker |
 | Mail delivery log retention | `mailDeliveryRetentionDays` | 90 days | Worker ([0027](0027-email-templates-and-sending.md)) |

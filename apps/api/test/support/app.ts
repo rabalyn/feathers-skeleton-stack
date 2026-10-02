@@ -16,9 +16,11 @@ import {
   type ValkeyConfig
 } from '../../src/config.js'
 import { createKnex } from '../../src/db.js'
+import { RATE_LIMITS, type RateLimitBucket } from '../../src/rate-limit.js'
+import { SETTINGS } from '../../src/settings/registry.js'
 import { createValkey } from '../../src/valkey.js'
 import { IDP_ENTITY_ID, IDP_SSO_URL, PUBLIC_ORIGIN, TestIdp, keyPair, type KeyPair } from './saml-idp.js'
-import { workerDatabaseConfig } from './worker-database.js'
+import { db, workerDatabaseConfig } from './worker-database.js'
 
 export const BODY_SIZE_CEILING_BYTES = 10 * 1024 * 1024
 
@@ -115,4 +117,16 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
     { settingsTtlMs: 0, rateLimitPrefix }
   )
   return { app, idp: new TestIdp(idpKey), sp, rateLimitPrefix }
+}
+
+// Lifts a rate limit (ADR 0010) for a test file that is not about it but
+// calls its endpoint more often than a person would. Returns what puts the
+// default back.
+export const liftRateLimit = async (bucket: RateLimitBucket): Promise<() => Promise<void>> => {
+  const key = RATE_LIMITS[bucket]
+  const setTo = (value: number) => db()('settings').where({ key }).update({ value: JSON.stringify(value) })
+  await setTo(100_000)
+  return async () => {
+    await setTo(SETTINGS[key].default)
+  }
 }

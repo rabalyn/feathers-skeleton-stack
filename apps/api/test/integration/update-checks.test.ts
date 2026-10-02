@@ -9,7 +9,7 @@ import { createClient, SOCKET_PATH, type ClientApplication } from '../../src/cli
 import { MAINTENANCE_QUEUE, UPDATE_CHECK, UPDATE_CHECK_ASKED_ID, queueConnection } from '../../src/jobs/queues.js'
 import { SYSTEM_INFO_CHECK_EVENT, type SystemInfoCheckStatus } from '../../src/services/system-info/system-info.js'
 import type { User } from '../../src/services/users/users.schema.js'
-import { createTestApp, loadValkeyConfig } from '../support/app.js'
+import { createTestApp, liftRateLimit, loadValkeyConfig } from '../support/app.js'
 import { makeUser } from '../support/roles.js'
 import { PUBLIC_ORIGIN } from '../support/saml-idp.js'
 
@@ -24,12 +24,15 @@ let admin: User
 let operator: User
 let member: User
 let queue: Queue
+let restoreRateLimit: () => Promise<void>
 
 const as = (user: User) => ({ provider: 'rest' as const, user, authenticated: true })
 const ask = (user: User) => app.service('update-checks').create({}, as(user))
 
 beforeAll(async () => {
   ;({ app } = await createTestApp({ system: { updateCheck: 'on' } }))
+  // Asked for far more often here than a person would (ADR 0010).
+  restoreRateLimit = await liftRateLimit('updateChecks')
   const server = await app.listen(0)
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
   queue = new Queue(MAINTENANCE_QUEUE, { connection: queueConnection(await loadValkeyConfig()), prefix: app.get('config').queuePrefix })
@@ -39,6 +42,7 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  await restoreRateLimit()
   await queue.obliterate({ force: true })
   await queue.close()
   await app.teardown()

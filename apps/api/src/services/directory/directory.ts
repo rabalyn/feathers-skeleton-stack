@@ -6,6 +6,7 @@ import type { Application } from '../../app.js'
 import { publishNothing } from '../../channels.js'
 import { DirectoryUnavailable, PAGE_MAX, type Directory } from '../../directory.js'
 import { PAGINATE } from '../../paginate.js'
+import { limitPerUser } from '../../rate-limit.js'
 import { directoryQueryValidator, type DirectoryPage, type DirectoryQuery } from './directory.schema.js'
 
 export type DirectoryParams = Params<DirectoryQuery>
@@ -55,6 +56,8 @@ export const directory = (app: Application) => {
     methods: [...DIRECTORY_EXTERNAL_METHODS]
   })
   app.service(DIRECTORY_PATH).hooks({
+    // Each search is an LDAP query (ADR 0010).
+    around: { find: [limitPerUser('directorySearch')] },
     before: { find: [schemaHooks.validateQuery(directoryQueryValidator)] }
   })
   // Read only.

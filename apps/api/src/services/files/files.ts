@@ -8,6 +8,7 @@ import { hooks as schemaHooks } from '@feathersjs/schema'
 import { subject } from '@casl/ability'
 import type { Application } from '../../app.js'
 import { publishNothing } from '../../channels.js'
+import { limitPerUser } from '../../rate-limit.js'
 import type { HookContext } from '../../declarations.js'
 import {
   FILENAME_HEADER,
@@ -185,7 +186,9 @@ export const files = (app: Application) => {
   )
   app.service(FILES_PATH).hooks({
     around: {
-      all: [schemaHooks.resolveExternal(fileExternalResolver), schemaHooks.resolveResult(fileResolver)]
+      all: [schemaHooks.resolveExternal(fileExternalResolver), schemaHooks.resolveResult(fileResolver)],
+      // Storing an upload is costly (ADR 0010).
+      create: [limitPerUser('uploads')]
     },
     before: {
       get: [schemaHooks.validateQuery(fileQueryValidator), onlyStored],

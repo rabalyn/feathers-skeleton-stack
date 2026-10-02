@@ -11,7 +11,7 @@ import { queueConnection, startMaintenance, type Maintenance } from '../../src/j
 import type { DataExport } from '../../src/services/data-exports/data-exports.schema.js'
 import type { Storage } from '../../src/storage.js'
 import type { User } from '../../src/services/users/users.schema.js'
-import { createTestApp, loadValkeyConfig } from '../support/app.js'
+import { createTestApp, liftRateLimit, loadValkeyConfig } from '../support/app.js'
 import { DATA_EXPORTS_TEST_BUCKET } from '../support/global-setup.js'
 import { grantRoles, type SeededRole } from '../support/roles.js'
 
@@ -28,6 +28,7 @@ let admin: User
 let operator: User
 let member: User
 let other: User
+let restoreRateLimit: () => Promise<void>
 const tokens = new Map<string, string>()
 
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n')
@@ -98,6 +99,8 @@ const unzip = async (body: Buffer) => {
 
 beforeAll(async () => {
   ;({ app } = await createTestApp({ s3: { s3ExportsBucket: DATA_EXPORTS_TEST_BUCKET } }))
+  // Exports are requested far more often here than a person would (ADR 0010).
+  restoreRateLimit = await liftRateLimit('dataExports')
   const server = await app.listen(0)
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`
   maintenance = startMaintenance({
@@ -121,6 +124,7 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  await restoreRateLimit()
   await maintenance.exportQueue.obliterate({ force: true })
   await maintenance.queue.obliterate({ force: true })
   await maintenance.mail.queue.obliterate({ force: true })
