@@ -45,6 +45,12 @@ Every ADR carries the same fields, with no exceptions for older entries:
 - **A contradiction between two ADRs is resolved by editing one of them**, not by documenting the conflict in both.
 - Supersede rather than rewrite history: an ADR that no longer holds is marked `Superseded` with a pointer, and the replacement states what changed.
 
+### Diagrams
+
+Diagrams of the topology and of data flows live in [`diagrams/`](diagrams/README.md), one Markdown page per subject, drawn in **Mermaid** so they are text: diffed, reviewed and versioned with the ADRs, and rendered by GitHub without a build step. Image files and drawing-tool exports are not used, because nobody can review a change to them.
+
+A diagram **decides nothing**. Each page names the ADRs it illustrates, and where it disagrees with an ADR or the code, the ADR and the code win and the diagram is corrected. A change that moves a port, a network membership or a flow a diagram shows updates that diagram in the same commit, as it updates the ADR. The topology page's network matrix and listener table are checked against `compose.yaml` and the scrape and datasource configuration by `scripts/diagrams.sh`, a static check of `scripts/ci.sh` ([0015](0015-testing-vitest-playwright.md)); the flow diagrams have no such check and are kept by review. This keeps the directory the only architecture source while still giving readers a picture. Decided 2026-10-02.
+
 ### Relationship to `docs/adr/`
 
 This directory supersedes `docs/adr/`. The v1 directory is retained for history and should not be extended. Where a v2 ADR replaces v1 entries, its `Supersedes` field names them.

@@ -58,6 +58,10 @@ Thirty-four ADRs, each covering a decision with real alternatives. Read [0001](0
 - [0030 — New services are scaffolded by a project-local generator](0030-service-generator.md)
 - [0034 — Security verification checklist for new features](0034-security-verification-checklist.md)
 
+### Diagrams
+
+[`diagrams/`](diagrams/README.md) draws the stack's topology (services, ports, networks) and its main data flows in Mermaid. The diagrams illustrate these ADRs and decide nothing ([0019](0019-adr-convention.md#diagrams)).
+
 ## Not yet decided
 
 Covered in v1 but not carried forward, or deliberately deferred. Listed so nothing is lost by silence, not because they are all needed soon.
