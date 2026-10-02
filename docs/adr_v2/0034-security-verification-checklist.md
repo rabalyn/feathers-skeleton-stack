@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-02
 - Scope: Required (v1)
-- Related: [0005](0005-typebox-schema-boundary.md), [0008](0008-authentication-saml2-ldap.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0011](0011-casl-role-authorization.md), [0012](0012-role-scoped-channels.md), [0013](0013-gdpr-export-and-retention.md), [0018](0018-owasp-security-baseline.md), [0020](0020-object-storage-uploads.md), [0029](0029-api-tokens.md), [0030](0030-service-generator.md)
+- Related: [0005](0005-typebox-schema-boundary.md), [0008](0008-authentication-saml2-ldap.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0011](0011-casl-role-authorization.md), [0012](0012-role-scoped-channels.md), [0013](0013-gdpr-export-and-retention.md), [0016](0016-nginx-and-tls-everywhere.md), [0018](0018-owasp-security-baseline.md), [0020](0020-object-storage-uploads.md), [0021](0021-structured-logging.md), [0029](0029-api-tokens.md), [0030](0030-service-generator.md)
 
 ## Context
 
@@ -22,14 +22,17 @@ Each item names the control and the decision that owns it. If an item cannot be 
 ### Access control (A01)
 
 - Every externally reachable service is authenticated and authorized by the default-deny hook, or is on the `PUBLIC_SERVICES` allowlist by an explicit decision ([0011](0011-casl-role-authorization.md)). A new service added with `pnpm gen:service` ([0030](0030-service-generator.md)) inherits this; a hand-registered route does not — check it.
-- Scoping is expressed as CASL conditions, not as per-service query code, so the ability decides. Verify cross-tenant access fails as a **negative test**: a user who may read only their own rows gets an empty result or a 404 (worded like a missing id, not "forbidden") for `get` by id, and for `find` with `$or`, `$in`, `$ne`, `$select` and `$sort` aimed at another owner's rows.
+- Scoping is expressed as CASL conditions, not as per-service query code, so the ability decides. Verify cross-tenant access fails as a **negative test**: a user who may read only their own rows gets an empty result or a 404 (worded like a missing id, not "forbidden") for `get` by id; a 404 for `update`, `patch` and `remove` of another owner's id; no row touched by a multi-row `patch(null, …)` or `remove(null, …)` whose query aims at another owner's rows; and an empty result for `find` with `$or`, `$in`, `$ne`, `$select` and `$sort` aimed at them.
 - No client-settable field decides ownership or privilege. `ownerId`, `userId`, `id`, `createdAt`, role and enabled-state fields are set by the server, and the data schema rejects them (`additionalProperties: false`, [0005](0005-typebox-schema-boundary.md)). Test a create/patch that tries to set each.
+- No field the caller may not see leaves the api. The external resolver strips it ([0005](0005-typebox-schema-boundary.md), [0011](0011-casl-role-authorization.md)): password material, token and session hashes, object storage keys, another user's restricted fields. Test that a REST result, and one whose `$select` names the field outright, does not carry it.
+- A new service paginates with `PAGINATE` (`apps/api/src/paginate.ts`) or a lower bound and never turns pagination off ([0005](0005-typebox-schema-boundary.md)); a `$limit` above the maximum is answered with the maximum, not with the table.
 - Real-time: a new service names a publisher ([0012](0012-role-scoped-channels.md)). If it publishes, the channel filter drops what a connection may not read — assert an event does **not** reach an unauthorized connection, and that field-level rules hold in the payload as they do in the REST result.
 
 ### Authentication and session integrity (A02, A07)
 
 - New authentication or session code keeps: tokens re-checked against the session row every request; revocation on logout, disable and role change; refresh rotation with family revocation on reuse; generic failure messages in the application's own words ([0008](0008-authentication-saml2-ldap.md), [0010](0010-sessions-postgres-ratelimits-valkey.md)). An access token must stop working the instant its session is revoked — test it.
 - A new authentication entry point that sets or reads the refresh cookie also enforces the `Origin` check and a fail-closed rate limit keyed by account **and** IP ([0010](0010-sessions-postgres-ratelimits-valkey.md), [0018](0018-owasp-security-baseline.md)).
+- An endpoint that is costly or can be turned against someone else — it sends mail, starts an export or another job, stores an upload, or makes an outbound call — has a per-user rate-limit bucket, or a stated reason why not ([0010](0010-sessions-postgres-ratelimits-valkey.md)). Test that the request over the limit gets a `429` and that a Valkey outage refuses it.
 - An API token never gains what its owner lacks, never carries an excluded permission, and is bounded on every request by the owner's current rights ([0029](0029-api-tokens.md)). A new permission is classified as token-grantable or not, with a reason.
 
 ### Injection and rendering (A03)
@@ -40,7 +43,7 @@ Each item names the control and the decision that owns it. If an item cannot be 
 
 ### Response headers (A05)
 
-- The `Content-Security-Policy` is scoped per response and no response carries two ([0018](0018-owasp-security-baseline.md)): the document policy on the SPA's documents only, `default-src 'none'; sandbox` on file bytes, none on API JSON. A new HTML-serving location gets `document-csp.conf` beside `security-headers.conf`; a new API response that must restrict rendering sets its own policy and Nginx adds none to `/api/`. After a header change, check the live response carries exactly one of each header (`curl -D-` through Nginx, not only the app).
+- The `Content-Security-Policy` is scoped per response and no response carries two ([0018](0018-owasp-security-baseline.md)): the document policy on the SPA's documents and its static bundle, `default-src 'none'; sandbox` on file bytes, none on API JSON. Any location that sets an `add_header` of its own discards every inherited header and must include `security-headers.conf` again, and a new HTML-serving location also gets `document-csp.conf`; a new virtual host includes `base-headers.conf` at least ([0016](0016-nginx-and-tls-everywhere.md)) and its own HTTP redirect server; a new API response that must restrict rendering sets its own policy and Nginx adds none to `/api/`. `e2e/tests/headers.spec.ts` asserts each header exactly once, through Nginx, on a document, an asset, API JSON, file bytes and the third-party virtual hosts; a header change or a new kind of response extends it.
 - Configuration is validated at startup and the process refuses to start otherwise; no debug mode or seeded demo account reaches production ([0018](0018-owasp-security-baseline.md)). A new config field is validated in `config.ts`, and a secret is read only from its `<NAME>_FILE` path ([0023](0023-secrets-management.md)), never a plain environment variable.
 
 ### Error handling and disclosure (A05, A07, A09)
@@ -51,8 +54,9 @@ Each item names the control and the decision that owns it. If an item cannot be 
 
 - The application makes no outbound request to a user-supplied address. A new outbound call goes to a configured endpoint or a fixed in-code allowlist, follows no redirect off it, and is switchable off if it is periodic ([0018](0018-owasp-security-baseline.md), [0032](0032-system-info-and-update-check.md)).
 
-### Privacy and retention (A09)
+### Logging, privacy and retention (A09)
 
+- A new secret-bearing field, header or parameter is covered by the logger's redaction (`redactPaths`, `apps/api/src/logger.ts`, [0021](0021-structured-logging.md)), and a test logs a request carrying it and finds `[redacted]` in its place. Personal data in a log line is the surrogate user key, never the TU-ID.
 - New personal data is registered so it is exported and erased, and its retention is a runtime setting, not a constant ([0013](0013-gdpr-export-and-retention.md)). The registry's schema test covers the new field.
 
 ### Dependencies and secrets (A02, A06)
