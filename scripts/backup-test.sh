@@ -291,8 +291,12 @@ listener "tcp" {
 }
 api_addr     = "http://127.0.0.1:8200"
 cluster_addr = "http://127.0.0.1:8201"'
-podman run -d --name "$P-openbao" --network none -e BAO_ADDR=http://127.0.0.1:8200 --entrypoint sh "$OPENBAO_IMAGE" \
-  -c "mkdir -p /openbao/data && printf '%s' '$config' > /tmp/server.hcl && exec bao server -config=/tmp/server.hcl" >/dev/null
+# The stack's snapshot carries its audit device, a file on the log volume
+# (ADR 0023): OpenBao becomes active only once it can open it, and then
+# drops it, since this configuration declares none.
+podman run -d --name "$P-openbao" --network none -e BAO_ADDR=http://127.0.0.1:8200 \
+  --tmpfs /var/log/app:rw,mode=1777 --entrypoint sh "$OPENBAO_IMAGE" \
+  -c "mkdir -p /openbao/data /var/log/app/openbao && printf '%s' '$config' > /tmp/server.hcl && exec bao server -config=/tmp/server.hcl" >/dev/null
 bao_status() { podman exec "$P-openbao" bao status -format=json 2>/dev/null | jq -r ".$1"; }
 for _ in $(seq 30); do [[ -n $(bao_status initialized) ]] && break; sleep 1; done
 init=$(podman exec "$P-openbao" bao operator init -key-shares=1 -key-threshold=1 -format=json)
