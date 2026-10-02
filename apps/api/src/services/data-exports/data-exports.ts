@@ -12,6 +12,7 @@ import type { HookContext } from '../../declarations.js'
 import { EXPORT_CONTENT_TYPE } from '../../gdpr/export.js'
 import { BUILD_EXPORT, DATA_EXPORTS_QUEUE, EXPORT_JOB_OPTIONS, queueConnection, type ExportJob } from '../../jobs/queues.js'
 import { PAGINATE } from '../../paginate.js'
+import { limitPerUser } from '../../rate-limit.js'
 import { currentRequest } from '../../request-context.js'
 import { contentDisposition } from '../files/files.js'
 import {
@@ -208,7 +209,9 @@ export const dataExports = (app: Application) => {
   app.service(DATA_EXPORTS_PATH).hooks({
     around: {
       all: [schemaHooks.resolveExternal(dataExportExternalResolver), schemaHooks.resolveResult(dataExportResolver)],
+      // Each export is a worker job and a mail (ADR 0010).
       create: [
+        limitPerUser('dataExports'),
         schemaHooks.validateData(dataExportDataValidator),
         schemaHooks.resolveData(dataExportDataResolver),
         requestExport

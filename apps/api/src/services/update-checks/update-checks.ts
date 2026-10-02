@@ -3,6 +3,7 @@ import { hooks as schemaHooks } from '@feathersjs/schema'
 import { Type, getValidator, type Static } from '@feathersjs/typebox'
 import type { Application } from '../../app.js'
 import { publishNothing } from '../../channels.js'
+import { limitPerUser } from '../../rate-limit.js'
 import { dataValidator } from '../../validators.js'
 import { SYSTEM_INFO_PATH } from '../system-info/system-info.js'
 
@@ -36,6 +37,8 @@ export class UpdateCheckService {
 export const updateChecks = (app: Application) => {
   app.use(UPDATE_CHECKS_PATH, new UpdateCheckService(app), { methods: [...UPDATE_CHECK_EXTERNAL_METHODS] })
   app.service(UPDATE_CHECKS_PATH).hooks({
+    // The check calls out to the update sources (ADR 0010).
+    around: { create: [limitPerUser('updateChecks')] },
     before: { create: [schemaHooks.validateData(updateCheckDataValidator)] }
   })
   // The result goes to the caller only (ADR 0012).

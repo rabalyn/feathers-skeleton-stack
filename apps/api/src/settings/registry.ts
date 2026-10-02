@@ -40,6 +40,14 @@ export const SETTINGS = {
   rateLimitRefreshPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 600),
   // Per account and client IP; one person, so not generous.
   rateLimitPasswordLoginPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 5),
+  // Per authenticated user (an API token counts as its owner): endpoints
+  // that are costly or can be turned against someone else (ADR 0010).
+  rateLimitUploadsPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 30),
+  rateLimitDataExportsPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 5),
+  rateLimitMailCampaignsPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 5),
+  rateLimitUpdateChecksPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 5),
+  rateLimitDirectorySearchPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 60),
+  rateLimitSiteLookupPerMinute: define(Type.Integer({ minimum: 1, maximum: 100_000 }), 120),
   // Mail sending (ADR 0027): at most this many mails per window, across all
   // worker processes; the rate the previous applications sent at.
   mailSendLimitCount: define(Type.Integer({ minimum: 1, maximum: 10_000 }), 10),
@@ -72,6 +80,12 @@ export const API_SETTINGS = [
   'rateLimitSamlAcsPerMinute',
   'rateLimitRefreshPerMinute',
   'rateLimitPasswordLoginPerMinute',
+  'rateLimitUploadsPerMinute',
+  'rateLimitDataExportsPerMinute',
+  'rateLimitMailCampaignsPerMinute',
+  'rateLimitUpdateChecksPerMinute',
+  'rateLimitDirectorySearchPerMinute',
+  'rateLimitSiteLookupPerMinute',
   'featureFlags',
   'maintenanceMode',
   'viewAsMinutes'
