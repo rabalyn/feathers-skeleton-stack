@@ -3,7 +3,8 @@
 // environment. request_id and user_ref stay inside the line.
 
 // The JSON log files on the shared volume: the api's and the worker's at its
-// root, the backup service's in a directory of its own (ADR 0017).
+// root, the backup service's in a directory of its own (ADR 0017), and
+// OpenBao's audit log in another, below.
 local.file_match "app" {
   path_targets = [
     {"__path__" = "/var/log/app/*.log"},
@@ -14,6 +15,19 @@ local.file_match "app" {
 loki.source.file "app" {
   targets    = local.file_match.app.targets
   forward_to = [loki.process.app.receiver]
+}
+
+// OpenBao's audit log (ADR 0023): JSON without a service or level field,
+// so the service is set here. Rotated files (audit.log.1 …) are not read.
+local.file_match "openbao" {
+  path_targets = [
+    {"__path__" = "/var/log/app/openbao/*.log", "service" = "openbao"},
+  ]
+}
+
+loki.source.file "openbao" {
+  targets    = local.file_match.openbao.targets
+  forward_to = [loki.process.labels.receiver]
 }
 
 loki.process "app" {
@@ -41,7 +55,7 @@ loki.process "labels" {
 // service: Podman logs to the journal, under Compose and Quadlet alike. The
 // journal is the host user's, so only this stack's services are kept, by
 // name; the api, the worker and the backup service come from their files
-// instead.
+// instead, as does OpenBao's audit log (OpenBao's own output stays here).
 loki.relabel "journal" {
   forward_to = []
 

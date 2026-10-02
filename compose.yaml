@@ -782,15 +782,20 @@ services:
     depends_on:
       certs:
         condition: service_completed_successfully
-    entrypoint: ["bao"]
+    # Starts as root to create its audit log directory on the shared log
+    # volume and to rotate the file; OpenBao runs as `openbao` (ADR 0021,
+    # 0023). The image's own user is `openbao`.
+    entrypoint: ["/bin/sh", "/openbao/entrypoint.sh"]
     command: ["server", "-config=/openbao/config/server.hcl"]
-    user: "100:1000"
+    user: root
     environment:
       BAO_ADDR: https://127.0.0.1:8200
       BAO_CACERT: /openbao/trust/ca.crt
     networks: [secrets]
     volumes:
+      - ./containers/openbao/entrypoint.sh:/openbao/entrypoint.sh:ro,Z
       - ./containers/openbao/server.hcl:/openbao/config/server.hcl:ro,Z
+      - logs:/var/log/app
       - openbao-data:/openbao/data
       - tls-openbao:/openbao/tls:ro
       - trust:/openbao/trust:ro
