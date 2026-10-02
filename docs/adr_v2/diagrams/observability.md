@@ -37,9 +37,9 @@ flowchart LR
   api["api"] -->|"NDJSON, rotated 10 MB × 6"| logs[/"logs volume<br>&lt;service&gt;.&lt;n&gt;.log"/]
   worker["worker"] --> logs
   backup["backup"] -->|"backup/ subdirectory"| logs
+  openbao["openbao"] -->|"openbao/audit.log, rotated by its entrypoint<br>(HMACs, never values)"| logs
 
-  third["postgres, pgbouncer, s3,<br>idp, nginx, agents, …"] -->|"stdout → Podman → journald"| journal[/"host user journal"/]
-  openbao["openbao"] -->|"audit device on stdout<br>(HMACs, never values)"| journal
+  third["postgres, pgbouncer, s3, idp, nginx,<br>agents, OpenBao's own output, …"] -->|"stdout → Podman → journald"| journal[/"host user journal"/]
 
   logs -->|"read-only mount"| alloy["alloy"]
   journal -->|"read-only mount"| alloy
@@ -47,8 +47,6 @@ flowchart LR
 
   dozzle["dozzle (local only)"] -. "Podman socket,<br>not part of the pipeline" .-> journal
 ```
-
-OpenBao's audit device is drawn as `containers/openbao/server.hcl` configures it: on stdout, "until the shared log volume exists". [0023](../0023-secrets-management.md) says the log volume.
 
 ## Alerts
 
