@@ -26,7 +26,9 @@
 # Blocking thresholds (ADR 0018): pnpm audit at high and above; Trivy on
 # HIGH/CRITICAL findings that have a fix. Unfixed findings are reported
 # without blocking. Accepted findings go in .trivyignore.yaml, each with a
-# statement and an expiry date after which it blocks again.
+# statement and an expiry date after which it blocks again; pnpm audit
+# advisories with no fixed version go in auditConfig.ignoreGhsas in
+# pnpm-workspace.yaml the same way.
 #
 # One file is not scanned: gosu in the PostgreSQL image, a static Go binary
 # that only drops root privileges at container start. Its Go standard library
@@ -56,6 +58,20 @@ check() { # <name> <command...>: runs every check, fails at the end
 in_ci_image() { podman run --rm "$CI_IMAGE" "$@"; }
 
 gitleaks() { (cd "$ROOT" && scripts/gitleaks.sh); }
+
+# Every GHSA pnpm audit ignores (auditConfig.ignoreGhsas) carries a
+# `# until YYYY-MM-DD:` comment; past that date it blocks again (ADR 0018).
+audit_ignores_current() {
+  local today; today=$(date +%F)
+  awk -v today="$today" '
+    /^[[:space:]]*- GHSA-/ {
+      if (match($0, /# until [0-9]{4}-[0-9]{2}-[0-9]{2}:/)) {
+        until = substr($0, RSTART + 8, 10)
+        if (until < today) { print "expired " until ": " $2; bad = 1 }
+      } else { print "no expiry: " $2; bad = 1 }
+    }
+    END { exit bad }' "$ROOT/pnpm-workspace.yaml"
+}
 
 scan_images() {
   local images image rc=0 dir
@@ -88,6 +104,7 @@ check "typecheck" in_ci_image pnpm typecheck
 check "unit tests" in_ci_image pnpm test:unit
 check "service generator output typechecks" in_ci_image pnpm --filter @app/api gen:check
 check "pnpm audit (high and above)" in_ci_image pnpm audit --audit-level=high
+check "pnpm audit ignores have not expired" audit_ignores_current
 check "Quadlet units match compose.yaml" "$ROOT/scripts/quadlet.sh" --check
 check "inventory matches the image pins" "$ROOT/scripts/inventory.sh" --check
 check "topology diagram matches compose.yaml" "$ROOT/scripts/diagrams.sh"
