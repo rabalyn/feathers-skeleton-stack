@@ -724,9 +724,10 @@ case $cmd in
     podman wait migrate >/dev/null
     [[ $(podman inspect -f '{{.State.ExitCode}}' migrate) == 0 ]] || die "migrate failed; see: podman logs migrate"
     # The api and the worker refuse to start without their runtime settings
-    # (ADR 0025), which migrate has just seeded.
+    # (ADR 0025), which migrate has just seeded. On a first start the api
+    # also lacks the IdP's certificate until idp_setup below, which restarts
+    # it and waits for it, so only the worker is waited for here.
     compose up -d --force-recreate --no-deps api worker backup >/dev/null 2>&1
-    wait_healthy api 60
     wait_healthy worker 60
     # NetBox's migrations and seed (ADR 0031), then NetBox itself.
     compose up -d --force-recreate --no-deps netbox-setup >/dev/null 2>&1

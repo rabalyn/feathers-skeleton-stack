@@ -19,7 +19,7 @@ flowchart TD
   appJobs --> netboxSetup["netbox-setup (one-shot)<br>NetBox migrations, seed,<br>api's NetBox token"]
   netboxSetup --> netbox["netbox, netbox-worker"]
   netbox --> init["backup init (local volume only)"]
-  init --> idpSetup["idp_setup<br>exchange SAML certificates<br>between idp and OpenBao,<br>restart api and netbox"]
+  init --> idpSetup["idp_setup<br>exchange SAML certificates<br>between idp and OpenBao,<br>restart api and netbox<br>(on a first start the api comes up here:<br>it needs the IdP certificate)"]
   idpSetup --> breakglass["bootstrap break-glass account,<br>give test accounts their roles"]
 ```
 
