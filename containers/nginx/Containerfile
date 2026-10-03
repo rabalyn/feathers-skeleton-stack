@@ -1,16 +1,12 @@
 # Build context: repository root.
-ARG NODE_IMAGE=docker.io/library/node:26.10.0-trixie-slim@sha256:0e6e6feab3409d135561b2dac7f75dad902ceb5e14c35de4521155779ae70cee
+ARG NODE_IMAGE=docker.io/library/node:26.10.0-alpine@sha256:b341ca66519d9a1c25d4e41f254ffb6fe403fc0f9054c62b863f0660dcc1c199
 
 # The frontend's dependencies and the built types it imports: the API client
 # (ADR 0007) and the feathers-pinia fork (ADR 0014).
 FROM ${NODE_IMAGE} AS web-deps
-# OpenSSL and PCRE2 from the distribution's security updates, until the
-# pinned base image carries them (CVE-2026-75804, CVE-2026-84782,
-# CVE-2026-103111; ADR 0018). Remove once a rebuilt base is pinned.
-RUN export DEBIAN_FRONTEND=noninteractive \
- && apt-get update \
- && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl libpcre2-8-0 \
- && rm -rf /var/lib/apt/lists/*
+# Alpine fixes reach the image with every build, not only with a new base
+# digest (ADR 0018).
+RUN apk upgrade --no-cache
 # pnpm at the version package.json names (packageManager), installed with
 # the npm bundled with Node, which is then removed: Node 25 and later ship no
 # corepack, and npm only carries its own vulnerabilities into the image

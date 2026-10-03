@@ -58,7 +58,7 @@ PROJECT=feathers
 UNSEAL_VOLUME=${PROJECT}-openbao-local-unseal
 HELPER_IMAGE=docker.io/library/alpine:3.24.2@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
 # The Node the api and the web build run on (containers/api/Containerfile).
-NODE_IMAGE=docker.io/library/node:26.10.0-trixie-slim@sha256:0e6e6feab3409d135561b2dac7f75dad902ceb5e14c35de4521155779ae70cee
+NODE_IMAGE=docker.io/library/node:26.10.0-alpine@sha256:b341ca66519d9a1c25d4e41f254ffb6fe403fc0f9054c62b863f0660dcc1c199
 OPENBAO_DIR=$ROOT/containers/openbao
 
 PROFILES=(--profile local)

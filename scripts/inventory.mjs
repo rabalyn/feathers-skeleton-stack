@@ -25,7 +25,7 @@ const COMPONENTS = [
   { id: 'netbox', image: 'docker.io/netboxcommunity/netbox', files: ['containers/netbox/Containerfile'] },
   { id: 'node', image: 'docker.io/library/node', files: ['containers/api/Containerfile', 'containers/nginx/Containerfile'] },
   { id: 'restic', image: 'docker.io/restic/restic', files: ['containers/api/Containerfile'] },
-  { id: 'alpine', image: 'docker.io/library/alpine', files: ['containers/pgbouncer/Containerfile', 'containers/s3/Containerfile'] },
+  { id: 'alpine', image: 'docker.io/library/alpine', files: ['containers/api/Containerfile', 'containers/pgbouncer/Containerfile', 'containers/s3/Containerfile'] },
   { id: 'prometheus', image: 'docker.io/prom/prometheus', files: ['compose.yaml'] },
   { id: 'loki', image: 'docker.io/grafana/loki', files: ['compose.yaml'] },
   { id: 'grafana', image: 'docker.io/grafana/grafana', files: ['compose.yaml'] },
