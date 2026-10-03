@@ -434,7 +434,7 @@ services:
       # The IdP's group attribute; members of these groups are superusers.
       NETBOX_SAML_GROUPS_ATTRIBUTE: groups
       NETBOX_SAML_SUPERUSER_GROUPS: netbox-admins
-      NETBOX_API_TOKEN_KEY: *netbox-token-key
+      NETBOX_TOKEN_KEY: *netbox-token-key
       # TLS on its own listener (ADR 0016), a leaf of its own.
       GRANIAN_PORT: "8443"
       GRANIAN_WORKERS: "2"

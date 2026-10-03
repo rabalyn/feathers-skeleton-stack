@@ -11,7 +11,7 @@ sites by their NetBox id.
 - The NetBox groups the IdP's groups map to (feathers_netbox.saml), with
   their object permissions.
 - The api's user, a read-only permission on the location models, and its
-  v2 token, from the key in NETBOX_API_TOKEN_KEY and the secret the agent
+  v2 token, from the key in NETBOX_TOKEN_KEY and the secret the agent
   rendered. A changed secret replaces the token.
 """
 
@@ -29,7 +29,7 @@ from users.models import Group, ObjectPermission, Token, User
 
 SEED_DIR = Path(os.environ.get('NETBOX_SEED_DIR', '/opt/feathers/seed/tu-darmstadt'))
 API_USER = 'feathers-api'
-TOKEN_KEY = os.environ['NETBOX_API_TOKEN_KEY']
+TOKEN_KEY = os.environ['NETBOX_TOKEN_KEY']
 TOKEN_SECRET_FILE = '/run/secrets/api_token'
 
 LOCATION_MODELS = [('dcim', 'region'), ('dcim', 'sitegroup'), ('dcim', 'site'), ('dcim', 'location')]
