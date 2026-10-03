@@ -12,6 +12,9 @@ auto_auth {
       secret_id_file_path                 = "/run/agent/secret_id"
       remove_secret_id_file_after_reading = false
     }
+    # A secret_id issued while the agent waits is picked up within seconds,
+    # not after a backoff of up to five minutes (ADR 0023).
+    max_backoff = "5s"
   }
 }
 
