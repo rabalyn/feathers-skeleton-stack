@@ -32,7 +32,4 @@ The alternatives were full act-as (write as the target), role preview only, and 
 - The viewer may see less than the target does. That is the price of never seeing more than one's own rights allow, and the banner says so.
 - One more state on the session row, checked on every request. The query is the one the session check already makes.
 - Looking at a named person's data through their eyes is processing of personal data. The data protection officer should confirm the purpose and the notice before production, alongside the record of processing activities ([0013](0013-gdpr-export-and-retention.md)); where staff are the viewed users, the staff council may need to agree.
-
-## Open questions
-
-- Whether the target should be told at the time, by a notification mail ([0027](0027-email-templates-and-sending.md)) or on their next login, rather than only through their export. Depends on the data protection officer's view.
+- The target is not told when someone views as them: no notification mail and no notice on their next login. They learn of it only from their export ([0013](0013-gdpr-export-and-retention.md)), which carries the `view-as.start` and `view-as.end` audit events on their account. Decided 2026-10-03.
