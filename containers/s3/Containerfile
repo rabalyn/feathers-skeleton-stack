@@ -5,7 +5,10 @@ FROM docker.io/dxflrs/garage@sha256:0d7c74fc8ca6fef68a5a941c0e7558c8b1e92ba3588f
 # v2.4.1
 
 FROM docker.io/library/alpine:3.24.2@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
-RUN apk add --no-cache bash curl jq nginx \
+# Alpine fixes reach the image with every build, not only with a new base
+# digest (ADR 0018).
+RUN apk upgrade --no-cache \
+ && apk add --no-cache bash curl jq nginx \
  && addgroup -S -g 3900 garage \
  && adduser -S -D -H -u 3900 -G garage garage \
  && install -d -o 3900 -g 3900 -m 0750 /var/lib/garage /run/garage /tmp/nginx

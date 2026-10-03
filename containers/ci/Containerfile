@@ -2,9 +2,12 @@
 # Static checks (ADR 0015, 0018): lint, the client boundary, typecheck,
 # unit tests that need no stack, and dependency audit, over the whole
 # workspace. Only Podman is needed on the host; scripts/ci.sh runs this image.
-ARG NODE_IMAGE=docker.io/library/node:26.10.0-trixie-slim@sha256:0e6e6feab3409d135561b2dac7f75dad902ceb5e14c35de4521155779ae70cee
+ARG NODE_IMAGE=docker.io/library/node:26.10.0-alpine@sha256:b341ca66519d9a1c25d4e41f254ffb6fe403fc0f9054c62b863f0660dcc1c199
 
 FROM ${NODE_IMAGE}
+# Alpine fixes with every build (ADR 0018), and bash for the scripts the
+# checks run (the service generator's drift check, ADR 0030).
+RUN apk upgrade --no-cache && apk add --no-cache bash
 # Dependencies are fixed when the image is built; pnpm's pre-run check would
 # see the build's lockfile and manifest writes as drift and try to reinstall
 # as the unprivileged user (ADR 0015).

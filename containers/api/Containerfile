@@ -1,18 +1,17 @@
 # Build context: repository root.
-ARG NODE_IMAGE=docker.io/library/node:26.10.0-trixie-slim@sha256:0e6e6feab3409d135561b2dac7f75dad902ceb5e14c35de4521155779ae70cee
+ARG NODE_IMAGE=docker.io/library/node:26.10.0-alpine@sha256:b341ca66519d9a1c25d4e41f254ffb6fe403fc0f9054c62b863f0660dcc1c199
+# The Alpine release NODE_IMAGE is built on; the runtime is this plus the
+# node binary (ADR 0006).
+ARG ALPINE_IMAGE=docker.io/library/alpine:3.24.2@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
 # restic 0.19.1, a static binary (ADR 0017).
 ARG RESTIC_IMAGE=docker.io/restic/restic@sha256:136600b6ff6843d61d355f7f71f460a166429f35de6fd11b568fece3c9a4d510
 
 FROM ${RESTIC_IMAGE} AS restic
 
 FROM ${NODE_IMAGE} AS base
-# OpenSSL and PCRE2 from the distribution's security updates, until the
-# pinned base image carries them (CVE-2026-75804, CVE-2026-84782,
-# CVE-2026-103111; ADR 0018). Remove once a rebuilt base is pinned.
-RUN export DEBIAN_FRONTEND=noninteractive \
- && apt-get update \
- && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl libpcre2-8-0 \
- && rm -rf /var/lib/apt/lists/*
+# Alpine fixes reach the image with every build, not only with a new base
+# digest (ADR 0018).
+RUN apk upgrade --no-cache
 # Dependencies are fixed when the image is built; pnpm's pre-run check would
 # see the build's lockfile and manifest writes as drift and try to reinstall
 # as the unprivileged user (ADR 0015).
@@ -45,18 +44,24 @@ USER node
 CMD ["pnpm", "exec", "vitest", "run"]
 
 FROM base AS prod-deps
-RUN pnpm install --frozen-lockfile --prod --filter @app/api...
+# Without the type-only packages dependencies pull in as dependencies or
+# peers (`typescript` through @feathersjs/schema, `@types/*`, `type-fest`):
+# nothing loads them at runtime.
+RUN pnpm install --frozen-lockfile --prod --filter @app/api... \
+ && rm -rf node_modules/.pnpm/typescript@* node_modules/.pnpm/@types+* node_modules/.pnpm/type-fest@*
 
-FROM ${NODE_IMAGE} AS runtime-base
+FROM ${NODE_IMAGE} AS node
+
+# The runtime is Alpine with the node binary and the C++ runtime it links,
+# and the Node image's user `node` (1000:1000): no npm, no headers, no
+# Yarn, rather than removing them in a layer above (ADR 0006, 0018).
+FROM ${ALPINE_IMAGE} AS runtime-base
 ENV NODE_ENV=production
-# OpenSSL and PCRE2 from the distribution's security updates, until the
-# pinned base image carries them (CVE-2026-75804, CVE-2026-84782,
-# CVE-2026-103111; ADR 0018). Remove once a rebuilt base is pinned.
-RUN export DEBIAN_FRONTEND=noninteractive \
- && apt-get update \
- && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl-provider-legacy openssl libpcre2-8-0 \
- && rm -rf /var/lib/apt/lists/*
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+RUN apk upgrade --no-cache \
+ && apk add --no-cache libstdc++ libgcc \
+ && addgroup -g 1000 node \
+ && adduser -u 1000 -G node -s /bin/sh -D node
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
 WORKDIR /repo
 COPY --from=prod-deps /repo/node_modules node_modules
 COPY --from=prod-deps /repo/apps/api/node_modules apps/api/node_modules
@@ -78,23 +83,17 @@ ARG APP_DIRTY=false
 ENV APP_COMMIT=${APP_COMMIT} APP_COMMIT_TIME=${APP_COMMIT_TIME} APP_DIRTY=${APP_DIRTY}
 
 # The backup service (ADR 0017): the runtime, plus restic and the pg_dump of
-# PostgreSQL 18 from the PostgreSQL project's Debian repository (Debian 13
-# ships 17, which refuses to dump an 18 server). Its own user and group:
-# Debian's system user `backup`, moved to an ID of its own, and a member of
+# PostgreSQL 18 from Alpine's packages, the server's release, without Perl
+# or a version wrapper. Its own user and group `backup` (1100), a member of
 # GID 1000, Valkey's group in its image (ADR 0010), to read Valkey's
-# snapshot file (in this image, 1000 is the group `node`).
+# snapshot file (in this image, 1000 is the group `node`). setpriv drops to
+# it in the entrypoint.
 FROM runtime-base AS backup
 USER root
-RUN export DEBIAN_FRONTEND=noninteractive \
- && apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates postgresql-common \
- && /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y \
- && apt-get install -y --no-install-recommends postgresql-client-18 \
- && apt-get purge -y --auto-remove postgresql-common \
- && rm -rf /var/lib/apt/lists/* \
- && groupmod -g 1100 backup \
- && usermod -u 1100 -g 1100 -d /var/lib/backup backup \
- && usermod -a -G 1000 backup \
+RUN apk add --no-cache postgresql18-client setpriv \
+ && addgroup -S -g 1100 backup \
+ && adduser -S -D -H -u 1100 -G backup -h /var/lib/backup backup \
+ && addgroup backup node \
  && install -d -o 1100 -g 1100 -m 0750 /var/lib/backup /srv/backups
 COPY --from=restic /usr/bin/restic /usr/local/bin/restic
 COPY containers/backup/entrypoint.sh /usr/local/bin/backup-entrypoint

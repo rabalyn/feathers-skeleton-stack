@@ -1,30 +1,50 @@
 # Build context: repository root.
-FROM mcr.microsoft.com/playwright:v1.63.0-noble@sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7
-# OpenSSL from Ubuntu's security updates as well, until the pinned
-# Playwright image carries it (CVE-2026-84782; ADR 0018).
-RUN apt-get update \
- && apt-get install -y --no-install-recommends libnss3-tools \
- && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl \
- && rm -rf /var/lib/apt/lists/*
+# The official Playwright image, pinned by digest, is where the browser and
+# Node come from; the image itself is Ubuntu with only what Chromium needs.
+# The suite and the MCP browser run Chromium only, so Firefox, WebKit and
+# the headless shell stay behind (ADR 0015).
+ARG PLAYWRIGHT_IMAGE=mcr.microsoft.com/playwright:v1.63.0-noble@sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7
+# The Ubuntu release the Playwright image is built on.
+ARG UBUNTU_IMAGE=docker.io/library/ubuntu:24.04@sha256:f610ab94648195aa356059f5b41d6085c9d4d903c072430cdd1af7bdb646106b
+
+FROM ${PLAYWRIGHT_IMAGE} AS playwright
+# pnpm at the version package.json names (packageManager), installed with
+# the image's npm, which also fetches pnpm's native binary now (pnpm 12's
+# corepack shim would fetch it at first run, without a network). npm itself
+# is not copied on (ADR 0018).
+COPY package.json /tmp/pnpm-version/
+RUN npm install -g --no-fund --no-audit --no-update-notifier \
+      "pnpm@$(node -p 'require("/tmp/pnpm-version/package.json").packageManager.split("@")[1].split("+")[0]')" \
+ && rm -rf /ms-playwright/firefox-* /ms-playwright/webkit-* /ms-playwright/chromium_headless_shell-*
+
+FROM ${UBUNTU_IMAGE}
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 # Dependencies are fixed when the image is built; pnpm's pre-run check would
 # see the build's lockfile and manifest writes as drift and try to reinstall
 # as the unprivileged user (ADR 0015).
 ENV pnpm_config_verify_deps_before_run=false
-# pnpm at the version package.json names (packageManager), installed with
-# the bundled npm as in the other images, which also fetches pnpm's native
-# binary now (pnpm 12's corepack shim would fetch it at first run, without a
-# network). npm, yarn and corepack are removed afterwards (ADR 0018). /usr is
-# readable by every user, so pwuser finds pnpm without a network (ADR 0015).
-COPY package.json /tmp/pnpm-version/
-RUN npm install -g --no-fund --no-audit --no-update-notifier \
-      "pnpm@$(node -p 'require("/tmp/pnpm-version/package.json").packageManager.split("@")[1].split("+")[0]')" \
- && rm -rf /tmp/pnpm-version /usr/lib/node_modules/npm /usr/lib/node_modules/yarn /usr/lib/node_modules/corepack \
-      /usr/bin/npm /usr/bin/npx /usr/bin/yarn /usr/bin/corepack \
- && pnpm --version
+# Playwright's Node, whose version matches its browsers (ADR 0006), and
+# pnpm. /usr is readable by every user, so pwuser finds pnpm without a
+# network (ADR 0015).
+COPY --from=playwright /usr/bin/node /usr/bin/node
+COPY --from=playwright /usr/lib/node_modules/pnpm /usr/lib/node_modules/pnpm
+RUN ln -s ../lib/node_modules/pnpm/pnpm /usr/bin/pnpm \
+ && pnpm --version \
+ && groupadd -g 1001 pwuser \
+ && useradd -m -u 1001 -g pwuser -G users -s /bin/bash pwuser
 WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY e2e/package.json e2e/
 RUN pnpm install --frozen-lockfile --filter @app/e2e
+# Chromium's system libraries and fonts, as Playwright lists them, and NSS's
+# certutil for the entrypoint. OpenSSL from Ubuntu's security updates as
+# well (ADR 0018).
+RUN export DEBIAN_FRONTEND=noninteractive \
+ && cd e2e && pnpm exec playwright install-deps chromium \
+ && apt-get install -y --no-install-recommends libnss3-tools \
+ && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=playwright /ms-playwright /ms-playwright
 COPY e2e e2e
 COPY containers/e2e/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chown -R pwuser:pwuser /repo/e2e
