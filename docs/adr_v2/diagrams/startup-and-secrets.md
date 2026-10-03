@@ -15,12 +15,11 @@ flowchart TD
   setup --> services["postgres, pgbouncer, valkey, s3,<br>ldap, idp, nginx, observability, …"]
   services --> pgHealthy{"postgres healthy?"}
   pgHealthy --> migrate["migrate (one-shot)<br>Knex migrations,<br>seed runtime settings"]
-  migrate --> appJobs["worker, backup"]
-  migrate -. "api needs the seeded settings" .-> api["api"]
+  migrate --> appJobs["api, worker, backup<br>(api and worker refuse to start<br>without the seeded settings)"]
   appJobs --> netboxSetup["netbox-setup (one-shot)<br>NetBox migrations, seed,<br>api's NetBox token"]
   netboxSetup --> netbox["netbox, netbox-worker"]
   netbox --> init["backup init (local volume only)"]
-  init --> idpSetup["idp_setup<br>exchange SAML certificates<br>between idp and OpenBao"]
+  init --> idpSetup["idp_setup<br>exchange SAML certificates<br>between idp and OpenBao,<br>restart api and netbox"]
   idpSetup --> breakglass["bootstrap break-glass account,<br>give test accounts their roles"]
 ```
 
@@ -71,8 +70,8 @@ sequenceDiagram
   agent->>tmpfs: write database_password, auth_signing_secret, saml_sp_key, …
   api->>tmpfs: read *_FILE paths at startup
   Note over agent,tmpfs: The secret_id lives as long as the agent container.<br>A stopped or recreated agent needs a new one (unseal or reissue).<br>The rendered files stay while the service runs.
-  loop on change
-    agent->>bao: watch kv/api
-    agent->>tmpfs: re-render, then the service is restarted to pick it up
+  loop every minute
+    agent->>bao: read kv/api again
+    agent->>tmpfs: re-render a changed value, then the service is restarted to pick it up
   end
 ```

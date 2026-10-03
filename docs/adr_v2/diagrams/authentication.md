@@ -92,7 +92,7 @@ sequenceDiagram
   api->>vk: rate limit refresh (per client IP)
   api->>pg: lock session row, find token hash in the family
   alt current token
-    api->>pg: mark it rotated, store successor = HMAC(refresh key, token)
+    api->>pg: mark it rotated, successor = HMAC(refresh key, token),<br>store only its SHA-256
     api-->>tab: new access token, Set-Cookie successor
   else rotated, within the grace window
     api->>api: follow the HMAC chain to the current token
@@ -116,5 +116,5 @@ flowchart LR
   api -->|"token row + owner's permissions,<br>every request"| pg[("postgres<br>api_tokens")]
   api -->|"argon2id check, rate limit<br>per account + IP"| lc[("postgres<br>local_credentials")]
   api -->|"session issued like the ACS"| sess[("postgres<br>auth_sessions")]
-  api -. "every attempt logged at warn<br>→ Loki → Grafana alert" .-> loki["loki"]
+  api -. "every attempt logged at warn → Loki,<br>Grafana alerts on every success<br>and on > 3 failures in 10 min" .-> loki["loki"]
 ```

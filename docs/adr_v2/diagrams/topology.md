@@ -1,6 +1,6 @@
 # Topology: who talks to whom, on which port and network
 
-Illustrates [0002](../0002-service-inventory-and-networks.md), with ports from [0004](../0004-pgbouncer-pools.md), [0010](../0010-sessions-postgres-ratelimits-valkey.md), [0016](../0016-nginx-and-tls-everywhere.md), [0020](../0020-object-storage-uploads.md), [0022](../0022-observability-and-alerting.md), [0023](../0023-secrets-management.md) and [0031](../0031-netbox-locations.md), as configured in `compose.yaml`. If this page and an ADR or `compose.yaml` disagree, the ADR and the code win; fix this page.
+Illustrates [0002](../0002-service-inventory-and-networks.md), with ports from [0004](../0004-pgbouncer-pools.md), [0010](../0010-sessions-postgres-ratelimits-valkey.md), [0016](../0016-nginx-and-tls-everywhere.md), [0020](../0020-object-storage-uploads.md), [0022](../0022-observability-and-alerting.md), [0023](../0023-secrets-management.md), [0031](../0031-netbox-locations.md) and [0032](../0032-system-info-and-update-check.md), as configured in `compose.yaml`. If this page and an ADR or `compose.yaml` disagree, the ADR and the code win; fix this page.
 
 Every arrow points from the client to the server and is labelled `network · protocol :port`. Only `nginx` publishes ports to the host.
 
@@ -72,6 +72,7 @@ flowchart LR
   api -->|"netbox-api · HTTPS :8443<br>sites"| netbox
   api -->|"observability · HTTPS :9090<br>system info"| prometheus
   worker -->|"observability · SMTP+STARTTLS :1025"| mail
+  worker -->|"observability · HTTPS :9090<br>update check: host OS"| prometheus
 
   pgbouncer -->|"db · PG+TLS :5432"| postgres
   netbox -->|"netbox-data · PG+TLS :6432"| pgbouncer
@@ -134,17 +135,17 @@ Virtual hosts that exist only locally (`idp`, `e2e`, `mail`, `dozzle`) disappear
 | `api`, `worker` (and e2e twins) | 9090 | HTTPS: `/metrics`, `/health/*` | `prometheus`, own healthcheck | `observability` |
 | `pgbouncer` | 6432 | PostgreSQL, TLS required | `api`, `worker`, `test`, `api-e2e`, `worker-e2e` · `netbox`, `netbox-worker` · `pgbouncer-exporter` | `app-data` · `netbox-data` · `db` |
 | `postgres` | 5432 | PostgreSQL, TLS | `pgbouncer`, `migrate`, `backup`, `netbox-setup`, `postgres-exporter` | `db` |
-| `valkey` | 6379 | RESP, TLS only (`port 0`) | `api`, `worker`, `test`, `valkey-exporter` · `netbox`, `netbox-worker` | `app-data` · `netbox-data` |
-| `s3` | 3900 | HTTPS, S3 API | `api`, `worker`, `backup`, `test` | `object` |
+| `valkey` | 6379 | RESP, TLS only (`port 0`) | `api`, `worker` (and e2e twins), `test`, `valkey-exporter` · `netbox`, `netbox-worker` | `app-data` · `netbox-data` |
+| `s3` | 3900 | HTTPS, S3 API | `api`, `worker` (and e2e twins), `backup`, `test` | `object` |
 | `s3` | 3903 | HTTPS, `/metrics` and `/health` only | `prometheus` | `observability` |
-| `ldap` | 636 | LDAPS | `api`, `test`, `idp` | `identity` |
+| `ldap` | 636 | LDAPS | `api`, `api-e2e`, `test`, `idp` | `identity` |
 | `idp` | 8080 | HTTP | `nginx` | `idp-edge` |
 | `netbox` | 8443 | HTTPS (Granian) | `nginx` · `api`, `api-e2e`, `test` | `netbox-edge` · `netbox-api` |
 | `openbao` | 8200 | HTTPS | every `*-agent`, `backup` | `secrets` |
-| `prometheus` | 9090 | HTTPS | `grafana`, `api` | `observability` |
+| `prometheus` | 9090 | HTTPS | `grafana`, `api`, `worker` (and e2e twins), `test` | `observability` |
 | `loki` | 3100 | HTTPS | `alloy`, `grafana`, `prometheus` | `observability` |
 | `grafana` | 3000 | HTTPS | `nginx`, `prometheus` | `grafana-edge`, `observability` |
-| `mail` | 1025 | SMTP, STARTTLS | `worker`, `grafana`, `test` | `observability` |
+| `mail` | 1025 | SMTP, STARTTLS | `worker`, `worker-e2e`, `grafana`, `test` | `observability` |
 | `mail` | 8025 | HTTPS, inbox UI | `nginx` | `mail-edge` |
 | `postgres-exporter` | 9187 | HTTPS | `prometheus` | `observability` |
 | `pgbouncer-exporter` | 9127 | HTTPS | `prometheus` | `observability` |

@@ -51,7 +51,8 @@ sequenceDiagram
 ```mermaid
 flowchart LR
   setup["netbox-setup (one-shot)"] -->|"db · :5432 direct"| pg[("postgres<br>database netbox")]
-  setup -->|"migrate, then seed sites<br>from seed/tu-darmstadt/*.json<br>(upsert by slug, never delete)"| pg
-  setup -->|"create or replace the api's<br>read-only v2 token"| pg
+  setup -->|"migrate, then seed sites<br>from seed/tu-darmstadt/*.json<br>(upsert by slug, retire what the files<br>no longer list, never delete)"| pg
+  setup -->|"seed the groups netbox-readers<br>and netbox-editors"| pg
+  setup -->|"user feathers-api (view only),<br>create or replace its read-only v2 token"| pg
   setup --> start["netbox, netbox-worker start"]
 ```

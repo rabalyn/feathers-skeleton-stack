@@ -50,14 +50,16 @@ sequenceDiagram
   alt missing, empty or read-only target
     b->>b: fail and log at error. Never init, never fall back to a local path.
   else
-    b->>pg: restic backup --stdin-from-command pg_dump app
-    b->>pg: restic backup --stdin-from-command pg_dump netbox
-    b->>s3: list uploads, fetch new objects, drop vanished ones from the mirror
-    b->>t: restic backup mirror → objects
-    b->>bao: raft snapshot (backup agent's token, snapshot policy only)
-    b->>t: restic backup valkey.rdb + openbao.snap → state
-    b->>t: restic forget --keep-daily <retention> --prune, per repository
-    b->>b: log "backup completed"
+    b->>pg: db: restic backup --stdin-from-command pg_dump app
+    b->>t: restic forget --keep-daily <retention> --prune
+    b->>s3: objects: list uploads, fetch new objects, drop vanished ones from the mirror
+    b->>t: restic backup mirror, then forget --prune
+    b->>bao: state: raft snapshot (backup agent's token, snapshot policy only)
+    b->>t: restic backup valkey.rdb + openbao.snap, then forget --prune
+    b->>pg: netbox: restic backup --stdin-from-command pg_dump netbox
+    b->>t: restic forget --prune
+    Note over b: A repository that fails is logged at error<br>and the next one still runs.
+    b->>b: log "backup completed" only when all four succeeded
   end
 ```
 
