@@ -7,7 +7,7 @@ import { deepUnref, getExtendedQueryInfo } from '../utils/index.js'
 import type { AnyData, ExtendedQueryInfo, Paginated, Params, Query } from '../types.js'
 import { itemsFromPagination, allItemsFromPagination } from './utils.js'
 import { usePageData } from './utils-pagination.js'
-import type { UseFindGetDeps, UseFindOptions, UseFindParams } from './types.js'
+import type { UseFindEvent, UseFindGetDeps, UseFindOptions, UseFindParams } from './types.js'
 
 export type UseFindReturn<M = AnyData> = UnwrapNestedRefs<{
   paramsWithPagination: ComputedRef<Params<Query>>
@@ -48,7 +48,7 @@ export type UseFindReturn<M = AnyData> = UnwrapNestedRefs<{
 }>
 
 export function useFind<M = AnyData>(params: ComputedRef<UseFindParams | null>, options: UseFindOptions = {}, deps: UseFindGetDeps): UseFindReturn<M> {
-  const { pagination, debounce = 100, immediate = true, watch: _watch = true, paginateOn = 'client' } = options
+  const { pagination, debounce = 100, immediate = true, watch: _watch = true, paginateOn = 'client', isRelevant } = options
   const { service } = deps
   const { store } = service
 
@@ -338,24 +338,28 @@ export function useFind<M = AnyData>(params: ComputedRef<UseFindParams | null>, 
   }
 
   if (paginateOn === 'server' && service.on) {
-    // watch realtime events and re-query
-    // TODO: only re-query when relevant
-    service.on('created', startRequest)
-    service.on('patched', startRequest)
-
-    // if the current list had an item removed, re-query.
-    // const id = item[service.store.idField]
-    // const currentIds = data.value.map((i: any) => i[service.store.idField])
-    // if (currentIds.includes(id))
-    service.on('removed', startRequest)
+    // Watch realtime events and re-query. Which events matter is the caller's
+    // to say (`isRelevant`): matching the record against the query here would
+    // miss filters only the server understands, and a record off the page can
+    // still move onto it or shift it. A failing `isRelevant` re-queries.
+    const events: UseFindEvent[] = ['created', 'patched', 'removed']
+    const listeners = events.map(event => [event, (item: any) => {
+      try {
+        if (isRelevant && !isRelevant(event, item, data.value))
+          return
+      }
+      catch {}
+      startRequest()
+    }] as const)
+    for (const [event, listener] of listeners)
+      service.on(event, listener)
 
     // The listeners end with the scope (component) that created them, so a
     // disposed useFind stops re-querying and remounts do not accumulate them.
     if (getCurrentScope()) {
       onScopeDispose(() => {
-        service.removeListener('created', startRequest)
-        service.removeListener('patched', startRequest)
-        service.removeListener('removed', startRequest)
+        for (const [event, listener] of listeners)
+          service.removeListener(event, listener)
       })
     }
   }

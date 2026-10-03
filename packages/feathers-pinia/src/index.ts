@@ -3,6 +3,7 @@ export * from './types.js'
 export { createPiniaClient } from './create-pinia-client.js'
 export type * from './create-pinia-client.js'
 export { PiniaService } from './create-pinia-service'
+export type { SvcData, SvcParams, SvcPatchData, SvcResult } from './create-pinia-service'
 export { OFetch } from './feathers-ofetch.js'
 
 export { feathersPiniaAutoImport } from './unplugin-auto-import-preset.js'

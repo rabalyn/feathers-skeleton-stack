@@ -282,6 +282,41 @@ describe('paginateOn: server, service event listeners', () => {
     }
   })
 
+  // Not upstream: `isRelevant` lets the caller skip events that cannot
+  // change its page.
+  test.each(events)('isRelevant decides whether `%s` re-queries, given the record and the page', async (event) => {
+    const scope = effectScope()
+    const isRelevant = vi.fn((_event: string, item: any) => item.relevant)
+    const contacts$ = scope.run(() => service.useFind(params, { paginateOn: 'server', debounce: 0, isRelevant }))!
+    await contacts$.request
+    const page = contacts$.data.map((c: any) => c._id)
+
+    service.emit(event, { relevant: false })
+    await timeout(50)
+    expect(contacts$.requestCount).toBe(1)
+    expect(isRelevant).toHaveBeenCalledWith(event, expect.objectContaining({ relevant: false }), expect.anything())
+    expect(isRelevant.mock.calls[0][2].map((c: any) => c._id)).toEqual(page)
+
+    service.emit(event, { relevant: true })
+    await contacts$.request
+    expect(contacts$.requestCount).toBe(2)
+    scope.stop()
+  })
+
+  test('an isRelevant that throws re-queries', async () => {
+    const scope = effectScope()
+    const isRelevant = () => {
+      throw new Error('broken')
+    }
+    const contacts$ = scope.run(() => service.useFind(params, { paginateOn: 'server', debounce: 0, isRelevant }))!
+    await contacts$.request
+
+    service.emit('patched', {})
+    await contacts$.request
+    expect(contacts$.requestCount).toBe(2)
+    scope.stop()
+  })
+
   test.each(['client', 'hybrid'] as const)('paginateOn: %s registers no listeners', async (paginateOn) => {
     const before = listenerCounts()
     const scope = effectScope()
