@@ -13,6 +13,7 @@
 - This repository is a skeleton for future products: keep product-specific logic out, and keep infrastructure generic.
 - New Feathers services are created with `pnpm gen:service`, not by hand and not with `@feathersjs/cli` (`docs/adr_v2/0030-service-generator.md`).
 - Frontend work uses the `quasar` MCP server: look up every Quasar component, plugin, directive, composable or app-vite option you use before writing or changing code with it. Before writing or changing an end-to-end test, open its pages through the `playwright` MCP server and read them with `browser_snapshot`. If a server isn't connected, say so instead of working from memory (`docs/adr_v2/0026-mcp-development-tooling.md`, *When an agent must use them*).
+- A new git worktree has no `node_modules`, so the `quasar` MCP server (started from `apps/web/node_modules`) can't start and `scripts/ci.sh` fails its "MCP servers" check. Run `pnpm install --frozen-lockfile` in the worktree first, then restart the session so the server connects.
 
 ## Implementation approach
 
