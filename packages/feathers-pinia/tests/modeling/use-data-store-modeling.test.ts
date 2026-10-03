@@ -318,6 +318,26 @@ describe('standalone stores', () => {
       })
     })
 
+    it('can patchInStore by query', async () => {
+      store.createInStore([
+        { id: 2, description: 'Done', isComplete: true },
+        { id: 3, description: 'Done', isComplete: true },
+        { id: 4, description: 'Keep', isComplete: false },
+      ])
+      const items = store.patchInStore(null, { description: 'foo' }, { query: { isComplete: true } })
+      expect(items.map((i: any) => i.id)).toEqual([2, 3])
+      expect(store.getFromStore(2).value.description).toBe('foo')
+      expect(store.getFromStore(4).value.description).toBe('Keep')
+    })
+
+    it('refuses patchInStore by an empty or missing query', async () => {
+      store.createInStore([{ id: 2, description: 'Keep', isComplete: true }])
+      expect(() => store.patchInStore(null, { description: 'foo' }, { query: {} })).toThrow(/empty query/)
+      expect(() => store.patchInStore(null, { description: 'foo' })).toThrow(/empty query/)
+      expect(() => store.patchInStore(null, { description: 'foo' }, {})).toThrow(/empty query/)
+      expect(store.getFromStore(2).value.description).toBe('Keep')
+    })
+
     it('can patchInStore upsert multiple items', async () => {
       const items = store.patchInStore(records, ref({ description: 'foo' }))
       expect(items.length).toBe(2)

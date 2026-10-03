@@ -188,7 +188,13 @@ export function useServiceLocal<M extends AnyData, Q extends AnyData>(options: U
     return (isArray ? _items : _items[0]) as N
   }
 
-  // TODO
+  /**
+   * Patch records in the store with `data`.
+   * @param idOrData an id, a record, or an array of either, which patches those
+   * found in the store and writes given records whole; or `null`, which patches
+   * every stored record matching `params.query`.
+   * @returns the patched records. If you pass an array or `null`, you get an array back.
+   */
   function patchInStore(
     _idOrData: MaybeRef<M | M[] | Id | null>,
     _data: MaybeRef<AnyData> = {},
@@ -219,8 +225,9 @@ export function useServiceLocal<M extends AnyData, Q extends AnyData>(options: U
     }
 
     if (idOrData === null) {
-      // patching multiple cannot use an empty array
-      if (params?.query && !Object.keys(params?.query).length) {
+      // Patching by query needs a non-empty one: a missing query would match,
+      // and patch, every record in the store.
+      if (!params?.query || !Object.keys(params.query).length) {
         throw new Error(
           'cannot perform multiple patchInStore with an empty query. You must explicitly provide a query. To patch all items, try using a query that matches all items, like "{ id: { $exists: true } }"',
         )
