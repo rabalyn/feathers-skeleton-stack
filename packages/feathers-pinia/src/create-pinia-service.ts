@@ -16,11 +16,14 @@ interface PiniaServiceOptions {
   events?: string[]
 }
 
-// FIXME: Those are very hacky, there should be a simpler way of recovering service types
-type SvcResult<S extends FeathersService> = S extends { get: (...args: any[]) => Promise<infer T> } ? T : never
-type SvcParams<S extends FeathersService> = (S extends { find: (params: infer T) => any } ? T : never) & Params<Query>
-type SvcData<S extends FeathersService> = S extends { create: (data: (infer T)[]) => any } ? T : never
-type SvcPatchData<S extends FeathersService> = S extends { patch: (id: any, data: infer T) => any } ? T : never
+// A service's types, read from its methods. `get` and `find` have a single
+// signature on every Feathers service type. `create` and `patch` are
+// overloaded, and inference reads only the last overload: `create(data)` on a
+// `ClientService` but `create(data[])` on a `Service`, so an array is unwrapped.
+export type SvcResult<S> = S extends { get: (...args: any[]) => Promise<infer T> } ? T : never
+export type SvcParams<S> = (S extends { find: (params?: infer P) => any } ? P : never) & Params<Query>
+export type SvcData<S> = S extends { create: (data: infer D, ...args: any[]) => any } ? (D extends (infer U)[] ? U : D) : never
+export type SvcPatchData<S> = S extends { patch: (id: any, data: infer D, ...args: any[]) => any } ? D : never
 
 type SvcModel<S extends FeathersService> = ServiceInstance<SvcResult<S>>
 
@@ -204,7 +207,7 @@ export class PiniaService<Svc extends FeathersService> {
    * patches an item in the store
    */
   patchInStore(id: MaybeRef<Id | SvcResult<Svc>>, data: SvcPatchData<Svc>, params?: MaybeRef<SvcParams<Svc>>): SvcModel<Svc>
-  patchInStore(id: MaybeRef<null | SvcResult<Svc>[]>, data: SvcPatchData<Svc>, params: MaybeRef<SvcPatchData<Svc>>): SvcModel<Svc>[]
+  patchInStore(id: MaybeRef<null | SvcResult<Svc>[]>, data: SvcPatchData<Svc>, params: MaybeRef<SvcParams<Svc>>): SvcModel<Svc>[]
   patchInStore(
     idOrData: MaybeRef<SvcResult<Svc> | SvcResult<Svc>[] | Id | null>,
     data: MaybeRef<AnyData> = {},
