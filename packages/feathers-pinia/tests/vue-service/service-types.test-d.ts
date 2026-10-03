@@ -6,6 +6,7 @@ interface Data { name: string }
 interface PatchData { name?: string }
 interface Q { name?: string }
 
+// Not upstream: SvcData came out as never for a ClientService.
 // Both shapes the types are read from: the client's, with `create(data)` as
 // its last overload, and the server's, with `create(data[])`.
 type Client = Pick<ClientService<Result, Data, PatchData, Paginated<Result>, Params<Q>>, 'find' | 'get' | 'create' | 'patch' | 'remove'>

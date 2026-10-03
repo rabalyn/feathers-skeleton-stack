@@ -330,6 +330,7 @@ describe('standalone stores', () => {
       expect(store.getFromStore(4).value.description).toBe('Keep')
     })
 
+    // Not upstream: a missing query patched every record in the store.
     it('refuses patchInStore by an empty or missing query', async () => {
       store.createInStore([{ id: 2, description: 'Keep', isComplete: true }])
       expect(() => store.patchInStore(null, { description: 'foo' }, { query: {} })).toThrow(/empty query/)
