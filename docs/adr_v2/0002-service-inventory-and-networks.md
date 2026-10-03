@@ -49,6 +49,7 @@ The stack needs a fixed service list and a network layout where no component can
 | `test` | One-shot Vitest run for unit and integration tests, built from the `api` build stage; `test` profile only ([0015](0015-testing-vitest-playwright.md)) | — |
 | `e2e` | One-shot Playwright run; `test` profile only ([0015](0015-testing-vitest-playwright.md)) | — |
 | `api-e2e` | The api's image and configuration on the database `app_e2e`, behind `e2e.localhost`, for the Playwright run only; `test` profile only ([0015](0015-testing-vitest-playwright.md)) | — |
+| `worker-e2e` | The worker beside `api-e2e`, on `app_e2e` with the same queue prefix and buckets, so the suite's jobs run on its own data; `test` profile only ([0015](0015-testing-vitest-playwright.md)) | — |
 
 ### Networks
 
@@ -63,12 +64,12 @@ The stack needs a fixed service list and a network layout where no component can
 | `netbox-api` | `netbox`, `api`; locally also `api-e2e` and `test` | The api reads locations from NetBox's REST API |
 | `netbox-data` | `netbox`, `netbox-worker`, `netbox-setup`, `pgbouncer`, `valkey` | NetBox's database and Valkey access, apart from `app-data` |
 | `mcp-edge` | `nginx`, `mcp-browser` (local) | The coding agent's browser; `internal`, so it has no route out of the host; local only ([0026](0026-mcp-development-tooling.md)) |
-| `app-data` | `api`, `worker`, `pgbouncer`, `valkey`, `valkey-exporter`, `test` (test), `api-e2e` (test) | Application data access |
+| `app-data` | `api`, `worker`, `pgbouncer`, `valkey`, `valkey-exporter`, `test` (test), `api-e2e` (test), `worker-e2e` (test) | Application data access |
 | `db` | `pgbouncer`, `postgres`, `backup`, `migrate`, `netbox-setup`, `postgres-exporter`, `pgbouncer-exporter` | Direct database access |
 | `identity` | `api`, `idp`, `ldap`, `test` (test), `api-e2e` (test) | Authentication and directory lookup |
-| `object` | `api`, `worker`, `s3`, `backup`; locally also `api-e2e` and `test` | Object storage |
+| `object` | `api`, `worker`, `s3`, `backup`; locally also `api-e2e`, `worker-e2e` and `test` | Object storage |
 | `secrets` | `openbao`, every `*-agent`, `backup` | Secret delivery; `backup` for OpenBao snapshots |
-| `observability` | `api`, `worker`, `s3`, `prometheus`, `loki`, `alloy`, `grafana`, all exporters, `mail`, `blackbox`; locally also `worker-e2e` and `test` | Metrics, logs, alert and application mail ([0027](0027-email-templates-and-sending.md)) |
+| `observability` | `api`, `worker`, `s3`, `prometheus`, `loki`, `alloy`, `grafana`, all exporters, `mail`, `blackbox`; locally also `api-e2e`, `worker-e2e` and `test` | Metrics, logs, alert and application mail ([0027](0027-email-templates-and-sending.md)) |
 
 Consequences of this layout, all intentional:
 
@@ -85,7 +86,7 @@ Consequences of this layout, all intentional:
 - `node-exporter` shares the host's process namespace and reads the host's root read-only, and `alloy` reads the host's journal read-only: host metrics and third-party container output ([0021](0021-structured-logging.md)) have no other source.
 - NetBox ([0031](0031-netbox-locations.md)) reaches PostgreSQL through PgBouncer and Valkey on `netbox-data`, which holds neither the api nor the worker, so NetBox has no route to them; the api reaches NetBox on `netbox-api`, and browsers through Nginx on `netbox-edge`. Only `netbox-setup`, which applies NetBox's migrations, is on `db`, like `migrate`.
 - `mcp-browser`, the coding agent's browser ([0026](0026-mcp-development-tooling.md)), is on `mcp-edge` alone: it reaches the local origins through Nginx, as `e2e` does, and has no route to the internet or to any other service. It publishes no port.
-- The test runners sit where the code they test sits. `test` is on `app-data` and `identity`, like the API, so integration tests reach PostgreSQL through PgBouncer and cannot bypass it, and reach the test directory as the API's directory lookup does; the migration into `test_template` is done by the `migrate` job. `e2e` is on `edge` and `idp-edge`, like a browser, and reaches nothing else. Neither exists in production.
+- The test runners sit where the code they test sits. `test` is on the API's networks except `edge` (`app-data`, `identity`, `object`, `netbox-api` and `observability`), so integration tests reach PostgreSQL through PgBouncer and cannot bypass it, and reach the test directory, the object store, NetBox, Prometheus and the mail server as the API and the worker do; the migration into `test_template` is done by the `migrate` job. `e2e` is on `edge` and `idp-edge`, like a browser, and reaches nothing else; `api-e2e` and `worker-e2e` sit exactly where `api` and `worker` do. None of them exists in production.
 
 Only `nginx` publishes ports to the host. Every other service is reachable only on its private networks.
 

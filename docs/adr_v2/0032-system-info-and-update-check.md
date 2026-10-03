@@ -48,7 +48,7 @@ The api gathers them on each page load, with a short timeout per source, so the 
 | NetBox `GET /api/status/` | NetBox |
 | The process itself | Node, the api |
 
-The api is already on the `observability` network. Its query to Prometheus is a new hop and, like every hop, uses TLS verified against the CA root ([0022](0022-observability-and-alerting.md)). OpenBao, Alloy, blackbox and Nginx report no version to any of these sources and show their declared version only.
+The api is already on the `observability` network. Its query to Prometheus is a new hop and, like every hop, uses TLS verified against the CA root ([0022](0022-observability-and-alerting.md)). The worker makes the same query for the daily check (below), which needs the host's operating system (`node_os_info`) to look up its end of life; it is on `observability` too. Grafana, the api and the worker are the clients of Prometheus' API (recorded 2026-10-03). OpenBao, Alloy, blackbox and Nginx report no version to any of these sources and show their declared version only.
 
 ### Available updates: a daily check in the worker, with a fixed allowlist
 

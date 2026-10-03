@@ -72,3 +72,5 @@ stateDiagram-v2
   attached --> softDeleted: replaced, record deleted, or owner erased
   softDeleted --> [*]: purge delay passed (default 32 days > backup retention)<br>object first, then row
 ```
+
+The same daily purge also removes objects older than a day that no row describes. A row is always written before its object, so only a failure or a restore to an earlier database state leaves such objects, and nothing can reference them.

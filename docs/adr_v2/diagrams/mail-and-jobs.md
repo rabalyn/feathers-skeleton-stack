@@ -37,13 +37,15 @@ flowchart LR
   qMail --> deliver
   qExport --> exportJob
 
-  sweep -->|"pending deliveries > 1 min"| qMail
+  sweep -->|"deliveries pending > 1 min"| qMail
+  sweep -->|"campaigns pending > 1 min"| qMaint
   campaign -->|"one job per recipient"| qMail
 
-  retention & sweep & campaign -->|"PG+TLS :6432"| pgb[("pgbouncer")]
+  retention & expiry & purge & sweep & campaign & update & deliver & exportJob -->|"PG+TLS :6432"| pgb[("pgbouncer")]
   expiry & purge & exportJob -->|"HTTPS :3900"| s3[("s3")]
   deliver -->|"SMTP+STARTTLS :1025"| smtp["mail / university relay"]
   update -->|"HTTPS, fixed allowlist"| internet(["Docker Hub, quay.io,<br>endoflife.date"])
+  update -->|"observability · HTTPS :9090<br>host OS"| prom[("prometheus")]
 ```
 
 ## Notification through the outbox

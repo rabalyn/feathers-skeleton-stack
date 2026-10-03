@@ -26,6 +26,8 @@ flowchart LR
   test -->|"object · :3900<br>test-* buckets"| s3[("s3")]
   test -->|"identity · :636"| ldap[("ldap")]
   test -->|"observability · :1025"| mail["mail"]
+  test -->|"observability · :9090"| prom[("prometheus")]
+  test -->|"netbox-api · :8443"| netbox["netbox"]
 ```
 
 ## End-to-end: a second api on its own database
@@ -58,5 +60,5 @@ Shared with the developer's stack: PostgreSQL, PgBouncer, Valkey, Keycloak, LDAP
 flowchart LR
   agent(["Coding agent on the host"]) -->|"podman exec: Playwright MCP server"| mcp["mcp-browser"]
   mcp -->|"mcp-edge (internal, no route out)<br>HTTPS :8443"| nginx["nginx"]
-  nginx --> app["app.localhost, idp, mail, netbox, …"]
+  nginx --> app["app.localhost, idp.localhost,<br>netbox.localhost"]
 ```

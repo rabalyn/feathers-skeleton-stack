@@ -36,6 +36,7 @@ The alternatives considered were in-process cron in a worker (simplest, but no r
 | Mail delivery | On a notification's commit, a campaign's send, and a sweep every minute | Renders and sends one mail on a queue of its own, `mail`, throttled to `mailSendLimitCount` per `mailSendLimitWindowSeconds`; five attempts for temporary SMTP failures ([0027](0027-email-templates-and-sending.md)) |
 | Mail campaign | On an admin's send | Resolves a campaign's recipients into delivery rows and enqueues one mail delivery each ([0027](0027-email-templates-and-sending.md)) |
 | Data export | On request | Builds a GDPR export into the `exports` bucket. Runs on a queue of its own, `data-exports`, one at a time, so a long daily job never delays it; three attempts with a short backoff, since someone is waiting ([0013](0013-gdpr-export-and-retention.md)) |
+| Update check | Daily, once at the worker's start when the last result is older than a day, and when an admin asks for one | Compares each component's declared version with its registry's tags and end-of-life dates, from a fixed allowlist of outbound hosts and from Prometheus for the host's operating system, and stores the result ([0032](0032-system-info-and-update-check.md)) |
 
 Backups are not BullMQ jobs: the backup service is isolated from Valkey and schedules itself ([0017](0017-nfs-backup-storage.md)).
 

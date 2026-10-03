@@ -1,6 +1,6 @@
 # GDPR export and erasure
 
-Illustrates [0013](../0013-gdpr-export-and-retention.md), with the queue from [0024](../0024-background-jobs-bullmq.md), the notification from [0027](../0027-email-templates-and-sending.md) and the live update from [0012](../0012-role-scoped-channels.md). Where this page and an ADR or the code disagree, the ADR and the code win.
+Illustrates [0013](../0013-gdpr-export-and-retention.md), with the API tokens of [0029](../0029-api-tokens.md), the queue from [0024](../0024-background-jobs-bullmq.md), the notification from [0027](../0027-email-templates-and-sending.md) and the live update from [0012](../0012-role-scoped-channels.md). Where this page and an ADR or the code disagree, the ADR and the code win.
 
 ## Data subject export
 
@@ -37,7 +37,7 @@ sequenceDiagram
   api-->>b: ZIP stream
 ```
 
-The export expiry job deletes the object and then the row after the export retention (default 7 days); the `exports` bucket is never backed up.
+The export expiry job deletes the object and then the row after the export retention (default 7 days), and removes objects no row describes, such as those of an erased person's exports; the `exports` bucket is never backed up.
 
 ## Erasure
 
@@ -51,8 +51,7 @@ sequenceDiagram
 
   admin->>api: POST /api/erasures {userId}
   api->>api: refuse own account and break-glass (400), already erased (409)
-  api->>pg: erase_user(id, now): clear TU-ID, names, email, avatar,<br>disable, delete sessions + refresh tokens + mail deliveries,<br>soft-delete files, delete documents, append to "erasures" log
-  api->>pg: audit users.erase
+  api->>pg: one transaction: erase_user(id, now): clear TU-ID, names, email, avatar,<br>disable, delete sessions + refresh tokens, API tokens, preferences,<br>mail deliveries, exports the person is subject or requester of,<br>soft-delete files, delete documents, append to "erasures" log<br>+ audit users.erase
   api->>sockets: close them (logged out everywhere)
   api-->>admin: done
   Note over pg: After a database restore, scripts/backup.sh restore-db<br>re-applies every entry of the "erasures" log.

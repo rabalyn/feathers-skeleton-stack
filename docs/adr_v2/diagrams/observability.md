@@ -1,6 +1,6 @@
 # Observability: metrics, logs and alerts
 
-Illustrates [0021](../0021-structured-logging.md) and [0022](../0022-observability-and-alerting.md). Where this page and an ADR or the code disagree, the ADR and the code win. Every hop here is TLS, verified against the CA root.
+Illustrates [0021](../0021-structured-logging.md) and [0022](../0022-observability-and-alerting.md), with the update check's alerts from [0032](../0032-system-info-and-update-check.md). Where this page and an ADR or the code disagree, the ADR and the code win. Every hop here is TLS, verified against the CA root.
 
 ## Metrics
 
@@ -45,7 +45,7 @@ flowchart LR
   journal -->|"read-only mount"| alloy
   alloy -->|"observability · HTTPS :3100<br>labels: service, level, environment"| loki[("loki<br>14 days")]
 
-  dozzle["dozzle (local only)"] -. "Podman socket,<br>not part of the pipeline" .-> journal
+  dozzle["dozzle (local only)"] -. "container output through the Podman API socket,<br>not part of the pipeline" .-> podman[/"Podman"/]
 ```
 
 ## Alerts
@@ -62,4 +62,4 @@ flowchart LR
 
 | From Loki | From Prometheus |
 | --- | --- |
-| error lines, rate-limit rejections, break-glass logins, backup errors or no success in 26 h | target down, API not ready, 5xx ratio, p95 latency, DB connections, volume > 80 %, uptime probe, certificate expiry |
+| error lines, rate-limit rejections, break-glass logins, backup errors or no success in 26 h | target down, API not ready, 5xx ratio, p95 latency, DB connections, volume > 80 %, uptime probe, certificate expiry, patch waiting, end of life near, update check failing |

@@ -54,6 +54,8 @@ Files uploaded by an erased user are soft-deleted and purged on the normal sched
 
 Documents owned by an erased user are deleted. Products decide per resource type whether their own records are transferred or deleted, when that resource is designed.
 
+Everything else `erase_user()` removes is the person's own state: their API tokens ([0029](0029-api-tokens.md)), their preferences ([0014](0014-frontend-quasar-vue.md)), their mail delivery log ([0027](0027-email-templates-and-sending.md)), and every data export of which they are the subject **or the requester**. An export of the person would otherwise outlive the erasure until its retention ends, and an export they asked for of somebody else is theirs to fetch, which an erased account can no longer do. The rows go at once; the objects they described are removed by the export expiry job, which removes objects in `exports` that no row describes ([0024](0024-background-jobs-bullmq.md)). An export still being built when its person is erased is discarded by the worker instead of being marked ready. Recorded 2026-10-03; `erase_user()` did this already.
+
 ### Erasure and backups
 
 Backups are not rewritten on erasure. Erased data leaves the backups when the snapshots holding it expire (31 days). In the meantime backups are used for nothing except restores, and **after a restore, erasures are applied again from a log of erased surrogate IDs**. That log holds surrogate IDs and timestamps only, so it identifies nobody by itself. Re-applying it is a mandatory restore step alongside revoking all sessions ([0017](0017-nfs-backup-storage.md)).
