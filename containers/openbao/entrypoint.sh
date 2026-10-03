@@ -1,7 +1,8 @@
 #!/bin/sh
-# OpenBao's entrypoint (ADR 0021, 0023). It starts as root for one thing:
+# OpenBao's entrypoint (ADR 0021, 0023). It starts as root for two things:
 # the audit log's directory on the shared log volume, which belongs to the
-# api's user. OpenBao itself runs as `openbao`.
+# api's user, and its own data volume, which a fresh start gives to root.
+# OpenBao itself runs as `openbao`.
 #
 # OpenBao's file audit device never rotates its file; it reopens it on
 # SIGHUP. So this script keeps the file bounded the way ADR 0021 bounds
@@ -17,6 +18,10 @@ max_bytes=10485760
 keep=5
 
 install -d -o openbao -g openbao -m 0750 "$dir"
+# A fresh data volume belongs to the user the container starts as, root;
+# OpenBao could not open its raft storage in it.
+chown openbao:openbao /openbao/data
+chmod 0700 /openbao/data
 # The container's output belongs to root; OpenBao's own until 2026-10-02,
 # when it wrote its audit log there. An OpenBao initialised before then
 # still holds that /dev/stdout device and must open it once to become
