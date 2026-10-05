@@ -37,6 +37,7 @@ COPY apps/api apps/api
 RUN pnpm --filter @app/api build
 
 FROM build AS test
+COPY docs/adr_v2 /repo/docs/adr_v2
 # Vitest writes a bundled copy of its config next to the original.
 RUN chown -R node:node /repo/apps/api
 WORKDIR /repo/apps/api
@@ -77,6 +78,9 @@ CMD ["node", "dist/index.js"]
 # The commit time, not the build time: an unchanged tree builds the same
 # image, and `stack.sh up` restarts nothing.
 FROM runtime-base AS runtime
+# The ADRs and diagrams, for the docs service (ADR 0019). Not in the backup
+# image, which serves nothing.
+COPY docs/adr_v2 /repo/docs/adr_v2
 ARG APP_COMMIT=unknown
 ARG APP_COMMIT_TIME=unknown
 ARG APP_DIRTY=false

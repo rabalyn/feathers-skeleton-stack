@@ -53,7 +53,7 @@ Decided 2026-10-02; until then expected errors passed through with whatever a li
 
 ### Practices
 
-- Rendering user-supplied HTML is prohibited; `vue/no-v-html` is enabled as a lint error rather than a guideline.
+- Rendering user-supplied HTML is prohibited; `vue/no-v-html` is enabled as a lint error rather than a guideline. The one exception is the architecture page ([0019](0019-adr-convention.md#diagrams)), which renders the repository's own Markdown: markdown-it with raw HTML escaped, the result sanitized with DOMPurify, Mermaid in its `strict` security level, and the `v-html` disabled on that line with the reason. Decided 2026-10-05.
 - Dependency and image scanning are CI gates. Because images are rebuilt for each release, a security patch reaches production through a normal release.
   - `pnpm audit` blocks at **high** severity and above.
   - Trivy scans every image `compose.yaml` names, built or pinned, and blocks on **HIGH or CRITICAL findings that have a fix**. Unfixed findings are reported but do not block, because nobody can act on them and a permanently red gate stops being read. A finding that is accepted instead of fixed goes into `.trivyignore.yaml`, scoped to the package it concerns, with a statement and an expiry after which it blocks again. The one file not scanned is `gosu` in the PostgreSQL image: it only drops root privileges at container start, and its Go standard library findings concern code it never runs.

@@ -130,6 +130,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/SystemInfoPage.vue'),
         meta: { requires: ['read', 'system-info'] }
       },
+      // The ADRs and diagrams (ADR 0019), under docs.read.
+      {
+        path: 'docs',
+        name: 'docs',
+        component: () => import('@/pages/DocsPage.vue'),
+        meta: { requires: ['read', 'docs'] }
+      },
       // The address lookup (ADR 0031): every signed-in person.
       {
         path: 'sites',

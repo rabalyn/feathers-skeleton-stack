@@ -60,6 +60,7 @@ import type { SystemInfoReport, SYSTEM_INFO_REPORT_EXTERNAL_METHODS } from './se
 import type { UpdateCheck, UpdateCheckData, UPDATE_CHECK_EXTERNAL_METHODS } from './services/update-checks/update-checks.js'
 import type { Preference, PreferenceData, PreferenceQuery } from './services/preferences/preferences.schema.js'
 import type { PREFERENCE_EXTERNAL_METHODS } from './services/preferences/preferences.js'
+import type { Doc, DocQuery, DocSummary, DOC_EXTERNAL_METHODS } from './services/docs/docs.js'
 // gen:service imports (ADR 0030)
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
@@ -106,6 +107,8 @@ export type { Preference, PreferenceData, PreferenceQuery } from './services/pre
 export type { PreferenceKey, PreferenceValues } from './preferences/registry.js'
 // A 400 for refused data or query (ADR 0005).
 export type { ValidationError } from './validation-error.js'
+export type { Doc, DocKind, DocQuery, DocSummary } from './services/docs/docs.js'
+export { DOC_SEARCH_MAX_LENGTH } from './limits.js'
 // gen:service exports (ADR 0030)
 export { ALLOWED_CONTENT_TYPES, AVATAR_CONTENT_TYPES, FILENAME_HEADER, type AllowedContentType } from './uploads.js'
 export {
@@ -247,6 +250,9 @@ export interface ClientServiceTypes {
     ClientService<Preference, PreferenceData, never, Paginated<Preference>, Params<PreferenceQuery>>,
     typeof PREFERENCE_EXTERNAL_METHODS
   >
+  // The ADRs and diagrams (ADR 0019): a list, searchable, and each page's
+  // Markdown.
+  docs: External<ClientService<Doc, never, never, DocSummary[], Params<DocQuery>>, typeof DOC_EXTERNAL_METHODS>
   // gen:service client-types (ADR 0030)
 }
 

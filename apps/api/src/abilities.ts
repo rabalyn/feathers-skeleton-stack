@@ -131,6 +131,9 @@ const CATALOGUE_ENTRIES = [
   // Running the update check now, an outbound request (ADR 0032). `read`
   // for feathers-casl's check of the create's result.
   entry('system-info.check', 'configuration', (can) => can(['create', 'read'], 'update-checks')),
+  // The ADRs and diagrams in the app (ADR 0019). Admin-only: no seeded role
+  // holds it, since they describe the stack's topology.
+  entry('docs.read', 'configuration', (can) => can('read', 'docs')),
   // API tokens (ADR 0029): creating one's own, bounded by one's own rights
   // on every request; seeing and revoking one's own is `api-tokens.own`.
   entry('api-tokens.create', 'api', (can) => can('create', 'api-tokens')),
