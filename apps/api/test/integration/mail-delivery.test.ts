@@ -22,6 +22,7 @@ let app: Application
 const knex = () => app.get('knex')
 const logger = pino({ level: 'silent' })
 const PUBLIC_ORIGIN = 'https://app.example.org'
+const APP = { name: 'Example product', url: PUBLIC_ORIGIN }
 
 class FakeSender implements MailSender {
   sent: { to: Recipient; mail: RenderedMail }[] = []
@@ -54,7 +55,7 @@ const notification = async (user: User) => {
 }
 
 const run = (sender: MailSender, deliveryId: string, attempt = 1, attempts = 5) =>
-  deliver({ knex: knex(), sender, publicOrigin: PUBLIC_ORIGIN, logger, deliveryId, attempt, attempts })
+  deliver({ knex: knex(), sender, app: APP, logger, deliveryId, attempt, attempts })
 
 const row = (id: string) => knex()('mailDeliveries').where({ id }).first()
 
@@ -165,7 +166,7 @@ describe('the SMTP sender', () => {
     }
     await expect.poll(() => messagesTo(address), { timeout: 10_000 }).toHaveLength(1)
     const [message] = await messagesTo(address)
-    expect(message).toMatchObject({ Subject: 'Über TLS', From: { Address: config.mailFrom, Name: 'claude-feathers' } })
+    expect(message).toMatchObject({ Subject: 'Über TLS', From: { Address: config.mailFrom, Name: config.appName } })
     expect((await messageText(message!.ID)).Text).toContain('Hallo')
   })
 
@@ -209,7 +210,7 @@ describe('the mail queue', () => {
       exports: app.get('exports'),
       logger,
       prefix: `test-${randomUUID()}`,
-      mail: { sender, publicOrigin: PUBLIC_ORIGIN }
+      mail: { sender, app: APP }
     })
     events = new QueueEvents(maintenance.mail.queue.name, { connection, prefix: maintenance.mail.queue.opts.prefix })
     await events.waitUntilReady()

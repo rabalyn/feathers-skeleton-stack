@@ -5,7 +5,7 @@
     "launchOptions": {
       "channel": "chromium",
       "headless": true,
-      "args": ["--host-resolver-rules=MAP app.localhost nginx, MAP idp.localhost nginx, MAP netbox.localhost nginx"]
+      "args": ["--host-resolver-rules=MAP *.localhost nginx"]
     }
   },
   "outputDir": "/tmp/playwright-mcp"

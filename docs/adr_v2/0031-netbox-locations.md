@@ -23,7 +23,7 @@ NetBox, a data-centre and network inventory, models exactly this: regions, neste
 - **Networks.** `netbox-edge` (Nginx and NetBox) for browsers; `netbox-api` (NetBox, the api, and locally api-e2e and the integration tests) for the REST calls; `netbox-data` (NetBox, its worker and setup, PgBouncer, Valkey), so NetBox reaches its database and Valkey without joining `app-data`, where the api and worker are.
 - **Secrets** from OpenBao through a `netbox-agent` ([0023](0023-secrets-management.md)): the database and Valkey passwords, Django's secret key and the pepper NetBox hashes its v2 API tokens with (both generated at 96 characters, as NetBox requires at least 50), the SAML SP key pair, the IdP's certificate, and the secret of the api's token.
 - **Self-contained** ([0001](0001-one-stack-every-environment.md)): `ISOLATED_DEPLOYMENT`, no census reporting, no release check, and NetBox Copilot, which loads a script from NetBox Labs, off.
-- Browsers reach NetBox through Nginx under a host name of its own (`netbox.localhost` locally), with TLS on both hops. NetBox refuses anonymous access (`LOGIN_REQUIRED`).
+- Browsers reach NetBox through Nginx under a host name of its own (`netbox.<project>.localhost` locally), with TLS on both hops. NetBox refuses anonymous access (`LOGIN_REQUIRED`).
 
 ### The data model
 

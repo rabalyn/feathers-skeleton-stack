@@ -27,7 +27,7 @@
 #   scripts/stack.sh e2e [playwright args]
 #                            run the Playwright suite in the `e2e` container
 #                            against api-e2e on a fresh database of its own,
-#                            at https://e2e.localhost:8443 (ADR 0015); the
+#                            at https://e2e.<project>.localhost (ADR 0015); the
 #                            local app and its data are not touched. Needs
 #                            the bundle: refused after `up --dev` (ADR 0014)
 #   scripts/stack.sh breakglass
@@ -54,7 +54,9 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-PROJECT=feathers
+# shellcheck source=scripts/product.sh
+source "$ROOT/scripts/product.sh"
+PROJECT=$PRODUCT
 UNSEAL_VOLUME=${PROJECT}-openbao-local-unseal
 HELPER_IMAGE=docker.io/library/alpine:3.24.2@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
 # The Node the api and the web build run on (containers/api/Containerfile).
@@ -170,12 +172,12 @@ ensure_admin_token() {
 wait_for_rendered() { # [<service>...]
   local svc i
   for svc in ${*:-$(agents)}; do
-    running "$svc-agent" || continue
+    running "$(ctr "$svc-agent")" || continue
     for i in $(seq 60); do
-      podman exec "$svc-agent" sh -c 'ls /run/secrets/* >/dev/null 2>&1' && continue 2
+      podman exec "$(ctr "$svc-agent")" sh -c 'ls /run/secrets/* >/dev/null 2>&1' && continue 2
       sleep 1
     done
-    die "$svc-agent rendered nothing; see: podman logs $svc-agent"
+    die "$svc-agent rendered nothing; see: podman logs $(ctr "$svc-agent")"
   done
 }
 
@@ -187,7 +189,7 @@ ensure_sp_keypair() { # <service> <common name>
   [[ -n $(kv_get "$1" saml_sp_key) ]] && return 0
   log "generating the SAML SP key pair of $1"
   local pems key cert
-  pems=$(podman run --rm --network none --entrypoint sh localhost/feathers-certs:dev -c \
+  pems=$(podman run --rm --network none --entrypoint sh localhost/$PRODUCT-certs:dev -c \
     'openssl req -x509 -newkey rsa:3072 -nodes -days 3650 -subj "/CN=$1" \
        -keyout /dev/stdout -out /dev/stdout 2>/dev/null' sh "$2")
   key=$(sed -n '/BEGIN PRIVATE KEY/,/END PRIVATE KEY/p' <<<"$pems")
@@ -211,19 +213,25 @@ e2e_actions() {
     action=${line%$'\r'}
     action=${action#"${action%%[![:space:]]*}"}
     case $action in
-      'stack-action: stop api-e2e') podman stop -t 5 api-e2e >/dev/null || log "stopping api-e2e failed" ;;
-      'stack-action: start api-e2e') podman start api-e2e >/dev/null || log "starting api-e2e failed" ;;
+      'stack-action: stop api-e2e') podman stop -t 5 "$(ctr api-e2e)" >/dev/null || log "stopping api-e2e failed" ;;
+      'stack-action: start api-e2e') podman start "$(ctr api-e2e)" >/dev/null || log "starting api-e2e failed" ;;
     esac
   done
 }
 
-wait_healthy() { # <container> <seconds>
+wait_healthy() { # <service> <seconds>
   local i
   for i in $(seq "$2"); do
-    podman healthcheck run "$1" >/dev/null 2>&1 && return 0
+    podman healthcheck run "$(ctr "$1")" >/dev/null 2>&1 && return 0
     sleep 1
   done
-  die "$1 did not become healthy; see: podman logs $1"
+  die "$1 did not become healthy; see: podman logs $(ctr "$1")"
+}
+
+# The realm file with its placeholders filled in, as Keycloak imports it.
+realm_json() {
+  sed -e "s/\${PRODUCT}/$PRODUCT/g" -e "s/\${PRODUCT_HTTPS_PORT}/$PRODUCT_HTTPS_PORT/g" \
+    "$ROOT/containers/idp/realm-feathers.json"
 }
 
 # Exchanges certificates with the local Keycloak: the realm's signing
@@ -232,7 +240,7 @@ wait_healthy() { # <container> <seconds>
 # requests and encrypts.
 configure_local_idp() {
   local descriptor idp_cert sp_cert current svc
-  descriptor=$(podman exec nginx wget -qO- http://idp:8080/realms/feathers/protocol/saml/descriptor)
+  descriptor=$(podman exec "$(ctr nginx)" wget -qO- http://idp:8080/realms/feathers/protocol/saml/descriptor)
   idp_cert=$(sed -n 's/.*<ds:X509Certificate>\([^<]*\)<.*/\1/p' <<<"$descriptor" | head -1)
   [[ -n $idp_cert ]] || die "no signing certificate in the IdP descriptor"
   idp_cert=$(printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "$(fold -w 64 <<<"$idp_cert")")
@@ -254,7 +262,7 @@ configure_local_idp() {
       '{"clientId":"https://netbox.'*) sp_cert=$(kv_get netbox saml_sp_cert | pem_body) ;;
       *) sp_cert=$(kv_get api saml_sp_cert | pem_body) ;;
     esac
-    podman exec -i idp bash -s "$sp_cert" "$client" <<'KCADM'
+    podman exec -i "$(ctr idp)" bash -s "$sp_cert" "$client" <<'KCADM'
 set -euo pipefail
 kc=/opt/keycloak/bin/kcadm.sh
 cfg=$(mktemp)
@@ -277,14 +285,14 @@ $kc update "clients/$id" --config "$cfg" -r feathers \
   -s 'attributes."saml.encryption.keyAlgorithm"=http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p' \
   -s 'attributes."saml.encryption.digestMethod"=http://www.w3.org/2000/09/xmldsig#sha1'
 KCADM
-  done < <(jq -c '.clients[]' "$ROOT/containers/idp/realm-feathers.json")
+  done < <(realm_json | jq -c '.clients[]')
 
   # The LDAP group mapper (ADR 0031), likewise created in a realm imported
   # before it existed.
   jq -c '.components."org.keycloak.storage.UserStorageProvider"[0].subComponents."org.keycloak.storage.ldap.mappers.LDAPStorageMapper"[]
     | select(.providerId == "group-ldap-mapper")
-    | . + {providerType: "org.keycloak.storage.ldap.mappers.LDAPStorageMapper"}' "$ROOT/containers/idp/realm-feathers.json" |
-    podman exec -i idp bash -c '
+    | . + {providerType: "org.keycloak.storage.ldap.mappers.LDAPStorageMapper"}' < <(realm_json) |
+    podman exec -i "$(ctr idp)" bash -c '
 set -euo pipefail
 mapper=$(cat)
 kc=/opt/keycloak/bin/kcadm.sh
@@ -306,7 +314,7 @@ wait_for_idp_cert() {
   for svc in api netbox; do
     want=$(kv_get "$svc" saml_idp_cert)
     for i in $(seq 120); do
-      [[ $(podman exec "$svc-agent" cat /run/secrets/saml_idp_cert 2>/dev/null) == "$want" ]] && continue 2
+      [[ $(podman exec "$(ctr "$svc-agent")" cat /run/secrets/saml_idp_cert 2>/dev/null) == "$want" ]] && continue 2
       sleep 1
     done
     die "$svc-agent did not render the IdP certificate"
@@ -321,7 +329,7 @@ idp_setup() {
   wait_for_idp_cert
   bao token revoke -self >/dev/null
   TOKEN=
-  podman restart api netbox >/dev/null
+  podman restart "$(ctr api)" "$(ctr netbox)" >/dev/null
   wait_healthy api 60
   wait_healthy netbox 180
   log "api and NetBox restarted with the IdP certificate"
@@ -331,21 +339,25 @@ idp_setup() {
 # an administrator runs in production. Its password is kept in OpenBao, at a
 # path only this script reads, so `$0 breakglass` can show it; an account
 # without a stored password gets a new one.
-BREAKGLASS_EMAIL=breakglass@app.localhost
-# The local app's public origin, from its one definition in compose.yaml.
-APP_ORIGIN=$(sed -n 's/^ *PUBLIC_ORIGIN: &public-origin //p' "$ROOT/compose.yaml")
-[[ -n $APP_ORIGIN ]] || { echo "compose.yaml defines no &public-origin" >&2; exit 1; }
+BREAKGLASS_EMAIL=breakglass@app.$LOCAL_DOMAIN
+# The local app's public origin, as compose.yaml builds it from product.env.
+APP_ORIGIN=$(local_origin app)
 ensure_breakglass() {
   local count password
-  count=$(podman exec -u postgres postgres psql -tAq -d app -c "SELECT count(*) FROM users WHERE auth_source = 'local'")
+  count=$(podman exec -u postgres "$(ctr postgres)" psql -tAq -d app -c "SELECT count(*) FROM users WHERE auth_source = 'local'")
+  # The address follows the local host names (ADR 0035): an account made
+  # under an earlier one is moved to the current one.
+  podman exec -i -u postgres "$(ctr postgres)" psql -q -v ON_ERROR_STOP=1 -d app -v email="$BREAKGLASS_EMAIL" <<'SQL' >/dev/null
+UPDATE users SET email = :'email', updated_at = now() WHERE auth_source = 'local' AND email IS DISTINCT FROM :'email';
+SQL
   wait_for_openbao
   init_or_unseal
   if [[ $count == 0 ]]; then
-    password=$(podman exec api node dist/bootstrap.js --email "$BREAKGLASS_EMAIL" 2>/dev/null) ||
-      die "bootstrap failed; see: podman exec api node dist/bootstrap.js --email $BREAKGLASS_EMAIL"
+    password=$(podman exec "$(ctr api)" node dist/bootstrap.js --email "$BREAKGLASS_EMAIL" 2>/dev/null) ||
+      die "bootstrap failed; see: podman exec $(ctr api) node dist/bootstrap.js --email $BREAKGLASS_EMAIL"
     log "created the break-glass account $BREAKGLASS_EMAIL"
   elif [[ -z $(kv_get stack breakglass_password) ]]; then
-    password=$(podman exec api node dist/bootstrap.js --rotate 2>/dev/null) || die "bootstrap --rotate failed"
+    password=$(podman exec "$(ctr api)" node dist/bootstrap.js --rotate 2>/dev/null) || die "bootstrap --rotate failed"
     log "rotated the break-glass password"
   fi
   [[ -z ${password:-} ]] || printf '%s' "$password" | kv_set stack breakglass_password
@@ -372,14 +384,14 @@ alert_setup() {
 # Grafana's API as its admin, from inside its container: the password
 # stays there.
 grafana_get() {
-  podman exec grafana sh -c 'printf "user = \"admin:%s\"\n" "$(cat /run/secrets/admin_password)" |
+  podman exec "$(ctr grafana)" sh -c 'printf "user = \"admin:%s\"\n" "$(cat /run/secrets/admin_password)" |
     curl -sf -K - --cacert /trust/ca.crt --connect-to grafana:3000:127.0.0.1:3000 "https://grafana:3000$1"' sh "$1"
 }
 
 # The subjects of a rule's alert mails in Mailpit created after $2 (default:
 # all), newest first.
 alert_mails() {
-  curl -s --cacert "$ALERT_DIR/ca.crt" -G https://mail.localhost:8443/api/v1/search --data-urlencode "query=subject:\"$1\"" |
+  curl -s --cacert "$ALERT_DIR/ca.crt" -G $(local_origin mail)/api/v1/search --data-urlencode "query=subject:\"$1\"" |
     jq -r --arg title "$1" --arg since "${2:-}" '
       [.messages[]? | select(.Created > $since)
         | select((.Subject | startswith("[FIRING:") or startswith("[RESOLVED]")) and (.Subject | contains("] " + $title + " (")))]
@@ -395,13 +407,13 @@ wait_alert_quiet() {
   local uid=$1 title=$2 deadline=$((SECONDS + 1200)) interval normal latest waited=
   interval=$(grafana_get /api/v1/provisioning/policies |
     jq -r '[.group_interval | scan("([0-9]+)([hms])") | (.[0] | tonumber) * {h: 3600, m: 60, s: 1}[.[1]]] | add') ||
-    die "cannot read Grafana's notification policy; see: podman logs grafana"
+    die "cannot read Grafana's notification policy; see: podman logs $(ctr grafana)"
   while ((SECONDS < deadline)); do
     normal=$(grafana_get "/api/prometheus/grafana/api/v1/rules?rule_uid=$uid" | jq -r '
       [.data.groups[].rules[].alerts[]?]
       | if any(.state | startswith("Normal") | not) then "firing"
         else [.[].activeAt | sub("\\.[0-9]+"; "") | fromdateiso8601] | max // 0 end') ||
-      die "cannot read the state of Grafana's rule $uid; see: podman logs grafana"
+      die "cannot read the state of Grafana's rule $uid; see: podman logs $(ctr grafana)"
     latest=$(alert_mails "$title" | head -n 1)
     if [[ $normal != firing ]] && [[ $latest == "[RESOLVED]"* || $(($(date +%s) - normal)) -gt $((interval + 30)) ]]; then
       return
@@ -420,17 +432,17 @@ wait_alert_mail() {
     subject=$(alert_mails "$title" "$since" | grep -m 1 '^\[FIRING:' || true)
     if [[ -n $subject ]]; then
       # Plain text only (ADR 0022): Grafana's HTML loads a font from Google.
-      html=$(curl -s --cacert "$ALERT_DIR/ca.crt" -G https://mail.localhost:8443/api/v1/search --data-urlencode "query=subject:\"$title\"" |
+      html=$(curl -s --cacert "$ALERT_DIR/ca.crt" -G $(local_origin mail)/api/v1/search --data-urlencode "query=subject:\"$title\"" |
         jq -r --arg subject "$subject" --arg since "$since" \
           '[.messages[] | select(.Created > $since and .Subject == $subject)][0].ID' |
-        xargs -I{} curl -s --cacert "$ALERT_DIR/ca.crt" https://mail.localhost:8443/api/v1/message/{} | jq -r '.HTML | length')
+        xargs -I{} curl -s --cacert "$ALERT_DIR/ca.crt" $(local_origin mail)/api/v1/message/{} | jq -r '.HTML | length')
       [[ $html == 0 ]] || die "\"$title\" was mailed with an HTML part; Grafana must send plain text only (GF_EMAILS_CONTENT_TYPES)"
       log "alert mail arrived: $subject"
       return
     fi
     sleep 5
   done
-  die "no \"$title\" mail arrived; see Grafana's alert rules and: podman logs grafana"
+  die "no \"$title\" mail arrived; see Grafana's alert rules and: podman logs $(ctr grafana)"
 }
 
 # The "Application errors in logs" rule: unknown jobs fail at once and log
@@ -441,7 +453,7 @@ errors_alert_check() {
   alert_setup
   wait_alert_quiet app-errors "Application errors in logs"
   since=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
-  podman exec -i -w /repo/apps/api -e NODE_EXTRA_CA_CERTS=/trust/ca.crt worker \
+  podman exec -i -w /repo/apps/api -e NODE_EXTRA_CA_CERTS=/trust/ca.crt "$(ctr worker)" \
     node --input-type=module <<'JS' || die "enqueueing the failing jobs in the worker failed"
 import { readFileSync } from 'node:fs'
 import { Queue } from 'bullmq'
@@ -490,7 +502,7 @@ breakglass_alert_check() {
 # the local `app` after every start, restoring roles changed by hand; the
 # e2e run to its fresh database. What the seeded roles grant is left alone.
 seed_test_accounts() { # <database>
-  podman exec -i -u postgres postgres psql -q -v ON_ERROR_STOP=1 -d "$1" <<'SQL' >/dev/null
+  podman exec -i -u postgres "$(ctr postgres)" psql -q -v ON_ERROR_STOP=1 -d "$1" <<'SQL' >/dev/null
 CREATE TEMPORARY TABLE seed (tu_id text, given_name text, surname text, email text, role_key text);
 INSERT INTO seed VALUES
   ('ad01admn', 'Ada', 'Admin', 'ada.admin@example.org', 'admin'),
@@ -514,10 +526,10 @@ SQL
 # and migrated, then api-e2e and worker-e2e start on it. Nothing of the
 # local `app` is touched.
 E2E_DATABASE=app_e2e
-E2E_BREAKGLASS_EMAIL=breakglass@e2e.localhost
+E2E_BREAKGLASS_EMAIL=breakglass@e2e.$LOCAL_DOMAIN
 start_e2e_api() {
-  podman rm -f api-e2e worker-e2e >/dev/null 2>&1 || true
-  podman exec -i -u postgres postgres psql -q -v ON_ERROR_STOP=1 -d postgres <<SQL >/dev/null
+  podman rm -f "$(ctr api-e2e)" "$(ctr worker-e2e)" >/dev/null 2>&1 || true
+  podman exec -i -u postgres "$(ctr postgres)" psql -q -v ON_ERROR_STOP=1 -d postgres <<SQL >/dev/null
 DROP DATABASE IF EXISTS $E2E_DATABASE WITH (FORCE);
 CREATE DATABASE $E2E_DATABASE OWNER migrator;
 REVOKE ALL ON DATABASE $E2E_DATABASE FROM PUBLIC;
@@ -529,7 +541,7 @@ SQL
   wait_healthy api-e2e 60
   wait_healthy worker-e2e 60
   seed_test_accounts "$E2E_DATABASE"
-  podman exec -i -u postgres postgres psql -q -v ON_ERROR_STOP=1 -d "$E2E_DATABASE" <<'SQL' >/dev/null
+  podman exec -i -u postgres "$(ctr postgres)" psql -q -v ON_ERROR_STOP=1 -d "$E2E_DATABASE" <<'SQL' >/dev/null
 -- Erased by the GDPR spec; never logs in.
 WITH gone AS (
   INSERT INTO users (tu_id, given_name, surname, enabled, auth_source) VALUES
@@ -541,7 +553,7 @@ INSERT INTO user_roles (user_id, role_id) SELECT gone.id, roles.id FROM gone, ro
 -- the production window, on a queue prefix that outlives the database.
 UPDATE settings SET value = '1000' WHERE key = 'mailSendLimitCount';
 SQL
-  E2E_BREAKGLASS_PASSWORD=$(podman exec api-e2e node dist/bootstrap.js --email "$E2E_BREAKGLASS_EMAIL" 2>/dev/null) ||
+  E2E_BREAKGLASS_PASSWORD=$(podman exec "$(ctr api-e2e)" node dist/bootstrap.js --email "$E2E_BREAKGLASS_EMAIL" 2>/dev/null) ||
     die "bootstrap in api-e2e failed"
   export E2E_BREAKGLASS_PASSWORD
   log "api-e2e is up on a fresh $E2E_DATABASE"
@@ -552,8 +564,8 @@ setup() {
   init_or_unseal
   configure
   fill_secrets local
-  ensure_sp_keypair api "claude-feathers local SP"
-  ensure_sp_keypair netbox "claude-feathers local NetBox SP"
+  ensure_sp_keypair api "$PRODUCT_DISPLAY_NAME local SP"
+  ensure_sp_keypair netbox "$PRODUCT_DISPLAY_NAME local NetBox SP"
   issue_secret_ids
   bao token revoke -self >/dev/null
   TOKEN=
@@ -576,8 +588,8 @@ TEST_TEMPLATE_SOURCES=(apps/api/src/migrate.ts apps/api/src/migration-support.ts
 ensure_test_agent() {
   local want
   want=$(fingerprint "${TEST_AGENT_SOURCES[@]}")
-  if running test-agent &&
-    [[ $(podman exec test-agent cat /run/agent/fingerprint 2>/dev/null) == "$want" ]]; then
+  if running "$(ctr test-agent)" &&
+    [[ $(podman exec "$(ctr test-agent)" cat /run/agent/fingerprint 2>/dev/null) == "$want" ]]; then
     log "test-agent is current"
     return 0
   fi
@@ -593,7 +605,7 @@ ensure_test_agent() {
   bao token revoke -self >/dev/null
   TOKEN=
   wait_for_rendered test
-  printf '%s' "$want" | podman exec -i test-agent sh -c 'cat > /run/agent/fingerprint'
+  printf '%s' "$want" | podman exec -i "$(ctr test-agent)" sh -c 'cat > /run/agent/fingerprint'
   log "test-agent started"
 }
 
@@ -602,13 +614,13 @@ ensure_test_agent() {
 ensure_test_template() {
   local want
   want=$(fingerprint "${TEST_TEMPLATE_SOURCES[@]}")
-  [[ $(podman exec -u postgres postgres psql -tAq -d postgres -c \
+  [[ $(podman exec -u postgres "$(ctr postgres)" psql -tAq -d postgres -c \
     "SELECT shobj_description(oid, 'pg_database') FROM pg_database
      WHERE datname = 'test_template' AND datistemplate") == "$want" ]] &&
     { log "test_template is current"; return 0; }
   log "rebuilding test_template"
   compose run --rm migrate node dist/migrate.js --test-template
-  podman exec -u postgres postgres psql -q -d postgres -c "COMMENT ON DATABASE test_template IS '$want'"
+  podman exec -u postgres "$(ctr postgres)" psql -q -d postgres -c "COMMENT ON DATABASE test_template IS '$want'"
 }
 
 # --- MCP servers (ADR 0026) ---------------------------------------------------
@@ -656,12 +668,12 @@ mcp_check() {
   mcp_tool get_api '{"name": "QBtn"}' || die "quasar: get_api failed: $MCP_REPLY"
   mcp_stop
 
-  running mcp-browser || die "mcp-browser is not running; run '$0 up'"
+  running "$(ctr mcp-browser)" || die "mcp-browser is not running; run '$0 up'"
   log "playwright: the local origins over trusted TLS, nothing beyond"
-  mcp_start podman exec -i mcp-browser node mcp-server.js --config mcp.config.json
+  mcp_start bash "$ROOT/scripts/mcp-browser.sh"
   mcp_tool browser_navigate "{\"url\": \"$APP_ORIGIN/login\"}" ||
     die "playwright: the app did not load: $MCP_REPLY"
-  mcp_tool browser_navigate '{"url": "https://idp.localhost:8443/realms/feathers/"}' ||
+  mcp_tool browser_navigate "{\"url\": \"$(local_origin idp)/realms/feathers/\"}" ||
     die "playwright: the IdP did not load: $MCP_REPLY"
   # By address, so the check does not depend on name resolution.
   ! mcp_tool browser_navigate '{"url": "https://1.1.1.1/"}' ||
@@ -674,7 +686,7 @@ mcp_check() {
 # depends_on; Alloy goes first so it can ship what it holds while Loki is
 # still there (compose.yaml orders them for the production units).
 stack_down() {
-  podman stop alloy >/dev/null 2>&1 || true
+  podman stop "$(ctr alloy)" >/dev/null 2>&1 || true
   compose --profile test --profile dev down
 }
 
@@ -690,7 +702,7 @@ case $cmd in
         ;;
       "")
         # Leaving dev mode: nginx serves the bundle again.
-        podman rm -f web >/dev/null 2>&1 || true
+        podman rm -f "$(ctr web)" >/dev/null 2>&1 || true
         ;;
       *) die "usage: $0 up [--dev]" ;;
     esac
@@ -705,8 +717,8 @@ case $cmd in
     # explicitly. OpenBao is not: recreating it seals it.
     log "issuing certificates"
     compose up -d --force-recreate --no-deps certs >/dev/null 2>&1
-    podman wait certs >/dev/null
-    [[ $(podman inspect -f '{{.State.ExitCode}}' certs) == 0 ]] || die "certs failed; see: podman logs certs"
+    podman wait "$(ctr certs)" >/dev/null
+    [[ $(podman inspect -f '{{.State.ExitCode}}' "$(ctr certs)") == 0 ]] || die "certs failed; see: podman logs $(ctr certs)"
     log "starting OpenBao and agents"
     compose up -d --no-deps openbao >/dev/null 2>&1
     # Agents read their configuration only at start, so they are recreated;
@@ -715,14 +727,18 @@ case $cmd in
     # shellcheck disable=SC2046
     compose up -d --force-recreate --no-deps $(stack_agents | sed 's/$/-agent/') >/dev/null 2>&1
     setup
+    # The uptime check's target (ADR 0022): deployment configuration, here
+    # the local app's origin.
+    printf '%s\n' "# Written by scripts/stack.sh from product.env (ADR 0022, 0035)." \
+      "- targets: ['$APP_ORIGIN/api/ping']" >"$ROOT/containers/prometheus/targets/uptime.yml"
     log "starting the stack"
     # shellcheck disable=SC2046
     compose up -d --force-recreate --no-deps $(app_services | grep -vxE 'migrate|api|worker|backup|netbox|netbox-worker|netbox-setup') >/dev/null 2>&1
     # --no-deps drops depends_on conditions, so migrate waits here explicitly.
     wait_healthy postgres 120
     compose up -d --force-recreate --no-deps migrate >/dev/null 2>&1
-    podman wait migrate >/dev/null
-    [[ $(podman inspect -f '{{.State.ExitCode}}' migrate) == 0 ]] || die "migrate failed; see: podman logs migrate"
+    podman wait "$(ctr migrate)" >/dev/null
+    [[ $(podman inspect -f '{{.State.ExitCode}}' "$(ctr migrate)") == 0 ]] || die "migrate failed; see: podman logs $(ctr migrate)"
     # The api and the worker refuse to start without their runtime settings
     # (ADR 0025), which migrate has just seeded. On a first start the api
     # also lacks the IdP's certificate until idp_setup below, which restarts
@@ -731,13 +747,13 @@ case $cmd in
     wait_healthy worker 60
     # NetBox's migrations and seed (ADR 0031), then NetBox itself.
     compose up -d --force-recreate --no-deps netbox-setup >/dev/null 2>&1
-    podman wait netbox-setup >/dev/null
-    [[ $(podman inspect -f '{{.State.ExitCode}}' netbox-setup) == 0 ]] || die "netbox-setup failed; see: podman logs netbox-setup"
+    podman wait "$(ctr netbox-setup)" >/dev/null
+    [[ $(podman inspect -f '{{.State.ExitCode}}' "$(ctr netbox-setup)") == 0 ]] || die "netbox-setup failed; see: podman logs $(ctr netbox-setup)"
     compose up -d --force-recreate --no-deps netbox netbox-worker >/dev/null 2>&1
     wait_healthy netbox 180
     # The local target is ours to initialise (ADR 0017); a run never does.
-    podman exec -u backup backup node dist/backup.js init >/dev/null ||
-      die "initialising the backup target failed; see: podman logs backup"
+    podman exec -u backup "$(ctr backup)" node dist/backup.js init >/dev/null ||
+      die "initialising the backup target failed; see: podman logs $(ctr backup)"
     idp_setup
     ensure_breakglass
     seed_test_accounts app
@@ -761,16 +777,16 @@ case $cmd in
     shift
     # The suite exercises the built bundle (ADR 0014); under --dev nginx
     # proxies every origin, the e2e one included, to the Vite dev server.
-    [[ -z $(podman inspect -f '{{range .Config.Env}}{{println .}}{{end}}' nginx 2>/dev/null |
+    [[ -z $(podman inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$(ctr nginx)" 2>/dev/null |
       sed -n 's/^NGINX_WEB_UPSTREAM=//p') ]] ||
       die "nginx serves the Vite dev server; run '$0 up' (without --dev) first"
     compose --profile test build e2e
     # api-e2e, worker-e2e, their database and their buckets' contents
     # exist for the run only: the buckets are emptied before the run and
     # after it.
-    trap 'podman exec api-e2e node dist/empty-bucket.js >/dev/null 2>&1 || true; podman rm -f api-e2e worker-e2e >/dev/null 2>&1 || true' EXIT
+    trap 'podman exec "$(ctr api-e2e)" node dist/empty-bucket.js >/dev/null 2>&1 || true; podman rm -f "$(ctr api-e2e)" "$(ctr worker-e2e)" >/dev/null 2>&1 || true' EXIT
     start_e2e_api
-    podman exec api-e2e node dist/empty-bucket.js >/dev/null || die "could not empty the e2e buckets"
+    podman exec "$(ctr api-e2e)" node dist/empty-bucket.js >/dev/null || die "could not empty the e2e buckets"
     compose --profile test run --rm -T e2e pnpm exec playwright test "$@" 2>&1 | e2e_actions
     ;;
   breakglass)

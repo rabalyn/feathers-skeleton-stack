@@ -38,10 +38,12 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+# shellcheck source=scripts/product.sh
+source "$ROOT/scripts/product.sh"
 TRIVY=docker.io/aquasec/trivy@sha256:9db099105405c648166e6b94155eb32f8da12673cf1f455207f7385cc9a77283 # 0.75.0
 YQ=docker.io/mikefarah/yq:4.54.1@sha256:2d6a23c682c574ae49320fdf2419441b6f10658588d44b6d8739d673b96903e5
-CI_IMAGE=localhost/feathers-ci:dev
-TRIVY_CACHE=feathers-trivy-cache
+CI_IMAGE=localhost/$PRODUCT-ci:dev
+TRIVY_CACHE=$PRODUCT-trivy-cache
 
 mode=${1:-}
 case $mode in "" | --cold | --static) ;; *) echo "usage: $0 [--cold|--static]" >&2; exit 2 ;; esac
@@ -75,7 +77,8 @@ audit_ignores_current() {
 
 scan_images() {
   local images image rc=0 dir
-  images=$(podman run --rm -i --network none "$YQ" '.services[].image' <"$ROOT/compose.yaml" | sed 's/ *#.*//' | sort -u)
+  images=$(podman run --rm -i --network none "$YQ" '.services[].image' <"$ROOT/compose.yaml" |
+    sed -e 's/ *#.*//' -e "s/\${PRODUCT:?}/$PRODUCT/" | sort -u)
   podman volume exists "$TRIVY_CACHE" || podman volume create "$TRIVY_CACHE" >/dev/null
   dir=$(mktemp -d "${TMPDIR:-/tmp}/ci-scan.XXXXXX")
   # shellcheck disable=SC2064

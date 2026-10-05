@@ -2,7 +2,7 @@
   <div class="fullscreen flex flex-center bg-grey-2">
     <q-card class="login-card">
       <q-card-section>
-        <div class="text-h5">{{ t('app.title') }}</div>
+        <div class="text-h5">{{ productName }}</div>
       </q-card-section>
       <q-card-section>
         <q-banner v-if="session.status === 'maintenance'" dense class="bg-red-1 q-mb-md" role="status">
@@ -27,6 +27,9 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
 import { useSessionStore } from '@/stores/session'
+
+// The product's display name (ADR 0035), from product.env at build time.
+const productName = import.meta.env.PRODUCT_DISPLAY_NAME
 
 const session = useSessionStore()
 const route = useRoute()

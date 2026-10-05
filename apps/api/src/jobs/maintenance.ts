@@ -7,6 +7,7 @@ import type { Storage } from '../storage.js'
 import { buildExport } from '../gdpr/export.js'
 import { resolveCampaign } from '../mail/campaigns.js'
 import { PermanentMailFailure, deliver } from '../mail/deliver.js'
+import type { AppVariables } from '../mail/kind.js'
 import { MailOutbox } from '../mail/outbox.js'
 import type { MailSender } from '../mail/sender.js'
 import {
@@ -84,10 +85,10 @@ export interface MaintenanceOptions {
   prefix?: string
   // Job outcomes, durations and queue depth (ADR 0022).
   metrics?: Registry
-  // Sending mail (ADR 0027): the SMTP server and the origin links start
-  // with. Without it, deliveries wait in the mail queue for a worker that
+  // Sending mail (ADR 0027): the SMTP server and `app`, the product's name
+  // and the origin links start with. Without it, deliveries wait in the mail queue for a worker that
   // has one.
-  mail?: { sender: MailSender; publicOrigin: string }
+  mail?: { sender: MailSender; app: AppVariables }
   // The update check's sources (ADR 0032); without them it is off, its
   // schedule removed and its metrics not exported.
   updateCheck?: { sources: UpdateSources; hostOs: () => Promise<Labels | null> }
@@ -271,7 +272,7 @@ export const startMaintenance = ({
               const outcome = await deliver({
                 knex,
                 sender: sending.sender,
-                publicOrigin: sending.publicOrigin,
+                app: sending.app,
                 logger,
                 deliveryId: job.data.deliveryId,
                 attempt: job.attemptsMade + 1,

@@ -42,11 +42,15 @@
 # Every restore reads from the backup container, as its own user. BACKUP_ENV
 # (KEY=value ...) overrides that container's configuration for this call:
 # the test points it at a database, a bucket and repositories of its own.
+#
+# The containers are named as in production, `backup`, `postgres` and `s3`.
+# A local stack prefixes its containers with the project name (ADR 0035);
+# there, CONTAINER_PREFIX=<project>- names them.
 set -euo pipefail
 
-BACKUP=${BACKUP_CONTAINER:-backup}
-POSTGRES=${POSTGRES_CONTAINER:-postgres}
-S3=${S3_CONTAINER:-s3}
+BACKUP=${BACKUP_CONTAINER:-${CONTAINER_PREFIX:-}backup}
+POSTGRES=${POSTGRES_CONTAINER:-${CONTAINER_PREFIX:-}postgres}
+S3=${S3_CONTAINER:-${CONTAINER_PREFIX:-}s3}
 HELPER_IMAGE=docker.io/library/alpine:3.24.2@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
 
 log() { printf '\033[1mbackup:\033[0m %s\n' "$*" >&2; }

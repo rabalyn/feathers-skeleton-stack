@@ -22,7 +22,9 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-PROJECT=$(sed -n 's/^name: *//p' "$ROOT/compose.yaml")
+# shellcheck source=scripts/product.sh
+source "$ROOT/scripts/product.sh"
+PROJECT=$PRODUCT
 LOCAL=localhost/$PROJECT-
 
 log() { printf '\033[1mprune:\033[0m %s\n' "$*" >&2; }
@@ -36,7 +38,10 @@ remove() { # <image> <description>
 
 # --- local images ------------------------------------------------------------
 
-wanted=$(grep -ohE "${LOCAL}[a-z0-9-]+:[A-Za-z0-9._-]+" "$ROOT/compose.yaml" "$ROOT/scripts/ci.sh" | sort -u)
+# Both files name the images through the project variable (ADR 0035).
+wanted=$(sed -e "s/\${PRODUCT:?}/$PROJECT/g" -e "s/\$PRODUCT/$PROJECT/g" "$ROOT/compose.yaml" "$ROOT/scripts/ci.sh" |
+  grep -ohE "${LOCAL}[a-z0-9-]+:[A-Za-z0-9._-]+" | sort -u)
+[[ -n $wanted ]] || { log "found no image names in compose.yaml; removing nothing"; exit 1; }
 for name in $(podman images --format '{{.Repository}}:{{.Tag}}' | grep -E "^${LOCAL}[a-z0-9-]+:" | sort -u); do
   grep -qxF "$name" <<<"$wanted" || remove "$name" "$name, no longer built"
 done

@@ -5,8 +5,16 @@ import { defineConfig, devices } from '@playwright/test'
 // container and trusts the local CA through its NSS store (imported by the
 // container's entrypoint); certificate errors are never ignored.
 
-// The e2e origin: api-e2e on a database of its own (ADR 0015).
-export const APP = process.env.E2E_APP_ORIGIN ?? 'https://e2e.localhost:8443'
+// The e2e origin: api-e2e on a database of its own (ADR 0015). compose.yaml
+// builds it from product.env (ADR 0035): https://e2e.<project>.localhost:<port>.
+if (!process.env.E2E_APP_ORIGIN) throw new Error('E2E_APP_ORIGIN is not set; run the suite with scripts/stack.sh e2e')
+export const APP = process.env.E2E_APP_ORIGIN
+
+// The origin of another public host name of the same stack: `origin('idp')`.
+export const origin = (name: string) => APP.replace('://e2e.', `://${name}.`)
+
+// The plain HTTP port, which only redirects.
+export const HTTP_PORT = process.env.E2E_HTTP_PORT ?? ''
 
 export default defineConfig({
   testDir: './tests',

@@ -4,3 +4,6 @@ dist/
 test-results/
 playwright-report/
 .generator-check/
+# Written by scripts/stack.sh up from product.env (ADR 0035); production
+# writes its own (ADR 0022).
+containers/prometheus/targets/uptime.yml

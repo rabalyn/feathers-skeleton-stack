@@ -104,8 +104,11 @@ ensure_sp_keypair() {
   [[ -n $(kv_get api saml_sp_key) ]] && return 0
   command -v openssl >/dev/null || die "openssl is required to generate the SAML SP key pair"
   log "generating the SAML SP key pair"
-  local pems key cert
-  pems=$(openssl req -x509 -newkey rsa:3072 -nodes -days 3650 -subj "/CN=claude-feathers SP" \
+  local pems key cert name
+  # The display name only (ADR 0035): product.sh would also bring the local
+  # stack's container prefix, which production does not have.
+  name=$(set -a; source "$ROOT/product.env"; printf '%s' "$PRODUCT_DISPLAY_NAME")
+  pems=$(openssl req -x509 -newkey rsa:3072 -nodes -days 3650 -subj "/CN=$name SP" \
     -keyout /dev/stdout -out /dev/stdout 2>/dev/null)
   key=$(sed -n '/BEGIN PRIVATE KEY/,/END PRIVATE KEY/p' <<<"$pems")
   cert=$(sed -n '/BEGIN CERTIFICATE/,/END CERTIFICATE/p' <<<"$pems")

@@ -35,7 +35,7 @@ sequenceDiagram
   participant idp as idp (Keycloak)
   participant ldap
 
-  b->>ngx: https://netbox.localhost:8443/
+  b->>ngx: https://netbox.feathers.localhost:8443/
   ngx->>nb: HTTPS :8443 (netbox-edge)
   nb-->>b: redirect to IdP, NetBox's own SP key pair
   b->>idp: via nginx idp vhost

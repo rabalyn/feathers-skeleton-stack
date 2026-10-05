@@ -26,6 +26,7 @@ RUN pnpm install --frozen-lockfile --filter @app/web...
 COPY apps/api apps/api
 COPY packages/feathers-pinia packages/feathers-pinia
 RUN pnpm --filter @app/api --filter @app/feathers-pinia build
+COPY product.env ./
 COPY apps/web apps/web
 
 # The Vite dev server of the `dev` profile (ADR 0014); the source is

@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { LOCALES } from '../../src/locales.js'
-import { APP_NAME } from '../../src/mail/layout.js'
 import { MAIL_KINDS } from '../../src/mail/registry.js'
 import { TemplateError, escapeMarkdown, renderMail, templateVariablePaths } from '../../src/mail/render.js'
 
 // ADR 0027: Liquid, then Markdown, then the HTML layout, with every output
 // escaped.
 
-const app = { name: APP_NAME, url: 'https://app.example.org' }
+const app = { name: 'Example product', url: 'https://app.example.org' }
 const recipient = { givenName: 'Erika', surname: 'Mustermann' }
 
 const render = (body: string, variables: Record<string, unknown> = {}, subject = 'Betreff') =>
@@ -20,7 +19,7 @@ describe('renderMail', () => {
       const mail = await renderMail({ locale, ...kind.defaults[locale], variables: { ...kind.sample, recipient, app } })
       expect(mail.subject).not.toBe('')
       expect(mail.html).toContain('<!doctype html>')
-      expect(mail.html).toContain(APP_NAME)
+      expect(mail.html).toContain(app.name)
       expect(mail.html).toContain('Erika')
       expect(mail.text).toContain('Erika Mustermann')
       expect(mail.text).not.toMatch(/[<>]/)

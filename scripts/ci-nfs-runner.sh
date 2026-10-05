@@ -13,9 +13,12 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-EXPORT=/srv/feathers-ci-nfs/export
-MOUNT=/srv/feathers-ci-nfs/backups
-EXPORTS_FILE=/etc/exports.d/feathers-ci.exports
+# shellcheck source=scripts/product.sh
+source "$ROOT/scripts/product.sh"
+# Per product, so that two products' runs on one machine keep apart.
+EXPORT=/srv/$PRODUCT-ci-nfs/export
+MOUNT=/srv/$PRODUCT-ci-nfs/backups
+EXPORTS_FILE=/etc/exports.d/$PRODUCT-ci.exports
 # The backup container's user (containers/api/Containerfile).
 BACKUP_UID=1100
 
@@ -109,7 +112,7 @@ cleanup() {
   log "cleanup: moving the backup container back to its named volume"
   (cd "$ROOT" && as_user timeout 300 podman-compose --profile local up -d --force-recreate --no-deps backup >/dev/null 2>&1)
   # ci.sh --cold emptied that volume, and only the NFS target got an init.
-  as_user timeout 120 podman exec -u backup backup node dist/backup.js init >/dev/null 2>&1 ||
+  as_user timeout 120 podman exec -u backup "$(ctr backup)" node dist/backup.js init >/dev/null 2>&1 ||
     log "cleanup: initialising the named volume failed; run scripts/backup.sh init"
   log "cleanup: unmounting $MOUNT"
   unmount

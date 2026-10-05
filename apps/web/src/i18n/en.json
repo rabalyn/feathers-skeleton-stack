@@ -1,6 +1,5 @@
 {
   "app": {
-    "title": "claude-feathers",
     "loading": "Loading …",
     "language": "Language",
     "retry": "Try again",

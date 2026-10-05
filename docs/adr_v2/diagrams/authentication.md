@@ -6,7 +6,7 @@ Every request from the browser goes through `nginx :8443`; it is left out of the
 
 ## SAML2 login
 
-Locally the IdP is Keycloak behind `idp.localhost`, federating the `ldap` container; in production it is the university IdP. The application code is identical.
+Locally the IdP is Keycloak behind `idp.feathers.localhost`, federating the `ldap` container; in production it is the university IdP. The application code is identical.
 
 ```mermaid
 sequenceDiagram

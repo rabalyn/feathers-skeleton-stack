@@ -32,20 +32,44 @@
 # path /srv/backups, where production mounts the NFS export with a systemd
 # mount unit; the unit gets RequiresMountsFor=, so the mount is a dependency
 # of the backup service alone.
+# The product's identity (ADR 0035) is written in from product.env first:
+# its values replace ${PRODUCT}, ${PRODUCT_DISPLAY_NAME} and the two port
+# variables, and container names lose their local <project>- prefix, since
+# each product runs as a user of its own in production. A local switch
+# whose default names a local host (`${NGINX_IDP_HOST:-idp.<project>...}`)
+# keeps its `${` and is removed like any other.
 # After generation, bind-mount sources relative to the repository root are
 # rewritten relative to deploy/quadlet/, which is how Quadlet resolves them.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+# shellcheck source=scripts/product.sh
+source "$ROOT/scripts/product.sh"
 OUT=$ROOT/deploy/quadlet
 YQ=docker.io/mikefarah/yq:4.54.1@sha256:2d6a23c682c574ae49320fdf2419441b6f10658588d44b6d8739d673b96903e5
 PODLET=ghcr.io/containers/podlet:v0.3.2@sha256:7c257b788818bc040fe3555e0507ff913df66620470d05a55fd8e59343064221
 HEADER='# Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
 # production settings in a drop-in directory next to this file.'
 
+# compose.yaml with the product's identity written in.
+with_identity() {
+  local text
+  text=$(sed -E -e 's/^( +container_name: )\$\{PRODUCT:\?\}-/\1/' -e 's/\$\{PRODUCT:\?[^}]*\}/${PRODUCT:?}/g' "$ROOT/compose.yaml")
+  text=${text//'${PRODUCT:?}'/$PRODUCT}
+  text=${text//'${PRODUCT_DISPLAY_NAME:?}'/$PRODUCT_DISPLAY_NAME}
+  text=${text//'${PRODUCT_HTTPS_PORT:?}'/$PRODUCT_HTTPS_PORT}
+  text=${text//'${PRODUCT_HTTP_PORT:?}'/$PRODUCT_HTTP_PORT}
+  if grep -v '^ *#' <<<"$text" | grep -q '\${PRODUCT'; then
+    echo "compose.yaml: a product variable not in its \`\${NAME:?}\` form" >&2
+    return 1
+  fi
+  printf '%s\n' "$text"
+}
+
 generate() { # <dir>
   local dir=$1 f svc
   mkdir -p "$dir/units"
+  with_identity >"$dir/identity.yaml"
   # To the YAML spec: a service's own keys win over those it merges in.
   podman run --rm -i --network none "$YQ" --yaml-fix-merge-anchor-to-spec=true '
     explode(.)
@@ -67,7 +91,7 @@ generate() { # <dir>
     | .networks |= with_entries(select(.key as $n | $lonely | any_c(. == $n) | not))
     | [.services[].volumes // [] | .[] | split(":") | .[0]] as $used
     | .volumes |= with_entries(select(.key as $v | $used | any_c(. == $v)))
-  ' <"$ROOT/compose.yaml" >"$dir/stripped.yaml"
+  ' <"$dir/identity.yaml" >"$dir/stripped.yaml"
   podman run --rm -i --network none "$YQ" \
     '[.services[].depends_on // {} | to_entries[] | select(.value.condition == "service_healthy") | .key] | unique | .[]' \
     <"$dir/stripped.yaml" >"$dir/healthy.txt"

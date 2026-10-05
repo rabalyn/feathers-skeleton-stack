@@ -7,9 +7,6 @@ import type { Locale } from '../locales.js'
 // no <hr>, and nothing for spacing, width or background. A product that
 // wants another look changes this file and keeps that check clean.
 
-// The product's name, in the header, the footer and `app.name`.
-export const APP_NAME = 'claude-feathers'
-
 const FOOTER: Record<Locale, string> = {
   de: 'Diese Nachricht wurde automatisch versendet.',
   en: 'This message was sent automatically.'
@@ -37,8 +34,8 @@ export const layout = (locale: Locale, { subject, content, app }: LayoutInput): 
 <title>${escapeHtml(subject)}</title>
 </head>
 <div style="${FONT}">
-<p style="font-size:18px"><strong>${escapeHtml(APP_NAME)}</strong></p>
-${content}<p style="${MUTED}">${escapeHtml(FOOTER[locale])} <a href="${escapeHtml(app.url)}" style="${MUTED}">${escapeHtml(APP_NAME)}</a></p>
+<p style="font-size:18px"><strong>${escapeHtml(app.name)}</strong></p>
+${content}<p style="${MUTED}">${escapeHtml(FOOTER[locale])} <a href="${escapeHtml(app.url)}" style="${MUTED}">${escapeHtml(app.name)}</a></p>
 </div>
 </html>
 `

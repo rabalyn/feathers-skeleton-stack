@@ -48,14 +48,14 @@ The stack needs a fixed service list and a network layout where no component can
 | `migrate` | One-shot Knex migration job | same |
 | `test` | One-shot Vitest run for unit and integration tests, built from the `api` build stage; `test` profile only ([0015](0015-testing-vitest-playwright.md)) | — |
 | `e2e` | One-shot Playwright run; `test` profile only ([0015](0015-testing-vitest-playwright.md)) | — |
-| `api-e2e` | The api's image and configuration on the database `app_e2e`, behind `e2e.localhost`, for the Playwright run only; `test` profile only ([0015](0015-testing-vitest-playwright.md)) | — |
+| `api-e2e` | The api's image and configuration on the database `app_e2e`, behind `e2e.<project>.localhost`, for the Playwright run only; `test` profile only ([0015](0015-testing-vitest-playwright.md)) | — |
 | `worker-e2e` | The worker beside `api-e2e`, on `app_e2e` with the same queue prefix and buckets, so the suite's jobs run on its own data; `test` profile only ([0015](0015-testing-vitest-playwright.md)) | — |
 
 ### Networks
 
 | Network | Members | Purpose |
 | --- | --- | --- |
-| `edge` | `nginx`, `api`, `web` (dev), `blackbox`, `e2e` (test), `api-e2e` (test) | Public request path; Nginx is also `app.localhost` here locally, so clients inside the stack reach the public origin |
+| `edge` | `nginx`, `api`, `web` (dev), `blackbox`, `e2e` (test), `api-e2e` (test) | Public request path; Nginx is also `app.<project>.localhost` here locally, so clients inside the stack reach the public origin |
 | `idp-edge` | `nginx`, `idp`, `e2e` (test) | Browser access to the local IdP; local and CI only |
 | `dozzle-edge` | `nginx`, `dozzle` | Browser access to Dozzle; local only |
 | `grafana-edge` | `nginx`, `grafana` | Browser access to Grafana ([0022](0022-observability-and-alerting.md)) |

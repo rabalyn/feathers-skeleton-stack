@@ -13,6 +13,10 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+# shellcheck source=scripts/product.sh
+source "$ROOT/scripts/product.sh"
+# backup.sh reaches the local stack's containers by their prefixed names.
+export CONTAINER_PREFIX
 BACKUP_SH=$ROOT/scripts/backup.sh
 P=backup-test
 SOURCE_DB=backup_check
@@ -28,7 +32,7 @@ CHECK_ENV="LOG_FILE= DATABASE_NAME=$SOURCE_DB S3_UPLOADS_BUCKET=$SOURCE_BUCKET B
 OPENBAO_IMAGE=$(sed -n 's/^ *image: \(docker.io\/openbao\/openbao@sha256:[0-9a-f]*\).*/\1/p' "$ROOT/compose.yaml" | head -1)
 VALKEY_IMAGE=$(sed -n 's/^ *image: \(docker.io\/valkey\/valkey@sha256:[0-9a-f]*\).*/\1/p' "$ROOT/compose.yaml" | head -1)
 HELPER_IMAGE=docker.io/library/alpine:3.24.2@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
-UNSEAL_VOLUME=feathers-openbao-local-unseal
+UNSEAL_VOLUME=$PRODUCT-openbao-local-unseal
 
 failures=0
 # Output is shown only for a failing check.
@@ -47,21 +51,21 @@ log() { printf 'backup-test: %s\n' "$*"; }
 die() { printf 'backup-test: %s\n' "$*" >&2; exit 1; }
 
 running() { [[ $(podman container inspect -f '{{.State.Running}}' "$1" 2>/dev/null) == true ]]; }
-psql_super() { podman exec -i -u postgres postgres psql -q -tA -v ON_ERROR_STOP=1 -X -d "$1"; }
-in_backup() { podman exec -i -u backup "$@"; }
+psql_super() { podman exec -i -u postgres "$(ctr postgres)" psql -q -tA -v ON_ERROR_STOP=1 -X -d "$1"; }
+in_backup() { podman exec -i -u backup "$(ctr "$1")" "${@:2}"; }
 backup_sh() { BACKUP_ENV=$CHECK_ENV "$BACKUP_SH" "$@"; }
 
 # Runs a Node module in the backup container, with the S3 client configured
 # for <bucket> and the backup key.
 node_s3() { # <bucket> ; module on stdin
-  podman exec -i -u backup -e "S3_UPLOADS_BUCKET=$1" -w /repo/apps/api backup node --input-type=module
+  podman exec -i -u backup -e "S3_UPLOADS_BUCKET=$1" -w /repo/apps/api "$(ctr backup)" node --input-type=module
 }
 S3_PRELUDE="import { loadConfig, S3_KEYS } from '/repo/apps/api/dist/config.js'
 import { Storage } from '/repo/apps/api/dist/storage.js'
 const storage = new Storage(await loadConfig(S3_KEYS))"
 
 bucket_write() { # <allow|deny> <bucket>: what backup.sh does around a restore
-  podman exec -i s3 bash -s "$1" "$2" <<'SH'
+  podman exec -i "$(ctr s3)" bash -s "$1" "$2" <<'SH'
 set -euo pipefail
 key=$(</run/secrets/backup_key_id)
 id=$(jq -n --arg b "$2" '{globalAlias: $b}' | garage json-api GetBucketInfo - | jq -r .id)
@@ -81,18 +85,18 @@ await storage.empty(); storage.close()" || true
 cleanup() {
   podman rm -f "$P-valkey" "$P-openbao" "$P-backup-ro" >/dev/null 2>&1 || true
   podman volume rm -f "$P-valkey" >/dev/null 2>&1 || true
-  if running backup; then
+  if running "$(ctr backup)"; then
     in_backup backup rm -rf "$CHECK_DIR" /srv/backups/check-empty "/var/lib/backup/mirror/$SOURCE_BUCKET" >/dev/null 2>&1 || true
-    running s3 && { empty_bucket "$SOURCE_BUCKET"; empty_bucket "$RESTORE_BUCKET"; } >/dev/null 2>&1
+    running "$(ctr s3)" && { empty_bucket "$SOURCE_BUCKET"; empty_bucket "$RESTORE_BUCKET"; } >/dev/null 2>&1
   fi
-  if running postgres; then
+  if running "$(ctr postgres)"; then
     psql_super postgres <<<"DROP DATABASE IF EXISTS $SOURCE_DB WITH (FORCE); DROP DATABASE IF EXISTS $RESTORE_DB WITH (FORCE);
       DROP DATABASE IF EXISTS $RESTORE_NETBOX WITH (FORCE);" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT
 
-for c in backup postgres s3 valkey openbao netbox; do running "$c" || die "$c is not running; run scripts/stack.sh up"; done
+for c in backup postgres s3 valkey openbao netbox; do running "$(ctr "$c")" || die "$(ctr "$c") is not running; run scripts/stack.sh up"; done
 [[ -n $OPENBAO_IMAGE && -n $VALKEY_IMAGE ]] || die "images not found in compose.yaml"
 cleanup
 
@@ -101,8 +105,8 @@ cleanup
 # writes it (Valkey saves on shutdown).
 if ! in_backup backup test -r /var/lib/valkey/dump.rdb; then
   log "restarting Valkey for a readable snapshot"
-  podman restart valkey >/dev/null
-  for _ in $(seq 30); do podman healthcheck run valkey >/dev/null 2>&1 && break; sleep 1; done
+  podman restart "$(ctr valkey)" >/dev/null
+  for _ in $(seq 30); do podman healthcheck run "$(ctr valkey)" >/dev/null 2>&1 && break; sleep 1; done
 fi
 
 # --- the service's own run -------------------------------------------------
@@ -114,7 +118,7 @@ check "a run over the app's database and bucket succeeds" "$BACKUP_SH" run
 after=$(log_file | grep -c '"backup completed"' || true)
 check "... and writes its success line to the log file" test "$after" -gt "$before"
 has_snapshot() { in_backup backup restic -r "/srv/backups/$1" --cache-dir /var/lib/backup/cache snapshots --json latest | jq -e 'length == 1' >/dev/null; }
-check "every repository has a snapshot" bash -c "$(declare -f in_backup has_snapshot); has_snapshot db && has_snapshot objects && has_snapshot state && has_snapshot netbox"
+check "every repository has a snapshot" bash -c "$(declare -f ctr in_backup has_snapshot); has_snapshot db && has_snapshot objects && has_snapshot state && has_snapshot netbox"
 
 # --- the target ------------------------------------------------------------
 
@@ -127,12 +131,12 @@ check "an empty target (an unmounted export) fails the run" grep -q 'holds no re
 check "... and nothing is written to it" test -z "$(in_backup backup ls -A /srv/backups/check-empty)"
 
 # The same container, with its target mounted read-only.
-target_source=$(podman inspect backup --format '{{range .Mounts}}{{if eq .Destination "/srv/backups"}}{{if .Name}}{{.Name}}{{else}}{{.Source}}{{end}}{{end}}{{end}}')
+target_source=$(podman inspect "$(ctr backup)" --format '{{range .Mounts}}{{if eq .Destination "/srv/backups"}}{{if .Name}}{{.Name}}{{else}}{{.Source}}{{end}}{{end}}{{end}}')
 env_file=$(mktemp)
-podman inspect backup --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -v '^LOG_FILE=' >"$env_file"
-out=$(podman run --rm --name "$P-backup-ro" --user 1100:1100 --network feathers_db --env-file "$env_file" -e LOG_FILE= \
-  -v "$target_source:/srv/backups:ro" -v feathers_backup-data:/var/lib/backup -v feathers_backup-secrets:/run/secrets:ro \
-  -v feathers_trust:/trust:ro --entrypoint node localhost/feathers-backup:dev dist/backup.js run 2>&1 || true)
+podman inspect "$(ctr backup)" --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -v '^LOG_FILE=' >"$env_file"
+out=$(podman run --rm --name "$P-backup-ro" --user 1100:1100 --network "${PRODUCT}_db" --env-file "$env_file" -e LOG_FILE= \
+  -v "$target_source:/srv/backups:ro" -v "${PRODUCT}_backup-data:/var/lib/backup" -v "${PRODUCT}_backup-secrets:/run/secrets:ro" \
+  -v "${PRODUCT}_trust:/trust:ro" --entrypoint node "localhost/$PRODUCT-backup:dev" dist/backup.js run 2>&1 || true)
 rm -f "$env_file"
 check "a read-only target fails the run" grep -q 'is not writable' <<<"$out"
 
@@ -307,7 +311,7 @@ check "restore-openbao leaves it sealed, with the backed-up keys" test "$(bao_st
 unseal_read() { podman run --rm --network none -v "$UNSEAL_VOLUME:/u:ro" "$HELPER_IMAGE" cat "/u/$1"; }
 unseal_read unseal_key | unseal || true
 check "the stack's unseal key opens it" test "$(bao_status sealed)" = false
-live=$(podman exec -u backup backup sh -c "tr -d '\\n' < /run/secrets/restic_password | sha256sum")
+live=$(podman exec -u backup "$(ctr backup)" sh -c "tr -d '\\n' < /run/secrets/restic_password | sha256sum")
 restored=$(unseal_read admin_token | podman exec -i "$P-openbao" sh -c \
   'IFS= read -r BAO_TOKEN; export BAO_TOKEN; bao kv get -field=restic_password kv/backup | tr -d "\\n" | sha256sum')
 check "its secrets are the stack's (the restic password, compared by hash)" test "$live" = "$restored"

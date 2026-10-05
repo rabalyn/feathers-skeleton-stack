@@ -85,6 +85,7 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
       ...systemConfig,
       ...options.system,
       publicOrigin: PUBLIC_ORIGIN,
+      appName: 'Example product',
       authSigningSecret: 'test-only-signing-secret-that-is-long-enough',
       refreshTokenKey: 'test-only-refresh-token-key-that-is-long-enough',
       samlSpPrivateKey: sp.privateKey,

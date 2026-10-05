@@ -38,9 +38,9 @@ flowchart LR
     pw["browser<br>host-resolver: *.localhost → nginx"]
   end
 
-  pw -->|"edge · HTTPS :8443<br>e2e.localhost"| nginx["nginx"]
-  pw -->|"idp-edge · HTTPS :8443<br>idp.localhost"| nginx
-  pw -->|"mail.localhost, netbox.localhost"| nginx
+  pw -->|"edge · HTTPS :8443<br>e2e.feathers.localhost"| nginx["nginx"]
+  pw -->|"idp-edge · HTTPS :8443<br>idp.feathers.localhost"| nginx
+  pw -->|"mail.feathers.localhost, netbox.feathers.localhost"| nginx
 
   nginx -->|"edge · HTTP :3030"| apiE2e["api-e2e"]
   nginx -->|"idp-edge"| idp["idp"]
@@ -60,5 +60,5 @@ Shared with the developer's stack: PostgreSQL, PgBouncer, Valkey, Keycloak, LDAP
 flowchart LR
   agent(["Coding agent on the host"]) -->|"podman exec: Playwright MCP server"| mcp["mcp-browser"]
   mcp -->|"mcp-edge (internal, no route out)<br>HTTPS :8443"| nginx["nginx"]
-  nginx --> app["app.localhost, idp.localhost,<br>netbox.localhost"]
+  nginx --> app["app.feathers.localhost, idp.feathers.localhost,<br>netbox.feathers.localhost"]
 ```
