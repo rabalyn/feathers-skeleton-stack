@@ -25,6 +25,7 @@
     "sessions": "Sessions",
     "apiTokens": "API tokens",
     "permissions": "Roles & permissions",
+    "docs": "Architecture",
     "systemInfo": "System info",
     "title": "Navigation",
     "arrange": "Arrange navigation",
@@ -475,7 +476,8 @@
       "api-tokens_create": "Create API tokens",
       "api-tokens_manage": "Manage everybody’s API tokens",
       "system-info_read": "See system information",
-      "system-info_check": "Run the update check now"
+      "system-info_check": "Run the update check now",
+      "docs_read": "See the architecture docs"
     },
     "descriptions": {
       "profile_avatar": "Set and remove one's own profile picture",
@@ -505,7 +507,8 @@
       "api-tokens_create": "Create tokens for scripts, carrying chosen permissions one holds oneself; they stop working when this permission is withdrawn",
       "api-tokens_manage": "See and revoke the API tokens of every person",
       "system-info_read": "The versions that run, the updates available for them and their end of life",
-      "system-info_check": "Start the check for newer versions at once instead of at night; it asks Docker Hub, quay.io and endoflife.date"
+      "system-info_check": "Start the check for newer versions at once instead of at night; it asks Docker Hub, quay.io and endoflife.date",
+      "docs_read": "Read the ADRs and the diagrams of the stack, with its services, ports and networks"
     },
     "everyone": "Everyone signed in holds it without an assignment; editable, not deletable"
   },
@@ -564,5 +567,11 @@
     "current": "current",
     "noEolDate": "no date announced",
     "line": "line {line}"
+  },
+  "docs": {
+    "adrs": "ADRs",
+    "overview": "Overview",
+    "search": "Search the ADRs",
+    "noMatch": "No ADR contains every word."
   }
 }

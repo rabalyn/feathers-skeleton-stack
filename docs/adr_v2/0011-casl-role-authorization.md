@@ -66,6 +66,7 @@ The permission matrix, now as catalogue permissions. `admin` holds all of them. 
 | `users.view-as` | Read-only view as another user ([0028](0028-read-only-view-as.md)) | — | — | — |
 | `api-tokens.create` | Create API tokens of one's own, and use them ([0029](0029-api-tokens.md)) | — | — | — |
 | `api-tokens.manage` | Everybody's API tokens: read, revoke ([0029](0029-api-tokens.md)) | — | — | — |
+| `docs.read` | The ADRs and diagrams on the architecture page ([0019](0019-adr-convention.md#diagrams), decided 2026-10-05); they describe the stack's services, ports and networks, so no seeded role holds it | — | — | — |
 | (role management) | Roles, their permissions, role assignment | `admin` only, not grantable | | |
 
 Directory-sourced user fields are never writable by anyone in the application ([0009](0009-tu-id-identity-model.md)). Backups are not triggered through the application at all: they run on their configured schedule ([0017](0017-nfs-backup-storage.md)), and their schedule and retention are runtime settings covered by `settings.manage`.

@@ -13,3 +13,6 @@ export const DIRECTORY_PAGE_MAX = 50
 // The site lookup (ADR 0031): the longest search term and the largest page.
 export const SITE_SEARCH_MAX_LENGTH = 100
 export const SITE_PAGE_MAX = 50
+
+// The search over the ADRs and diagrams (ADR 0019): the longest search term.
+export const DOC_SEARCH_MAX_LENGTH = 200
