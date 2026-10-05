@@ -1,5 +1,5 @@
 <template>
-  <!-- eslint-disable-next-line vue/no-v-html -- the repository's own Markdown, raw HTML escaped and the result sanitized (composables/docs.ts, ADR 0019) -->
+  <!-- eslint-disable-next-line vue/no-v-html -- the repository's own Markdown, never user input; escaped and sanitized (see the comment below, ADR 0018) -->
   <article ref="root" class="doc-view" :data-test="`doc-${doc.id}`" @click="follow" v-html="html" />
 </template>
 
@@ -11,6 +11,15 @@ import { createRenderer, DOC_HASH_ATTRIBUTE, DOC_LINK_ATTRIBUTE, MERMAID_CLASS }
 
 // One page of the ADRs or the diagrams (ADR 0019), with its Mermaid
 // diagrams drawn. A link to another page is followed in the app.
+//
+// The one `v-html` in the app (ADR 0018). It is acceptable because of where
+// the Markdown comes from: the repository's own files, reviewed in pull
+// requests and built into the api image, which nobody can write at runtime.
+// Nothing user-supplied reaches it. Should a bad commit pass review all the
+// same, markdown-it escapes raw HTML, DOMPurify sanitizes the result and
+// Mermaid runs in `strict` mode. That the page is admin-only (`docs.read`)
+// is not part of this argument: it keeps the stack's topology private, but
+// an injection here would run in an admin's session, the most valuable one.
 
 const props = defineProps<{
   doc: Doc
