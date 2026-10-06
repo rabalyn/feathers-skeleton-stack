@@ -62,6 +62,7 @@ HELPER_IMAGE=docker.io/library/alpine:3.24.2@sha256:d56c381f961d307a21b3ca004cf1
 # The Node the api and the web build run on (containers/api/Containerfile).
 NODE_IMAGE=docker.io/library/node:26.10.0-alpine@sha256:b341ca66519d9a1c25d4e41f254ffb6fe403fc0f9054c62b863f0660dcc1c199
 OPENBAO_DIR=$ROOT/containers/openbao
+YQ=docker.io/mikefarah/yq:4.54.1@sha256:2d6a23c682c574ae49320fdf2419441b6f10658588d44b6d8739d673b96903e5
 
 PROFILES=(--profile local)
 compose() { (cd "$ROOT" && podman-compose "${PROFILES[@]}" "$@"); }
@@ -97,6 +98,44 @@ stack_agents() {
 # Everything except the one-shot certs job, OpenBao and the agents.
 app_services() {
   compose config --services 2>/dev/null | grep -vxE 'certs|openbao|.*-agent'
+}
+
+# The services others keep a connection to while they run. compose.yaml's
+# depends_on holds only what a service needs to start (the api: migrate), not
+# these, so they are named here.
+INFRASTRUCTURE=" postgres pgbouncer valkey s3 loki ldap idp openbao "
+
+# Removes the containers of the services named: first the others, then the
+# infrastructure, each in the order of compose.yaml's depends_on (first those
+# no other named service depends on, then the next layer), each layer at
+# once. podman-compose gives Podman no dependencies, so one removal of all of
+# them stopped PostgreSQL, Valkey and Loki first, and the worker, NetBox's
+# worker and Alloy then kept reconnecting until the stop timeout killed them;
+# with what they use still up, each stops within a second or so (measured
+# 2026-10-06).
+remove_containers() { # <service>...
+  local svc users=() used=()
+  for svc in "$@"; do
+    if [[ $INFRASTRUCTURE == *" $svc "* ]]; then used+=("$svc"); else users+=("$svc"); fi
+  done
+  remove_layers "${users[@]}"
+  remove_layers "${used[@]}"
+}
+
+remove_layers() { # <service>...
+  (($#)) || return 0
+  local deps remaining=" $* " layer svc
+  deps=$(podman run --rm -i --network none "$YQ" -o json '.services | map_values(.depends_on // {})' <"$ROOT/compose.yaml" |
+    jq -c 'map_values(if type == "array" then . else keys end)')
+  while [[ -n ${remaining// /} ]]; do
+    layer=$(jq -r --arg r "$remaining" '. as $d | ($r | split(" ") | map(select(length > 0))) as $rem
+      | $rem[] | select(. as $s | all($rem[]; ($d[.] // []) | any(.[]; . == $s) | not))' <<<"$deps")
+    # A cycle would leave no layer; then the rest goes at once.
+    [[ -n $layer ]] || layer=$remaining
+    # shellcheck disable=SC2046
+    podman rm --force --ignore $(for svc in $layer; do ctr "$svc"; echo; done) >/dev/null
+    for svc in $layer; do remaining=${remaining/ $svc / }; done
+  done
 }
 
 
@@ -237,7 +276,9 @@ realm_json() {
 # Exchanges certificates with the local Keycloak: the realm's signing
 # certificate goes to the api and NetBox through OpenBao, each SP
 # certificate into its client in the realm, which then requires signed
-# requests and encrypts.
+# requests and encrypts. IDP_CERT_CHANGED says whether the signing
+# certificate was new to OpenBao.
+IDP_CERT_CHANGED=
 configure_local_idp() {
   local descriptor idp_cert sp_cert current svc
   descriptor=$(podman exec "$(ctr nginx)" wget -qO- http://idp:8080/realms/feathers/protocol/saml/descriptor)
@@ -248,6 +289,7 @@ configure_local_idp() {
     current=$(kv_get "$svc" saml_idp_cert)
     if [[ $current != "${idp_cert%$'\n'}" ]]; then
       printf '%s' "$idp_cert" | kv_set "$svc" saml_idp_cert
+      IDP_CERT_CHANGED=true
       log "stored the local IdP's signing certificate for $svc"
     fi
   done
@@ -308,7 +350,7 @@ echo "created the LDAP group mapper"'
 }
 
 # The api and NetBox read their SAML material at startup, so they are
-# restarted once their agents have rendered the current IdP certificate.
+# restarted once their agents have rendered a new IdP certificate.
 wait_for_idp_cert() {
   local want i svc
   for svc in api netbox; do
@@ -326,13 +368,23 @@ idp_setup() {
   wait_for_openbao
   init_or_unseal
   configure_local_idp
-  wait_for_idp_cert
+  # Keycloak keeps its signing key in its volume, so the certificate is new
+  # only on a first start or after a reset of the IdP. Otherwise the agents
+  # rendered it before the api and NetBox started, and restarting them,
+  # which `up` used to do every time, would only cost its half minute.
+  if [[ -n $IDP_CERT_CHANGED ]]; then
+    wait_for_idp_cert
+    podman restart "$(ctr api)" "$(ctr netbox)" >/dev/null
+  fi
   bao token revoke -self >/dev/null
   TOKEN=
-  podman restart "$(ctr api)" "$(ctr netbox)" >/dev/null
   wait_healthy api 60
   wait_healthy netbox 180
-  log "api and NetBox restarted with the IdP certificate"
+  if [[ -n $IDP_CERT_CHANGED ]]; then
+    log "api and NetBox restarted with the new IdP certificate"
+  else
+    log "api and NetBox already have the IdP certificate"
+  fi
 }
 
 # The local break-glass account (ADR 0008), made by the same bootstrap command
@@ -720,12 +772,13 @@ case $cmd in
     # service that depends on the one named, stopping them a batch at a
     # time, each batch waiting out the stop timeout of a container that
     # ignores its signal; an `up` recreated most services up to three times
-    # and spent minutes stopping them (measured 2026-10-06). One removal of
-    # all of them stops them in parallel. OpenBao is among them, and starts
-    # sealed, as it did when the certificates' dependents were recreated.
+    # and spent minutes stopping them (measured 2026-10-06). Removing all of
+    # them up front stops each once, a dependency layer at a time. OpenBao is
+    # among them, and starts sealed, as it did when the certificates'
+    # dependents were recreated.
     log "removing the previous containers"
     # shellcheck disable=SC2046
-    podman rm --force --ignore $(for svc in certs openbao $(stack_agents | sed 's/$/-agent/') $(app_services); do ctr "$svc"; echo; done) >/dev/null
+    remove_containers certs openbao $(stack_agents | sed 's/$/-agent/') $(app_services)
     log "issuing certificates"
     compose up -d --no-deps certs >/dev/null 2>&1
     podman wait "$(ctr certs)" >/dev/null
