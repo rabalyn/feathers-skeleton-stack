@@ -1,10 +1,18 @@
-import { Type, type Static, type TSchema } from '@feathersjs/typebox'
+import { Type, type Static } from '@feathersjs/typebox'
+import {
+  PRODUCT_API_SETTINGS,
+  PRODUCT_CROSS_SETTING_RULES,
+  PRODUCT_SETTINGS,
+  PRODUCT_WORKER_SETTINGS
+} from '../product/settings.js'
+import { define } from './define.js'
 
 // Runtime settings (ADR 0025): the one registry of every key, its schema and
 // its default. The migrate job seeds every key it does not find; the API, the
 // worker and the backup service refuse to start without the keys they need.
 //
 // Durations are whole seconds or days as the key name says, sizes are bytes.
+// A product's own settings are in product/settings.ts (ADR 0035).
 
 const days = Type.Integer({ minimum: 1, maximum: 3650 })
 const seconds = (maximum: number) => Type.Integer({ minimum: 1, maximum })
@@ -14,9 +22,7 @@ const HOUR = 60 * 60
 const DAY = 24 * HOUR
 const MIB = 1024 * 1024
 
-const define = <S extends TSchema>(schema: S, defaultValue: Static<S>) => ({ schema, default: defaultValue })
-
-export const SETTINGS = {
+const SKELETON_SETTINGS = {
   auditRetentionDays: define(days, 90),
   // Counted from the expiry of the session's token family.
   expiredSessionRetentionDays: define(days, 30),
@@ -60,6 +66,12 @@ export const SETTINGS = {
   viewAsMinutes: define(Type.Integer({ minimum: 1, maximum: 480 }), 30)
 }
 
+// A product's key never replaces one of the skeleton's.
+const clashes = Object.keys(PRODUCT_SETTINGS).filter((key) => Object.hasOwn(SKELETON_SETTINGS, key))
+if (clashes.length) throw new Error(`settings: the product redefines ${clashes.join(', ')}`)
+
+export const SETTINGS = { ...SKELETON_SETTINGS, ...PRODUCT_SETTINGS }
+
 export type SettingKey = keyof typeof SETTINGS
 export type SettingValues = { [K in SettingKey]: Static<(typeof SETTINGS)[K]['schema']> }
 
@@ -88,7 +100,8 @@ export const API_SETTINGS = [
   'rateLimitSiteLookupPerMinute',
   'featureFlags',
   'maintenanceMode',
-  'viewAsMinutes'
+  'viewAsMinutes',
+  ...PRODUCT_API_SETTINGS
 ] as const satisfies readonly SettingKey[]
 
 export const WORKER_SETTINGS = [
@@ -98,7 +111,8 @@ export const WORKER_SETTINGS = [
   'mailSendLimitCount',
   'mailSendLimitWindowSeconds',
   'mailDeliveryRetentionDays',
-  'maintenanceMode'
+  'maintenanceMode',
+  ...PRODUCT_WORKER_SETTINGS
 ] as const satisfies readonly SettingKey[]
 
 export const BACKUP_SETTINGS = ['backupSchedule', 'backupRetentionDailySnapshots'] as const satisfies readonly SettingKey[]
@@ -125,5 +139,6 @@ export const CROSS_SETTING_RULES: ReadonlyArray<(context: CrossSettingContext) =
   ({ values: { sessionIdleSeconds, sessionAbsoluteSeconds } }) =>
     sessionIdleSeconds !== undefined && sessionAbsoluteSeconds !== undefined && sessionIdleSeconds > sessionAbsoluteSeconds
       ? 'sessionIdleSeconds must not exceed sessionAbsoluteSeconds'
-      : undefined
+      : undefined,
+  ...PRODUCT_CROSS_SETTING_RULES
 ]

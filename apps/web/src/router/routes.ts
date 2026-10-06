@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
+import { PRODUCT_ROUTES } from '@/product/routes'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -149,7 +150,9 @@ const routes: RouteRecordRaw[] = [
         name: 'directory',
         component: () => import('@/pages/DirectoryPage.vue'),
         meta: { requires: ['read', 'directory'] }
-      }
+      },
+      // The product's (ADR 0035).
+      ...PRODUCT_ROUTES
     ]
   },
   {

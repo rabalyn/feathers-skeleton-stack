@@ -15,7 +15,7 @@ The alternatives considered were a self-hosted mail platform (Listmonk, Mautic, 
 
 ### Code declares what a mail can say and to whom; admins write the wording
 
-A **mail kind** is declared in code with `defineMailKind()` and registered in one module, like the settings registry ([0025](0025-runtime-settings.md)). The skeleton provides the mechanism; each product declares its own kinds. A kind names:
+A **mail kind** is declared in code with `defineMailKind()` and registered in one module, like the settings registry ([0025](0025-runtime-settings.md)). The skeleton provides the mechanism; each product declares its own kinds and lists them in `apps/api/src/product/mail.ts`, which the registry appends ([0035](0035-products-derived-from-the-skeleton.md)). A kind names:
 
 | Part | Meaning |
 | --- | --- |

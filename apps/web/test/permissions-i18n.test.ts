@@ -1,18 +1,15 @@
 import { PERMISSIONS } from '@app/api/client'
 import { describe, expect, it } from 'vitest'
-import de from '@/i18n/de.json'
-import en from '@/i18n/en.json'
+import messages from '@/i18n'
 
 // ADR 0011: every catalogue permission has a label and a description in
 // every locale, and every group a label, or the permissions page would show
-// raw keys. Keys replace dots, which vue-i18n reads as nesting.
+// raw keys. Keys replace dots, which vue-i18n reads as nesting. The product's
+// permissions are labelled in its own catalogues (ADR 0035), merged here.
 const slug = (key: string) => key.replace(/\./g, '_')
 
-describe.each([
-  ['de', de],
-  ['en', en]
-])('%s', (_locale, messages) => {
-  const { keys, descriptions, groups } = messages.permissions as {
+describe.each(Object.entries(messages))('%s', (_locale, catalogue) => {
+  const { keys, descriptions, groups } = catalogue.permissions as {
     keys: Record<string, string>
     descriptions: Record<string, string>
     groups: Record<string, string>

@@ -27,11 +27,19 @@ describe('personal data registry', () => {
     expect(existing).toEqual(expect.arrayContaining(names))
   })
 
-  it('has erase_user() handle every table whose erasure is not keep', async () => {
-    const { rows } = await db().raw<{ rows: { body: string }[] }>(
-      `SELECT pg_get_functiondef('erase_user(uuid, timestamptz)'::regprocedure) AS body`
-    )
-    const body = rows[0]!.body
+  // The skeleton's tables in erase_user(), the product's in the hook it
+  // calls (ADR 0035); either function may name a table.
+  const functionBody = async (signature: string) => {
+    const { rows } = await db().raw<{ rows: { body: string }[] }>(`SELECT pg_get_functiondef(?::regprocedure) AS body`, [signature])
+    return rows[0]!.body
+  }
+
+  it('has erase_user() call the product hook', async () => {
+    expect(await functionBody('erase_user(uuid, timestamptz)')).toMatch(/PERFORM erase_user_product\(p_user_id, p_erased_at\)/)
+  })
+
+  it('has erase_user() or erase_user_product() handle every table whose erasure is not keep', async () => {
+    const body = (await functionBody('erase_user(uuid, timestamptz)')) + (await functionBody('erase_user_product(uuid, timestamptz)'))
     for (const entry of TABLE_ENTRIES.filter((table) => table.erasure !== 'keep')) {
       expect(body, entry.table).toMatch(new RegExp(`\\b${entry.table}\\b`))
     }

@@ -6,7 +6,8 @@ import { io, type Socket } from 'socket.io-client'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Application } from '../../src/app.js'
 import { createClient, SOCKET_PATH, type ClientApplication } from '../../src/client.js'
-import { DATA_EXPORTS_QUEUE, MAIL_QUEUE, MAINTENANCE_QUEUE, QUEUE_NAMES, queueConnection } from '../../src/jobs/queues.js'
+import { allQueueNames } from '../../src/jobs/product-queues.js'
+import { DATA_EXPORTS_QUEUE, MAIL_QUEUE, MAINTENANCE_QUEUE, queueConnection } from '../../src/jobs/queues.js'
 import { QUEUE_STATUS_INTERVAL_MS } from '../../src/services/queues/queues.js'
 import type { QueueStatus } from '../../src/services/queues/queues.schema.js'
 import type { User } from '../../src/services/users/users.schema.js'
@@ -33,7 +34,7 @@ beforeAll(async () => {
   const server = await app.listen(0)
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
   const connection = queueConnection(await loadValkeyConfig())
-  for (const name of QUEUE_NAMES) queues.set(name, new Queue(name, { connection, prefix: app.get('config').queuePrefix }))
+  for (const name of allQueueNames()) queues.set(name, new Queue(name, { connection, prefix: app.get('config').queuePrefix }))
   const users = app.service('users')
   const make = async (tuId: string, role: SeededRole) => {
     const created = await users.create({ tuId, givenName: tuId, surname: 'Test', email: null, authSource: 'saml' })
@@ -79,7 +80,7 @@ const listenAs = async (user: User) => {
 describe('reading the queues (ADR 0011)', () => {
   it('is the admin’s alone', async () => {
     const all = await app.service('queues').find(as(admin))
-    expect(all.map((each) => each.id)).toEqual([...QUEUE_NAMES])
+    expect(all.map((each) => each.id)).toEqual(allQueueNames())
     expect((await app.service('queues').get(MAIL_QUEUE, as(admin))).id).toBe(MAIL_QUEUE)
     for (const user of [operator, member]) {
       await expect(app.service('queues').find(as(user)), user.tuId ?? '').rejects.toMatchObject({ code: 403 })

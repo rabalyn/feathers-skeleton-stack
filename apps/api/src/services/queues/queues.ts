@@ -4,7 +4,8 @@ import { hooks as schemaHooks } from '@feathersjs/schema'
 import { Queue, QueueEvents, type Job } from 'bullmq'
 import type { Application } from '../../app.js'
 import { publishTo, subjectChannel } from '../../channels.js'
-import { QUEUE_NAMES, queueConnection } from '../../jobs/queues.js'
+import { allQueueNames } from '../../jobs/product-queues.js'
+import { queueConnection } from '../../jobs/queues.js'
 import {
   queueStatusQueryValidator,
   type QueueJob,
@@ -69,7 +70,7 @@ export class QueueService {
     if (this.queues.size || this.closed) return
     const config = this.app.get('config')
     const connection = queueConnection(config)
-    for (const name of QUEUE_NAMES) {
+    for (const name of allQueueNames()) {
       this.queues.set(name, new Queue(name, { connection, prefix: config.queuePrefix }))
       const events = new QueueEvents(name, { connection, prefix: config.queuePrefix })
       for (const change of CHANGES) events.on(change, () => this.changed(name))
@@ -88,11 +89,11 @@ export class QueueService {
   }
 
   async find(_params?: QueueParams): Promise<QueueStatus[]> {
-    return Promise.all(QUEUE_NAMES.map((name) => this.status(name)))
+    return Promise.all(allQueueNames().map((name) => this.status(name)))
   }
 
   async get(name: string, _params?: QueueParams): Promise<QueueStatus> {
-    if (!(QUEUE_NAMES as readonly string[]).includes(name)) throw new NotFound(`No record found for id '${name}'`)
+    if (!allQueueNames().includes(name)) throw new NotFound(`No record found for id '${name}'`)
     return this.status(name)
   }
 

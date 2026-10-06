@@ -10,7 +10,7 @@
     "build": "pnpm -r build",
     "build:types": "pnpm --filter @app/api --filter @app/feathers-pinia build && pnpm --filter @app/web exec quasar prepare",
     "typecheck": "pnpm build:types && pnpm -r typecheck",
-    "test:unit": "pnpm build:types && pnpm --filter './packages/*' --filter @app/web test",
+    "test:unit": "pnpm build:types && pnpm --filter './packages/*' --filter @app/web test && pnpm --filter @app/api exec vitest run --project unit",
     "lint": "pnpm build:types && eslint . && pnpm --filter @app/api lint:boundary",
     "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
     "gen:service": "pnpm --filter @app/api gen:service"

@@ -61,6 +61,7 @@ import type { UpdateCheck, UpdateCheckData, UPDATE_CHECK_EXTERNAL_METHODS } from
 import type { Preference, PreferenceData, PreferenceQuery } from './services/preferences/preferences.schema.js'
 import type { PREFERENCE_EXTERNAL_METHODS } from './services/preferences/preferences.js'
 import type { Doc, DocQuery, DocSummary, DOC_EXTERNAL_METHODS } from './services/docs/docs.js'
+import type { ProductServiceTypes } from './product/client.js'
 // gen:service imports (ADR 0030)
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
@@ -110,6 +111,8 @@ export type { ValidationError } from './validation-error.js'
 export type { Doc, DocKind, DocQuery, DocSummary } from './services/docs/docs.js'
 export { DOC_SEARCH_MAX_LENGTH } from './limits.js'
 // gen:service exports (ADR 0030)
+// The product's part (ADR 0035).
+export * from './product/client.js'
 export { ALLOWED_CONTENT_TYPES, AVATAR_CONTENT_TYPES, FILENAME_HEADER, type AllowedContentType } from './uploads.js'
 export {
   ADMIN_PERMISSIONS,
@@ -147,11 +150,11 @@ export {
   DIRECTORY_PAGE_MAX
 } from './limits.js'
 
-type External<S, M extends readonly (keyof S)[]> = Pick<S, M[number]>
+export type External<S, M extends readonly (keyof S)[]> = Pick<S, M[number]>
 
 // The services as a browser sees them: only their external methods, with
-// the shapes the schemas give them.
-export interface ClientServiceTypes {
+// the shapes the schemas give them. The product's are in product/client.ts.
+export interface ClientServiceTypes extends ProductServiceTypes {
   users: External<ClientService<User, never, UserPatch, Paginated<User>, Params<UserQuery>>, typeof USER_EXTERNAL_METHODS>
   settings: External<
     ClientService<Setting, never, SettingPatch, Paginated<Setting>, Params<SettingQuery>>,
