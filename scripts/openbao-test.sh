@@ -15,8 +15,16 @@ NET=$P
 BAO=(setsid -w env OPENBAO_CONTAINER=$P AGENT_PREFIX=$P- "$ROOT/scripts/openbao.sh")
 
 failures=0
+# Every check shows how long it took; the time between checks is in the
+# timestamps of the section lines.
 check() { # <description> <command...>
-  if "${@:2}"; then printf '  ok    %s\n' "$1"; else printf '  FAIL  %s\n' "$1"; failures=$((failures + 1)); fi
+  local started=$SECONDS
+  if "${@:2}"; then
+    printf '  ok   %4ss  %s\n' $((SECONDS - started)) "$1"
+  else
+    printf '  FAIL %4ss  %s\n' $((SECONDS - started)) "$1"
+    failures=$((failures + 1))
+  fi
 }
 
 cleanup() {
@@ -58,7 +66,7 @@ missing() { printf 'alice-password-0001\n' | "${BAO[@]}" missing --admin alice 2
 status() { podman exec "$P" bao status -format=json 2>/dev/null | jq -r ".$1"; }
 secret_id() { podman exec "$P-api-agent" cat /run/agent/secret_id 2>/dev/null || true; }
 
-echo "openbao-test: init"
+echo "openbao-test: $(date +%T) init"
 check "a short password is refused" \
   bash -c "! printf 'short\nshort\n' | $(printf '%q ' "${BAO[@]}") init --admin alice >/dev/null 2>&1"
 check "OpenBao is still uninitialised after that" test "$(status initialized)" = false
@@ -76,7 +84,7 @@ first_id=$(secret_id)
 check "the running agent got a secret_id" test -n "$first_id"
 check "init refuses a second time" bash -c "! $(printf '%q ' "${BAO[@]}") init --admin alice </dev/null >/dev/null 2>&1"
 
-echo "openbao-test: values"
+echo "openbao-test: $(date +%T) values"
 m=$(missing)
 check "internal values are generated" bash -c "! grep -qE 'api:(auth_signing_secret|database_password|saml_sp_key)' <<<'$m'"
 check "external values are listed as missing" bash -c "grep -q 'api:ldap_bind_password' <<<'$m' && grep -q 'api:saml_idp_cert' <<<'$m'"
@@ -96,11 +104,11 @@ check "set refuses a key no agent renders" \
 check "a wrong administrator password is refused" \
   bash -c "! printf 'wrong-password-000\n' | $(printf '%q ' "${BAO[@]}") missing --admin alice >/dev/null 2>&1"
 
-echo "openbao-test: administrators"
+echo "openbao-test: $(date +%T) administrators"
 printf 'alice-password-0001\nbob-password-000001\nbob-password-000001\n' | "${BAO[@]}" add-admin bob --admin alice >/dev/null 2>&1
 check "a second administrator can log in" bash -c "printf 'bob-password-000001\n' | $(printf '%q ' "${BAO[@]}") missing --admin bob >/dev/null 2>&1"
 
-echo "openbao-test: restart"
+echo "openbao-test: $(date +%T) restart"
 podman restart "$P" >/dev/null
 for _ in $(seq 30); do [[ $(status sealed) == true ]] && break; sleep 1; done
 check "sealed after a restart" test "$(status sealed)" = true
@@ -111,4 +119,4 @@ check "unseal with the key and an admin login" test "$(status sealed)" = false
 check "unseal re-issued the agent's secret_id" bash -c "[[ -n '$(secret_id)' && '$(secret_id)' != '$first_id' ]]"
 
 ((failures == 0)) || { echo "openbao-test: $failures failed" >&2; exit 1; }
-echo "openbao-test: all passed"
+echo "openbao-test: $(date +%T) all passed"

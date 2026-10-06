@@ -74,7 +74,7 @@ if APP_COMMIT=$(git -C "$ROOT" rev-parse --short=12 HEAD 2>/dev/null); then
   if [[ -n $(git -C "$ROOT" status --porcelain --untracked-files=no) ]]; then APP_DIRTY=true; else APP_DIRTY=false; fi
   export APP_COMMIT APP_COMMIT_TIME APP_DIRTY
 fi
-log() { printf '\033[1mstack:\033[0m %s\n' "$*" >&2; }
+log() { printf '\033[1mstack:\033[0m %s %s\n' "$(date +%T)" "$*" >&2; }
 die() { log "$*"; exit 1; }
 
 agents() {
@@ -737,6 +737,7 @@ case $cmd in
     compose up -d --force-recreate --no-deps $(app_services | grep -vxE 'migrate|api|worker|backup|netbox|netbox-worker|netbox-setup') >/dev/null 2>&1
     # --no-deps drops depends_on conditions, so migrate waits here explicitly.
     wait_healthy postgres 120
+    log "migrating the database"
     compose up -d --force-recreate --no-deps migrate >/dev/null 2>&1
     podman wait "$(ctr migrate)" >/dev/null
     [[ $(podman inspect -f '{{.State.ExitCode}}' "$(ctr migrate)") == 0 ]] || die "migrate failed; see: podman logs $(ctr migrate)"
@@ -744,17 +745,21 @@ case $cmd in
     # (ADR 0025), which migrate has just seeded. On a first start the api
     # also lacks the IdP's certificate until idp_setup below, which restarts
     # it and waits for it, so only the worker is waited for here.
+    log "starting api, worker and backup"
     compose up -d --force-recreate --no-deps api worker backup >/dev/null 2>&1
     wait_healthy worker 60
     # NetBox's migrations and seed (ADR 0031), then NetBox itself.
+    log "migrating and seeding NetBox"
     compose up -d --force-recreate --no-deps netbox-setup >/dev/null 2>&1
     podman wait "$(ctr netbox-setup)" >/dev/null
     [[ $(podman inspect -f '{{.State.ExitCode}}' "$(ctr netbox-setup)") == 0 ]] || die "netbox-setup failed; see: podman logs $(ctr netbox-setup)"
+    log "starting NetBox"
     compose up -d --force-recreate --no-deps netbox netbox-worker >/dev/null 2>&1
     wait_healthy netbox 180
     # The local target is ours to initialise (ADR 0017); a run never does.
     podman exec -u backup "$(ctr backup)" node dist/backup.js init >/dev/null ||
       die "initialising the backup target failed; see: podman logs $(ctr backup)"
+    log "configuring the local IdP"
     idp_setup
     ensure_breakglass
     seed_test_accounts app
@@ -769,9 +774,11 @@ case $cmd in
     ;;
   test)
     shift
+    log "building the api and test images"
     compose --profile test build api test
     ensure_test_agent
     ensure_test_template
+    log "running Vitest"
     compose --profile test run --rm -T test pnpm exec vitest run "$@"
     ;;
   e2e)
@@ -781,6 +788,7 @@ case $cmd in
     [[ -z $(podman inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$(ctr nginx)" 2>/dev/null |
       sed -n 's/^NGINX_WEB_UPSTREAM=//p') ]] ||
       die "nginx serves the Vite dev server; run '$0 up' (without --dev) first"
+    log "building the e2e image"
     compose --profile test build e2e
     # api-e2e, worker-e2e, their database and their buckets' contents
     # exist for the run only: the buckets are emptied before the run and
@@ -788,6 +796,7 @@ case $cmd in
     trap 'podman exec "$(ctr api-e2e)" node dist/empty-bucket.js >/dev/null 2>&1 || true; podman rm -f "$(ctr api-e2e)" "$(ctr worker-e2e)" >/dev/null 2>&1 || true' EXIT
     start_e2e_api
     podman exec "$(ctr api-e2e)" node dist/empty-bucket.js >/dev/null || die "could not empty the e2e buckets"
+    log "running Playwright"
     compose --profile test run --rm -T e2e pnpm exec playwright test "$@" 2>&1 | e2e_actions
     ;;
   breakglass)

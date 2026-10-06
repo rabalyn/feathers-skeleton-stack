@@ -27,7 +27,7 @@ source "$ROOT/scripts/product.sh"
 PROJECT=$PRODUCT
 LOCAL=localhost/$PROJECT-
 
-log() { printf '\033[1mprune:\033[0m %s\n' "$*" >&2; }
+log() { printf '\033[1mprune:\033[0m %s %s\n' "$(date +%T)" "$*" >&2; }
 
 remove() { # <image> <description>
   local size

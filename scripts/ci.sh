@@ -19,6 +19,9 @@
 # Last, in every mode: scripts/prune.sh removes this project's stale images
 # and fails on anonymous volume leaks.
 #
+# Every step's header carries the time it started, and the run ends with a
+# table of how long each step took, longest first, to show where it goes.
+#
 # The backup target is a named volume unless BACKUP_TARGET names a host
 # directory; scripts/ci-nfs-runner.sh runs this script with it on real NFS,
 # as a runner does (ADR 0017).
@@ -48,7 +51,30 @@ TRIVY_CACHE=$PRODUCT-trivy-cache
 mode=${1:-}
 case $mode in "" | --cold | --static) ;; *) echo "usage: $0 [--cold|--static]" >&2; exit 2 ;; esac
 
-step() { printf '\n\033[1mci: %s\033[0m\n' "$*" >&2; }
+# A step lasts until the next one starts, or the run ends.
+timings=() current= started=$SECONDS
+duration() { printf '%dm%02ds' $(($1 / 60)) $(($1 % 60)); }
+end_step() {
+  [[ -n $current ]] && timings+=("$((SECONDS - started))"$'\t'"$current")
+  current=
+}
+step() {
+  end_step
+  current=$* started=$SECONDS
+  printf '\n\033[1mci: %s %s\033[0m\n' "$(date +%T)" "$*" >&2
+}
+report_timings() {
+  end_step
+  ((${#timings[@]})) || return 0
+  printf '\n\033[1mci: timings, %s in all\033[0m\n' "$(duration $SECONDS)" >&2
+  local seconds name
+  printf '%s\n' "${timings[@]}" | sort -t $'\t' -k1,1nr | while IFS=$'\t' read -r seconds name; do
+    printf '  %8s  %s\n' "$(duration "$seconds")" "$name"
+  done >&2
+  timings=()
+}
+# Also when a step that is not a check stops the run.
+trap report_timings EXIT
 failed=()
 check() { # <name> <command...>: runs every check, fails at the end
   local name=$1; shift
@@ -138,6 +164,7 @@ if [[ $mode != --static ]]; then
   check "image vulnerability scan" scan_images
 fi
 check "stale images and anonymous volumes" "$ROOT/scripts/prune.sh"
+report_timings
 
 if ((${#failed[@]})); then
   printf '\n\033[1;31mci: failed:\033[0m\n' >&2
