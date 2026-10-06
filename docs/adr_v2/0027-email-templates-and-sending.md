@@ -33,7 +33,7 @@ Admins cannot create kinds: a template nothing sends and nothing supplies variab
 The skeleton registers two kinds of its own (`apps/api/src/mail/registry.ts`), which the end-to-end suite proves arrive:
 
 - **`gdpr.export-ready`**, a notification: the worker sends it in the transaction that marks a GDPR export ready ([0013](0013-gdpr-export-and-retention.md)), to the account that asked for it, with a link to where that account fetches it. It is a feature of the skeleton; products keep it.
-- **`documents.stale-reminder`**, a campaign on the example documents: every owner of documents unchanged for `olderThanDays` (0 reaches every owner) gets one mail listing them. It has the shape a product's campaign will have (the admin's choice as a parameter, a list per recipient built at send time), and a product replaces it with its own.
+- **`documents.stale-reminder`**, a campaign on the example documents: every owner of documents unchanged for `olderThanDays` (0 reaches every owner) gets one mail listing them. It has the shape a product's campaign will have (the admin's choice as a parameter, a list per recipient built at send time), and a product adds its own beside it: it stays, for admins only once a product switches the example off ([0035](0035-products-derived-from-the-skeleton.md)).
 
 ### Recipients are accounts
 
