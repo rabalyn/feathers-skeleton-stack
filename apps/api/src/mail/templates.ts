@@ -1,8 +1,8 @@
 import type { TSchema } from '@feathersjs/typebox'
 import type { Knex } from 'knex'
 import { LOCALES, type Locale } from '../locales.js'
-import { templateVariables, type MailKind, type MailTemplateText } from './kind.js'
-import { APP_NAME } from './layout.js'
+import type { Config } from '../config.js'
+import { templateVariables, type AppVariables, type MailKind, type MailTemplateText } from './kind.js'
 import { MAIL_KINDS } from './registry.js'
 import { TemplateError, renderMail, templateVariablePaths, type RenderedMail } from './render.js'
 
@@ -12,7 +12,11 @@ import { TemplateError, renderMail, templateVariablePaths, type RenderedMail } f
 // Stands in for `recipient` wherever no actual recipient is at hand.
 export const SAMPLE_RECIPIENT = { givenName: 'Erika', surname: 'Mustermann' }
 
-export const appVariables = (publicOrigin: string) => ({ name: APP_NAME, url: publicOrigin })
+// `app` in every mail: the product's name and its public origin.
+export const appVariables = (config: Pick<Config, 'appName' | 'publicOrigin'>): AppVariables => ({
+  name: config.appName,
+  url: config.publicOrigin
+})
 
 // Inserts each kind's code defaults as revisions by the system, and makes
 // them active, for every kind and locale that has no template; never touches
@@ -78,7 +82,7 @@ export const checkTemplate = async (
   kind: MailKind,
   locale: Locale,
   text: MailTemplateText,
-  publicOrigin: string
+  app: AppVariables
 ): Promise<RenderedMail> => {
   const schema = templateVariables(kind) as SchemaNode
   for (const part of ['subject', 'body'] as const) {
@@ -91,6 +95,6 @@ export const checkTemplate = async (
   return renderMail({
     locale,
     ...text,
-    variables: { ...kind.sample, recipient: SAMPLE_RECIPIENT, app: appVariables(publicOrigin) }
+    variables: { ...kind.sample, recipient: SAMPLE_RECIPIENT, app }
   })
 }

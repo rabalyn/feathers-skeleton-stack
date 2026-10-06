@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs'
 import { rootCertificates } from 'node:tls'
 import { createTransport } from 'nodemailer'
 import type { SmtpConfig } from '../config.js'
-import { APP_NAME } from './layout.js'
 import type { RenderedMail } from './render.js'
 
 // Sending (ADR 0027): the worker only, never the api. No SMTP login: the
@@ -57,7 +56,7 @@ export const createSender = (config: SmtpConfig): MailSender => {
       disableFileAccess: true,
       disableUrlAccess: true
     },
-    { from: { name: APP_NAME, address: config.mailFrom } }
+    { from: { name: config.appName, address: config.mailFrom } }
   )
   return {
     send: async (to, mail) => {

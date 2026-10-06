@@ -123,7 +123,7 @@ describe('sending a campaign', () => {
     const sent: { to: Recipient; mail: RenderedMail }[] = []
     const sender: MailSender = { send: async (to, mail) => void sent.push({ to, mail }), verify: async () => {}, close: () => {} }
     for (const row of deliveries as { id: string }[]) {
-      await deliver({ knex: knex(), sender, publicOrigin: 'https://app.example.org', logger: pino({ level: 'silent' }), deliveryId: row.id, attempt: 1, attempts: 5 })
+      await deliver({ knex: knex(), sender, app: { name: 'Example product', url: 'https://app.example.org' }, logger: pino({ level: 'silent' }), deliveryId: row.id, attempt: 1, attempts: 5 })
     }
     expect(sent.map(({ mail }) => mail.subject).sort()).toEqual([
       'Ihre Dokumente wurden länger nicht bearbeitet',

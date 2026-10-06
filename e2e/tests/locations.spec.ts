@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { origin } from '../playwright.config.js'
 import { ADMIN, IDP_ORIGIN, OPERATOR, USER, loginAs, nav, type Account } from './support.js'
 
 // Locations (ADR 0031): the Buildings page reads the seeded NetBox through
@@ -6,7 +7,7 @@ import { ADMIN, IDP_ORIGIN, OPERATOR, USER, loginAs, nav, type Account } from '.
 // their IdP groups give: ad01admn is in netbox-admins, op01oper in
 // netbox-editors and netbox-readers, us02othr in none.
 
-const NETBOX = 'https://netbox.localhost:8443'
+const NETBOX = origin('netbox')
 const OTHER: Account = { tuId: 'us02othr', password: 'other-test-password' }
 
 test('the Buildings page finds a building by its address, a page at a time', async ({ page }) => {
@@ -51,7 +52,7 @@ test('NetBox: an editor logs in through the IdP and reads the seeded sites', asy
   await page.goto(`${NETBOX}/dcim/sites/?q=Karolinenplatz`)
   await expect(page.getByRole('link', { name: 'S1|01 Universitätszentrum, karo 5, Audimax' })).toBeVisible()
   // A reader and editor, not an administrator. Through the page, which
-  // maps netbox.localhost to Nginx; page.request would not.
+  // maps the NetBox host name to Nginx; page.request would not.
   expect((await page.goto(`${NETBOX}/users/users/`))?.status()).toBe(403)
 })
 

@@ -19,6 +19,9 @@ const port = Type.Integer({ minimum: 1, maximum: 65535 })
 
 const fields = {
   publicOrigin: { schema: Type.String({ pattern: '^https://[^/]+$' }), env: 'PUBLIC_ORIGIN' },
+  // The product's display name (ADR 0035): the sender name of every mail
+  // and `app.name` in its templates (ADR 0027).
+  appName: { schema: Type.String({ minLength: 1, maxLength: 100 }), env: 'APP_NAME' },
   authSigningSecret: { schema: Type.String({ minLength: 32 }), env: 'AUTH_SIGNING_SECRET', secret: true },
   // Derives each refresh token's successor (ADR 0010). Independent of the
   // signing secret, so rotating either never logs anybody out.
@@ -138,7 +141,7 @@ const fields = {
   smtpHost: { schema: Type.String({ minLength: 1 }), env: 'SMTP_HOST' },
   smtpPort: { schema: port, env: 'SMTP_PORT', integer: true },
   smtpCaFile: { schema: Type.String({ minLength: 1 }), env: 'SMTP_CA_FILE' },
-  // The sender address; the product's name is its display name.
+  // The sender address; `appName` is its display name.
   mailFrom: { schema: Type.String({ pattern: '^[^@\\s<>]+@[^@\\s<>]+$' }), env: 'MAIL_FROM' },
   // Locations (ADR 0031): NetBox's REST API over TLS, read with a v2 token
   // whose key is configuration and whose secret comes from OpenBao; links
@@ -218,6 +221,7 @@ export const SYSTEM_KEYS = ['prometheusUrl', 'prometheusCaFile', 'updateCheck'] 
 
 export const API_KEYS = [
   'publicOrigin',
+  'appName',
   'authSigningSecret',
   'refreshTokenKey',
   ...SAML_KEYS,
@@ -241,7 +245,7 @@ export const API_KEYS = [
 
 export const MIGRATE_KEYS = ['logLevel', ...DATABASE_KEYS] as const satisfies readonly ConfigKey[]
 
-export const SMTP_KEYS = ['smtpHost', 'smtpPort', 'smtpCaFile', 'mailFrom'] as const satisfies readonly ConfigKey[]
+export const SMTP_KEYS = ['smtpHost', 'smtpPort', 'smtpCaFile', 'mailFrom', 'appName'] as const satisfies readonly ConfigKey[]
 
 export const WORKER_KEYS = [
   // Every link in a mail starts with it (ADR 0027).

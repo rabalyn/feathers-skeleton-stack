@@ -4,6 +4,7 @@ import { createInternalServer } from './internal.js'
 import { startMaintenance, queueConnection } from './jobs/maintenance.js'
 import { createLogger } from './logger.js'
 import { createSender } from './mail/sender.js'
+import { appVariables } from './mail/templates.js'
 import { createRegistry, observeKnexPool } from './metrics.js'
 import { SHUTDOWN_GRACE_MS, closeServer, withDeadline } from './shutdown.js'
 import { WORKER_SETTINGS } from './settings/registry.js'
@@ -55,7 +56,7 @@ const main = async () => {
     logger,
     prefix: config.queuePrefix,
     metrics,
-    mail: { sender: createSender(config), publicOrigin: config.publicOrigin },
+    mail: { sender: createSender(config), app: appVariables(config) },
     updateCheck: updateCheckSources(config)
   })
   await maintenance.schedule()

@@ -9,6 +9,7 @@ import type { HookContext } from '../../declarations.js'
 import { CampaignError, campaignKind, campaignParamsError, createCampaign, previewCampaign } from '../../mail/campaigns.js'
 import type { CampaignKind } from '../../mail/kind.js'
 import { TemplateError } from '../../mail/render.js'
+import { appVariables } from '../../mail/templates.js'
 import { PAGINATE } from '../../paginate.js'
 import { limitPerUser } from '../../rate-limit.js'
 import {
@@ -96,7 +97,7 @@ export class MailCampaignPreviewService {
     const settings = this.app.get('settings')
     const [count, windowSeconds] = await Promise.all([settings.get('mailSendLimitCount'), settings.get('mailSendLimitWindowSeconds')])
     try {
-      const preview = await previewCampaign(this.app.get('knex'), kind, data.params, this.app.get('config').publicOrigin, {
+      const preview = await previewCampaign(this.app.get('knex'), kind, data.params, appVariables(this.app.get('config')), {
         count,
         windowSeconds
       })

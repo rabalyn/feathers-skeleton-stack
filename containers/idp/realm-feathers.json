@@ -221,17 +221,17 @@
   },
   "clients": [
     {
-      "clientId": "https://app.localhost:8443/api/auth/saml/metadata",
+      "clientId": "https://app.${PRODUCT}.localhost:${PRODUCT_HTTPS_PORT}/api/auth/saml/metadata",
       "name": "claude-feathers (local)",
       "protocol": "saml",
       "enabled": true,
       "frontchannelLogout": true,
       "redirectUris": [
-        "https://app.localhost:8443/api/auth/saml/*"
+        "https://app.${PRODUCT}.localhost:${PRODUCT_HTTPS_PORT}/api/auth/saml/*"
       ],
       "attributes": {
-        "saml_assertion_consumer_url_post": "https://app.localhost:8443/api/auth/saml/acs",
-        "saml_single_logout_service_url_redirect": "https://app.localhost:8443/api/auth/saml/logout",
+        "saml_assertion_consumer_url_post": "https://app.${PRODUCT}.localhost:${PRODUCT_HTTPS_PORT}/api/auth/saml/acs",
+        "saml_single_logout_service_url_redirect": "https://app.${PRODUCT}.localhost:${PRODUCT_HTTPS_PORT}/api/auth/saml/logout",
         "saml.assertion.signature": "true",
         "saml.server.signature": "true",
         "saml.signature.algorithm": "RSA_SHA256",
@@ -290,17 +290,17 @@
       ]
     },
     {
-      "clientId": "https://e2e.localhost:8443/api/auth/saml/metadata",
+      "clientId": "https://e2e.${PRODUCT}.localhost:${PRODUCT_HTTPS_PORT}/api/auth/saml/metadata",
       "name": "claude-feathers (local e2e)",
       "protocol": "saml",
       "enabled": true,
       "frontchannelLogout": true,
       "redirectUris": [
-        "https://e2e.localhost:8443/api/auth/saml/*"
+        "https://e2e.${PRODUCT}.localhost:${PRODUCT_HTTPS_PORT}/api/auth/saml/*"
       ],
       "attributes": {
-        "saml_assertion_consumer_url_post": "https://e2e.localhost:8443/api/auth/saml/acs",
-        "saml_single_logout_service_url_redirect": "https://e2e.localhost:8443/api/auth/saml/logout",
+        "saml_assertion_consumer_url_post": "https://e2e.${PRODUCT}.localhost:${PRODUCT_HTTPS_PORT}/api/auth/saml/acs",
+        "saml_single_logout_service_url_redirect": "https://e2e.${PRODUCT}.localhost:${PRODUCT_HTTPS_PORT}/api/auth/saml/logout",
         "saml.assertion.signature": "true",
         "saml.server.signature": "true",
         "saml.signature.algorithm": "RSA_SHA256",
@@ -359,16 +359,16 @@
       ]
     },
     {
-      "clientId": "https://netbox.localhost:8443/oauth/metadata/saml/",
+      "clientId": "https://netbox.${PRODUCT}.localhost:${PRODUCT_HTTPS_PORT}/oauth/metadata/saml/",
       "name": "NetBox (local)",
       "protocol": "saml",
       "enabled": true,
       "frontchannelLogout": false,
       "redirectUris": [
-        "https://netbox.localhost:8443/oauth/complete/saml/"
+        "https://netbox.${PRODUCT}.localhost:${PRODUCT_HTTPS_PORT}/oauth/complete/saml/"
       ],
       "attributes": {
-        "saml_assertion_consumer_url_post": "https://netbox.localhost:8443/oauth/complete/saml/",
+        "saml_assertion_consumer_url_post": "https://netbox.${PRODUCT}.localhost:${PRODUCT_HTTPS_PORT}/oauth/complete/saml/",
         "saml.assertion.signature": "true",
         "saml.server.signature": "true",
         "saml.signature.algorithm": "RSA_SHA256",

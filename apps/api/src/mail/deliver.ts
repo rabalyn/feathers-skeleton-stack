@@ -1,10 +1,10 @@
 import type { Knex } from 'knex'
 import type { Logger } from 'pino'
 import { DEFAULT_LOCALE, LOCALES, type Locale } from '../locales.js'
+import type { AppVariables } from './kind.js'
 import { getMailKind } from './registry.js'
 import { renderMail, type RenderedMail } from './render.js'
 import { isPermanentFailure, type MailSender } from './sender.js'
-import { appVariables } from './templates.js'
 
 // One delivery (ADR 0027): who it goes to, in which wording, built and
 // rendered now, sent, and the outcome recorded on its row. At least once: a
@@ -51,7 +51,8 @@ interface RecipientRow {
 export interface DeliverOptions {
   knex: Knex
   sender: MailSender
-  publicOrigin: string
+  // `app` in the mail: the product's name and origin.
+  app: AppVariables
   logger: Logger
   deliveryId: string
   // This attempt, from 1, and how many there are.
@@ -88,7 +89,7 @@ const complete = (knex: Knex, id: string, attempt: number, update: Record<string
 export const deliver = async ({
   knex,
   sender,
-  publicOrigin,
+  app,
   logger,
   deliveryId,
   attempt,
@@ -132,7 +133,7 @@ export const deliver = async ({
       variables: {
         ...variables,
         recipient: { givenName: recipient.givenName ?? '', surname: recipient.surname ?? '' },
-        app: appVariables(publicOrigin)
+        app
       }
     })
   } catch (error) {

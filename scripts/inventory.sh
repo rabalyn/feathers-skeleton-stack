@@ -11,6 +11,8 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+# shellcheck source=scripts/product.sh
+source "$ROOT/scripts/product.sh"
 OUT=$ROOT/apps/api/src/system/inventory.ts
 # One Node pin for the scripts: stack.sh's.
 NODE_IMAGE=$(sed -n 's/^NODE_IMAGE=//p' "$ROOT/scripts/stack.sh")
@@ -18,7 +20,7 @@ NODE_IMAGE=$(sed -n 's/^NODE_IMAGE=//p' "$ROOT/scripts/stack.sh")
 
 generate() {
   podman run --rm --network none --security-opt label=disable -v "$ROOT:/repo:ro" -w /repo \
-    "$NODE_IMAGE" node scripts/inventory.mjs /repo
+    -e PRODUCT "$NODE_IMAGE" node scripts/inventory.mjs /repo
 }
 
 case "${1:-}" in

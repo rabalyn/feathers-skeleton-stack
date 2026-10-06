@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import { origin } from '../playwright.config.js'
 
 // Shared by the specs. `scripts/stack.sh e2e` gives the test accounts their
 // roles before the run.
@@ -11,7 +12,7 @@ export const ADMIN: Account = { tuId: 'ad01admn', password: 'admin-test-password
 export const OPERATOR: Account = { tuId: 'op01oper', password: 'operator-test-password' }
 export const USER: Account = { tuId: 'us01user', password: 'user-test-password' }
 
-export const IDP_ORIGIN = /^https:\/\/idp\.localhost:8443\//
+export const IDP_ORIGIN = new RegExp(`^${origin('idp').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`)
 
 interface Refreshed {
   accessToken: string

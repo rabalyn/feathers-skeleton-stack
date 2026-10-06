@@ -17,18 +17,28 @@
 #   `scripts/stack.sh up --dev`, which also sets NGINX_WEB_UPSTREAM. Values
 #   interpolated from the environment are local-only by the same rule and
 #   are dropped from the generated units.
-name: feathers
+# - the product's identity (ADR 0035) comes from product.env, which the
+#   scripts export: ${PRODUCT} names the project, the local images and
+#   containers (<project>-<service>, so several products' stacks run side by
+#   side) and the local host names (app.<project>.localhost);
+#   ${PRODUCT_HTTPS_PORT} and ${PRODUCT_HTTP_PORT} are the published ports,
+#   ${PRODUCT_DISPLAY_NAME} what people read. scripts/quadlet.sh writes their
+#   values into the generated units and drops the prefix from the container
+#   names, which stay per user in production. Without them nothing starts.
+name: ${PRODUCT:?run the stack through scripts/stack.sh, which reads product.env}
 
 services:
   certs:
     build:
       context: .
       dockerfile: containers/certs/Containerfile
-    image: localhost/feathers-certs:dev
-    container_name: certs
+    image: localhost/${PRODUCT:?}-certs:dev
+    container_name: ${PRODUCT:?}-certs
     profiles: [local]
     environment:
-      CERT_HOSTNAMES: app.localhost,e2e.localhost,idp.localhost,dozzle.localhost,grafana.localhost,mail.localhost,netbox.localhost
+      # The root's name, given once when it is created (ADR 0035).
+      CA_NAME: ${PRODUCT_DISPLAY_NAME:?} local CA
+      CERT_HOSTNAMES: app.${PRODUCT:?}.localhost,e2e.${PRODUCT:?}.localhost,idp.${PRODUCT:?}.localhost,dozzle.${PRODUCT:?}.localhost,grafana.${PRODUCT:?}.localhost,mail.${PRODUCT:?}.localhost,netbox.${PRODUCT:?}.localhost
     network_mode: none
     volumes:
       - certs-ca:/ca
@@ -57,55 +67,56 @@ services:
     build:
       context: .
       dockerfile: containers/nginx/Containerfile
-    image: localhost/feathers-nginx:dev
-    container_name: nginx
+    image: localhost/${PRODUCT:?}-nginx:dev
+    container_name: ${PRODUCT:?}-nginx
     depends_on:
       certs:
         condition: service_completed_successfully
     environment:
       NGINX_ENTRYPOINT_LOCAL_RESOLVERS: "1"
       NGINX_TLS_DIR: /etc/nginx/tls
-      NGINX_APP_HOST: app.localhost
+      NGINX_APP_HOST: app.${PRODUCT:?}.localhost
       # The local IdP (ADR 0008), Dozzle (ADR 0002) and Mailpit's inbox
       # (ADR 0022) are local only, like the e2e origin below: interpolated
       # values never reach the production units, so production has none of
       # these virtual hosts unless a drop-in sets one on purpose.
-      NGINX_IDP_HOST: ${NGINX_IDP_HOST:-idp.localhost}
-      NGINX_PUBLIC_PORT: "8443"
+      NGINX_IDP_HOST: ${NGINX_IDP_HOST:-idp.${PRODUCT:?}.localhost}
+      NGINX_PUBLIC_PORT: "${PRODUCT_HTTPS_PORT:?}"
       # Plain HTTP, which only redirects to HTTPS (ADR 0016); production
       # publishes it as port 80.
-      NGINX_HTTP_PORT: "8080"
+      NGINX_HTTP_PORT: "${PRODUCT_HTTP_PORT:?}"
       # Mirrored in bytes as the api's BODY_SIZE_CEILING_BYTES (ADR 0025).
       NGINX_BODY_SIZE_LIMIT: 10m
       NGINX_API_UPSTREAM: api:3030
       # The e2e origin (ADR 0015), local only: interpolated values never
       # reach the production units.
-      NGINX_E2E_HOST: ${NGINX_E2E_HOST:-e2e.localhost}
+      NGINX_E2E_HOST: ${NGINX_E2E_HOST:-e2e.${PRODUCT:?}.localhost}
       NGINX_E2E_API_UPSTREAM: ${NGINX_E2E_API_UPSTREAM:-api-e2e:3030}
       NGINX_IDP_UPSTREAM: ${NGINX_IDP_UPSTREAM:-idp:8080}
-      NGINX_DOZZLE_HOST: ${NGINX_DOZZLE_HOST:-dozzle.localhost}
+      NGINX_DOZZLE_HOST: ${NGINX_DOZZLE_HOST:-dozzle.${PRODUCT:?}.localhost}
       NGINX_DOZZLE_UPSTREAM: ${NGINX_DOZZLE_UPSTREAM:-dozzle:8080}
       # Grafana in every environment, Mailpit's inbox locally (ADR 0022);
       # production sets its own Grafana host name and no mail host.
-      NGINX_GRAFANA_HOST: grafana.localhost
+      NGINX_GRAFANA_HOST: grafana.${PRODUCT:?}.localhost
       NGINX_GRAFANA_UPSTREAM: grafana:3000
-      NGINX_MAIL_HOST: ${NGINX_MAIL_HOST:-mail.localhost}
+      NGINX_MAIL_HOST: ${NGINX_MAIL_HOST:-mail.${PRODUCT:?}.localhost}
       NGINX_MAIL_UPSTREAM: ${NGINX_MAIL_UPSTREAM:-mail:8025}
       # NetBox (ADR 0031) in every environment; production sets its host.
-      NGINX_NETBOX_HOST: netbox.localhost
+      NGINX_NETBOX_HOST: netbox.${PRODUCT:?}.localhost
       NGINX_NETBOX_UPSTREAM: netbox:8443
       # Empty: serve the built bundle. `up --dev`: the dev server.
       NGINX_WEB_UPSTREAM: ${NGINX_WEB_UPSTREAM:-}
     ports:
       # Nginx listens on the public port itself, so inside the networks
-      # nginx:8443 is the same origin a browser uses (the e2e container).
-      - "127.0.0.1:8443:8443"
-      - "127.0.0.1:8080:8080"
+      # nginx on that port is the same origin a browser uses (the e2e
+      # container).
+      - "127.0.0.1:${PRODUCT_HTTPS_PORT:?}:${PRODUCT_HTTPS_PORT:?}"
+      - "127.0.0.1:${PRODUCT_HTTP_PORT:?}:${PRODUCT_HTTP_PORT:?}"
     networks:
       edge:
         # The public name, for clients inside the stack: the uptime probe
         # reaches the same origin a browser does (ADR 0022).
-        aliases: [app.localhost]
+        aliases: ["app.${PRODUCT:?}.localhost"]
       idp-edge: {}
       dozzle-edge: {}
       grafana-edge: {}
@@ -124,12 +135,12 @@ services:
       context: .
       dockerfile: containers/nginx/Containerfile
       target: web-dev
-    image: localhost/feathers-web-dev:dev
-    container_name: web
+    image: localhost/${PRODUCT:?}-web-dev:dev
+    container_name: ${PRODUCT:?}-web
     profiles: [dev]
     environment:
-      PUBLIC_HOST: app.localhost
-      PUBLIC_PORT: "8443"
+      PUBLIC_HOST: app.${PRODUCT:?}.localhost
+      PUBLIC_PORT: "${PRODUCT_HTTPS_PORT:?}"
     networks: [edge]
     volumes:
       - ./apps/web/src:/repo/apps/web/src:ro,Z
@@ -147,8 +158,8 @@ services:
         APP_COMMIT: ${APP_COMMIT:-unknown}
         APP_COMMIT_TIME: ${APP_COMMIT_TIME:-unknown}
         APP_DIRTY: ${APP_DIRTY:-false}
-    image: localhost/feathers-api:dev
-    container_name: api
+    image: localhost/${PRODUCT:?}-api:dev
+    container_name: ${PRODUCT:?}-api
     # The api refuses to start before migrate has seeded the runtime
     # settings (ADR 0025).
     depends_on:
@@ -159,8 +170,11 @@ services:
       # Origin check, the token audience and the SAML entity ID (ADR 0016).
       # Defined once here; the worker and scripts/stack.sh take it from this
       # line. The IdP realm (containers/idp/realm-feathers.json) and the
-      # uptime probe (containers/prometheus/targets/uptime.yml) repeat it.
-      PUBLIC_ORIGIN: &public-origin https://app.localhost:8443
+      # uptime probe (containers/prometheus/targets/uptime.yml) build it
+      # from the same product.env.
+      PUBLIC_ORIGIN: &public-origin https://app.${PRODUCT:?}.localhost:${PRODUCT_HTTPS_PORT:?}
+      # The product's display name (ADR 0035), in mail.
+      APP_NAME: &app-name ${PRODUCT_DISPLAY_NAME:?}
       # Rotated JSON log files, read by the collector (ADR 0021).
       LOG_FILE: /var/log/app/api
       # Metrics and health on the internal port, over TLS (ADR 0022).
@@ -171,9 +185,9 @@ services:
       SAML_SP_PRIVATE_KEY_FILE: /run/secrets/saml_sp_key
       SAML_SP_CERTIFICATE_FILE: /run/secrets/saml_sp_cert
       SAML_IDP_CERTIFICATE_FILE: /run/secrets/saml_idp_cert
-      SAML_IDP_ENTITY_ID: https://idp.localhost:8443/realms/feathers
-      SAML_IDP_SSO_URL: https://idp.localhost:8443/realms/feathers/protocol/saml
-      SAML_IDP_SLO_URL: https://idp.localhost:8443/realms/feathers/protocol/saml
+      SAML_IDP_ENTITY_ID: https://idp.${PRODUCT:?}.localhost:${PRODUCT_HTTPS_PORT:?}/realms/feathers
+      SAML_IDP_SSO_URL: https://idp.${PRODUCT:?}.localhost:${PRODUCT_HTTPS_PORT:?}/realms/feathers/protocol/saml
+      SAML_IDP_SLO_URL: https://idp.${PRODUCT:?}.localhost:${PRODUCT_HTTPS_PORT:?}/realms/feathers/protocol/saml
       DATABASE_HOST: pgbouncer
       DATABASE_PORT: "6432"
       DATABASE_NAME: app
@@ -202,7 +216,7 @@ services:
       # Locations (ADR 0031): NetBox's REST API with a read-only v2 token,
       # its key here and its secret from OpenBao.
       NETBOX_URL: https://netbox:8443
-      NETBOX_PUBLIC_URL: &netbox-public-url https://netbox.localhost:8443
+      NETBOX_PUBLIC_URL: &netbox-public-url https://netbox.${PRODUCT:?}.localhost:${PRODUCT_HTTPS_PORT:?}
       NETBOX_TOKEN_KEY: &netbox-token-key feathersapi1
       NETBOX_TOKEN_FILE: /run/secrets/netbox_token
       NETBOX_CA_FILE: /trust/ca.crt
@@ -227,12 +241,12 @@ services:
   # `scripts/stack.sh e2e` recreates the database, starts this container for
   # the run and removes it afterwards.
   api-e2e:
-    image: localhost/feathers-api:dev
-    container_name: api-e2e
+    image: localhost/${PRODUCT:?}-api:dev
+    container_name: ${PRODUCT:?}-api-e2e
     profiles: [test]
     environment:
       <<: *api-environment
-      PUBLIC_ORIGIN: https://e2e.localhost:8443
+      PUBLIC_ORIGIN: https://e2e.${PRODUCT:?}.localhost:${PRODUCT_HTTPS_PORT:?}
       DATABASE_NAME: app_e2e
       RATE_LIMIT_PREFIX: rl:e2e
       # Emptied by every `stack.sh e2e`, as app_e2e is recreated.
@@ -260,8 +274,8 @@ services:
   # Background jobs (ADR 0024): the api's image, another entry point, and
   # credentials of its own.
   worker:
-    image: localhost/feathers-api:dev
-    container_name: worker
+    image: localhost/${PRODUCT:?}-api:dev
+    container_name: ${PRODUCT:?}-worker
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -285,12 +299,14 @@ services:
       S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
       S3_CA_FILE: /trust/ca.crt
       # Mail (ADR 0027): Mailpit locally, the university relay in production;
-      # links in mail start with the public origin.
+      # links in mail start with the public origin, the sender is named by
+      # the display name.
       PUBLIC_ORIGIN: *public-origin
+      APP_NAME: *app-name
       SMTP_HOST: mail
       SMTP_PORT: "1025"
       SMTP_CA_FILE: /trust/ca.crt
-      MAIL_FROM: noreply@app.localhost
+      MAIL_FROM: noreply@app.${PRODUCT:?}.localhost
       # System info (ADR 0032): the host's OS version from Prometheus, and
       # the daily check for newer versions, the one request to the internet.
       PROMETHEUS_URL: https://prometheus:9090
@@ -312,8 +328,8 @@ services:
   # (ADR 0013) from app_e2e and its buckets, under a queue prefix of their
   # own. `scripts/stack.sh e2e` starts it with api-e2e and removes it after.
   worker-e2e:
-    image: localhost/feathers-api:dev
-    container_name: worker-e2e
+    image: localhost/${PRODUCT:?}-api:dev
+    container_name: ${PRODUCT:?}-worker-e2e
     profiles: [test]
     command: ["node", "dist/worker.js"]
     environment:
@@ -322,7 +338,7 @@ services:
       QUEUE_PREFIX: bull:e2e
       S3_UPLOADS_BUCKET: e2e-uploads
       S3_EXPORTS_BUCKET: e2e-exports
-      PUBLIC_ORIGIN: https://e2e.localhost:8443
+      PUBLIC_ORIGIN: https://e2e.${PRODUCT:?}.localhost:${PRODUCT_HTTPS_PORT:?}
       # Stdout only: its lines stay out of Loki and the alert rules.
       LOG_FILE: ""
       # The suite never reaches the internet (ADR 0032).
@@ -349,8 +365,8 @@ services:
       context: .
       dockerfile: containers/api/Containerfile
       target: backup
-    image: localhost/feathers-backup:dev
-    container_name: backup
+    image: localhost/${PRODUCT:?}-backup:dev
+    container_name: ${PRODUCT:?}-backup
     # restic's locks name the host; a fixed name lets a restarted container
     # recognise its own stale ones.
     hostname: backup
@@ -384,8 +400,8 @@ services:
       - logs:/var/log/app
 
   migrate:
-    image: localhost/feathers-api:dev
-    container_name: migrate
+    image: localhost/${PRODUCT:?}-api:dev
+    container_name: ${PRODUCT:?}-migrate
     depends_on:
       postgres:
         condition: service_healthy
@@ -411,15 +427,15 @@ services:
     build:
       context: .
       dockerfile: containers/netbox/Containerfile
-    image: localhost/feathers-netbox:dev
-    container_name: netbox
+    image: localhost/${PRODUCT:?}-netbox:dev
+    container_name: ${PRODUCT:?}-netbox
     depends_on:
       netbox-setup:
         condition: service_completed_successfully
     environment: &netbox-environment
-      NETBOX_HOST: netbox.localhost
+      NETBOX_HOST: netbox.${PRODUCT:?}.localhost
       NETBOX_PUBLIC_ORIGIN: *netbox-public-url
-      NETBOX_CONTACT_EMAIL: operators@app.localhost
+      NETBOX_CONTACT_EMAIL: operators@app.${PRODUCT:?}.localhost
       DB_HOST: pgbouncer
       DB_PORT: "6432"
       DB_NAME: netbox
@@ -429,8 +445,8 @@ services:
       REDIS_USERNAME: netbox
       # No local superuser: people log in through the IdP (ADR 0031).
       SKIP_SUPERUSER: "true"
-      SAML_IDP_ENTITY_ID: https://idp.localhost:8443/realms/feathers
-      SAML_IDP_SSO_URL: https://idp.localhost:8443/realms/feathers/protocol/saml
+      SAML_IDP_ENTITY_ID: https://idp.${PRODUCT:?}.localhost:${PRODUCT_HTTPS_PORT:?}/realms/feathers
+      SAML_IDP_SSO_URL: https://idp.${PRODUCT:?}.localhost:${PRODUCT_HTTPS_PORT:?}/realms/feathers/protocol/saml
       # The IdP's group attribute; members of these groups are superusers.
       NETBOX_SAML_GROUPS_ATTRIBUTE: groups
       NETBOX_SAML_SUPERUSER_GROUPS: netbox-admins
@@ -454,8 +470,8 @@ services:
 
   # NetBox's background jobs and its housekeeping.
   netbox-worker:
-    image: localhost/feathers-netbox:dev
-    container_name: netbox-worker
+    image: localhost/${PRODUCT:?}-netbox:dev
+    container_name: ${PRODUCT:?}-netbox-worker
     depends_on:
       netbox-setup:
         condition: service_completed_successfully
@@ -470,8 +486,8 @@ services:
   # NetBox's migrations, over a direct connection like migrate (ADR 0004),
   # then the seed from the files baked into the image (ADR 0031).
   netbox-setup:
-    image: localhost/feathers-netbox:dev
-    container_name: netbox-setup
+    image: localhost/${PRODUCT:?}-netbox:dev
+    container_name: ${PRODUCT:?}-netbox-setup
     depends_on:
       postgres:
         condition: service_healthy
@@ -488,7 +504,7 @@ services:
 
   postgres:
     image: docker.io/library/postgres@sha256:d8703cd7fba306b9fec9268ecedfa8a966846c053036a60e3635791957eb2f66 # 18.6-alpine
-    container_name: postgres
+    container_name: ${PRODUCT:?}-postgres
     # The image's entry point, plus roles.sh on every start (ADR 0003).
     entrypoint: ["bash", "/usr/local/share/postgres/entrypoint.sh"]
     command:
@@ -537,8 +553,8 @@ services:
     build:
       context: .
       dockerfile: containers/pgbouncer/Containerfile
-    image: localhost/feathers-pgbouncer:dev
-    container_name: pgbouncer
+    image: localhost/${PRODUCT:?}-pgbouncer:dev
+    container_name: ${PRODUCT:?}-pgbouncer
     # Safe shutdown: running transactions finish, then it exits. On SIGTERM
     # PgBouncer 1.23+ waits for every client to disconnect, which ran into
     # Podman's SIGKILL whenever a client outlived the stop (ADR 0004).
@@ -554,7 +570,7 @@ services:
 
   valkey:
     image: docker.io/valkey/valkey@sha256:3b83b0b6a598bb390c8186a408a69949772f439548a81c5ea0ab7ccf102c248d # 9.1.2-alpine
-    container_name: valkey
+    container_name: ${PRODUCT:?}-valkey
     depends_on:
       certs:
         condition: service_completed_successfully
@@ -583,8 +599,8 @@ services:
     build:
       context: .
       dockerfile: containers/s3/Containerfile
-    image: localhost/feathers-s3:dev
-    container_name: s3
+    image: localhost/${PRODUCT:?}-s3:dev
+    container_name: ${PRODUCT:?}-s3
     depends_on:
       certs:
         condition: service_completed_successfully
@@ -610,8 +626,8 @@ services:
       context: .
       dockerfile: containers/api/Containerfile
       target: test
-    image: localhost/feathers-api-test:dev
-    container_name: test
+    image: localhost/${PRODUCT:?}-api-test:dev
+    container_name: ${PRODUCT:?}-test
     profiles: [test]
     environment:
       DATABASE_HOST: pgbouncer
@@ -640,7 +656,8 @@ services:
       SMTP_HOST: mail
       SMTP_PORT: "1025"
       SMTP_CA_FILE: /trust/ca.crt
-      MAIL_FROM: noreply@test.localhost
+      MAIL_FROM: noreply@test.${PRODUCT:?}.localhost
+      APP_NAME: *app-name
       # The seeded NetBox, read only (ADR 0031).
       NETBOX_URL: https://netbox:8443
       NETBOX_PUBLIC_URL: *netbox-public-url
@@ -661,8 +678,8 @@ services:
     build:
       context: .
       dockerfile: containers/ldap/Containerfile
-    image: localhost/feathers-ldap:dev
-    container_name: ldap
+    image: localhost/${PRODUCT:?}-ldap:dev
+    container_name: ${PRODUCT:?}-ldap
     profiles: [local]
     depends_on:
       certs:
@@ -677,18 +694,22 @@ services:
     build:
       context: .
       dockerfile: containers/idp/Containerfile
-    image: localhost/feathers-idp:dev
-    container_name: idp
+    image: localhost/${PRODUCT:?}-idp:dev
+    container_name: ${PRODUCT:?}-idp
     profiles: [local]
     depends_on:
       ldap:
         condition: service_started
     environment:
-      KC_HOSTNAME: https://idp.localhost:8443
+      KC_HOSTNAME: https://idp.${PRODUCT:?}.localhost:${PRODUCT_HTTPS_PORT:?}
       KC_PROXY_HEADERS: xforwarded
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
       KC_TRUSTSTORE_PATHS: /trust/ca.crt
+      # The realm's client URLs (containers/idp/realm-feathers.json) name
+      # these as placeholders, which Keycloak fills in on import (ADR 0035).
+      PRODUCT: ${PRODUCT:?}
+      PRODUCT_HTTPS_PORT: ${PRODUCT_HTTPS_PORT:?}
     networks: [idp-edge, identity]
     volumes:
       - idp-data:/opt/keycloak/data/h2
@@ -701,14 +722,14 @@ services:
       retries: 30
 
   # Local convenience only (ADR 0002): a live view of container output at
-  # https://dozzle.localhost:8443. Not part of the log pipeline (ADR 0021,
+  # https://dozzle.<project>.localhost. Not part of the log pipeline (ADR 0021,
   # 0022), which reads the log files, not container output.
   dozzle:
     image: docker.io/amir20/dozzle@sha256:cca4da41d490960e0ccc07e7c86d9aa57022a8fac516089ff9a9419f589dd5e5 # v11.1.3
-    container_name: dozzle
+    container_name: ${PRODUCT:?}-dozzle
     profiles: [local]
     environment:
-      DOZZLE_FILTER: label=com.docker.compose.project=feathers
+      DOZZLE_FILTER: label=com.docker.compose.project=${PRODUCT:?}
       DOZZLE_ENABLE_ACTIONS: "false"
       DOZZLE_ENABLE_SHELL: "false"
       DOZZLE_NO_ANALYTICS: "true"
@@ -733,18 +754,20 @@ services:
     build:
       context: .
       dockerfile: containers/e2e/Containerfile
-    image: localhost/feathers-e2e:dev
-    container_name: e2e
+    image: localhost/${PRODUCT:?}-e2e:dev
+    container_name: ${PRODUCT:?}-e2e
     profiles: [test]
     environment:
       # The e2e origin, served by api-e2e on its own database (ADR 0015).
-      E2E_APP_ORIGIN: https://e2e.localhost:8443
+      E2E_APP_ORIGIN: https://e2e.${PRODUCT:?}.localhost:${PRODUCT_HTTPS_PORT:?}
+      # Nginx's plain HTTP port, which only redirects (ADR 0016).
+      E2E_HTTP_PORT: ${PRODUCT_HTTP_PORT:?}
       # Chromium resolves *.localhost to loopback; map the public names to
       # nginx instead (ADR 0015).
-      E2E_HOST_RESOLVER_RULES: MAP e2e.localhost nginx, MAP idp.localhost nginx, MAP mail.localhost nginx, MAP netbox.localhost nginx
+      E2E_HOST_RESOLVER_RULES: MAP e2e.${PRODUCT:?}.localhost nginx, MAP idp.${PRODUCT:?}.localhost nginx, MAP mail.${PRODUCT:?}.localhost nginx, MAP netbox.${PRODUCT:?}.localhost nginx
       # The e2e database's break-glass account (ADR 0008), made by
       # `stack.sh e2e` for the run; a local test value, never a real one.
-      E2E_BREAKGLASS_EMAIL: breakglass@e2e.localhost
+      E2E_BREAKGLASS_EMAIL: breakglass@e2e.${PRODUCT:?}.localhost
       E2E_BREAKGLASS_PASSWORD: ${E2E_BREAKGLASS_PASSWORD:-}
     # The container networks are IPv4 only. Link-local IPv6 addresses still
     # appear, and settle, just after start; Chromium reports that as a
@@ -765,8 +788,8 @@ services:
     build:
       context: .
       dockerfile: containers/e2e/Containerfile
-    image: localhost/feathers-e2e:dev
-    container_name: mcp-browser
+    image: localhost/${PRODUCT:?}-e2e:dev
+    container_name: ${PRODUCT:?}-mcp-browser
     profiles: [local]
     command: ["sh", "-c", "trap 'exit 0' TERM; sleep infinity & wait"]
     sysctls:
@@ -778,7 +801,7 @@ services:
 
   openbao:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: openbao
+    container_name: ${PRODUCT:?}-openbao
     depends_on:
       certs:
         condition: service_completed_successfully
@@ -802,7 +825,7 @@ services:
 
   api-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: api-agent
+    container_name: ${PRODUCT:?}-api-agent
     depends_on:
       openbao:
         condition: service_started
@@ -823,7 +846,7 @@ services:
 
   postgres-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: postgres-agent
+    container_name: ${PRODUCT:?}-postgres-agent
     depends_on:
       openbao:
         condition: service_started
@@ -843,7 +866,7 @@ services:
 
   pgbouncer-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: pgbouncer-agent
+    container_name: ${PRODUCT:?}-pgbouncer-agent
     depends_on:
       openbao:
         condition: service_started
@@ -863,7 +886,7 @@ services:
 
   migrate-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: migrate-agent
+    container_name: ${PRODUCT:?}-migrate-agent
     depends_on:
       openbao:
         condition: service_started
@@ -883,7 +906,7 @@ services:
 
   test-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: test-agent
+    container_name: ${PRODUCT:?}-test-agent
     profiles: [test]
     depends_on:
       openbao:
@@ -904,7 +927,7 @@ services:
 
   valkey-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: valkey-agent
+    container_name: ${PRODUCT:?}-valkey-agent
     depends_on:
       openbao:
         condition: service_started
@@ -924,7 +947,7 @@ services:
 
   ldap-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: ldap-agent
+    container_name: ${PRODUCT:?}-ldap-agent
     profiles: [local]
     depends_on:
       openbao:
@@ -945,7 +968,7 @@ services:
 
   idp-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: idp-agent
+    container_name: ${PRODUCT:?}-idp-agent
     profiles: [local]
     depends_on:
       openbao:
@@ -966,7 +989,7 @@ services:
 
   worker-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: worker-agent
+    container_name: ${PRODUCT:?}-worker-agent
     depends_on:
       openbao:
         condition: service_started
@@ -987,7 +1010,7 @@ services:
 
   s3-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: s3-agent
+    container_name: ${PRODUCT:?}-s3-agent
     depends_on:
       openbao:
         condition: service_started
@@ -1007,7 +1030,7 @@ services:
 
   backup-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: backup-agent
+    container_name: ${PRODUCT:?}-backup-agent
     depends_on:
       openbao:
         condition: service_started
@@ -1027,7 +1050,7 @@ services:
 
   netbox-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: netbox-agent
+    container_name: ${PRODUCT:?}-netbox-agent
     depends_on:
       openbao:
         condition: service_started
@@ -1052,7 +1075,7 @@ services:
 
   prometheus:
     image: docker.io/prom/prometheus@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e # v3.15.0
-    container_name: prometheus
+    container_name: ${PRODUCT:?}-prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --web.config.file=/etc/observability/web-config.yml
@@ -1073,7 +1096,7 @@ services:
 
   loki:
     image: docker.io/grafana/loki@sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193 # 3.7.8
-    container_name: loki
+    container_name: ${PRODUCT:?}-loki
     command: ["-config.file=/etc/loki/loki.yaml"]
     mem_limit: 1g
     cpus: 1.0
@@ -1087,7 +1110,7 @@ services:
   # user: only that user may read the user journal Podman logs to.
   alloy:
     image: docker.io/grafana/alloy@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f # v1.20.1
-    container_name: alloy
+    container_name: ${PRODUCT:?}-alloy
     # Stopped before Loki, so the lines it still holds are shipped rather
     # than retried until Podman's SIGKILL: by systemd through this ordering
     # in production, and by scripts/stack.sh locally, because podman-compose
@@ -1114,12 +1137,12 @@ services:
 
   grafana:
     image: docker.io/grafana/grafana@sha256:b28bae15e219c998fb0e0424ed724930cc61b1f61fb404d47c862f9a23f9e572 # 13.2.3
-    container_name: grafana
+    container_name: ${PRODUCT:?}-grafana
     environment:
       GF_SERVER_PROTOCOL: https
       GF_SERVER_CERT_FILE: /tls/tls.crt
       GF_SERVER_CERT_KEY: /tls/tls.key
-      GF_SERVER_ROOT_URL: https://grafana.localhost:8443/
+      GF_SERVER_ROOT_URL: https://grafana.${PRODUCT:?}.localhost:${PRODUCT_HTTPS_PORT:?}/
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/admin_password
       GF_SECURITY_SECRET_KEY__FILE: /run/secrets/secret_key
@@ -1137,15 +1160,15 @@ services:
       # host name, without authentication (ADR 0022); TLS is mandatory.
       GF_SMTP_ENABLED: "true"
       GF_SMTP_HOST: mail:1025
-      GF_SMTP_FROM_ADDRESS: grafana@app.localhost
-      GF_SMTP_FROM_NAME: claude-feathers alerts
+      GF_SMTP_FROM_ADDRESS: grafana@app.${PRODUCT:?}.localhost
+      GF_SMTP_FROM_NAME: ${PRODUCT_DISPLAY_NAME:?} alerts
       GF_SMTP_STARTTLS_POLICY: MandatoryStartTLS
       # Plain text only: Grafana's HTML template loads its font from Google
       # (against ADR 0001) and uses markup many mail clients render only in
       # part; its text template carries the same alert, links and labels.
       GF_EMAILS_CONTENT_TYPES: text/plain
       # Deployment configuration (ADR 0022); may be a distribution list.
-      ALERT_EMAIL: operators@app.localhost
+      ALERT_EMAIL: operators@app.${PRODUCT:?}.localhost
       # Alertmanager's grouping times, short here so `stack.sh alerts` is
       # quick; scripts/quadlet.sh writes production's 30s and 5m (ADR 0022).
       ALERT_GROUP_WAIT: ${ALERT_GROUP_WAIT:-5s}
@@ -1164,7 +1187,7 @@ services:
   # SMTP capture locally and in CI; the university relay in production.
   mail:
     image: docker.io/axllent/mailpit@sha256:ed9b00c609e77e99c79b93f1178255ebc271868920f2c69a8d166bd5634ed10d # v1.31.3
-    container_name: mail
+    container_name: ${PRODUCT:?}-mail
     profiles: [local]
     user: "65534:65534"
     command:
@@ -1182,7 +1205,7 @@ services:
 
   postgres-exporter:
     image: quay.io/prometheuscommunity/postgres-exporter@sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e # v0.20.1
-    container_name: postgres-exporter
+    container_name: ${PRODUCT:?}-postgres-exporter
     command: ["--web.config.file=/etc/observability/web-config.yml"]
     environment:
       DATA_SOURCE_URI: postgres:5432/postgres?sslmode=verify-full&sslrootcert=/trust/ca.crt
@@ -1197,7 +1220,7 @@ services:
 
   pgbouncer-exporter:
     image: quay.io/prometheuscommunity/pgbouncer-exporter@sha256:30f31b6c2efdad3647f8182cc7c1a3a19e42bae5d17387694989f969371c230d # v0.12.1
-    container_name: pgbouncer-exporter
+    container_name: ${PRODUCT:?}-pgbouncer-exporter
     # The password goes into the connection string through the environment,
     # never onto the command line.
     entrypoint: ["/bin/sh", "-c"]
@@ -1214,7 +1237,7 @@ services:
 
   valkey-exporter:
     image: docker.io/oliver006/redis_exporter@sha256:6ca518a72f30f7f576ef92963de1b91d3c3f5fd3aeac949f878bfda183587820 # v1.93.0
-    container_name: valkey-exporter
+    container_name: ${PRODUCT:?}-valkey-exporter
     command:
       - --redis.addr=rediss://valkey:6379
       - --redis.user=exporter
@@ -1231,7 +1254,7 @@ services:
   # Host CPU, memory and filesystems, read through the host's root.
   node-exporter:
     image: quay.io/prometheus/node-exporter@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0 # v1.12.1
-    container_name: node-exporter
+    container_name: ${PRODUCT:?}-node-exporter
     command:
       - --path.rootfs=/host
       - --web.config.file=/etc/observability/web-config.yml
@@ -1249,7 +1272,7 @@ services:
   # In production it must run on another machine.
   blackbox:
     image: quay.io/prometheus/blackbox-exporter@sha256:e753ff9f3fc458d02cca5eddab5a77e1c175eee484a8925ac7d524f04366c2fc # v0.28.0
-    container_name: blackbox
+    container_name: ${PRODUCT:?}-blackbox
     user: "65534:65534"
     command:
       - --config.file=/etc/blackbox/blackbox.yml
@@ -1263,7 +1286,7 @@ services:
 
   grafana-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: grafana-agent
+    container_name: ${PRODUCT:?}-grafana-agent
     depends_on:
       openbao:
         condition: service_started
@@ -1283,7 +1306,7 @@ services:
 
   postgres-exporter-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: postgres-exporter-agent
+    container_name: ${PRODUCT:?}-postgres-exporter-agent
     depends_on:
       openbao:
         condition: service_started
@@ -1303,7 +1326,7 @@ services:
 
   pgbouncer-exporter-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: pgbouncer-exporter-agent
+    container_name: ${PRODUCT:?}-pgbouncer-exporter-agent
     depends_on:
       openbao:
         condition: service_started
@@ -1323,7 +1346,7 @@ services:
 
   valkey-exporter-agent:
     image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
-    container_name: valkey-exporter-agent
+    container_name: ${PRODUCT:?}-valkey-exporter-agent
     depends_on:
       openbao:
         condition: service_started

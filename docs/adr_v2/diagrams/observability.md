@@ -25,7 +25,7 @@ flowchart LR
   pgbExp -->|"db · :6432"| pgbouncer[("pgbouncer")]
   vkExp -->|"app-data · :6379"| valkey[("valkey")]
   node -->|"host pid namespace,<br>/ read-only"| hostfs[/"host"/]
-  bb -->|"edge · HTTPS :8443<br>GET /api/ping"| nginx["nginx<br>(app.localhost)"]
+  bb -->|"edge · HTTPS :8443<br>GET /api/ping"| nginx["nginx<br>(app.feathers-skeleton.localhost)"]
 ```
 
 The API's `/health/ready` checks PgBouncer, Valkey and the `uploads` bucket; the same checks reach Prometheus as `dependency_up{dependency}`. The container healthcheck uses `/health/live` only, so a database outage never makes Podman restart the API.
@@ -56,8 +56,8 @@ flowchart LR
   grafana -->|"HTTPS :9090"| prom[("prometheus")]
   grafana -->|"HTTPS :3100"| loki[("loki")]
   grafana -->|"SMTP+STARTTLS :1025<br>plain text"| mail["mail locally,<br>university relay in production"]
-  people(["Operators"]) -->|"grafana.localhost via nginx"| grafana
-  people -->|"mail.localhost via nginx<br>(local inbox)"| mail
+  people(["Operators"]) -->|"grafana.feathers-skeleton.localhost via nginx"| grafana
+  people -->|"mail.feathers-skeleton.localhost via nginx<br>(local inbox)"| mail
 ```
 
 | From Loki | From Prometheus |

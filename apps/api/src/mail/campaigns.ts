@@ -2,11 +2,10 @@ import { getValidator, type TObject } from '@feathersjs/typebox'
 import type { Knex } from 'knex'
 import { LOCALES, type Locale } from '../locales.js'
 import { dataValidator } from '../validators.js'
-import type { CampaignKind } from './kind.js'
+import type { AppVariables, CampaignKind } from './kind.js'
 import type { MailOutbox } from './outbox.js'
 import { getMailKind } from './registry.js'
 import { renderMail, type RenderedMail } from './render.js'
-import { appVariables } from './templates.js'
 
 // Campaigns (ADR 0027): an admin picks a campaign kind, fills its
 // parameters, sees how many people it reaches and how it reads for one of
@@ -58,7 +57,7 @@ export const previewCampaign = async (
   knex: Knex,
   kind: CampaignKind,
   params: Record<string, unknown>,
-  publicOrigin: string,
+  app: AppVariables,
   limit: { count: number; windowSeconds: number }
 ): Promise<CampaignPreview> => {
   const recipients = () => kind.recipients(knex, params).as('r')
@@ -93,7 +92,7 @@ export const previewCampaign = async (
         locale,
         subject: revision.subject,
         body: revision.body,
-        variables: { ...variables, recipient, app: appVariables(publicOrigin) }
+        variables: { ...variables, recipient, app }
       })
     }
     return { ...base, recipient: { id: candidate.id, ...recipient }, previews }

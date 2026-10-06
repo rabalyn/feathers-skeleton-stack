@@ -23,7 +23,7 @@ RUN npm install -g --no-fund --no-audit --no-update-notifier \
  && rm -rf /tmp/pnpm-version /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
  && pnpm --version
 WORKDIR /repo
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json eslint.config.js ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json eslint.config.js product.env ./
 COPY apps/api/package.json apps/api/
 COPY packages/feathers-pinia/package.json packages/feathers-pinia/
 COPY apps/web/package.json apps/web/

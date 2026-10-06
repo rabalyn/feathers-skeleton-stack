@@ -60,7 +60,8 @@ scrape_configs:
 
   # The uptime check (ADR 0022): blackbox_exporter fetches the public
   # GET /api/ping through Nginx and reports the certificate's expiry. The
-  # public URLs are deployment configuration, in targets/uptime.yml.
+  # public URLs are deployment configuration, in targets/uptime.yml, which
+  # scripts/stack.sh writes locally.
   - job_name: uptime
     metrics_path: /probe
     params: { module: [public_ping] }

@@ -9,7 +9,7 @@ After=postgres.service
 ContainerName=migrate
 Environment=DATABASE_HOST=postgres DATABASE_PORT=5432 DATABASE_NAME=app DATABASE_USER=migrator DATABASE_PASSWORD_FILE=/run/secrets/database_password DATABASE_CA_FILE=/trust/ca.crt
 Exec=node dist/migrate.js
-Image=localhost/feathers-api:dev
+Image=localhost/feathers-skeleton-api:dev
 Network=db.network
 Volume=migrate-secrets.volume:/run/secrets:ro
 Volume=trust:/trust:ro

@@ -7,7 +7,7 @@ After=postgres.service
 
 [Container]
 ContainerName=pgbouncer
-Image=localhost/feathers-pgbouncer:dev
+Image=localhost/feathers-skeleton-pgbouncer:dev
 Network=app-data.network
 Network=db.network
 Network=netbox-data.network

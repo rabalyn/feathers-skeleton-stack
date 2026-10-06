@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Response } from '@playwright/test'
+import { HTTP_PORT, origin } from '../playwright.config.js'
 import { USER, loginAs } from './support.js'
 
 // The response headers as a browser receives them through Nginx (ADR 0016,
@@ -101,17 +102,17 @@ test('file bytes carry the api’s sandbox policy as their only policy', async (
 // The third-party UIs get the base headers only; a stricter Referrer-Policy
 // of their own is kept.
 test('the IdP, Mailpit and NetBox carry the base headers once, and none of the application’s', async ({ page }) => {
-  for (const [origin, referrer] of [
-    ['https://idp.localhost:8443/realms/feathers/', 'no-referrer'],
-    ['https://mail.localhost:8443/', 'no-referrer'],
-    ['https://netbox.localhost:8443/login/', 'same-origin']
+  for (const [url, referrer] of [
+    [`${origin('idp')}/realms/feathers/`, 'no-referrer'],
+    [`${origin('mail')}/`, 'no-referrer'],
+    [`${origin('netbox')}/login/`, 'same-origin']
   ] as const) {
-    const response = (await page.goto(origin))!
+    const response = (await page.goto(url))!
     await expectBaseHeaders(response)
     await expectOnce(response, 'referrer-policy', referrer)
-    expect(await values(response, 'permissions-policy'), origin).toHaveLength(0)
+    expect(await values(response, 'permissions-policy'), url).toHaveLength(0)
     const csp = await values(response, 'content-security-policy')
-    expect(csp.some((policy) => DOCUMENT_CSP.test(policy)), origin).toBe(false)
+    expect(csp.some((policy) => DOCUMENT_CSP.test(policy)), url).toBe(false)
   }
 })
 
@@ -130,9 +131,9 @@ const firstHop = async (browser: Browser, url: string) => {
 }
 
 test('plain HTTP redirects to the matched name over HTTPS', async ({ browser, baseURL }) => {
-  const host = new URL(baseURL!).hostname
-  expect(await firstHop(browser, `http://${host}:8080/a/path?q=1`)).toEqual({
+  const { hostname, port } = new URL(baseURL!)
+  expect(await firstHop(browser, `http://${hostname}:${HTTP_PORT}/a/path?q=1`)).toEqual({
     status: 301,
-    location: `https://${host}:8443/a/path?q=1`
+    location: `https://${hostname}:${port}/a/path?q=1`
   })
 })

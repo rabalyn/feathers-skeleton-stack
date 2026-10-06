@@ -3,7 +3,7 @@
     <q-header elevated>
       <q-toolbar>
         <q-btn flat dense round icon="menu" :aria-label="t('nav.menu')" @click="drawer = !drawer" />
-        <q-toolbar-title>{{ t('app.title') }}</q-toolbar-title>
+        <q-toolbar-title>{{ productName }}</q-toolbar-title>
         <LocaleSwitch />
         <q-btn flat no-caps icon="account_circle" :label="displayName" :to="{ name: 'profile' }" />
         <q-btn flat no-caps icon="logout" :label="t('auth.logout')" @click="logout" />
@@ -118,6 +118,9 @@ import { useSessionStore } from '@/stores/session'
 
 const session = useSessionStore()
 const { t, locale } = useI18n()
+
+// The product's display name (ADR 0035), from product.env at build time.
+const productName = import.meta.env.PRODUCT_DISPLAY_NAME
 const router = useRouter()
 
 const name = (role: Role) => role.name[locale.value as Locale] ?? role.key

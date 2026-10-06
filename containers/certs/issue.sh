@@ -46,7 +46,7 @@ if [ ! -s /ca/ca.key ]; then
   echo "certs: creating local root CA"
   openssl req -x509 -new -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes \
     -keyout /ca/ca.key -out /ca/ca.crt -days 3650 \
-    -subj "/CN=claude-feathers local CA $(hostname)-$(date +%s)" \
+    -subj "/CN=${CA_NAME:-local CA} $(hostname)-$(date +%s)" \
     -addext "basicConstraints=critical,CA:TRUE,pathlen:0" \
     -addext "keyUsage=critical,keyCertSign,cRLSign"
 fi

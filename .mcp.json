@@ -14,15 +14,9 @@
     },
     "playwright": {
       "type": "stdio",
-      "command": "podman",
+      "command": "bash",
       "args": [
-        "exec",
-        "-i",
-        "mcp-browser",
-        "node",
-        "mcp-server.js",
-        "--config",
-        "mcp.config.json"
+        "scripts/mcp-browser.sh"
       ]
     }
   }

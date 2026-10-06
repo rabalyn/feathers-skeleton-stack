@@ -11,7 +11,7 @@ import type { Locale } from '../../locales.js'
 import { templateVariables } from '../../mail/kind.js'
 import { MAIL_KINDS, getMailKind } from '../../mail/registry.js'
 import { TemplateError } from '../../mail/render.js'
-import { checkTemplate } from '../../mail/templates.js'
+import { appVariables, checkTemplate } from '../../mail/templates.js'
 import { PAGINATE } from '../../paginate.js'
 import {
   mailPreviewDataValidator,
@@ -171,7 +171,7 @@ const checkRevision = async (context: HookContext<MailTemplateRevisionService>) 
   const data = context.data as MailTemplateRevisionData
   const kind = getMailKind(data.kind)
   if (!kind) throw new BadRequest('No such mail kind', { kind: data.kind })
-  await checkTemplate(kind, data.locale, data, context.app.get('config').publicOrigin).catch(templateRefused)
+  await checkTemplate(kind, data.locale, data, appVariables(context.app.get('config'))).catch(templateRefused)
 }
 
 // The revision, its activation and the audit event commit together; the
@@ -209,7 +209,7 @@ export class MailPreviewService {
   async create(data: MailPreviewData, _params?: Params): Promise<MailPreview> {
     const kind = getMailKind(data.kind)
     if (!kind) throw new BadRequest('No such mail kind', { kind: data.kind })
-    return checkTemplate(kind, data.locale, data, this.app.get('config').publicOrigin).catch(templateRefused)
+    return checkTemplate(kind, data.locale, data, appVariables(this.app.get('config'))).catch(templateRefused)
   }
 }
 

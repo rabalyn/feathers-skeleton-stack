@@ -38,6 +38,12 @@ const COMPONENTS = [
   { id: 'host', image: null, files: [] }
 ]
 
+// The images built here, named after the project (ADR 0035):
+// localhost/<project>-<name>:dev. The project name is letters, digits and
+// hyphens, so it needs no escaping.
+if (!process.env.PRODUCT) throw new Error('PRODUCT is not set; run through scripts/inventory.sh')
+const BUILT_IMAGE = new RegExp(`^localhost/${process.env.PRODUCT}-([a-z0-9-]+):`)
+
 // The images production builds itself, by the directory of their
 // Containerfile: every image those pin must belong to a component.
 const BUILT = { api: 'api', backup: 'api', netbox: 'netbox', nginx: 'nginx', pgbouncer: 'pgbouncer', s3: 's3' }
@@ -92,7 +98,7 @@ const quadlet = join(ROOT, 'deploy/quadlet')
 for (const unit of readdirSync(quadlet).filter((file) => file.endsWith('.container'))) {
   const image = /^Image=(\S+)$/m.exec(readFileSync(join(quadlet, unit), 'utf8'))?.[1]
   if (!image) continue
-  const built = /^localhost\/feathers-([a-z0-9-]+):/.exec(image)
+  const built = BUILT_IMAGE.exec(image)
   if (built) {
     const dir = BUILT[built[1]]
     if (!dir) {

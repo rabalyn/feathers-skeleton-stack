@@ -43,7 +43,7 @@ describe('sites: the address lookup', () => {
     expect(karo5?.name).not.toContain('S1|01')
     expect(karo5?.nameEn).toMatch(/University Centre/)
     expect(karo5?.occupants.en.length).toBeGreaterThan(0)
-    expect(karo5?.netboxUrl).toBe(`https://netbox.localhost:8443/dcim/sites/${karo5?.id}/`)
+    expect(karo5?.netboxUrl).toBe(`${app.get('config').netboxPublicUrl}/dcim/sites/${karo5?.id}/`)
   })
 
   it('pages through every building', async () => {

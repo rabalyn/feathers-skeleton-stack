@@ -1,13 +1,14 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
+import { APP, origin } from '../playwright.config.js'
 import { ADMIN, USER, loginAs, nav } from './support.js'
 
 // Mail end to end (ADR 0027): the export-ready notification and a mailing
 // sent from the Mailings page leave through worker-e2e and arrive in
-// Mailpit, read here through Nginx at mail.localhost like a person would;
+// Mailpit, read here through Nginx at its mail host name like a person would;
 // that its HTML is rendered in full by every mail client Mailpit's check
 // knows; and the template editor refuses wording that cannot work.
 
-const MAILPIT = 'https://mail.localhost:8443'
+const MAILPIT = origin('mail')
 const UMA = 'uma.user@example.org'
 
 interface Message {
@@ -69,7 +70,7 @@ test('a user asks for their data in English, and the ready notification arrives 
   const text = await arrived(inbox, UMA, 'Your data export is ready', since)
   expect(text).toContain('Hello Uma User')
   expect(text).toContain('the data export for the TU-ID us01user you requested')
-  expect(text).toContain('https://e2e.localhost:8443/profile')
+  expect(text).toContain(`${APP}/profile`)
 
   await setLanguage(page, 'English', 'Deutsch')
   await expect(page.getByRole('button', { name: 'Meine Daten exportieren' })).toBeVisible()
@@ -110,7 +111,7 @@ test('an admin previews a mailing for an actual recipient, sends it, and it arri
   const text = await arrived(inbox, UMA, 'Ihre Dokumente wurden länger nicht bearbeitet', since)
   expect(text).toContain('Hallo Uma User')
   expect(text).toContain('- Mailing-Probe, zuletzt geändert am')
-  expect(text).toContain('https://e2e.localhost:8443/documents')
+  expect(text).toContain(`${APP}/documents`)
 
   // The campaign's progress and the delivery log say so too.
   await expect(async () => {
