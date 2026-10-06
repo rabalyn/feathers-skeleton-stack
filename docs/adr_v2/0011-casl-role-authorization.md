@@ -30,7 +30,7 @@ What operators and users may see differs between the products built on this skel
 | Custom | created by an admin | Stored, editable by an admin | Yes, while nobody holds it; otherwise **409** |
 
 - **Every catalogue permission is grantable**, configuration included. The line "configuration is the admin's alone", which other ADRs state for settings, mail and queues, describes the seeded defaults, not a guarantee. Only **role management** and the fixed core are outside the catalogue: creating, editing and deleting roles and assigning them to users is `admin`'s alone. Nobody else can change what anybody may do, themselves included.
-- A new account gets `user` on its first login ([0008](0008-authentication-saml2-ldap.md)). The break-glass account holds `admin`, that assignment cannot be removed, and the account cannot be disabled ([0008](0008-authentication-saml2-ldap.md)), so the application always has an administrator.
+- A new account gets `user` on its first login ([0008](0008-authentication-saml2-ldap.md)), or when product code makes it before that ([0009](0009-tu-id-identity-model.md#accounts-before-the-first-login)). The break-glass account holds `admin`, that assignment cannot be removed, and the account cannot be disabled ([0008](0008-authentication-saml2-ldap.md)), so the application always has an administrator.
 - A catalogue permission added later is granted to `admin` at once and to no other role until an admin grants it. Where a product wants it seeded for `operator` or `user`, the migration that introduces it inserts those rows, once; after that the database is authoritative.
 
 ### Seeded defaults

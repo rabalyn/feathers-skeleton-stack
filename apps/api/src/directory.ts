@@ -4,6 +4,7 @@ import type { LdapConfig } from './config.js'
 import { DIRECTORY_MAX_RESULTS as MAX_RESULTS } from './limits.js'
 
 // Directory lookup (ADR 0008): finding a person who has not logged in yet,
+// and the directory fields of an account made before the first login (ADR 0009),
 // with a read-only service account over LDAPS. Never used to authenticate.
 //
 // A search term is split into words; every word must be a prefix of the
@@ -47,6 +48,9 @@ export const searchFilter = (term: string): string => {
   return `(&(objectClass=person)${clauses.join('')})`
 }
 
+// One person by exact TU-ID, for making their account (ADR 0009).
+export const tuIdFilter = (tuId: string): string => `(&(objectClass=person)(cn=${escapeFilter`${tuId}`}))`
+
 // Pages are cut from one sorted list, so a page turn neither repeats nor
 // skips anybody: the directory itself returns entries in no stated order.
 const collator = new Intl.Collator('de', { sensitivity: 'base' })
@@ -72,6 +76,25 @@ export class Directory {
 
   // One connection per search: lookups are rare, and nothing stays bound.
   async search(term: string): Promise<DirectoryResult> {
+    const found = await this.query({
+      filter: searchFilter(term),
+      // Never more than the directory's own limit allows. A search that
+      // reaches it may have had more matches: the server answers
+      // sizeLimitExceeded, which ldapts returns as a result when a
+      // sizeLimit was asked for, but without telling it from exactly
+      // MAX_RESULTS matches.
+      sizeLimit: MAX_RESULTS
+    })
+    return { entries: found.entries.sort(byName), truncated: found.count >= MAX_RESULTS }
+  }
+
+  // The person with this TU-ID, or null when the directory does not know it.
+  async find(tuId: string): Promise<DirectoryEntry | null> {
+    const { entries } = await this.query({ filter: tuIdFilter(tuId), sizeLimit: 2 })
+    return entries.find((entry) => entry.tuId === tuId) ?? null
+  }
+
+  private async query({ filter, sizeLimit }: { filter: string; sizeLimit: number }) {
     const client = new Client({
       url: this.config.ldapUrl,
       timeout: 5000,
@@ -82,14 +105,9 @@ export class Directory {
       await client.bind(this.config.ldapBindDn, this.config.ldapBindPassword)
       const { searchEntries } = await client.search(this.config.ldapBaseDn, {
         scope: 'sub',
-        filter: searchFilter(term),
+        filter,
         attributes: ATTRIBUTES,
-        // Never more than the directory's own limit allows. A search that
-        // reaches it may have had more matches: the server answers
-        // sizeLimitExceeded, which ldapts returns as a result when a
-        // sizeLimit was asked for, but without telling it from exactly
-        // MAX_RESULTS matches.
-        sizeLimit: MAX_RESULTS,
+        sizeLimit,
         timeLimit: 5
       })
       const entries = searchEntries
@@ -100,8 +118,7 @@ export class Directory {
           email: first(entry.mail)
         }))
         .filter((entry): entry is DirectoryEntry => entry.tuId !== null)
-        .sort(byName)
-      return { entries, truncated: searchEntries.length >= MAX_RESULTS }
+      return { entries, count: searchEntries.length }
     } catch (error) {
       throw new DirectoryUnavailable((error as Error).message)
     } finally {

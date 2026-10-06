@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { searchFilter } from '../../src/directory.js'
+import { searchFilter, tuIdFilter } from '../../src/directory.js'
 
 // ADR 0008, 0018: every word is a prefix of one of four attributes, and
 // nothing a user types can change the filter's structure.
@@ -22,6 +22,15 @@ describe('directory search filter', () => {
   it('ignores surplus whitespace and caps the number of words', () => {
     expect(searchFilter('  ab  ')).toBe('(&(objectClass=person)(|(cn=ab*)(givenName=ab*)(sn=ab*)(mail=ab*)))')
     expect(searchFilter('a b c d e f').match(/\(\|/g)).toHaveLength(4)
+  })
+})
+
+describe('directory lookup by TU-ID (ADR 0009)', () => {
+  it('matches the TU-ID exactly, with filter syntax as text', () => {
+    expect(tuIdFilter('bk001blk')).toBe('(&(objectClass=person)(cn=bk001blk))')
+    expect(tuIdFilter('*')).toBe('(&(objectClass=person)(cn=\\2a))')
+    const filter = tuIdFilter('x)(cn=*')
+    expect(filter).toBe('(&(objectClass=person)(cn=x\\29\\28cn=\\2a))')
   })
 })
 

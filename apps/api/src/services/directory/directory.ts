@@ -14,8 +14,9 @@ export type DirectoryParams = Params<DirectoryQuery>
 export const DIRECTORY_PATH = 'directory'
 export const DIRECTORY_EXTERNAL_METHODS = ['find'] as const
 
-// Lookup only (ADR 0008): nothing is created from a result; a person gets an
-// account by logging in (ADR 0009). Available to admin and operator (ADR 0011).
+// Lookup only (ADR 0008): nothing is created from a result. A person gets an
+// account by logging in, or by product code that records something about
+// them (accountFor, ADR 0009). Available to admin and operator (ADR 0011).
 export class DirectoryService {
   constructor(
     private readonly directory: Directory,

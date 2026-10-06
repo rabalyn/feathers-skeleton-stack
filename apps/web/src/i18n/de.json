@@ -59,6 +59,8 @@
     "role": "Rollen",
     "enabled": "Aktiv",
     "createdAt": "Angelegt",
+    "lastLoginAt": "Letzte Anmeldung",
+    "neverLoggedIn": "nie",
     "noRoles": "Keine Rolle"
   },
   "users": {
@@ -199,6 +201,7 @@
       "login_refused": "Anmeldung abgelehnt",
       "logout": "Abgemeldet",
       "session_reuse-detected": "Wiederverwendetes Sitzungstoken erkannt",
+      "users_create": "Konto angelegt",
       "users_patch": "Konto geändert",
       "users_erase": "Konto gelöscht",
       "settings_update": "Einstellung geändert",

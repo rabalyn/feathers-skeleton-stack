@@ -59,6 +59,8 @@
     "role": "Roles",
     "enabled": "Active",
     "createdAt": "Created",
+    "lastLoginAt": "Last login",
+    "neverLoggedIn": "never",
     "noRoles": "No role"
   },
   "users": {
@@ -199,6 +201,7 @@
       "login_refused": "Login refused",
       "logout": "Logged out",
       "session_reuse-detected": "Reused session token detected",
+      "users_create": "Account created",
       "users_patch": "Account changed",
       "users_erase": "Account erased",
       "settings_update": "Setting changed",

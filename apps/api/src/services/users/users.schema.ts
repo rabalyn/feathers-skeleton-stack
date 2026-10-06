@@ -37,6 +37,9 @@ export const userSchema = Type.Object(
     // Set once the account is erased (ADR 0013): its directory fields and
     // avatar are gone, the account disabled for good.
     erasedAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
+    // The last login; null for an account made before its first login
+    // (ADR 0009), and so for anyone who never logged in.
+    lastLoginAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
     createdAt: Type.String({ format: 'date-time' }),
     updatedAt: Type.String({ format: 'date-time' })
   },
@@ -53,6 +56,7 @@ export const userResolver = resolve<User, HookContext>({
       : undefined
   ),
   erasedAt: virtual(async (user) => (user.erasedAt ? toIso(user.erasedAt) : null)),
+  lastLoginAt: virtual(async (user) => (user.lastLoginAt ? toIso(user.lastLoginAt) : null)),
   createdAt: virtual(async (user) => toIso(user.createdAt)),
   updatedAt: virtual(async (user) => toIso(user.updatedAt))
 })
@@ -67,8 +71,9 @@ export const userExternalResolver = resolve<User, HookContext>({
     (context.params.provider ? context.params.user?.id === user.id : context.method === 'get') ? value : undefined
 })
 
-// Created only by just-in-time provisioning on login (ADR 0008), never by an
-// external call: `create` is not an external method of this service.
+// Created by just-in-time provisioning on login (ADR 0008), or before the
+// first login from the directory by accountFor (src/accounts.ts, ADR 0009);
+// never by an external call: `create` is not an external method here.
 export const userDataSchema = Type.Pick(userSchema, ['tuId', 'givenName', 'surname', 'email', 'authSource'], {
   $id: 'UserData',
   additionalProperties: false
@@ -108,6 +113,7 @@ export const userQueryProperties = Type.Pick(userSchema, [
   'enabled',
   'authSource',
   'erasedAt',
+  'lastLoginAt',
   'createdAt'
 ])
 export const userQuerySchema = Type.Intersect(
