@@ -3,8 +3,9 @@
 
 [Unit]
 RequiresMountsFor=/srv/backups
+Wants=postgres.service s3.service
 Requires=migrate.service
-After=migrate.service
+After=migrate.service postgres.service s3.service
 
 [Container]
 ContainerName=backup

@@ -4,7 +4,7 @@ Illustrates [0023](../0023-secrets-management.md), [0016](../0016-nginx-and-tls-
 
 ## Start sequence
 
-`depends_on` in `compose.yaml` covers part of the order; the rest is `scripts/stack.sh up`, because OpenBao must be unsealed and every agent given a `secret_id` before anything that reads a secret starts. In production an administrator does the unseal step with `scripts/openbao.sh unseal`, and systemd follows the same dependencies through the generated Quadlet units.
+`depends_on` in `compose.yaml` covers part of the order, what each service needs to start and the stores it stays connected to ([0002](../0002-service-inventory-and-networks.md#dependencies)); the rest is `scripts/stack.sh up`, because OpenBao must be unsealed and every agent given a `secret_id` before anything that reads a secret starts. In production an administrator does the unseal step with `scripts/openbao.sh unseal`, and systemd follows the same dependencies through the generated Quadlet units.
 
 ```mermaid
 flowchart TD
