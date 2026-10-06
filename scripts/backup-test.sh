@@ -35,20 +35,20 @@ HELPER_IMAGE=docker.io/library/alpine:3.24.2@sha256:d56c381f961d307a21b3ca004cf1
 UNSEAL_VOLUME=$PRODUCT-openbao-local-unseal
 
 failures=0
-# Output is shown only for a failing check.
+# Output is shown only for a failing check; every check shows how long it took.
 check() { # <description> <command...>
-  local out
+  local out started=$SECONDS
   if out=$("${@:2}" 2>&1); then
-    printf '  ok    %s\n' "$1"
+    printf '  ok   %4ss  %s\n' $((SECONDS - started)) "$1"
   else
-    printf '  FAIL  %s\n' "$1"
+    printf '  FAIL %4ss  %s\n' $((SECONDS - started)) "$1"
     [[ -z $out ]] || sed 's/^/        /' <<<"$out"
     failures=$((failures + 1))
   fi
 }
 fails() { ! "$@" >/dev/null 2>&1; }
-log() { printf 'backup-test: %s\n' "$*"; }
-die() { printf 'backup-test: %s\n' "$*" >&2; exit 1; }
+log() { printf 'backup-test: %s %s\n' "$(date +%T)" "$*"; }
+die() { printf 'backup-test: %s %s\n' "$(date +%T)" "$*" >&2; exit 1; }
 
 running() { [[ $(podman container inspect -f '{{.State.Running}}' "$1" 2>/dev/null) == true ]]; }
 psql_super() { podman exec -i -u postgres "$(ctr postgres)" psql -q -tA -v ON_ERROR_STOP=1 -X -d "$1"; }

@@ -32,7 +32,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OPENBAO_DIR=$ROOT/containers/openbao
 QUADLET_DIR=${QUADLET_DIR:-$ROOT/deploy/quadlet}
 
-log() { printf '\033[1mopenbao:\033[0m %s\n' "$*" >&2; }
+log() { printf '\033[1mopenbao:\033[0m %s %s\n' "$(date +%T)" "$*" >&2; }
 die() { log "$*"; exit 1; }
 
 # The agents that run in production: those with a Quadlet unit.

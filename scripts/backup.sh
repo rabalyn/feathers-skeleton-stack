@@ -53,7 +53,7 @@ POSTGRES=${POSTGRES_CONTAINER:-${CONTAINER_PREFIX:-}postgres}
 S3=${S3_CONTAINER:-${CONTAINER_PREFIX:-}s3}
 HELPER_IMAGE=docker.io/library/alpine:3.24.2@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
 
-log() { printf '\033[1mbackup:\033[0m %s\n' "$*" >&2; }
+log() { printf '\033[1mbackup:\033[0m %s %s\n' "$(date +%T)" "$*" >&2; }
 die() { log "$*"; exit 1; }
 running() { [[ $(podman container inspect -f '{{.State.Running}}' "$1" 2>/dev/null) == true ]]; }
 
