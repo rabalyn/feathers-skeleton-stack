@@ -1,23 +1,15 @@
-import { AbilityBuilder, createAliasResolver, createMongoAbility, type MongoAbility, type RawRuleOf } from '@casl/ability'
+import { AbilityBuilder, createAliasResolver, createMongoAbility, type RawRuleOf } from '@casl/ability'
+import { entry, type AbilityUser, type AppAbility, type Can, type PermissionEntry } from './permission-entry.js'
+import { PRODUCT_PERMISSIONS, PRODUCT_TOKEN_EXCLUDED_PERMISSIONS } from './product/permissions.js'
 
 // Authorization (ADR 0011): the one module where rules live. Permissions are
 // declared here, in the catalogue; roles, which an admin composes from them,
 // are rows in the database. It is imported by the browser through the client
 // entry point to hide actions, so it must import nothing but @casl/ability
-// (ADR 0007). The server remains the only enforcement point.
+// (ADR 0007). The server remains the only enforcement point. A product's
+// own permissions are in product/permissions.ts (ADR 0035).
 
-export type AppAbility = MongoAbility
-
-// Who an ability is for: the account, and the permission keys its roles add
-// up to (loaded per request, ADR 0010).
-export interface AbilityUser {
-  id: string
-  permissions: readonly string[]
-  // The roles themselves, whose names the account may always read.
-  roleIds?: readonly string[]
-}
-
-type Can = AbilityBuilder<AppAbility>['can']
+export type { AbilityUser, AppAbility, PermissionEntry } from './permission-entry.js'
 
 // Feathers methods, grouped into the actions the permission catalogue uses.
 // No service offers `update` (ADR 0006), so `write` does not cover it.
@@ -35,21 +27,10 @@ const SESSION_FIELDS_WITHOUT_USER_AGENT = ['id', 'userId', 'issuedAt', 'lastUsed
 // grants.
 const ROLE_NAME_FIELDS = ['id', 'key', 'kind', 'name']
 
-export interface PermissionEntry {
-  key: string
-  // The permissions page shows the catalogue grouped by this; its label is
-  // the web app's translation `permissions.groups.<group>`.
-  group: string
-  grant: (can: Can, user: AbilityUser) => void
-}
-
-// The permission catalogue (ADR 0011). A product adds entries for its own
-// resources; the web app translates `permissions.keys.<key>` and
-// `permissions.descriptions.<key>`. A key is stable once released: roles
-// store it.
-type Grant = PermissionEntry['grant']
-const entry = <K extends string>(key: K, group: string, grant: Grant): PermissionEntry & { key: K } => ({ key, group, grant })
-
+// The permission catalogue (ADR 0011): the skeleton's entries here, the
+// product's in product/permissions.ts. The web app translates
+// `permissions.keys.<key>` and `permissions.descriptions.<key>`. A key is
+// stable once released: roles store it.
 const CATALOGUE_ENTRIES = [
   // One's own data beyond the fixed core (ADR 0011). The `everyone` role,
   // which every signed-in account holds, is seeded with all of them; an
@@ -139,12 +120,14 @@ const CATALOGUE_ENTRIES = [
   entry('api-tokens.create', 'api', (can) => can('create', 'api-tokens')),
   entry('api-tokens.manage', 'api', (can) => can(['read', 'delete'], 'api-tokens')),
   // gen:service permissions (ADR 0030)
+  ...PRODUCT_PERMISSIONS
 ]
 
 export type PermissionKey = (typeof CATALOGUE_ENTRIES)[number]['key']
 export const PERMISSIONS: readonly (PermissionEntry & { key: PermissionKey })[] = CATALOGUE_ENTRIES
-export const PERMISSION_KEYS: readonly PermissionKey[] = PERMISSIONS.map((entry) => entry.key)
-const CATALOGUE = new Map<string, PermissionEntry>(PERMISSIONS.map((entry) => [entry.key, entry]))
+export const PERMISSION_KEYS: readonly PermissionKey[] = PERMISSIONS.map((each) => each.key)
+const CATALOGUE = new Map<string, PermissionEntry>(PERMISSIONS.map((each) => [each.key, each]))
+if (CATALOGUE.size !== PERMISSIONS.length) throw new Error('permission catalogue: duplicate key')
 
 export const isPermissionKey = (key: string): key is PermissionKey => CATALOGUE.has(key)
 
@@ -267,7 +250,8 @@ export const TOKEN_EXCLUDED_PERMISSIONS: readonly PermissionKey[] = [
   'users.view-as',
   'erasures.create',
   'settings.manage',
-  'system-info.check'
+  'system-info.check',
+  ...PRODUCT_TOKEN_EXCLUDED_PERMISSIONS
 ]
 export const TOKEN_PERMISSION_KEYS: readonly PermissionKey[] = PERMISSION_KEYS.filter((key) => !TOKEN_EXCLUDED_PERMISSIONS.includes(key))
 export const isTokenPermission = (key: string): boolean => (TOKEN_PERMISSION_KEYS as readonly string[]).includes(key)

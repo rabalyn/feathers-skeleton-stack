@@ -23,6 +23,7 @@ import { systemInfo } from './system-info/system-info.js'
 import { updateChecks } from './update-checks/update-checks.js'
 import { preferences } from './preferences/preferences.js'
 import { docs } from './docs/docs.js'
+import { PRODUCT_SERVICES } from '../product/services.js'
 // gen:service imports (ADR 0030)
 
 export const services = (app: Application) => {
@@ -51,4 +52,6 @@ export const services = (app: Application) => {
   app.configure(preferences)
   app.configure(docs)
   // gen:service configure (ADR 0030)
+  // The product's, after the skeleton's (ADR 0035).
+  for (const service of PRODUCT_SERVICES) app.configure(service)
 }

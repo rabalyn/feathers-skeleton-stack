@@ -1,16 +1,19 @@
 import type { Knex } from 'knex'
+import { PRODUCT_PERSONAL_DATA } from '../product/personal-data.js'
 import type { PRODUCTION_BUCKETS } from '../storage.js'
 
 // The personal data registry (ADR 0013): every store that holds personal
 // data, how it contributes to a person's export and what erasure does to it.
 // A table that references users(id) must be listed here, which
 // test/integration/gdpr-registry.test.ts checks against the live schema; a
-// product adds its own tables here, and extends the export, never shrinks it.
+// product adds its own tables in product/personal-data.ts (ADR 0035), and
+// extends the export, never shrinks it.
 //
 // Erasure itself is the database function erase_user() (migration
-// 20260928000000_gdpr), so the api and a restore apply the same rules; the
-// rule named here documents it, and the test checks that the function names
-// every table whose rule is not `keep`.
+// 20260928000000_gdpr), so the api and a restore apply the same rules; it
+// calls erase_user_product() first, which a product's migrations replace for
+// its own tables. The rule named here documents it, and the test checks that
+// the two functions name every table whose rule is not `keep`.
 
 export type ErasureRule =
   // Direct identifiers are cleared; the row and its surrogate key stay.
@@ -291,8 +294,13 @@ export const PERSONAL_DATA: readonly RegistryEntry[] = [
     exported: false,
     erasure: 'delete',
     note: 'Generated exports; removed with their data_exports row, and after the export retention'
-  }
+  },
+  ...PRODUCT_PERSONAL_DATA
 ]
 
 export const TABLE_ENTRIES = PERSONAL_DATA.filter((entry): entry is TableEntry => entry.kind === 'table')
 export const BUCKET_ENTRIES = PERSONAL_DATA.filter((entry): entry is BucketEntry => entry.kind === 'bucket')
+
+// A product's export key beside a skeleton's would silently replace its data.
+const exportKeys = TABLE_ENTRIES.flatMap((entry) => (entry.export ? [entry.export.key] : []))
+if (new Set(exportKeys).size !== exportKeys.length) throw new Error('personal data registry: duplicate export key')

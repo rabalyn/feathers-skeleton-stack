@@ -83,8 +83,9 @@ export const MAIL_JOB_OPTIONS: JobsOptions = {
   removeOnFail: { count: 1000 }
 }
 
-// Every queue, in the order the admin's queue view lists them. A product's
-// new queue is added here.
+// The skeleton's queues, in the order the admin's queue view lists them. A
+// product's are declared in product/jobs.ts (ADR 0035); allQueueNames() in
+// jobs/product-queues.ts lists both.
 export const QUEUE_NAMES = [MAINTENANCE_QUEUE, DATA_EXPORTS_QUEUE, MAIL_QUEUE] as const
 
 // BullMQ opens its own connections from these options, with the settings

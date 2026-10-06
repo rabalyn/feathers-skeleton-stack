@@ -11,8 +11,10 @@ import tseslint from 'typescript-eslint'
 
 const CODE = ['**/*.{js,cjs,mjs,ts,mts,cts,vue}']
 const WEB = 'apps/web'
-// Every key the code uses must exist in every catalogue (ADR 0014).
-const i18nSettings = { 'vue-i18n': { localeDir: `${WEB}/src/i18n/*.json`, messageSyntaxVersion: '^11.0.0' } }
+// Every key the code uses must exist in every catalogue (ADR 0014). A
+// product's catalogues are merged into the skeleton's per locale (ADR 0035).
+const LOCALE_FILES = [`${WEB}/src/i18n/*.json`, `${WEB}/src/i18n/product/*.json`]
+const i18nSettings = { 'vue-i18n': { localeDir: LOCALE_FILES, messageSyntaxVersion: '^11.0.0' } }
 
 export default tseslint.config(
   {
@@ -81,6 +83,12 @@ export default tseslint.config(
     }
   },
   {
+    // The product's client types start empty (ADR 0035); the service
+    // generator fills them.
+    files: ['apps/api/src/product/client.ts'],
+    rules: { '@typescript-eslint/no-empty-object-type': 'off' }
+  },
+  {
     files: ['**/*.js', '**/*.cjs'],
     ...tseslint.configs.disableTypeChecked
   },
@@ -114,7 +122,7 @@ export default tseslint.config(
     }
   },
   {
-    files: [`${WEB}/src/i18n/*.json`],
+    files: LOCALE_FILES,
     languageOptions: { parser: jsoncParser },
     plugins: { '@intlify/vue-i18n': vueI18n },
     settings: i18nSettings,

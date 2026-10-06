@@ -26,6 +26,8 @@ import {
   type MailJob
 } from './queues.js'
 import { exportExpiry } from './export-expiry.js'
+import { PRODUCT_QUEUES } from '../product/jobs.js'
+import { checkProductQueues, type ProductJobContext, type ProductQueue } from './product-queues.js'
 import { objectPurge } from './object-purge.js'
 import { retentionCleanup } from './retention.js'
 import type { Labels } from '../system/prometheus.js'
@@ -35,8 +37,9 @@ import type { UpdateSources } from '../system/update-sources.js'
 
 // The worker's queues and their workers (ADR 0024): `maintenance`, whose
 // recurring jobs are job schedulers, so a schedule exists once in Valkey
-// however many workers run; and `data-exports`, filled by the api on request
-// (ADR 0013).
+// however many workers run; `data-exports`, filled by the api on request
+// (ADR 0013); `mail` (ADR 0027); and the product's own (product/jobs.ts,
+// ADR 0035).
 
 export { BUILD_EXPORT, DATA_EXPORTS_QUEUE, MAINTENANCE_QUEUE, QUEUE_PREFIX, UPDATE_CHECK, queueConnection } from './queues.js'
 
@@ -92,6 +95,8 @@ export interface MaintenanceOptions {
   // The update check's sources (ADR 0032); without them it is off, its
   // schedule removed and its metrics not exported.
   updateCheck?: { sources: UpdateSources; hostOs: () => Promise<Labels | null> }
+  // The product's queues (ADR 0035); tests pass their own.
+  productQueues?: readonly ProductQueue[]
 }
 
 // How often the worker re-reads the sending limit; a change applies to
@@ -110,8 +115,10 @@ export const startMaintenance = ({
   prefix = QUEUE_PREFIX,
   metrics,
   mail: sending,
-  updateCheck
+  updateCheck,
+  productQueues = PRODUCT_QUEUES
 }: MaintenanceOptions) => {
+  checkProductQueues(productQueues)
   const queue = new Queue(MAINTENANCE_QUEUE, { connection, prefix, defaultJobOptions: JOB_OPTIONS })
   const exportQueue = new Queue<ExportJob>(DATA_EXPORTS_QUEUE, { connection, prefix, defaultJobOptions: EXPORT_JOB_OPTIONS })
   // Notifications the worker causes, and the sweep.
@@ -209,6 +216,25 @@ export const startMaintenance = ({
     )
   )
 
+  // The product's queues (ADR 0035), each with a worker of its own.
+  const context: ProductJobContext = { knex, settings, storage, logger, mail }
+  const product = productQueues.map((definition) => {
+    const productQueue = new Queue(definition.name, { connection, prefix, defaultJobOptions: definition.defaultJobOptions ?? JOB_OPTIONS })
+    queues.push(productQueue)
+    const productWorker = observe(
+      new Worker(
+        definition.name,
+        async (job) => {
+          const handler = Object.hasOwn(definition.jobs, job.name) ? definition.jobs[job.name] : undefined
+          if (!handler) throw new UnrecoverableError(`unknown job ${job.name}`)
+          return handler(job, context)
+        },
+        { connection, prefix, concurrency: definition.concurrency ?? 1 }
+      )
+    )
+    return { definition, queue: productQueue, worker: productWorker }
+  })
+
   // One export at a time: each holds a part of the zip in memory and reads
   // the uploads bucket. Its last failed attempt marks the export failed, so
   // the requester sees it and may ask again.
@@ -294,7 +320,7 @@ export const startMaintenance = ({
   // Maintenance mode stops all job processing (ADR 0025): each worker
   // finishes the job it has and takes no further one until the mode is off.
   // Jobs wait in their queues meanwhile, schedules included.
-  const workers = [worker, exportWorker, ...(mailWorker ? [mailWorker] : [])]
+  const workers = [worker, exportWorker, ...(mailWorker ? [mailWorker] : []), ...product.map((each) => each.worker)]
   let paused = false
   let applying: Promise<void> | undefined
   const applyMaintenanceMode = (): Promise<void> =>
@@ -320,6 +346,7 @@ export const startMaintenance = ({
     exportWorker,
     mail,
     mailWorker,
+    product,
     applyMailLimit,
     // Creates or updates the schedules; safe to run on every start.
     schedule: async () => {
@@ -327,6 +354,16 @@ export const startMaintenance = ({
         await queue.upsertJobScheduler(name, DAILY, { name, opts: JOB_OPTIONS })
       }
       await queue.upsertJobScheduler(MAIL_SWEEP, MAIL_SWEEP_EVERY, { name: MAIL_SWEEP, opts: MAIL_SWEEP_OPTIONS })
+      // The product's schedules; one it no longer declares is removed.
+      for (const { definition, queue: productQueue } of product) {
+        const schedules = definition.schedules ?? []
+        for (const { job, repeat, data, opts } of schedules) {
+          await productQueue.upsertJobScheduler(job, repeat, { name: job, data, opts })
+        }
+        for (const existing of await productQueue.getJobSchedulers(0, -1)) {
+          if (!schedules.some((schedule) => schedule.job === existing.key)) await productQueue.removeJobScheduler(existing.key)
+        }
+      }
       if (updateCheck) {
         await queue.upsertJobScheduler(UPDATE_CHECK, DAILY, { name: UPDATE_CHECK, opts: JOB_OPTIONS })
         const latest = await knex(COMPONENT_UPDATES_TABLE).max<{ max: Date | null }>('attemptedAt as max').first()
@@ -370,9 +407,9 @@ export const startMaintenance = ({
     close: async () => {
       clearInterval(limitTimer)
       clearInterval(maintenanceTimer)
-      await Promise.all([worker.close(), exportWorker.close(), mailWorker?.close()])
+      await Promise.all([worker.close(), exportWorker.close(), mailWorker?.close(), ...product.map((each) => each.worker.close())])
       sending?.sender.close()
-      await Promise.all([queue.close(), exportQueue.close(), mail.close()])
+      await Promise.all([queue.close(), exportQueue.close(), mail.close(), ...product.map((each) => each.queue.close())])
     }
   }
 }
