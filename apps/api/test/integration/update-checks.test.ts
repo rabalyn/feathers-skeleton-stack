@@ -10,7 +10,7 @@ import { MAINTENANCE_QUEUE, UPDATE_CHECK, UPDATE_CHECK_ASKED_ID, queueConnection
 import { SYSTEM_INFO_CHECK_EVENT, type SystemInfoCheckStatus } from '../../src/services/system-info/system-info.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp, liftRateLimit, loadValkeyConfig } from '../support/app.js'
-import { makeUser } from '../support/roles.js'
+import { allBut, makeUser } from '../support/roles.js'
 import { PUBLIC_ORIGIN } from '../support/saml-idp.js'
 
 // Asking for the update check now (ADR 0032): `system-info.check` queues one
@@ -37,8 +37,9 @@ beforeAll(async () => {
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
   queue = new Queue(MAINTENANCE_QUEUE, { connection: queueConnection(await loadValkeyConfig()), prefix: app.get('config').queuePrefix })
   admin = await makeUser(app, 'ad01admn', 'admin')
-  operator = await makeUser(app, 'op01oper', 'operator')
-  member = await makeUser(app, 'us01user', 'user')
+  // Roles of the test's own (ADR 0035): everything else, and nothing.
+  operator = await makeUser(app, 'op01oper', allBut('system-info.check'))
+  member = await makeUser(app, 'us01user')
 })
 
 afterAll(async () => {

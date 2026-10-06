@@ -2,10 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Application } from '../../src/app.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
-import { grantRoles, type SeededRole } from '../support/roles.js'
+import { allBut, makeUser } from '../support/roles.js'
 
 // ADR 0008 (directory lookup) against the stack's LDAPS test directory, and
-// the directory row of ADR 0011's matrix. Seeded people: ad01admn Ada Admin,
+// ADR 0011's `directory.read`, which the operator holds and the member does
+// not, beside everything else (roles of the test's own, ADR 0035). Seeded people: ad01admn Ada Admin,
 // op01oper Otto Operator, us01user Uma User, us02othr Olaf Other.
 
 let app: Application
@@ -19,22 +20,17 @@ const find = (who: User, query: Record<string, unknown>) =>
 
 beforeAll(async () => {
   ;({ app } = await createTestApp())
-  const users = app.service('users')
-  const make = async (tuId: string, role: SeededRole) => {
-    const created = await users.create({ tuId, givenName: tuId, surname: 'T', email: `${tuId}@example.org`, authSource: 'saml' })
-    return grantRoles(app, created.id, [role])
-  }
   // Accounts of people who have logged in; us02othr never has.
-  admin = await make('ad01admn', 'admin')
-  operator = await make('op01oper', 'operator')
-  member = await make('us01user', 'user')
+  admin = await makeUser(app, 'ad01admn', 'admin', { surname: 'T' })
+  operator = await makeUser(app, 'op01oper', ['directory.read'], { surname: 'T' })
+  member = await makeUser(app, 'us01user', allBut('directory.read'), { surname: 'T' })
 })
 
 afterAll(async () => {
   await app.teardown()
 })
 
-describe('directory: read for admin and operator only', () => {
+describe('directory: read under directory.read only', () => {
   it.each([
     ['admin', () => admin],
     ['operator', () => operator]
@@ -52,7 +48,7 @@ describe('directory: read for admin and operator only', () => {
     expect(byTuId.us02othr).toMatchObject({ givenName: 'Olaf', surname: 'Other', userId: null })
   })
 
-  it('user may not look anybody up', async () => {
+  it('may not look anybody up without it', async () => {
     await expect(find(member, { q: 'us0' })).rejects.toMatchObject({ code: 403 })
   })
 

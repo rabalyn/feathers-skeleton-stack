@@ -1,5 +1,6 @@
 import type { AddressInfo } from 'node:net'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import type { PermissionKey } from '../../src/abilities.js'
 import type { Application } from '../../src/app.js'
 import type { ApiToken } from '../../src/services/api-tokens/api-tokens.schema.js'
 import type { User } from '../../src/services/users/users.schema.js'
@@ -10,7 +11,7 @@ import { db } from '../support/worker-database.js'
 // ADR 0029: API tokens, created by whoever holds `api-tokens.create`, used
 // over REST with `Authorization: Bearer`, bounded by the owner's rights on
 // every request, never beyond the permissions chosen for them, and never
-// with the fixed core.
+// with the fixed core. The users hold roles of the test's own (ADR 0035).
 
 let app: Application
 let base: string
@@ -21,7 +22,9 @@ let adminLogin: string
 let operatorLogin: string
 let memberLogin: string
 let operatorRoleId: string
-let operatorPermissions: string[]
+// The operator's, but for api-tokens.create, which no seeded role but admin
+// holds.
+const operatorPermissions: PermissionKey[] = ['users.read', 'documents.all', 'api-tokens.own']
 
 const login = async (user: User): Promise<string> => {
   const { session } = await app.get('sessions').issue(user.id)
@@ -41,25 +44,21 @@ const createToken = async (bearer: string, permissions: string[], extra: Record<
   return json<ApiToken>(response)
 }
 
-const setOperatorPermissions = (permissions: string[]) => app.service('roles').patch(operatorRoleId, { permissions })
+const setOperatorPermissions = (permissions: PermissionKey[]) => app.service('roles').patch(operatorRoleId, { permissions })
 
 beforeAll(async () => {
   ;({ app } = await createTestApp())
   base = `http://127.0.0.1:${((await app.listen(0)).address() as AddressInfo).port}/api`
   admin = await makeUser(app, 'tk01admn', 'admin')
-  operator = await makeUser(app, 'tk02oper', 'operator')
-  member = await makeUser(app, 'tk03user', 'user')
+  operator = await makeUser(app, 'tk02oper', [...operatorPermissions, 'api-tokens.create'])
+  member = await makeUser(app, 'tk03user', ['api-tokens.own'])
   adminLogin = await login(admin)
   operatorLogin = await login(operator)
   memberLogin = await login(member)
-  operatorRoleId = await roleIdOf(app, 'operator')
-  operatorPermissions = (await app.service('roles').get(operatorRoleId)).permissions ?? []
-  // Seeded, only admin creates tokens; operators may here.
-  await setOperatorPermissions([...operatorPermissions, 'api-tokens.create'])
+  operatorRoleId = await roleIdOf(app, 'tk02oper')
 })
 
 afterAll(async () => {
-  await setOperatorPermissions(operatorPermissions)
   await app.teardown()
 })
 

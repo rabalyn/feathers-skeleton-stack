@@ -5,7 +5,7 @@ import type { User } from '../../src/services/users/users.schema.js'
 import { COMPONENTS, INVENTORY } from '../../src/system/components.js'
 import { COMPONENT_UPDATES_TABLE } from '../../src/system/update-check.js'
 import { createTestApp } from '../support/app.js'
-import { makeUser } from '../support/roles.js'
+import { allBut, makeUser } from '../support/roles.js'
 
 // ADR 0032: the system-info report, for `system-info.read` only: per
 // component the declared version, the running one from the stack's
@@ -22,7 +22,7 @@ const as = (user: User) => ({ provider: 'rest' as const, user, authenticated: tr
 beforeAll(async () => {
   ;({ app } = await createTestApp())
   admin = await makeUser(app, 'ad01admn', 'admin')
-  member = await makeUser(app, 'us01user', 'user')
+  member = await makeUser(app, 'us01user', allBut('system-info.read'))
 })
 
 afterAll(async () => {

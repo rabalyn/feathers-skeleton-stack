@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ADMIN, loginAs, nav, navLabels } from './support.js'
+import { ADMIN, loginAs, nav, navLabels, expectNav, USER_ROLE } from './support.js'
 
 // Read-only view-as (ADR 0028): an admin sees the application as a user
 // does, can change nothing there, and returns to their own view.
@@ -13,9 +13,9 @@ test('an admin views the application as a user, read-only, and ends it', async (
   await expect(banner).toBeVisible()
   await expect(page).toHaveURL(/\/profile$/)
   await expect(page.locator('[data-field="tuId"]')).toHaveText('us01user')
-  await expect(page.locator('[data-field="role"]')).toHaveText('Benutzer')
+  await expect(page.locator('[data-field="role"]')).toHaveText(USER_ROLE)
   // What the user sees, and nothing to change: no picture upload, no export.
-  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Dokumente', 'Gebäude'])
+  await expectNav(page, ['Mein Profil', 'Dokumente', 'Gebäude'])
   await expect(page.locator('[data-test="avatar-input"]')).toHaveCount(0)
   await expect(page.locator('[data-test="my-data"]')).toHaveCount(0)
 

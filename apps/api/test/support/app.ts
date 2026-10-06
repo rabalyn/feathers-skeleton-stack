@@ -19,6 +19,7 @@ import { createKnex } from '../../src/db.js'
 import { RATE_LIMITS, type RateLimitBucket } from '../../src/rate-limit.js'
 import { SETTINGS } from '../../src/settings/registry.js'
 import { createValkey } from '../../src/valkey.js'
+import { emptyEveryone } from './roles.js'
 import { IDP_ENTITY_ID, IDP_SSO_URL, PUBLIC_ORIGIN, TestIdp, keyPair, type KeyPair } from './saml-idp.js'
 import { db, workerDatabaseConfig } from './worker-database.js'
 
@@ -51,14 +52,19 @@ export interface TestAppOptions {
   netbox?: Partial<NetboxConfig>
   // E.g. a Prometheus nothing listens on, or the update check off.
   system?: Partial<SystemConfig>
+  // Keeps what the migrations seed `everyone` with, for the test of the
+  // seeded defaults; otherwise it grants nothing (ADR 0035).
+  seededEveryone?: boolean
 }
 
 // An application on this worker's database, not listening on any port, with
 // a freshly generated SP key pair and a test IdP whose certificate it trusts.
 // Service calls with `provider` set go through the same hooks as REST and
 // WebSocket requests. Its rate-limit counters live under a prefix of its own,
-// so test files never share a limit.
+// so test files never share a limit. `everyone` grants nothing in its
+// database: tests own their roles (support/roles.ts).
 export const createTestApp = async (options: TestAppOptions = {}): Promise<TestContext> => {
+  if (!options.seededEveryone) await emptyEveryone()
   const [sp, idpKey] = await Promise.all([keyPair('sp.test'), keyPair('idp.test')])
   const database = workerDatabaseConfig()
   const valkeyConfig = await loadValkeyConfig()

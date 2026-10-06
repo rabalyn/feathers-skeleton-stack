@@ -58,7 +58,7 @@ export const customTest = (n: Names) => `import { afterAll, beforeAll, describe,
 import type { Application } from '../../src/app.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
-import { makeUser } from '../support/roles.js'
+import { allBut, makeUser } from '../support/roles.js'
 
 // The \`${n.path}\` service as generated (ADR 0030): \`${n.permission}\`
 // lets one ask for it, and nobody else may. Extend this with the service.
@@ -72,7 +72,9 @@ const as = (user: User) => ({ provider: 'rest' as const, user, authenticated: tr
 beforeAll(async () => {
   ;({ app } = await createTestApp())
   admin = await makeUser(app, 'ad01admn', 'admin')
-  member = await makeUser(app, 'us01user', 'user')
+  // Everything but the service's permission, through a role of the test's
+  // own (ADR 0035).
+  member = await makeUser(app, 'us01user', allBut('${n.permission}'))
 })
 
 afterAll(async () => {

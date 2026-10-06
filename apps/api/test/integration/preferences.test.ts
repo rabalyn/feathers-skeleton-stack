@@ -2,11 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Application } from '../../src/app.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
-import { makeUser, roleIdOf } from '../support/roles.js'
+import { allBut, makeUser } from '../support/roles.js'
 
-// Personal preferences (decided 2026-10-02, ADR 0014): every signed-in
-// person keeps their own, through `profile.preferences` on the `everyone`
-// role, and sees nobody else's.
+// Personal preferences (decided 2026-10-02, ADR 0014): whoever holds
+// `profile.preferences`, which `everyone` is seeded with, keeps their own and
+// sees nobody else's. Here it comes from roles of the test's own (ADR 0035).
 
 let app: Application
 let member: User
@@ -16,8 +16,8 @@ const as = (user: User) => ({ provider: 'rest' as const, user, authenticated: tr
 
 beforeAll(async () => {
   ;({ app } = await createTestApp())
-  member = await makeUser(app, 'us01user', 'user')
-  other = await makeUser(app, 'us02user', 'user')
+  member = await makeUser(app, 'us01user', ['profile.preferences'])
+  other = await makeUser(app, 'us02user', ['profile.preferences'])
 })
 
 afterAll(async () => {
@@ -59,17 +59,10 @@ describe('preferences', () => {
     await expect(service.create({ key: 'navOrder', value: ['Not A Route'] }, as(member))).rejects.toMatchObject({ code: 400 })
   })
 
-  it('refuses whoever the everyone role stops granting it to', async () => {
-    const everyone = await roleIdOf(app, 'everyone')
-    const admin = await makeUser(app, 'ad01admn', 'admin')
-    const { permissions } = await app.service('roles').get(everyone)
-    await app.service('roles').patch(everyone, { permissions: permissions!.filter((key) => key !== 'profile.preferences') }, as(admin))
-    try {
-      await expect(app.service('preferences').find(as(member))).rejects.toMatchObject({ code: 403 })
-      await expect(app.service('preferences').create({ key: 'navOrder', value: [] }, as(member))).rejects.toMatchObject({ code: 403 })
-    } finally {
-      await app.service('roles').patch(everyone, { permissions }, as(admin))
-    }
+  it('refuses whoever lacks profile.preferences, whatever else they hold', async () => {
+    const without = await makeUser(app, 'us03none', allBut('profile.preferences'))
+    await expect(app.service('preferences').find(as(without))).rejects.toMatchObject({ code: 403 })
+    await expect(app.service('preferences').create({ key: 'navOrder', value: [] }, as(without))).rejects.toMatchObject({ code: 403 })
   })
 
   it('is deleted on erasure (ADR 0013)', async () => {

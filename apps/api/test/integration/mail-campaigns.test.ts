@@ -7,11 +7,13 @@ import type { MailSender, Recipient } from '../../src/mail/sender.js'
 import type { RenderedMail } from '../../src/mail/render.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
-import { grantRoles, type SeededRole } from '../support/roles.js'
+import { allBut, makeUser, type Grant } from '../support/roles.js'
 
 // ADR 0027: an admin previews a campaign for an actual recipient, sends it
 // by hand, and what goes out is the wording previewed; the worker resolves
-// the recipients once, however often it runs. ADR 0011: admins only.
+// the recipients once, however often it runs. ADR 0011: `mail.manage` only,
+// which the operator lacks beside everything else and the recipients lack
+// with everything (roles of the test's own, ADR 0035).
 
 let app: Application
 let admin: User
@@ -23,10 +25,8 @@ const KIND = 'documents.stale-reminder'
 // Older than anything another test file creates.
 const PARAMS = { olderThanDays: 3000 }
 
-const make = async (tuId: string, givenName: string, surname: string, role: SeededRole = 'user') => {
-  const created = await app.service('users').create({ tuId, givenName, surname, email: `${tuId}@example.test`, authSource: 'saml' })
-  return grantRoles(app, created.id, [role])
-}
+const make = (tuId: string, givenName: string, surname: string, grant: Grant = []) =>
+  makeUser(app, tuId, grant, { givenName, surname, email: `${tuId}@example.test` })
 
 const oldDocument = async (owner: User, title: string) => {
   const [file] = await knex()('files')
@@ -38,7 +38,7 @@ const oldDocument = async (owner: User, title: string) => {
 beforeAll(async () => {
   ;({ app } = await createTestApp())
   admin = await make('mc01admn', 'Ada', 'Admin', 'admin')
-  operator = await make('mc02oper', 'Otto', 'Operator', 'operator')
+  operator = await make('mc02oper', 'Otto', 'Operator', allBut('mail.manage'))
   const anna = await make('mc03anna', 'Anna', 'Albers')
   const bert = await make('mc04bert', 'Bert', 'Berger')
   const gone = await make('mc05gone', 'Gina', 'Gone')
@@ -152,11 +152,11 @@ describe('sending a campaign', () => {
   })
 })
 
-describe('campaigns: admins only (ADR 0011)', () => {
+describe('campaigns: mail.manage only (ADR 0011)', () => {
   it.each([
-    ['operator', () => operator],
-    ['user', () => people[0]!]
-  ])('%s neither previews, sends nor sees campaigns or the delivery log', async (_role, who) => {
+    ['everything else', () => operator],
+    ['nothing', () => people[0]!]
+  ])('holding %s, one neither previews, sends nor sees campaigns or the delivery log', async (_role, who) => {
     await expect(app.service('mail-campaign-previews').create({ kind: KIND, params: PARAMS }, as(who()))).rejects.toMatchObject({ code: 403 })
     await expect(app.service('mail-campaigns').create({ kind: KIND, params: PARAMS }, as(who()))).rejects.toMatchObject({ code: 403 })
     await expect(app.service('mail-campaigns').find(as(who()))).rejects.toMatchObject({ code: 403 })

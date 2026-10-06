@@ -7,7 +7,7 @@ import type { User } from '../../src/services/users/users.schema.js'
 import { SETTINGS } from '../../src/settings/registry.js'
 import { createValkey } from '../../src/valkey.js'
 import { createTestApp, loadValkeyConfig } from '../support/app.js'
-import { makeUser } from '../support/roles.js'
+import { allBut, makeUser } from '../support/roles.js'
 import { db } from '../support/worker-database.js'
 
 // ADR 0010, 0034: an endpoint that is costly or can be turned against
@@ -97,7 +97,7 @@ describe('with Valkey available', () => {
   })
 
   it('counts under the user, in a one-minute window', async () => {
-    const user = await makeUser(app, 'rl03user')
+    const user = await makeUser(app, 'rl03user', ['sites.read'])
     await send(base, await login(app, user), 'siteLookup')
     const ttl = await app.get('valkey').pttl(`${rateLimitPrefix}:siteLookup:${user.id}`)
     expect(ttl).toBeGreaterThan(0)
@@ -105,7 +105,7 @@ describe('with Valkey available', () => {
   })
 
   it('stores nothing past the limit', async () => {
-    const user = await makeUser(app, 'rl04user')
+    const user = await makeUser(app, 'rl04user', ['files.upload'])
     const bearer = await login(app, user)
     await setLimit('uploads', 1)
     const png = Buffer.concat([
@@ -140,7 +140,7 @@ describe('with Valkey available', () => {
   })
 
   it('a raised limit applies at once (runtime setting)', async () => {
-    const user = await makeUser(app, 'rl06user')
+    const user = await makeUser(app, 'rl06user', ['sites.read'])
     const bearer = await login(app, user)
     await setLimit('siteLookup', 1)
     await send(base, bearer, 'siteLookup')
@@ -150,10 +150,10 @@ describe('with Valkey available', () => {
   })
 
   it('a call that is refused before the limit uses none of it', async () => {
-    const member = await makeUser(app, 'rl07user')
+    const member = await makeUser(app, 'rl07user', allBut('mail.manage'))
     const bearer = await login(app, member)
     await setLimit('mailCampaigns', 1)
-    // Members may not send campaigns: 403, not counted.
+    // Without mail.manage, no campaign: 403, not counted.
     expect((await send(base, bearer, 'mailCampaigns')).status).toBe(403)
     expect(await app.get('valkey').exists(`${rateLimitPrefix}:mailCampaigns:${member.id}`)).toBe(0)
   })

@@ -3,10 +3,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Application } from '../../src/app.js'
 import type { User, UserQuery } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
-import { grantRoles, roleIdOf, type SeededRole } from '../support/roles.js'
+import { makeUser, roleIdOf } from '../support/roles.js'
 
-// ADR 0011's permission matrix is the specification: each `users` cell has a
-// test here, including the denied ones (ADR 0018).
+// The `users` rules of ADR 0011, each tested with and without the permission
+// that grants it, including the denied cells (ADR 0018). The users hold roles
+// of the test's own (ADR 0035): `operator` reads every user, `member` and
+// `other` hold nothing beyond the fixed core and their own locale.
 
 let app: Application
 let admin: User
@@ -20,21 +22,10 @@ const as = (user: User) => ({ provider: 'rest' as const, user, authenticated: tr
 
 beforeAll(async () => {
   ;({ app } = await createTestApp())
-  const users = app.service('users')
-  const make = async (tuId: string, role: SeededRole) => {
-    const created = await users.create({
-      tuId,
-      givenName: tuId,
-      surname: 'Test',
-      email: `${tuId}@example.org`,
-      authSource: 'saml'
-    })
-    return grantRoles(app, created.id, [role])
-  }
-  admin = await make('ad01admn', 'admin')
-  operator = await make('op01oper', 'operator')
-  member = await make('us01user', 'user')
-  other = await make('us02othr', 'user')
+  admin = await makeUser(app, 'ad01admn', 'admin')
+  operator = await makeUser(app, 'op01oper', ['users.read', 'profile.locale'])
+  member = await makeUser(app, 'us01user', ['profile.locale'])
+  other = await makeUser(app, 'us02othr', ['profile.locale'])
 })
 
 afterAll(async () => {
@@ -89,7 +80,7 @@ describe('users: boundary', () => {
   })
 })
 
-describe('users: own user record — read for every role', () => {
+describe('users: own user record — read for every account', () => {
   it.each([
     ['admin', () => admin],
     ['operator', () => operator],
@@ -100,7 +91,7 @@ describe('users: own user record — read for every role', () => {
   })
 })
 
-describe('users: all user records — read for admin and operator only', () => {
+describe('users: all user records — read under users.read', () => {
   it.each([
     ['admin', () => admin],
     ['operator', () => operator]
@@ -140,16 +131,16 @@ describe('users: all user records — read for admin and operator only', () => {
 describe('users: roles on the record (ADR 0011)', () => {
   it('carries the ids of the roles held, and the permissions to the holder only', async () => {
     const own = await app.service('users').get(operator.id, as(operator))
-    expect(own.roleIds).toEqual([await roleIdOf(app, 'operator')])
-    expect(own.permissions).toEqual(expect.arrayContaining(['users.read', 'documents.all']))
+    expect(own.roleIds).toEqual([await roleIdOf(app, 'op01oper')])
+    expect(own.permissions?.sort()).toEqual(['profile.locale', 'users.read'])
     const seen = await app.service('users').get(operator.id, as(admin))
     expect(seen.roleIds).toEqual(own.roleIds)
     expect(seen).not.toHaveProperty('permissions')
   })
 
   it('lists the holders of a role', async () => {
-    const page = await app.service('users').find({ ...as(admin), query: { roleId: await roleIdOf(app, 'user') } })
-    expect(page.data.map((u) => u.tuId).sort()).toEqual(['us01user', 'us02othr'])
+    const page = await app.service('users').find({ ...as(admin), query: { roleId: await roleIdOf(app, 'us01user') } })
+    expect(page.data.map((u) => u.tuId)).toEqual(['us01user'])
   })
 
   it('is not assigned through users.patch', async () => {
@@ -159,7 +150,7 @@ describe('users: roles on the record (ADR 0011)', () => {
   })
 })
 
-describe('users: account enable / disable — write for admin only', () => {
+describe('users: account enable / disable — write under users.enable', () => {
   it('admin disables and re-enables an account', async () => {
     expect((await app.service('users').patch(other.id, { enabled: false }, as(admin))).enabled).toBe(false)
     expect((await app.service('users').patch(other.id, { enabled: true }, as(admin))).enabled).toBe(true)
@@ -190,7 +181,7 @@ describe('users: directory fields — writable by nobody', () => {
   })
 })
 
-describe('users: own locale — write for every role (ADR 0027)', () => {
+describe('users: own locale — write under profile.locale (ADR 0027)', () => {
   it.each([
     ['admin', () => admin],
     ['operator', () => operator],
@@ -200,6 +191,11 @@ describe('users: own locale — write for every role (ADR 0027)', () => {
     const result = await app.service('locales').create({ locale: 'en' }, as(who()))
     expect(result).toMatchObject({ id: who().id, locale: 'en' })
     await app.service('locales').create({ locale: 'de' }, as(who()))
+  })
+
+  it('is refused without profile.locale', async () => {
+    const without = await makeUser(app, 'us03none')
+    await expect(app.service('locales').create({ locale: 'en' }, as(without))).rejects.toMatchObject({ code: 403 })
   })
 
   it('refuses a locale the application does not have', async () => {

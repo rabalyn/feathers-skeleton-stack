@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ADMIN, OPERATOR, USER, loginAs, nav, navLabels } from './support.js'
+import { ADMIN, OPERATOR, USER, loginAs, nav, navLabels, OPERATOR_ROLE, skeletonNav } from './support.js'
 
 // Roles and permissions (ADR 0011): an admin creates a role, grants it a
 // permission, previews it, and deletes it once nobody holds it. Nobody else
@@ -9,13 +9,14 @@ test('an admin creates, grants, previews and deletes a role', async ({ page }) =
   await loginAs(page, ADMIN)
   await nav(page).getByRole('link', { name: 'Rollen & Rechte' }).click()
 
-  // The fixed and the built-in roles, as columns.
+  // The fixed, the built-in and the suite's own roles, as columns; a product
+  // may rename the built-in ones (ADR 0035), so they are known by their kind.
   const header = page.locator('thead')
   await expect(header).toContainText('Administration')
-  await expect(header).toContainText('Betrieb')
-  await expect(header).toContainText('Benutzer')
   await expect(header).toContainText('Fest: stets jedes Recht')
-  await expect(header).toContainText('Alle Angemeldeten')
+  await expect(header).toContainText('Haben alle Angemeldeten ohne Zuweisung')
+  await expect(header.getByText('Eingebaut: änderbar, nicht löschbar')).toHaveCount(2)
+  await expect(header).toContainText(OPERATOR_ROLE)
   await expect(page.getByRole('checkbox', { name: 'Administration: Einstellungen ändern' })).toBeDisabled()
 
   await page.getByRole('button', { name: 'Neue Rolle' }).click()
@@ -35,10 +36,12 @@ test('an admin creates, grants, previews and deletes a role', async ({ page }) =
   await expect(page.getByRole('checkbox', { name: 'Prüfung: Alle Aktivitäten sehen' })).toBeChecked()
 
   // The preview shows the navigation as the role would: a role without
-  // documents has none, but its activity log.
+  // documents has none, but its activity log. What else it shows comes from
+  // `everyone`, which a product may extend (ADR 0035).
   await page.locator('th').filter({ hasText: 'Prüfung' }).getByRole('button', { name: 'Vorschau' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Vorschau als „Prüfung“' })).toBeVisible()
-  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Aktivitätsprotokoll'])
+  await expect.poll(() => skeletonNav(page)).toContain('Aktivitätsprotokoll')
+  expect(await skeletonNav(page)).not.toContain('Dokumente')
   await page.getByRole('button', { name: 'Vorschau beenden' }).click()
   await expect(page).toHaveURL(/\/permissions$/)
   await expect(navLabels(page)).toContainText(['Rollen & Rechte'])
@@ -57,12 +60,19 @@ test('an operator does not reach the permissions page', async ({ page }) => {
 })
 
 // ADR 0011, decided 2026-10-01: what everyone holds is the `everyone` role,
-// editable like any other; the own export is the fixed core and stays.
+// editable like any other; the own export is the fixed core and stays. A
+// product may have withdrawn own activity already (ADR 0035): the test
+// grants it first, and puts back what it found.
 test('an admin withdraws own activity from everyone, and a user loses it but keeps the export', async ({ page, browser }) => {
   await loginAs(page, ADMIN)
   await nav(page).getByRole('link', { name: 'Rollen & Rechte' }).click()
   const own = page.getByRole('checkbox', { name: 'Alle Angemeldeten: Eigene Aktivitäten' })
-  await expect(own).toBeChecked()
+  await expect(own).toBeEnabled()
+  const granted = await own.isChecked()
+  if (!granted) {
+    await own.click()
+    await expect(own).toBeChecked()
+  }
   await own.click()
   await expect(own).not.toBeChecked()
 
@@ -72,8 +82,10 @@ test('an admin withdraws own activity from everyone, and a user loses it but kee
     await expect(user.getByRole('heading', { name: 'Meine Daten' })).toBeVisible()
     await expect(user.getByRole('heading', { name: 'Meine Aktivitäten' })).toHaveCount(0)
   } finally {
-    await own.click()
-    await expect(own).toBeChecked()
+    if (granted) {
+      await own.click()
+      await expect(own).toBeChecked()
+    }
     await user.context().close()
   }
 })

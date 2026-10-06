@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { APP } from '../playwright.config.js'
-import { ADMIN, IDP_ORIGIN, OPERATOR, USER, loginAs, nav, navLabels } from './support.js'
+import { ADMIN, IDP_ORIGIN, OPERATOR, USER, loginAs, nav, expectNav, E2E_ROLES, OPERATOR_ROLE, USER_ROLE } from './support.js'
 
 // SAML2 login through the local IdP into the real frontend (ADR 0014, 0015):
 // session restore with an in-memory access token, role-based visibility,
@@ -21,7 +21,7 @@ test('login, session restore, profile and immediate logout', async ({ page, cont
   await expect(page).toHaveURL(/\/profile$/)
   await expect(page.locator('[data-field="tuId"]')).toHaveText('us01user')
   await expect(page.locator('[data-field="givenName"]')).toHaveText('Uma')
-  await expect(page.locator('[data-field="role"]')).toHaveText('Benutzer')
+  await expect(page.locator('[data-field="role"]')).toHaveText(USER_ROLE)
 
   const [cookie] = (await context.cookies()).filter((c) => c.name === 'refresh_token')
   expect(cookie).toMatchObject({ httpOnly: true, secure: true, sameSite: 'Strict', path: '/api/authentication' })
@@ -36,14 +36,14 @@ test('login, session restore, profile and immediate logout', async ({ page, cont
   await expect(page.locator('[data-field="tuId"]')).toHaveText('us01user')
 
   // A user sees only their profile.
-  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Dokumente', 'Gebäude'])
+  await expectNav(page, ['Mein Profil', 'Dokumente', 'Gebäude'])
   await page.goto('/users')
   await expect(page).toHaveURL(/\/profile$/)
 
   // German by default, English on request, and the choice is remembered.
   await page.getByRole('button', { name: 'Sprache' }).click()
   await page.getByRole('menuitem', { name: 'English' }).or(page.getByText('English', { exact: true })).click()
-  await expect(page.locator('[data-field="role"]')).toHaveText('User')
+  await expect(page.locator('[data-field="role"]')).toHaveText(E2E_ROLES['e2e-user'].name.en)
   await page.reload()
   await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible()
 
@@ -66,7 +66,7 @@ test('login, session restore, profile and immediate logout', async ({ page, cont
 
 test('an operator reads users but changes nothing, and sees no settings', async ({ page }) => {
   await loginAs(page, OPERATOR)
-  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Dokumente', 'Gebäude', 'Benutzer', 'Verzeichnis', 'Sitzungen', 'Aktivitätsprotokoll'])
+  await expectNav(page, ['Mein Profil', 'Dokumente', 'Gebäude', 'Benutzer', 'Verzeichnis', 'Sitzungen', 'Aktivitätsprotokoll'])
 
   await nav(page).getByRole('link', { name: 'Benutzer' }).click()
   const row = page.getByRole('row').filter({ hasText: 'us01user' })
@@ -85,11 +85,11 @@ test('an admin adds a role, and the directory finds people', async ({ page }) =>
   // us02othr has an account (seeded) but never logs in during the run.
   const row = page.getByRole('row').filter({ hasText: 'us02othr' })
   await row.getByRole('combobox', { name: 'Rollen' }).click()
-  await page.getByRole('option', { name: 'Betrieb' }).click()
+  await page.getByRole('option', { name: OPERATOR_ROLE, exact: true }).click()
   await page.keyboard.press('Escape')
   await expect(page.getByText('Gespeichert')).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('row').filter({ hasText: 'us02othr' })).toContainText('Betrieb')
+  await expect(page.getByRole('row').filter({ hasText: 'us02othr' })).toContainText(OPERATOR_ROLE)
 
   await nav(page).getByRole('link', { name: 'Verzeichnis' }).click()
   await page.getByLabel('Name, TU-ID oder E-Mail').fill('us0')
