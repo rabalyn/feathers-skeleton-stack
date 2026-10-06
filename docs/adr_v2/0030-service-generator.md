@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-30
 - Scope: Required (v1)
-- Related: [0003](0003-postgresql-and-knex.md), [0005](0005-typebox-schema-boundary.md), [0006](0006-feathersjs-typescript-api.md), [0007](0007-typed-client-from-api.md), [0011](0011-casl-role-authorization.md), [0012](0012-role-scoped-channels.md), [0013](0013-gdpr-export-and-retention.md), [0015](0015-testing-vitest-playwright.md)
+- Related: [0003](0003-postgresql-and-knex.md), [0005](0005-typebox-schema-boundary.md), [0006](0006-feathersjs-typescript-api.md), [0007](0007-typed-client-from-api.md), [0011](0011-casl-role-authorization.md), [0012](0012-role-scoped-channels.md), [0013](0013-gdpr-export-and-retention.md), [0015](0015-testing-vitest-playwright.md), [0035](0035-products-derived-from-the-skeleton.md)
 
 ## Context
 
@@ -18,11 +18,12 @@ The stock generator, `@feathersjs/cli`, does not fit this application. Run again
   - **`knex`** (the default): a table-backed service. Data, patch, query and result schemas with `additionalProperties: false`, a `KnexService` on the shared pagination, a raw-SQL migration with a `uuidv7()` key that rolls forward only ([0003](0003-postgresql-and-knex.md)), and events to whoever reads every record ([0012](0012-role-scoped-channels.md)).
   - **`custom`**: an action asked for with `create`, like `erasures`, without a table. Its result goes to the caller only.
 - Beside the service's own files and a Vitest integration test, the generator registers the service in `services/index.ts`, adds it to the client's types in `client.ts` as type-only imports ([0007](0007-typed-client-from-api.md)), adds one `<path>.manage` permission to the catalogue in `abilities.ts` ([0011](0011-casl-role-authorization.md)), and labels that permission in every locale of the web app with placeholder wording to be reviewed. It writes at marker lines, `// gen:service <slot> (ADR 0030)`, which stay in those files for the next service. It checks all of that before writing anything, and writes nothing if any check fails.
+- **Where it registers follows `product.env`** ([0035](0035-products-derived-from-the-skeleton.md)): when `PRODUCT` is `feathers-skeleton`, in the skeleton's own `services/index.ts`, `client.ts`, `abilities.ts` and web catalogues; in a product, in the product module, `src/product/services.ts`, `src/product/client.ts`, `src/product/permissions.ts` and `apps/web/src/i18n/product/`, adding the imports those files start without. A name is checked against both sets of files. Decided 2026-10-06.
 - It leaves out what needs judgement and prints it as a checklist instead: finer permissions than `<path>.manage`, granting the permission to a seeded role, and personal data, which belongs in the registry and in `erase_user()` ([0013](0013-gdpr-export-and-retention.md)).
 - A generated file is a starting point owned by whoever generated it. Nothing is regenerated over it.
 - **Every service names its publisher.** Feathers sends the events of a service without one to nobody, which is safe but silent. A service whose results go to the caller only says so with `publishNothing` from `channels.ts` ([0012](0012-role-scoped-channels.md)).
 - Three checks keep this true:
-  - the **drift check**, `pnpm --filter @app/api gen:check`, a static CI check, generates one service of each type into a copy of the repository's files and typechecks the result;
+  - the **drift check**, `pnpm --filter @app/api gen:check`, a static CI check, generates one service of each type into a copy of the repository's files and typechecks the result, unused locals included, once as the skeleton and once as a product;
   - a unit test holds that every data and patch schema a service exports sets `additionalProperties: false` ([0005](0005-typebox-schema-boundary.md));
   - an integration test holds that every registered service has a publisher.
 - Using the generator is required by this ADR, not enforced mechanically: the two convention tests hold what matters of its output for every service, generated or not.
@@ -31,6 +32,6 @@ The stock generator, `@feathersjs/cli`, does not fit this application. Run again
 
 - A new service starts in line with [0005](0005-typebox-schema-boundary.md), [0007](0007-typed-client-from-api.md), [0011](0011-casl-role-authorization.md) and [0012](0012-role-scoped-channels.md), typechecks, and has a passing test before any product code is written.
 - The templates are a second place where the conventions live. A change to a convention changes the templates in the same change. The drift check catches templates that no longer compile, not ones that compile but show an outdated pattern.
-- Four shared files carry marker lines. Removing one makes the generator refuse to run, with the reason.
+- Four of the skeleton's files and three of the product module's carry marker lines. Removing one makes the generator refuse to run, with the reason.
 - The generated permission labels are placeholders. Unreviewed, they reach the permissions page as they are.
 - The API package gains a development dependency on pinion, and through it on `tsx`, `inquirer` and `commander`. None of it reaches the runtime image, which installs production dependencies only.

@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-05
 - Scope: Required (v1)
-- Related: [0001](0001-one-stack-every-environment.md), [0002](0002-service-inventory-and-networks.md), [0018](0018-owasp-security-baseline.md), [0019](0019-adr-convention.md), [0027](0027-email-templates-and-sending.md), [0030](0030-service-generator.md), [0033](0033-branches-and-pull-requests.md)
+- Related: [0001](0001-one-stack-every-environment.md), [0002](0002-service-inventory-and-networks.md), [0007](0007-typed-client-from-api.md), [0011](0011-casl-role-authorization.md), [0013](0013-gdpr-export-and-retention.md), [0014](0014-frontend-quasar-vue.md), [0018](0018-owasp-security-baseline.md), [0019](0019-adr-convention.md), [0024](0024-background-jobs-bullmq.md), [0025](0025-runtime-settings.md), [0027](0027-email-templates-and-sending.md), [0030](0030-service-generator.md), [0033](0033-branches-and-pull-requests.md)
 
 ## Context
 
@@ -35,9 +35,34 @@ Three ways were weighed:
 
 ### What belongs to the product
 
-- **Product code lives in product-owned files.** A product edits skeleton files only where the skeleton provides for it: today, the marker lines that `pnpm gen:service` writes at ([0030](0030-service-generator.md)) and the product identity below. Each further shared file a product has to edit is a place where the skeleton lacks an extension point, and is fixed in the skeleton.
+- **Product code lives in product-owned files.** A product edits no skeleton file except `product.env` (the product identity below): it registers its code in the product module, the extension points below. Each further shared file a product has to edit is a place where the skeleton lacks an extension point, and is fixed in the skeleton.
 - **A product's own ADRs live in `docs/adr_product/`**, numbered from 0001 with a README index of their own, in the format of [0019](0019-adr-convention.md). `docs/adr_v2/` stays the skeleton's and is changed upstream only. A product ADR may refine a skeleton ADR for that product but not contradict it; a product that needs a skeleton decision changed changes it here.
 - A product rewrites `CLAUDE.md` and `README.md` for itself; in particular, its `CLAUDE.md` does not carry the skeleton's rule against product logic.
+
+### Extension points
+
+Decided 2026-10-06.
+
+- **The product module.** The skeleton ships a set of product-owned files, empty, which its own registries import and append to their entries; a product fills them and leaves the skeleton's registries alone. Discovery by file name was rejected because the browser's client types cannot be derived from it without code generation; marker lines in the skeleton's files, because the skeleton and a product adding at the same marker conflict on every merge.
+
+  | Product file | Extends | ADR |
+  | --- | --- | --- |
+  | `apps/api/src/product/services.ts` | the services, configured after the skeleton's | [0006](0006-feathersjs-typescript-api.md) |
+  | `apps/api/src/product/client.ts` | the client's service types, re-exported by `src/client.ts` and bound by its dependency boundary | [0007](0007-typed-client-from-api.md) |
+  | `apps/api/src/product/permissions.ts` | the permission catalogue, and what API tokens may not carry | [0011](0011-casl-role-authorization.md), [0029](0029-api-tokens.md) |
+  | `apps/api/src/product/personal-data.ts` | the personal data registry | [0013](0013-gdpr-export-and-retention.md) |
+  | `apps/api/src/product/mail.ts` | the mail kinds | [0027](0027-email-templates-and-sending.md) |
+  | `apps/api/src/product/settings.ts` | the runtime settings, which ones the api and the worker require, and cross-setting rules | [0025](0025-runtime-settings.md) |
+  | `apps/api/src/product/preferences.ts` | the personal preference keys | [0014](0014-frontend-quasar-vue.md) |
+  | `apps/api/src/product/jobs.ts` | job queues with their jobs and schedules, run by the worker beside the skeleton's | [0024](0024-background-jobs-bullmq.md) |
+  | `apps/web/src/product/routes.ts` | the pages in the main layout, and their links in the navigation drawer, after the profile | [0014](0014-frontend-quasar-vue.md) |
+  | `apps/web/src/i18n/product/{de,en}.json` | the message catalogues | [0014](0014-frontend-quasar-vue.md) |
+
+  Everything else a product adds is a new file: its services, migrations, mail kinds, job handlers, pages and components. A product key, name or queue that equals one of the skeleton's is refused at start or by a test, never silently preferred.
+- **A product's catalogues add keys and never replace one.** The skeleton's screens keep the skeleton's wording, and a skeleton key that changes meaning leaves no stale product text behind; a product that needs other wording on a skeleton screen changes it upstream. Overrides were rejected for that reason.
+- **Erasure of a product's tables goes into `erase_user_product()`**, a database function that `erase_user()` calls first, in its transaction ([0013](0013-gdpr-export-and-retention.md)). The skeleton creates it as a no-op and never changes it again; a product's migrations replace it. Letting a product replace `erase_user()` itself was rejected: every later skeleton change to that function would have to be merged into the product's copy by hand.
+- **`pnpm gen:service` registers where `product.env` says** ([0030](0030-service-generator.md)): in the skeleton's own files when `PRODUCT` is `feathers-skeleton`, in the product module otherwise. Both carry its marker lines.
+- **In this repository the product module stays empty**, checked by a unit test in the CI image wherever `product.env` names the skeleton. The skeleton changes the module's files only in a MAJOR version; adding a file to it is a MINOR one.
 
 ### Product identity
 
@@ -56,4 +81,7 @@ Three ways were weighed:
 - Tags cost a release step in the skeleton, and a product's security depends partly on how promptly they are cut. Renovate in each product covers dependency pins in the meantime, at the price of the occasional pin conflict on merge.
 - The `/docs` architecture page ([0019](0019-adr-convention.md#diagrams)) reads `docs/adr_v2/` only. A product's ADRs are not on it until the page reads `docs/adr_product/` as well.
 - A product's own shared-file edits are tolerated, not prevented: nothing mechanical stops a product from editing a skeleton file. Review does, and the next merge's conflicts make such an edit visible.
+- The registries read one more file each, and a registry's full contents are no longer in one place: the product's part is in `src/product/`. Each skeleton registry says so where it is defined.
+- A product's navigation links all come after the profile, in the order the product lists them; placing one between two skeleton links needs a skeleton change. Each person may rearrange the drawer anyway.
+- The runtime settings' web labels are checked by an api unit test, which reads the web catalogues, since the browser cannot import the registry; the api's test image carries those catalogues for it.
 - Running stacks side by side costs memory: each stack is some forty containers.
