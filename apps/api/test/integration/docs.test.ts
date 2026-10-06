@@ -41,9 +41,14 @@ describe('docs', () => {
     expect(diagrams.slice(0, 3).map((doc) => doc.id)).toEqual(['diagrams-readme', 'diagrams-topology', 'diagrams-startup-and-secrets'])
     expect(diagrams[2]).toMatchObject({ label: 'Startup and secrets', title: 'Startup order and secret delivery' })
     expect(docs.every((doc) => !('markdown' in doc))).toBe(true)
-    // The product's index, which the skeleton ships, after the skeleton's pages.
-    expect(docs.at(-1)).toMatchObject({ id: 'product-readme', kind: 'index', source: 'product', path: 'adr_product/README.md' })
-    await expect(app.service('docs').find({ ...as(admin), query: { source: 'product' } })).resolves.toEqual([docs.at(-1)])
+    // The product's pages after the skeleton's, its index first. The
+    // skeleton ships only that index; a product adds its ADRs and diagrams
+    // behind it, so nothing here depends on how many it has (ADR 0035).
+    const first = docs.findIndex((doc) => doc.source === 'product')
+    const product = docs.slice(first)
+    expect(product[0]).toMatchObject({ id: 'product-readme', kind: 'index', source: 'product', path: 'adr_product/README.md' })
+    expect(product.every((doc) => doc.source === 'product')).toBe(true)
+    await expect(app.service('docs').find({ ...as(admin), query: { source: 'product' } })).resolves.toEqual(product)
   })
 
   it('finds the pages that hold every word, in any case', async () => {
