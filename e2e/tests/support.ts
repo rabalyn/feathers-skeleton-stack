@@ -1,8 +1,8 @@
 import { expect, type Page } from '@playwright/test'
 import { origin } from '../playwright.config.js'
 
-// Shared by the specs. `scripts/stack.sh e2e` gives the test accounts their
-// roles before the run.
+// Shared by the specs. `scripts/stack.sh e2e` creates the test accounts,
+// and global-setup.ts gives them their roles before the run.
 
 export interface Account {
   tuId: string
@@ -11,6 +11,22 @@ export interface Account {
 export const ADMIN: Account = { tuId: 'ad01admn', password: 'admin-test-password' }
 export const OPERATOR: Account = { tuId: 'op01oper', password: 'operator-test-password' }
 export const USER: Account = { tuId: 'us01user', password: 'user-test-password' }
+
+// The suite's own roles (ADR 0035), holding what the skeleton seeds
+// `operator` and `user` with (ADR 0011), whatever a product's migrations have
+// made of those: OPERATOR holds e2e-operator, USER and us02othr e2e-user.
+export const E2E_ROLES = {
+  'e2e-operator': {
+    name: { de: 'E2E-Betrieb', en: 'E2E operations' },
+    permissions: ['audit-events.read', 'directory.read', 'documents.all', 'sessions.read', 'sites.read', 'users.read']
+  },
+  'e2e-user': {
+    name: { de: 'E2E-Benutzer', en: 'E2E user' },
+    permissions: ['documents.own', 'sites.read']
+  }
+}
+export const OPERATOR_ROLE = E2E_ROLES['e2e-operator'].name.de
+export const USER_ROLE = E2E_ROLES['e2e-user'].name.de
 
 export const IDP_ORIGIN = new RegExp(`^${origin('idp').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`)
 
@@ -43,3 +59,32 @@ export const stackAction = (action: 'stop api-e2e' | 'start api-e2e') => console
 export const nav = (page: Page) => page.locator('.q-drawer')
 // The labels of the navigation, without the icons' ligature text.
 export const navLabels = (page: Page) => nav(page).locator('.q-item__section--main')
+
+// The skeleton's navigation, in its order (apps/web/src/layouts/MainLayout.vue).
+const SKELETON_NAV = new Set([
+  'Mein Profil',
+  'Dokumente',
+  'Gebäude',
+  'Benutzer',
+  'Rollen & Rechte',
+  'Einstellungen',
+  'Verzeichnis',
+  'Sitzungen',
+  'API-Tokens',
+  'Aktivitätsprotokoll',
+  'Datenanfragen',
+  'E-Mail-Vorlagen',
+  'Mailings',
+  'Warteschlangen',
+  'Systeminfo',
+  'Architektur'
+])
+
+// The skeleton's links a page shows, in their order. A product's own links
+// are left out, wherever they stand (ADR 0035).
+export const skeletonNav = async (page: Page) =>
+  (await navLabels(page).allTextContents()).map((label) => label.replace(/\s+/g, ' ').trim()).filter((label) => SKELETON_NAV.has(label))
+
+// Exactly these of the skeleton's links, in this order, once the drawer
+// settles.
+export const expectNav = (page: Page, labels: string[]) => expect.poll(() => skeletonNav(page)).toEqual(labels)

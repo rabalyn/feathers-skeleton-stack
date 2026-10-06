@@ -18,6 +18,8 @@ export const HTTP_PORT = process.env.E2E_HTTP_PORT ?? ''
 
 export default defineConfig({
   testDir: './tests',
+  // Gives the test accounts the suite's own roles (ADR 0035).
+  globalSetup: './tests/global-setup.ts',
   fullyParallel: false,
   workers: 1,
   retries: 0,

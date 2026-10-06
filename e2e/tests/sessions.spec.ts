@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
-import { ADMIN, OPERATOR, USER, loginAs, nav, navLabels, type Account } from './support.js'
+import { ADMIN, OPERATOR, USER, loginAs, nav, type Account, expectNav } from './support.js'
 
 // Who is logged in (ADR 0010, 0011): admins and operators see every active
 // session, live; operators see no browser and end none; admins end anyone's,
@@ -18,7 +18,7 @@ const sessionRow = (page: Page, sessionId: string) =>
 
 test('a user sees no sessions', async ({ browser }) => {
   const { page } = await loggedIn(browser, USER, '/profile')
-  await expect(navLabels(page)).toHaveText(['Mein Profil', 'Dokumente', 'Gebäude'])
+  await expectNav(page, ['Mein Profil', 'Dokumente', 'Gebäude'])
   await expect(page.locator('[data-test="session-list"]')).toHaveCount(0)
   await page.goto('/sessions')
   await expect(page).toHaveURL(/\/profile$/)

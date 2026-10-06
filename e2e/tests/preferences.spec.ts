@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
-import { USER, loginAs, nav, navLabels } from './support.js'
+import { USER, loginAs, nav, expectNav } from './support.js'
 
 // Personal preferences (decided 2026-10-02, ADR 0014): a person arranges
 // the navigation drawer, and the order is stored in the database, so it
@@ -10,7 +10,7 @@ const DEFAULT = ['Mein Profil', 'Dokumente', 'Gebäude']
 const session = async (browser: Browser): Promise<Page> => {
   const page = await (await browser.newContext()).newPage()
   await loginAs(page, USER)
-  await expect(navLabels(page)).toHaveCount(DEFAULT.length)
+  await expectNav(page, DEFAULT)
   return page
 }
 
@@ -19,7 +19,7 @@ const arrange = (page: Page) => nav(page).getByTestId('nav-arrange')
 test('a person arranges the navigation, and it follows them', async ({ browser }) => {
   const page = await session(browser)
   const other = await session(browser)
-  await expect(navLabels(page)).toHaveText(DEFAULT)
+  await expectNav(page, DEFAULT)
 
   // With the buttons: Gebäude up twice.
   await arrange(page).click()
@@ -27,19 +27,19 @@ test('a person arranges the navigation, and it follows them', async ({ browser }
   await nav(page).getByRole('button', { name: 'Gebäude nach oben' }).click()
   await expect(nav(page).getByRole('button', { name: 'Gebäude nach oben' })).toBeDisabled()
   await arrange(page).click()
-  await expect(navLabels(page)).toHaveText(['Gebäude', 'Mein Profil', 'Dokumente'])
+  await expectNav(page, ['Gebäude', 'Mein Profil', 'Dokumente'])
 
   // The other browser follows without a reload, and a reload keeps it.
-  await expect(navLabels(other)).toHaveText(['Gebäude', 'Mein Profil', 'Dokumente'])
+  await expectNav(other, ['Gebäude', 'Mein Profil', 'Dokumente'])
   await page.reload()
-  await expect(navLabels(page)).toHaveText(['Gebäude', 'Mein Profil', 'Dokumente'])
+  await expectNav(page, ['Gebäude', 'Mein Profil', 'Dokumente'])
 
   // By dragging: Dokumente onto Gebäude takes its place.
   await arrange(page).click()
   await nav(page).getByTestId('nav-item-documents').dragTo(nav(page).getByTestId('nav-item-sites'))
   await arrange(page).click()
-  await expect(navLabels(page)).toHaveText(['Dokumente', 'Gebäude', 'Mein Profil'])
-  await expect(navLabels(other)).toHaveText(['Dokumente', 'Gebäude', 'Mein Profil'])
+  await expectNav(page, ['Dokumente', 'Gebäude', 'Mein Profil'])
+  await expectNav(other, ['Dokumente', 'Gebäude', 'Mein Profil'])
 
   // The links still lead where they did.
   await nav(page).getByRole('link', { name: 'Gebäude' }).click()
@@ -49,6 +49,6 @@ test('a person arranges the navigation, and it follows them', async ({ browser }
   await arrange(page).click()
   await nav(page).getByTestId('nav-reset').click()
   await arrange(page).click()
-  await expect(navLabels(page)).toHaveText(DEFAULT)
-  await expect(navLabels(other)).toHaveText(DEFAULT)
+  await expectNav(page, DEFAULT)
+  await expectNav(other, DEFAULT)
 })

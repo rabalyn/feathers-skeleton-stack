@@ -500,7 +500,8 @@ breakglass_alert_check() {
 # their roles, as an administrator would assign them: a login refreshes
 # directory fields but never the roles (ADR 0009, 0011). `up` gives them to
 # the local `app` after every start, restoring roles changed by hand; the
-# e2e run to its fresh database. What the seeded roles grant is left alone.
+# e2e run to its fresh database, where the suite's global setup then gives
+# them roles of its own (ADR 0035). What the seeded roles grant is left alone.
 seed_test_accounts() { # <database>
   podman exec -i -u postgres "$(ctr postgres)" psql -q -v ON_ERROR_STOP=1 -d "$1" <<'SQL' >/dev/null
 CREATE TEMPORARY TABLE seed (tu_id text, given_name text, surname text, email text, role_key text);

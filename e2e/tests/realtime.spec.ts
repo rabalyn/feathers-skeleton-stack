@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
-import { ADMIN, OPERATOR, loginAs, nav, navLabels, type Account } from './support.js'
+import { ADMIN, OPERATOR, loginAs, nav, type Account, expectNav, OPERATOR_ROLE, USER_ROLE } from './support.js'
 
 // Real-time updates over the WebSocket (ADR 0012, 0015): an operator's open
 // users page follows an admin's changes without a reload, and changed roles
@@ -31,18 +31,18 @@ test('an operator sees an admin’s changes live, and loses the page when demote
   // under the new roles and leaves what they may not see. Each option adds
   // or takes away one role, sent together as the menu closes (ADR 0011).
   await row(admin, 'op01oper').getByRole('combobox', { name: 'Rollen' }).click()
-  await admin.getByRole('option', { name: 'Benutzer' }).click()
-  await admin.getByRole('option', { name: 'Betrieb' }).click()
+  await admin.getByRole('option', { name: USER_ROLE, exact: true }).click()
+  await admin.getByRole('option', { name: OPERATOR_ROLE, exact: true }).click()
   await admin.keyboard.press('Escape')
   await expect(operator).toHaveURL(/\/profile$/)
-  await expect(operator.locator('[data-field="role"]')).toHaveText('Benutzer')
-  await expect(navLabels(operator)).toHaveText(['Mein Profil', 'Dokumente', 'Gebäude'])
+  await expect(operator.locator('[data-field="role"]')).toHaveText(USER_ROLE)
+  await expectNav(operator, ['Mein Profil', 'Dokumente', 'Gebäude'])
 
   // Promoted back, for the rest of the run.
   await row(admin, 'op01oper').getByRole('combobox', { name: 'Rollen' }).click()
-  await admin.getByRole('option', { name: 'Betrieb' }).click()
-  await admin.getByRole('option', { name: 'Benutzer' }).click()
+  await admin.getByRole('option', { name: OPERATOR_ROLE, exact: true }).click()
+  await admin.getByRole('option', { name: USER_ROLE, exact: true }).click()
   await admin.keyboard.press('Escape')
-  await expect(operator.locator('[data-field="role"]')).toHaveText('Betrieb')
-  await expect(navLabels(operator)).toHaveText(['Mein Profil', 'Dokumente', 'Gebäude', 'Benutzer', 'Verzeichnis', 'Sitzungen', 'Aktivitätsprotokoll'])
+  await expect(operator.locator('[data-field="role"]')).toHaveText(OPERATOR_ROLE)
+  await expectNav(operator, ['Mein Profil', 'Dokumente', 'Gebäude', 'Benutzer', 'Verzeichnis', 'Sitzungen', 'Aktivitätsprotokoll'])
 })
