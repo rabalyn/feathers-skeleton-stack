@@ -5,9 +5,10 @@ import { API_SETTINGS, SETTINGS, SETTING_KEYS } from '../../src/settings/registr
 import { SettingsStore, seedSettings } from '../../src/settings/store.js'
 import { BODY_SIZE_CEILING_BYTES, createTestApp } from '../support/app.js'
 import { db } from '../support/worker-database.js'
-import { grantRoles, roleIdOf, type SeededRole } from '../support/roles.js'
+import { allBut, makeUser, roleIdOf } from '../support/roles.js'
 
-// ADR 0025 (runtime settings) and the settings row of ADR 0011's matrix.
+// ADR 0025 (runtime settings) and ADR 0011's `settings.manage`. The users
+// hold roles of the test's own (ADR 0035).
 
 let app: Application
 let admin: User
@@ -18,14 +19,9 @@ const as = (user: User) => ({ provider: 'rest' as const, user, authenticated: tr
 
 beforeAll(async () => {
   ;({ app } = await createTestApp())
-  const users = app.service('users')
-  const make = async (tuId: string, role: SeededRole) => {
-    const created = await users.create({ tuId, givenName: tuId, surname: 'T', email: `${tuId}@example.org`, authSource: 'saml' })
-    return grantRoles(app, created.id, [role])
-  }
-  admin = await make('ad01admn', 'admin')
-  operator = await make('op01oper', 'operator')
-  member = await make('us01user', 'user')
+  admin = await makeUser(app, 'ad01admn', 'admin', { surname: 'T' })
+  operator = await makeUser(app, 'op01oper', allBut('settings.manage'), { surname: 'T' })
+  member = await makeUser(app, 'us01user', [], { surname: 'T' })
 })
 
 afterAll(async () => {
@@ -69,7 +65,7 @@ describe('refusing to start', () => {
   })
 })
 
-describe('settings: read and write for admin only', () => {
+describe('settings: read and write under settings.manage only', () => {
   it('admin lists and reads settings', async () => {
     const page = await app.service('settings').find(as(admin))
     expect(page.total).toBe(SETTING_KEYS.length)
@@ -82,9 +78,9 @@ describe('settings: read and write for admin only', () => {
   // With no rule on the resource at all, CASL refuses before any lookup, so
   // an existing and a missing key are answered alike (ADR 0011).
   it.each([
-    ['operator', () => operator],
-    ['user', () => member]
-  ])('%s can neither list nor read settings, and learns nothing about which keys exist', async (_role, who) => {
+    ['everything else', () => operator],
+    ['nothing', () => member]
+  ])('holding %s, one can neither list nor read settings, and learns nothing about which keys exist', async (_role, who) => {
     await expect(app.service('settings').find(as(who()))).rejects.toMatchObject({ code: 403 })
     const existing = await app.service('settings').get('sessionIdleSeconds', as(who())).catch((e) => e)
     const missing = await app.service('settings').get('noSuchKey', as(who())).catch((e) => e)
@@ -96,9 +92,9 @@ describe('settings: read and write for admin only', () => {
   })
 
   it.each([
-    ['operator', () => operator],
-    ['user', () => member]
-  ])('%s cannot change a setting', async (_role, who) => {
+    ['everything else', () => operator],
+    ['nothing', () => member]
+  ])('holding %s, one cannot change a setting', async (_role, who) => {
     await expect(
       app.service('settings').patch('refreshGraceSeconds', { value: 20 }, as(who()))
     ).rejects.toMatchObject({ code: 403 })
@@ -205,13 +201,14 @@ describe('audit of administrative user changes', () => {
   })
 
   it('records a role assignment by an admin, with the roles added and removed', async () => {
-    const [operatorRole, userRole] = await Promise.all([roleIdOf(app, 'operator'), roleIdOf(app, 'user')])
+    // Roles of the test's own: the operator's and none.
+    const operatorRole = await roleIdOf(app, 'op01oper')
     await app.service('user-roles').patch(member.id, { roleIds: [operatorRole] }, as(admin))
-    await app.service('user-roles').patch(member.id, { roleIds: [userRole] }, as(admin))
+    await app.service('user-roles').patch(member.id, { roleIds: [] }, as(admin))
     const events = await db()('audit_events').where({ action: 'users.roles', resource_id: member.id, actor_id: admin.id }).orderBy('occurred_at')
     expect(events.map((e) => e.detail)).toEqual([
-      { added: [operatorRole], removed: [userRole] },
-      { added: [userRole], removed: [operatorRole] }
+      { added: [operatorRole], removed: [] },
+      { added: [], removed: [operatorRole] }
     ])
   })
 })

@@ -669,6 +669,9 @@ services:
       PROMETHEUS_URL: https://prometheus:9090
       PROMETHEUS_CA_FILE: /trust/ca.crt
       UPDATE_CHECK: "off"
+      # What the seeded roles grant by default is checked only in the
+      # skeleton itself (ADR 0035).
+      PRODUCT: ${PRODUCT:?}
     networks: [app-data, identity, object, observability, netbox-api]
     volumes:
       - test-secrets:/run/secrets:ro

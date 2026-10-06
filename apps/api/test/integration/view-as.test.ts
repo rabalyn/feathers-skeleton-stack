@@ -3,11 +3,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Application } from '../../src/app.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
-import { grantRoles, makeUser, roleIdOf } from '../support/roles.js'
+import { grantRoles, makeUser } from '../support/roles.js'
 import { db } from '../support/worker-database.js'
 
 // ADR 0028: read-only view-as, as state of the viewer's session, bounded by
-// the viewer's own rights, refused where it must be, and audited.
+// the viewer's own rights, refused where it must be, and audited. The users
+// hold roles of the test's own (ADR 0035): the operator reads users,
+// documents and activity and may view as others, which no seeded role but
+// admin may; the members keep their own documents, activity and locale.
 
 let app: Application
 let base: string
@@ -44,14 +47,11 @@ beforeAll(async () => {
   ;({ app } = await createTestApp())
   base = `http://127.0.0.1:${((await app.listen(0)).address() as AddressInfo).port}/api`
   admin = await makeUser(app, 'ad01admn', 'admin')
-  operator = await makeUser(app, 'op01oper', 'operator')
-  member = await makeUser(app, 'us01user', 'user')
-  other = await makeUser(app, 'us02othr', 'user')
+  operator = await makeUser(app, 'op01oper', ['users.read', 'documents.all', 'audit-events.read', 'users.view-as', 'profile.locale'])
+  member = await makeUser(app, 'us01user', ['documents.own', 'audit-events.own', 'profile.locale'])
+  other = await makeUser(app, 'us02othr', ['documents.own', 'audit-events.own', 'profile.locale'])
   const local = await app.service('users').create({ tuId: null, givenName: null, surname: null, email: 'bg@example.test', authSource: 'local' })
   breakGlass = await grantRoles(app, local.id, ['admin'])
-  // Operators may view as others here; seeded, nobody but admin may.
-  const operatorRole = await app.service('roles').get(await roleIdOf(app, 'operator'))
-  await app.service('roles').patch(operatorRole.id, { permissions: [...(operatorRole.permissions ?? []), 'users.view-as'] })
   const [file] = await db()('files')
     .insert({ owner_id: member.id, filename: 'a.pdf', content_type: 'application/pdf', size_bytes: 1, sha256: '0'.repeat(64), state: 'stored' })
     .returning<{ id: string }[]>('id')
@@ -113,7 +113,7 @@ describe('viewing as somebody', () => {
     expect((await start(viewer, operator.id)).status).toBe(403)
     expect((await start(viewer, admin.id)).status).toBe(403)
     expect((await start(viewer, breakGlass.id)).status).toBe(403)
-    const erased = await makeUser(app, 'er01gone', 'user')
+    const erased = await makeUser(app, 'er01gone')
     await db()('users').where({ id: erased.id }).update({ erased_at: new Date() })
     expect((await start(viewer, erased.id)).status).toBe(403)
     expect((await start(await login(member), other.id)).status).toBe(403)

@@ -2,10 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Application } from '../../src/app.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
-import { makeUser } from '../support/roles.js'
+import { allBut, makeUser } from '../support/roles.js'
 
 // The ADRs and diagrams in the app (ADR 0019): read-only, under `docs.read`,
-// which only the admin role holds (ADR 0011).
+// which no seeded role but admin holds (ADR 0011). The operator holds
+// everything else, the member nothing (roles of the test's own, ADR 0035).
 
 let app: Application
 let admin: User
@@ -17,8 +18,8 @@ const as = (user: User) => ({ provider: 'rest' as const, user, authenticated: tr
 beforeAll(async () => {
   ;({ app } = await createTestApp())
   admin = await makeUser(app, 'ad01admn', 'admin')
-  operator = await makeUser(app, 'op01oper', 'operator')
-  member = await makeUser(app, 'us01user', 'user')
+  operator = await makeUser(app, 'op01oper', allBut('docs.read'))
+  member = await makeUser(app, 'us01user')
 })
 
 afterAll(async () => {

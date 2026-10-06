@@ -13,10 +13,11 @@ import type { QueueStatus } from '../../src/services/queues/queues.schema.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp, loadValkeyConfig } from '../support/app.js'
 import { PUBLIC_ORIGIN } from '../support/saml-idp.js'
-import { grantRoles, type SeededRole } from '../support/roles.js'
+import { allBut, makeUser } from '../support/roles.js'
 
-// The queue view (ADR 0024): admins read every queue's state, nobody else
-// does; a change reaches admin sockets as a `status` event, coalesced, and
+// The queue view (ADR 0024): `queues.read` reads every queue's state,
+// nothing else does, so the operator holds everything else and the member
+// nothing (roles of the test's own, ADR 0035); a change reaches admin sockets as a `status` event, coalesced, and
 // never carries a job's payload or failure message (ADR 0021).
 
 let app: Application
@@ -35,14 +36,9 @@ beforeAll(async () => {
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
   const connection = queueConnection(await loadValkeyConfig())
   for (const name of allQueueNames()) queues.set(name, new Queue(name, { connection, prefix: app.get('config').queuePrefix }))
-  const users = app.service('users')
-  const make = async (tuId: string, role: SeededRole) => {
-    const created = await users.create({ tuId, givenName: tuId, surname: 'Test', email: null, authSource: 'saml' })
-    return grantRoles(app, created.id, [role])
-  }
-  admin = await make('ad01admn', 'admin')
-  operator = await make('op01oper', 'operator')
-  member = await make('us01user', 'user')
+  admin = await makeUser(app, 'ad01admn', 'admin', { email: null })
+  operator = await makeUser(app, 'op01oper', allBut('queues.read'), { email: null })
+  member = await makeUser(app, 'us01user', [], { email: null })
 })
 
 afterAll(async () => {
@@ -78,7 +74,7 @@ const listenAs = async (user: User) => {
 }
 
 describe('reading the queues (ADR 0011)', () => {
-  it('is the admin’s alone', async () => {
+  it('is queues.read’s alone', async () => {
     const all = await app.service('queues').find(as(admin))
     expect(all.map((each) => each.id)).toEqual(allQueueNames())
     expect((await app.service('queues').get(MAIL_QUEUE, as(admin))).id).toBe(MAIL_QUEUE)

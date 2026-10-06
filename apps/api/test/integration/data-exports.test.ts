@@ -13,7 +13,7 @@ import type { Storage } from '../../src/storage.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp, liftRateLimit, loadValkeyConfig } from '../support/app.js'
 import { DATA_EXPORTS_TEST_BUCKET } from '../support/global-setup.js'
-import { grantRoles, type SeededRole } from '../support/roles.js'
+import { allBut, grantRoles, makeRole, makeUser, type Grant } from '../support/roles.js'
 
 // ADR 0013 over HTTP against the stack's Valkey, Garage and a worker of the
 // test's own: who may export whom, the job, the relayed outcome, the ZIP and
@@ -97,6 +97,8 @@ const unzip = async (body: Buffer) => {
   return entries
 }
 
+const MEMBER = ['files.upload', 'files.own', 'documents.own', 'profile.avatar'] as const
+
 beforeAll(async () => {
   ;({ app } = await createTestApp({ s3: { s3ExportsBucket: DATA_EXPORTS_TEST_BUCKET } }))
   // Exports are requested far more often here than a person would (ADR 0010).
@@ -112,15 +114,14 @@ beforeAll(async () => {
     logger: pino({ level: 'silent' }),
     prefix: app.get('config').queuePrefix
   })
-  const users = app.service('users')
-  const make = async (tuId: string, role: SeededRole) => {
-    const created = await users.create({ tuId, givenName: 'Given', surname: tuId, email: `${tuId}@example.test`, authSource: 'saml' })
-    return grantRoles(app, created.id, [role])
-  }
+  // Roles of the test's own (ADR 0035): the members keep their own files,
+  // documents and avatar; the operator holds everything but data-exports.any.
+  const make = (tuId: string, grant: Grant) => makeUser(app, tuId, grant, { givenName: 'Given', surname: tuId, email: `${tuId}@example.test` })
   admin = await make('ad01admn', 'admin')
-  operator = await make('op01oper', 'operator')
-  member = await make('us01user', 'user')
-  other = await make('us02othr', 'user')
+  operator = await make('op01oper', allBut('data-exports.any'))
+  member = await make('us01user', MEMBER)
+  other = await make('us02othr', MEMBER)
+  await makeRole(app, 'person', MEMBER)
 })
 
 afterAll(async () => {
@@ -137,7 +138,7 @@ beforeEach(async () => {
 })
 
 describe('requesting an export (ADR 0011)', () => {
-  it('lets every role export itself, and refuses exporting others to all but admin', async () => {
+  it('lets everybody export themselves, and refuses exporting others without data-exports.any', async () => {
     for (const user of [member, operator, admin]) {
       const response = await requestExport(user, user.id)
       expect(response.status, user.tuId ?? '').toBe(201)
@@ -216,7 +217,7 @@ describe('building and downloading an export', () => {
       format: 'data-export/1',
       subjectId: member.id,
       account: { id: member.id, tuId: 'us01user', givenName: 'Given', surname: 'us01user', email: 'us01user@example.test', locale: 'de', avatarFileId: avatarFile },
-      roles: [{ key: 'user', name: { de: 'Benutzer', en: 'User' } }],
+      roles: [{ key: 'us01user', name: { de: 'us01user', en: 'us01user' } }],
       documents: [expect.objectContaining({ title: 'Report', fileId: documentFile })],
       sessions: expect.any(Array),
       auditEvents: expect.arrayContaining([expect.objectContaining({ action: 'data-exports.create', actorId: member.id })])
@@ -365,7 +366,7 @@ describe("two people's exports", () => {
   // A person with `sessions` logins; their calls use the first.
   const person = async (tuId: string, sessions: number): Promise<Person> => {
     const created = await app.service('users').create({ tuId, givenName: tuId, surname: 'Test', email: `${tuId}@example.test`, authSource: 'saml' })
-    const user = await grantRoles(app, created.id, ['user'])
+    const user = await grantRoles(app, created.id, ['person'])
     const sessionIds: string[] = []
     for (let i = 0; i < sessions; i++) {
       const { session } = await app.get('sessions').issue(user.id)

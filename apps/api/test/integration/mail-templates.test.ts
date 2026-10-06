@@ -6,10 +6,11 @@ import { seedMailTemplates } from '../../src/mail/templates.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
 import { db } from '../support/worker-database.js'
-import { grantRoles, type SeededRole } from '../support/roles.js'
+import { allBut, makeUser } from '../support/roles.js'
 
 // ADR 0027: templates seeded from code defaults, immutable revisions, the
-// check on save, roll back; and ADR 0011's mail row: admins only.
+// check on save, roll back; and ADR 0011's mail row: `mail.manage` only. The
+// users hold roles of the test's own (ADR 0035).
 
 let app: Application
 let admin: User
@@ -25,14 +26,9 @@ let defaults: Map<string, string>
 
 beforeAll(async () => {
   ;({ app } = await createTestApp())
-  const users = app.service('users')
-  const make = async (tuId: string, role: SeededRole) => {
-    const created = await users.create({ tuId, givenName: tuId, surname: 'Test', email: `${tuId}@example.org`, authSource: 'saml' })
-    return grantRoles(app, created.id, [role])
-  }
-  admin = await make('mt01admn', 'admin')
-  operator = await make('mt02oper', 'operator')
-  member = await make('mt03user', 'user')
+  admin = await makeUser(app, 'mt01admn', 'admin')
+  operator = await makeUser(app, 'mt02oper', allBut('mail.manage'))
+  member = await makeUser(app, 'mt03user')
   defaults = new Map((await app.service('mail-templates').find()).map((template) => [template.id, template.revisionId]))
 })
 
@@ -117,11 +113,11 @@ describe('mail templates: saving', () => {
   })
 })
 
-describe('mail templates: admins only (ADR 0011)', () => {
+describe('mail templates: mail.manage only (ADR 0011)', () => {
   it.each([
-    ['operator', () => operator],
-    ['user', () => member]
-  ])('%s neither reads nor writes mail wording', async (_role, who) => {
+    ['everything else', () => operator],
+    ['nothing', () => member]
+  ])('holding %s, neither reads nor writes mail wording', async (_role, who) => {
     await expect(app.service('mail-kinds').find(as(who()))).rejects.toMatchObject({ code: 403 })
     await expect(app.service('mail-templates').find(as(who()))).rejects.toMatchObject({ code: 403 })
     await expect(app.service('mail-template-revisions').find(as(who()))).rejects.toMatchObject({ code: 403 })

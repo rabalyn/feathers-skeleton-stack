@@ -7,7 +7,7 @@ import type { Application } from '../../src/app.js'
 import { queueConnection, startMaintenance, type Maintenance } from '../../src/jobs/maintenance.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp, loadValkeyConfig } from '../support/app.js'
-import { makeUser } from '../support/roles.js'
+import { allBut, makeUser } from '../support/roles.js'
 import { PUBLIC_ORIGIN, type TestIdp } from '../support/saml-idp.js'
 import { db } from '../support/worker-database.js'
 
@@ -66,7 +66,8 @@ beforeAll(async () => {
   ;({ app, idp } = await createTestApp())
   base = `http://127.0.0.1:${((await app.listen(0)).address() as AddressInfo).port}`
   admin = await makeUser(app, 'mm01admn', 'admin')
-  member = await makeUser(app, 'mm02user', 'user')
+  // Everything but the bypass, through a role of the test's own (ADR 0035).
+  member = await makeUser(app, 'mm02user', allBut('settings.manage'))
 })
 
 afterEach(async () => {

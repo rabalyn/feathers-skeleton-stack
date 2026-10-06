@@ -4,10 +4,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Application } from '../../src/app.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
-import {  } from '../support/roles.js'
-import { grantRoles } from '../support/roles.js'
+import { allBut, grantRoles, makeRole } from '../support/roles.js'
 
-// ADR 0013 over HTTP: erasure is the admin's alone (ADR 0011), refused for
+// ADR 0013 over HTTP: erasure is `erasures.create`'s alone (ADR 0011), refused for
 // oneself and the break-glass account, audited, and ends the person's
 // sessions and export objects with their identifiers.
 
@@ -44,8 +43,10 @@ beforeAll(async () => {
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`
   const users = app.service('users')
   admin = await grantRoles(app, (await person()).id, ['admin'])
-  operator = await grantRoles(app, (await person()).id, ['operator'])
-  member = await grantRoles(app, (await person()).id, ['user'])
+  // Roles of the test's own (ADR 0035): everything else, and nothing.
+  await makeRole(app, 'all-but-erasure', allBut('erasures.create'))
+  operator = await grantRoles(app, (await person()).id, ['all-but-erasure'])
+  member = await person()
   breakGlass = await users.create({ tuId: null, givenName: null, surname: null, email: 'bg@example.test', authSource: 'local' })
 })
 
@@ -54,7 +55,7 @@ afterAll(async () => {
 })
 
 describe('erasure (ADR 0011, 0013)', () => {
-  it('is refused to operators and users', async () => {
+  it('is refused without erasures.create, whatever else is held', async () => {
     const target = await person()
     expect((await erase(operator, target.id)).status).toBe(403)
     expect((await erase(member, target.id)).status).toBe(403)

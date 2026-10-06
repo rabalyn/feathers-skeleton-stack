@@ -5,11 +5,12 @@ import type { AuditEvent } from '../../src/services/audit-events/audit-events.js
 import type { Session } from '../../src/services/sessions/sessions.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
-import { grantRoles, type SeededRole } from '../support/roles.js'
+import { makeUser } from '../support/roles.js'
 
-// ADR 0011's sessions row over HTTP: admins read and revoke every session,
-// operators read every session but not its browser and revoke none, users
-// have no access. Only active sessions are listed.
+// ADR 0011's sessions rules over HTTP: admins read and revoke every session,
+// `sessions.read` reads every session but not its browser and revokes none,
+// without it there is no access. Only active sessions are listed. The users
+// hold roles of the test's own (ADR 0035).
 
 let app: Application
 let base: string
@@ -38,15 +39,10 @@ beforeAll(async () => {
   ;({ app } = await createTestApp())
   const server = await app.listen(0)
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`
-  const users = app.service('users')
-  const make = async (tuId: string, role: SeededRole) => {
-    const created = await users.create({ tuId, givenName: tuId, surname: 'Test', email: null, authSource: 'saml' })
-    return grantRoles(app, created.id, [role])
-  }
-  admin = await make('ad02admn', 'admin')
-  operator = await make('op02oper', 'operator')
-  member = await make('us02user', 'user')
-  other = await make('us03othr', 'user')
+  admin = await makeUser(app, 'ad02admn', 'admin', { email: null })
+  operator = await makeUser(app, 'op02oper', ['sessions.read'], { email: null })
+  member = await makeUser(app, 'us02user', [], { email: null })
+  other = await makeUser(app, 'us03othr', [], { email: null })
 })
 
 afterAll(async () => {
@@ -97,7 +93,7 @@ describe('sessions (ADR 0010, 0011)', () => {
     expect(event).toMatchObject({ actorId: admin.id, resourceType: 'sessions', detail: { userId: member.id } })
   })
 
-  it('shows operators every session, but no browser, not even their own', async () => {
+  it('shows sessions.read every session, but no browser, not even their own', async () => {
     const asOperator = await login(operator)
     const theirs = await login(member)
     const listed = await list(asOperator.token)
@@ -109,7 +105,7 @@ describe('sessions (ADR 0010, 0011)', () => {
     expect(await (await call(asOperator.token, `/sessions/${theirs.id}`)).json()).not.toHaveProperty('userAgent')
   })
 
-  it('does not let an operator revoke any session, not even their own', async () => {
+  it('does not let sessions.read revoke any session, not even their own', async () => {
     const asOperator = await login(operator)
     const spare = await login(operator)
     const theirs = await login(member)
@@ -119,7 +115,7 @@ describe('sessions (ADR 0010, 0011)', () => {
     }
   })
 
-  it('gives users no access, not even to their own sessions', async () => {
+  it('gives an account without them no access, not even to their own sessions', async () => {
     const mine = await login(member)
     const spare = await login(member)
     expect((await call(mine.token, '/sessions')).status).toBe(403)

@@ -4,10 +4,11 @@ import type { Application } from '../../src/app.js'
 import type { AuditEvent } from '../../src/services/audit-events/audit-events.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
-import { grantRoles, type SeededRole } from '../support/roles.js'
+import { makeUser } from '../support/roles.js'
 
-// ADR 0011's audit event row over HTTP: admins and operators read all,
-// a user their own; nobody writes through the service.
+// ADR 0011's audit event rules over HTTP: admins and `audit-events.read`
+// read all, `audit-events.own` one's own; nobody writes through the service.
+// The users hold roles of the test's own (ADR 0035).
 
 let app: Application
 let base: string
@@ -25,14 +26,9 @@ beforeAll(async () => {
   ;({ app } = await createTestApp())
   const server = await app.listen(0)
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`
-  const users = app.service('users')
-  const make = async (tuId: string, role: SeededRole) => {
-    const created = await users.create({ tuId, givenName: tuId, surname: 'Test', email: null, authSource: 'saml' })
-    return grantRoles(app, created.id, [role])
-  }
-  admin = await make('ad01admn', 'admin')
-  operator = await make('op01oper', 'operator')
-  member = await make('us01user', 'user')
+  admin = await makeUser(app, 'ad01admn', 'admin', { email: null })
+  operator = await makeUser(app, 'op01oper', ['audit-events.read'], { email: null })
+  member = await makeUser(app, 'us01user', ['audit-events.own'], { email: null })
   const knex = app.get('knex')
   await knex('auditEvents').insert([
     { actorId: member.id, action: 'login', resourceType: 'users', resourceId: member.id, occurredAt: new Date(Date.now() - 2000) },
@@ -48,7 +44,7 @@ afterAll(async () => {
 const actions = async (response: Response) => ((await response.json()) as { data: AuditEvent[] }).data.map((event) => event.action)
 
 describe('audit events (ADR 0011, 0013)', () => {
-  it('shows all events to admins and operators, newest first', async () => {
+  it('shows all events to admins and audit-events.read, newest first', async () => {
     for (const user of [admin, operator]) {
       const response = await get(user, '/audit-events')
       expect(response.status, user.tuId ?? '').toBe(200)
@@ -58,7 +54,7 @@ describe('audit events (ADR 0011, 0013)', () => {
     }
   })
 
-  it('shows a user only what they did', async () => {
+  it('shows audit-events.own only what one did', async () => {
     expect(await actions(await get(member, '/audit-events'))).toEqual(['login'])
     const theirs = (await (await get(admin, '/audit-events?action=users.patch')).json()) as { data: AuditEvent[] }
     expect((await get(member, `/audit-events/${theirs.data[0]!.id}`)).status).toBe(404)

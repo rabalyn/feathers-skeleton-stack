@@ -7,10 +7,12 @@ import type { File } from '../../src/services/files/files.schema.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
 import { db } from '../support/worker-database.js'
-import { grantRoles, type SeededRole } from '../support/roles.js'
+import { makeUser } from '../support/roles.js'
 
-// ADR 0020 and the documents and avatar cells of ADR 0011's matrix, over
-// HTTP against the stack's Garage.
+// ADR 0020 and ADR 0011's documents, files and avatar rules, over HTTP
+// against the stack's Garage. The users hold roles of the test's own
+// (ADR 0035): all upload and keep their own files and avatar; the operator
+// reads every user and document, the members keep their own documents.
 
 let app: Application
 let base: string
@@ -64,19 +66,16 @@ const download = async (user: User, fileId: string) =>
 
 const as = (user: User) => ({ provider: 'rest' as const, user, authenticated: true })
 
+const OWN_FILES = ['files.upload', 'files.own', 'profile.avatar'] as const
+
 beforeAll(async () => {
   ;({ app } = await createTestApp())
   const server = await app.listen(0)
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`
-  const users = app.service('users')
-  const make = async (tuId: string, role: SeededRole) => {
-    const created = await users.create({ tuId, givenName: tuId, surname: 'Test', email: `${tuId}@example.org`, authSource: 'saml' })
-    return grantRoles(app, created.id, [role])
-  }
-  admin = await make('ad02admn', 'admin')
-  operator = await make('op02oper', 'operator')
-  member = await make('us03user', 'user')
-  other = await make('us04othr', 'user')
+  admin = await makeUser(app, 'ad02admn', 'admin')
+  operator = await makeUser(app, 'op02oper', [...OWN_FILES, 'users.read', 'documents.all'])
+  member = await makeUser(app, 'us03user', [...OWN_FILES, 'documents.own'])
+  other = await makeUser(app, 'us04othr', [...OWN_FILES, 'documents.own'])
 })
 
 afterEach(async () => {
@@ -155,7 +154,7 @@ describe('files: upload', () => {
   })
 
   it('refuses an upload beyond the user quota, counting only their live files', async () => {
-    const quotaUser = await app.service('users').create({ tuId: 'us05quot', authSource: 'saml', givenName: 'q', surname: 'q', email: null })
+    const quotaUser = await makeUser(app, 'us05quot', ['files.upload'], { givenName: 'q', surname: 'q', email: null })
     const first = await uploaded(quotaUser, PNG, 'image/png')
     await setSetting('userQuotaBytes', PNG.length * 2 - 1)
     const response = await upload(quotaUser, PNG, 'image/png')
@@ -223,7 +222,7 @@ describe('files: reading', () => {
       expect(response.status).toBe(200)
       expect(response.headers.get('content-disposition')).toBe(`inline; filename="avatar.png"; filename*=UTF-8''avatar.png`)
     }
-    // `user` reads no other user, so no other user's avatar.
+    // Without users.read, no other user's avatar.
     expect((await download(other, file.id)).status).toBe(404)
     await app.service('avatars').create({ fileId: null }, as(member))
     expect((await download(operator, file.id)).status).toBe(404)
@@ -332,7 +331,7 @@ describe('documents', () => {
 })
 
 describe('avatars', () => {
-  it('lets every role set the avatar of their own record, served inline', async () => {
+  it('lets every holder of profile.avatar set the avatar of their own record, served inline', async () => {
     for (const user of [member, operator, admin]) {
       const file = await uploaded(user, PNG, 'image/png', 'me.png')
       await expect(app.service('avatars').create({ fileId: file.id }, as(user))).resolves.toMatchObject({ id: user.id, avatarFileId: file.id })
