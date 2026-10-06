@@ -569,7 +569,9 @@
   },
   "docs": {
     "adrs": "ADRs",
+    "productAdrs": "Product ADRs",
     "overview": "Overview",
+    "productOverview": "Product overview",
     "search": "Search the ADRs",
     "noMatch": "No ADR contains every word."
   }
