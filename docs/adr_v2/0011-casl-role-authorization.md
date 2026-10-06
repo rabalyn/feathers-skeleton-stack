@@ -99,7 +99,7 @@ Directory-sourced user fields are never writable by anyone in the application ([
 ## Consequences
 
 - Adding a service means adding its catalogue entries; the default-deny hook makes the failure mode "nobody but `admin` can use it yet" rather than "everybody can".
-- The seeded defaults above are the specification for the authorization tests: each cell should have one, run against the seeded roles. Each catalogue entry has a test of its own rules, and the role management safeguards (fixed `admin`, undeletable seeded roles, 409 on a held role, the break-glass assignment) have theirs.
+- The seeded defaults above are the specification for the authorization tests: each cell should have one. The tests run against roles of their own holding exactly the permissions in question, not against the seeded roles, which a product may change ([0035](0035-products-derived-from-the-skeleton.md), decided 2026-10-06); that the seeded roles grant the defaults is checked once, in the skeleton only. Each catalogue entry has a test of its own rules, and the role management safeguards (fixed `admin`, undeletable seeded roles, 409 on a held role, the break-glass assignment) have theirs.
 - A deployment can grant configuration to operators. That is a deliberate choice of the admin who makes it, and it is audited, but the skeleton no longer guarantees that only admins see configuration.
 - Multiple roles make "what may this person do" a union to compute rather than a name to read. The Users page shows the roles; the permissions page shows what they add up to.
 - The ability module and catalogue ship to the browser, so they must not import server-only code; the boundary lint rule in [0007](0007-typed-client-from-api.md) covers it.

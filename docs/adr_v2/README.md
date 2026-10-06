@@ -135,7 +135,7 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 
 **Slice 22 — file references and the example content, done** ([0035](0035-products-derived-from-the-skeleton.md#the-example-content), [0020](0020-object-storage-uploads.md)): `FILE_REFERENCES` and `apps/api/src/product/files.ts`, through which a product's records let their readers download their files, held against the schema's foreign keys to `files` by `test/integration/file-references.test.ts`; the policy for `documents` and `documents.stale-reminder`: kept, inherited unchanged, switched off in a product by withdrawing their grants.
 
-**Slice 23 — tests that own their roles, next** ([0035](0035-products-derived-from-the-skeleton.md)): integration tests and the end-to-end suite stop depending on what the seeded roles grant, so a product may change them.
+**Slice 23 — tests that own their roles, done** ([0035](0035-products-derived-from-the-skeleton.md), [0011](0011-casl-role-authorization.md), [0015](0015-testing-vitest-playwright.md)): integration tests and the end-to-end suite stop depending on what the seeded roles grant, so a product may change them. `makeUser`, `makeRole` and `allBut` in `apps/api/test/support/roles.ts`; `everyone` emptied by `createTestApp`; the seeded defaults checked in `roles.test.ts` only where `PRODUCT` names the skeleton; `e2e/tests/global-setup.ts` with the roles `e2e-operator` and `e2e-user`; `expectNav` for the skeleton's links in order.
 
 **Later.** The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
 
