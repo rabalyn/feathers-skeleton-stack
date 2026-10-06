@@ -33,6 +33,9 @@ COPY apps/api apps/api
 COPY apps/web apps/web
 COPY packages packages
 COPY e2e e2e
+# The ADRs, which the api's unit tests read (ADR 0019, 0035).
+COPY docs/adr_v2 docs/adr_v2
+COPY docs/adr_product docs/adr_product
 RUN chown -R node:node /repo
 USER node
 CMD ["pnpm", "lint"]

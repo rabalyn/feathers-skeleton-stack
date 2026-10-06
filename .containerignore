@@ -2,8 +2,9 @@
 **/dist
 .git
 docs
-# The ADRs and diagrams, which the api serves to admins (ADR 0019).
+# The ADRs and diagrams, which the api serves to admins (ADR 0019, 0035).
 !docs/adr_v2
+!docs/adr_product
 test-results
 playwright-report
 **/.quasar

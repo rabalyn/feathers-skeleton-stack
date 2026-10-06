@@ -108,7 +108,7 @@ export type { Preference, PreferenceData, PreferenceQuery } from './services/pre
 export type { PreferenceKey, PreferenceValues } from './preferences/registry.js'
 // A 400 for refused data or query (ADR 0005).
 export type { ValidationError } from './validation-error.js'
-export type { Doc, DocKind, DocQuery, DocSummary } from './services/docs/docs.js'
+export type { Doc, DocKind, DocQuery, DocSource, DocSummary } from './services/docs/docs.js'
 export { DOC_SEARCH_MAX_LENGTH } from './limits.js'
 // gen:service exports (ADR 0030)
 // The product's part (ADR 0035).
