@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { PRODUCT_FILE_REFERENCES } from '../../src/product/files.js'
 import { PRODUCT_QUEUES } from '../../src/product/jobs.js'
 import { PRODUCT_MAIL_KINDS } from '../../src/product/mail.js'
 import { PRODUCT_PERMISSIONS, PRODUCT_TOKEN_EXCLUDED_PERMISSIONS } from '../../src/product/permissions.js'
@@ -29,5 +30,6 @@ describe.runIf(product === 'feathers-skeleton')("the skeleton's product module",
     expect(PRODUCT_CROSS_SETTING_RULES).toEqual([])
     expect(PRODUCT_PREFERENCES).toEqual({})
     expect(PRODUCT_QUEUES).toEqual([])
+    expect(PRODUCT_FILE_REFERENCES).toEqual([])
   })
 })

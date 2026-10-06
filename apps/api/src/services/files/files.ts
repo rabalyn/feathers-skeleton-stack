@@ -21,6 +21,7 @@ import {
   type FileQuery
 } from './files.schema.js'
 import { receive, type Upload } from './upload.js'
+import { FILE_REFERENCES } from './attachments.js'
 
 // Uploads (ADR 0020). `files` stores an upload and describes it; the bytes
 // come back through `file-contents`. The browser never talks to the object
@@ -107,16 +108,19 @@ type Ability = { can(action: string, subject: unknown): boolean }
 
 // Whether the caller may read a file's bytes (ADR 0020): their own file
 // (`files.own`), or the file of a record they may read, which is what a
-// reference is for: the avatar of a user, the file of a document. Each is
-// checked on the record itself, so it is exactly the caller's rule over that
-// record, in a view-as the intersected one (ADR 0028). Nobody reads a file
-// because they know its id.
+// reference is for: the avatar of a user, the file of a document or of a
+// product's record (FILE_REFERENCES). Each is checked on the record itself,
+// so it is exactly the caller's rule over that record, in a view-as the
+// intersected one (ADR 0028). Nobody reads a file because they know its id.
 const mayRead = async (knex: Knex, ability: Ability | undefined, file: File, avatarOf: object | undefined) => {
   if (!ability) return false
   if (ability.can('read', subject(FILES_PATH, { ...file }))) return true
   if (avatarOf && ability.can('read', subject('users', { ...avatarOf }))) return true
-  const document = await knex('documents').where({ fileId: file.id }).first<object | undefined>()
-  return Boolean(document && ability.can('read', subject('documents', { ...document })))
+  for (const reference of FILE_REFERENCES) {
+    const record = await knex(reference.table).where({ [reference.column]: file.id }).first<object | undefined>()
+    if (record && ability.can('read', subject(reference.subject, { ...record }))) return true
+  }
+  return false
 }
 
 // get(id) streams the object to whoever may read it (mayRead); to anybody
