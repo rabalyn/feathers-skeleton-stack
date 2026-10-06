@@ -38,6 +38,7 @@ RUN pnpm --filter @app/api build
 
 FROM build AS test
 COPY docs/adr_v2 /repo/docs/adr_v2
+COPY docs/adr_product /repo/docs/adr_product
 # The web app's catalogues, which describe every runtime setting (ADR 0025).
 COPY apps/web/src/i18n /repo/apps/web/src/i18n
 # Vitest writes a bundled copy of its config next to the original.
@@ -80,9 +81,10 @@ CMD ["node", "dist/index.js"]
 # The commit time, not the build time: an unchanged tree builds the same
 # image, and `stack.sh up` restarts nothing.
 FROM runtime-base AS runtime
-# The ADRs and diagrams, for the docs service (ADR 0019). Not in the backup
-# image, which serves nothing.
+# The skeleton's and the product's ADRs and diagrams, for the docs service
+# (ADR 0019, 0035). Not in the backup image, which serves nothing.
 COPY docs/adr_v2 /repo/docs/adr_v2
+COPY docs/adr_product /repo/docs/adr_product
 ARG APP_COMMIT=unknown
 ARG APP_COMMIT_TIME=unknown
 ARG APP_DIRTY=false

@@ -4,7 +4,9 @@ import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
 import { allBut, makeUser } from '../support/roles.js'
 
-// The ADRs and diagrams in the app (ADR 0019): read-only, under `docs.read`,
+// The ADRs and diagrams in the app (ADR 0019), the skeleton's and the
+// product's (ADR 0035; how the product's are read is in
+// test/unit/docs-sources.test.ts): read-only, under `docs.read`,
 // which no seeded role but admin holds (ADR 0011). The operator holds
 // everything else, the member nothing (roles of the test's own, ADR 0035).
 
@@ -29,16 +31,19 @@ afterAll(async () => {
 describe('docs', () => {
   it('lists the index, every ADR and every diagram page, without their Markdown', async () => {
     const docs = await app.service('docs').find(as(admin))
-    expect(docs[0]).toMatchObject({ id: 'readme', kind: 'index', path: 'README.md' })
+    expect(docs[0]).toMatchObject({ id: 'readme', kind: 'index', source: 'skeleton', path: 'adr_v2/README.md' })
     expect(docs).toContainEqual(
       expect.objectContaining({ id: '0001-one-stack-every-environment', kind: 'adr', number: '0001', status: 'Accepted' })
     )
-    expect(docs).toContainEqual(expect.objectContaining({ id: 'diagrams-topology', kind: 'diagram', path: 'diagrams/topology.md' }))
+    expect(docs).toContainEqual(expect.objectContaining({ id: 'diagrams-topology', kind: 'diagram', path: 'adr_v2/diagrams/topology.md' }))
     // The diagram pages as their index lists them, under its names.
     const diagrams = docs.filter((doc) => doc.kind === 'diagram')
     expect(diagrams.slice(0, 3).map((doc) => doc.id)).toEqual(['diagrams-readme', 'diagrams-topology', 'diagrams-startup-and-secrets'])
     expect(diagrams[2]).toMatchObject({ label: 'Startup and secrets', title: 'Startup order and secret delivery' })
     expect(docs.every((doc) => !('markdown' in doc))).toBe(true)
+    // The product's index, which the skeleton ships, after the skeleton's pages.
+    expect(docs.at(-1)).toMatchObject({ id: 'product-readme', kind: 'index', source: 'product', path: 'adr_product/README.md' })
+    await expect(app.service('docs').find({ ...as(admin), query: { source: 'product' } })).resolves.toEqual([docs.at(-1)])
   })
 
   it('finds the pages that hold every word, in any case', async () => {

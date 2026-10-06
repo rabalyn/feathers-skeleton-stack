@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { PRODUCT_FILE_REFERENCES } from '../../src/product/files.js'
 import { PRODUCT_QUEUES } from '../../src/product/jobs.js'
@@ -31,5 +31,9 @@ describe.runIf(product === 'feathers-skeleton')("the skeleton's product module",
     expect(PRODUCT_PREFERENCES).toEqual({})
     expect(PRODUCT_QUEUES).toEqual([])
     expect(PRODUCT_FILE_REFERENCES).toEqual([])
+  })
+
+  it('holds no product ADRs, only their index (ADR 0019)', () => {
+    expect(readdirSync(new URL('../../../../docs/adr_product/', import.meta.url))).toEqual(['README.md'])
   })
 })

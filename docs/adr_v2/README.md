@@ -137,6 +137,8 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 
 **Slice 23 — tests that own their roles, done** ([0035](0035-products-derived-from-the-skeleton.md), [0011](0011-casl-role-authorization.md), [0015](0015-testing-vitest-playwright.md)): integration tests and the end-to-end suite stop depending on what the seeded roles grant, so a product may change them. `makeUser`, `makeRole` and `allBut` in `apps/api/test/support/roles.ts`; `everyone` emptied by `createTestApp`; the seeded defaults checked in `roles.test.ts` only where `PRODUCT` names the skeleton; `e2e/tests/global-setup.ts` with the roles `e2e-operator` and `e2e-user`; `expectNav` for the skeleton's links in order.
 
+**Slice 24 — the product's ADRs on the architecture page, done** ([0019](0019-adr-convention.md#diagrams), [0035](0035-products-derived-from-the-skeleton.md)): `docs/adr_product/README.md`, an empty index the skeleton ships; the api image carries `docs/adr_product/` beside `docs/adr_v2/`; the `docs` service reads both, with ids prefixed `product-` for the product's pages, paths below `docs/`, a `source` field and query; the page's product diagram tabs after the skeleton's and a *Product ADRs* tab once the product has an ADR. `test/unit/docs-sources.test.ts` reads a made-up product; `product-stubs.test.ts` keeps the skeleton's directory to its index. Checked once by hand with a throwaway product ADR and diagram page: tabs, search and links in both directions.
+
 **Later.** The generated production units still publish Nginx on `127.0.0.1:8443`; that belongs to the production host work above.
 
 ## Status of this set

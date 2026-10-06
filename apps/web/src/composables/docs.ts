@@ -1,7 +1,8 @@
 import DOMPurify from 'dompurify'
 import MarkdownIt from 'markdown-it'
 
-// The ADRs and diagram pages as the docs page shows them (ADR 0019): the
+// The ADRs and diagram pages as the docs page shows them (ADR 0019), the
+// skeleton's and the product's, which link to each other (ADR 0035): the
 // repository's Markdown, rendered in the browser. Raw HTML in the Markdown
 // is escaped, not rendered, and the result is sanitized all the same before
 // the page shows it (ADR 0018). Links between the pages stay in the app;
@@ -10,7 +11,7 @@ import MarkdownIt from 'markdown-it'
 
 export interface DocRef {
   id: string
-  // The file's path below `docs/adr_v2/`.
+  // The file's path below `docs/`: `adr_v2/…` or `adr_product/…`.
   path: string
 }
 
@@ -34,7 +35,7 @@ export const resolveLink = (from: string, href: string, docs: readonly DocRef[])
   const parts = from.split('/').slice(0, -1)
   for (const part of file.split('/')) {
     if (part === '..') {
-      // Above docs/adr_v2/: some other file of the repository.
+      // Above docs/: some other file of the repository.
       if (!parts.length) return null
       parts.pop()
     } else if (part && part !== '.') parts.push(part)

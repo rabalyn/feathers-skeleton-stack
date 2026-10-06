@@ -15,10 +15,11 @@
     >
       <q-tab v-for="diagram in diagrams" :key="diagram.id" :name="diagram.id" :label="tabLabel(diagram)" :data-test="`docs-tab-${diagram.id}`" />
       <q-tab :name="ADR_TAB" icon="gavel" :label="t('docs.adrs')" data-test="docs-tab-adrs" />
+      <q-tab v-if="hasProductAdrs" :name="PRODUCT_TAB" icon="gavel" :label="t('docs.productAdrs')" data-test="docs-tab-product" />
     </q-tabs>
     <q-separator class="q-mb-md" />
 
-    <div v-if="tab === ADR_TAB" class="row q-col-gutter-lg">
+    <div v-if="tab in SOURCE_OF_TAB" class="row q-col-gutter-lg">
       <div class="col-12 col-md-4 col-lg-3">
         <q-input
           v-model="term"
@@ -69,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { DOC_SEARCH_MAX_LENGTH, type Doc, type DocSummary } from '@app/api/client'
+import { DOC_SEARCH_MAX_LENGTH, type Doc, type DocSource, type DocSummary } from '@app/api/client'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -78,11 +79,15 @@ import DocView from '@/components/DocView.vue'
 import { useNotify } from '@/composables/notify'
 
 // The architecture documentation (ADR 0019), under `docs.read`, the
-// admin's alone (ADR 0011): a tab per diagram page, and the ADRs with a
-// search over their text. The page shown is in the address, `?page=<id>`,
-// so it can be linked and the back button works.
+// admin's alone (ADR 0011): a tab per diagram page, the skeleton's and then
+// the product's, and the ADRs with a search over their text, the
+// skeleton's on one tab and the product's on another, there once the
+// product has one (ADR 0035). The page shown is in the address,
+// `?page=<id>`, so it can be linked and the back button works.
 
 const ADR_TAB = 'adrs'
+const PRODUCT_TAB = 'product'
+const SOURCE_OF_TAB: Record<string, DocSource> = { [ADR_TAB]: 'skeleton', [PRODUCT_TAB]: 'product' }
 
 const { t } = useI18n()
 const notify = useNotify()
@@ -97,26 +102,41 @@ const loading = ref(false)
 const searching = ref(false)
 
 const diagrams = computed(() => all.value.filter((entry) => entry.kind === 'diagram'))
-const adrs = computed(() => found.value ?? all.value.filter((entry) => entry.kind !== 'diagram'))
+const hasProductAdrs = computed(() => all.value.some((entry) => entry.source === 'product' && entry.kind === 'adr'))
 
 const selected = computed(() => (typeof route.query.page === 'string' ? route.query.page : undefined))
 const hash = computed(() => route.hash.slice(1))
-const kindOf = (id: string | undefined) => all.value.find((entry) => entry.id === id)?.kind
-const tab = computed(() => (kindOf(selected.value) === 'diagram' ? selected.value : ADR_TAB))
+const entryOf = (id: string | undefined) => all.value.find((entry) => entry.id === id)
+const tab = computed(() => {
+  const entry = entryOf(selected.value)
+  if (entry?.kind === 'diagram') return entry.id
+  return entry?.source === 'product' ? PRODUCT_TAB : ADR_TAB
+})
+// The ADRs of the tab shown, or of the one asked for, with their index.
+const adrsOf = (name: string) =>
+  (found.value ?? all.value).filter((entry) => entry.kind !== 'diagram' && entry.source === SOURCE_OF_TAB[name])
+const adrs = computed(() => adrsOf(tab.value))
 
-const tabLabel = (entry: DocSummary) => (entry.id === 'diagrams-readme' ? t('docs.overview') : entry.label)
+const TAB_LABELS: Record<string, string> = { 'diagrams-readme': 'docs.overview', 'product-diagrams-readme': 'docs.productOverview' }
+const tabLabel = (entry: DocSummary) => (entry.id in TAB_LABELS ? t(TAB_LABELS[entry.id]!) : entry.label)
 const shortTitle = (entry: DocSummary) => entry.title.replace(/^\d{4}:\s*/, '')
 
 const hrefOf = (id: string, target: string) => router.resolve({ name: 'docs', query: { page: id }, hash: target ? `#${target}` : '' }).href
 
 const open = (id: string, target = '') => void router.push({ name: 'docs', query: { page: id }, hash: target ? `#${target}` : '' })
-const openTab = (name: string | number) => open(name === ADR_TAB ? (adrs.value[0]?.id ?? 'readme') : String(name))
+const INDEX_OF_TAB: Record<string, string> = { [ADR_TAB]: 'readme', [PRODUCT_TAB]: 'product-readme' }
+// An ADR tab opens the first page of its list: its index, or the first
+// match of a search.
+const openTab = (value: string | number) => {
+  const name = String(value)
+  open(name in SOURCE_OF_TAB ? (adrsOf(name)[0]?.id ?? INDEX_OF_TAB[name]!) : name)
+}
 
 const load = async () => {
   loading.value = true
   try {
     all.value = await client.service('docs').find()
-    if (!selected.value || !kindOf(selected.value)) {
+    if (!entryOf(selected.value)) {
       await router.replace({ name: 'docs', query: { page: diagrams.value[0]?.id ?? 'readme' } })
     }
   } catch (error) {
