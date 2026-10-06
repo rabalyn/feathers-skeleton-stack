@@ -714,10 +714,20 @@ case $cmd in
     log "building images"
     compose build
     # podman-compose neither reruns a completed one-shot nor recreates a
-    # container whose image was rebuilt, so services are recreated
-    # explicitly. OpenBao is not: recreating it seals it.
+    # container whose image was rebuilt, so every container `up` manages is
+    # removed here and each service created anew below, exactly once. Not
+    # with --force-recreate: podman-compose then also recreates every
+    # service that depends on the one named, stopping them a batch at a
+    # time, each batch waiting out the stop timeout of a container that
+    # ignores its signal; an `up` recreated most services up to three times
+    # and spent minutes stopping them (measured 2026-10-06). One removal of
+    # all of them stops them in parallel. OpenBao is among them, and starts
+    # sealed, as it did when the certificates' dependents were recreated.
+    log "removing the previous containers"
+    # shellcheck disable=SC2046
+    podman rm --force --ignore $(for svc in certs openbao $(stack_agents | sed 's/$/-agent/') $(app_services); do ctr "$svc"; echo; done) >/dev/null
     log "issuing certificates"
-    compose up -d --force-recreate --no-deps certs >/dev/null 2>&1
+    compose up -d --no-deps certs >/dev/null 2>&1
     podman wait "$(ctr certs)" >/dev/null
     [[ $(podman inspect -f '{{.State.ExitCode}}' "$(ctr certs)") == 0 ]] || die "certs failed; see: podman logs $(ctr certs)"
     log "starting OpenBao and agents"
@@ -726,7 +736,7 @@ case $cmd in
     # setup issues fresh secret_ids anyway. (`podman restart` refuses: the
     # dependency chain ends at the exited one-shot `certs`.)
     # shellcheck disable=SC2046
-    compose up -d --force-recreate --no-deps $(stack_agents | sed 's/$/-agent/') >/dev/null 2>&1
+    compose up -d --no-deps $(stack_agents | sed 's/$/-agent/') >/dev/null 2>&1
     setup
     # The uptime check's target (ADR 0022): deployment configuration, here
     # the local app's origin.
@@ -734,11 +744,11 @@ case $cmd in
       "- targets: ['$APP_ORIGIN/api/ping']" >"$ROOT/containers/prometheus/targets/uptime.yml"
     log "starting the stack"
     # shellcheck disable=SC2046
-    compose up -d --force-recreate --no-deps $(app_services | grep -vxE 'migrate|api|worker|backup|netbox|netbox-worker|netbox-setup') >/dev/null 2>&1
+    compose up -d --no-deps $(app_services | grep -vxE 'migrate|api|worker|backup|netbox|netbox-worker|netbox-setup') >/dev/null 2>&1
     # --no-deps drops depends_on conditions, so migrate waits here explicitly.
     wait_healthy postgres 120
     log "migrating the database"
-    compose up -d --force-recreate --no-deps migrate >/dev/null 2>&1
+    compose up -d --no-deps migrate >/dev/null 2>&1
     podman wait "$(ctr migrate)" >/dev/null
     [[ $(podman inspect -f '{{.State.ExitCode}}' "$(ctr migrate)") == 0 ]] || die "migrate failed; see: podman logs $(ctr migrate)"
     # The api and the worker refuse to start without their runtime settings
@@ -746,15 +756,15 @@ case $cmd in
     # also lacks the IdP's certificate until idp_setup below, which restarts
     # it and waits for it, so only the worker is waited for here.
     log "starting api, worker and backup"
-    compose up -d --force-recreate --no-deps api worker backup >/dev/null 2>&1
+    compose up -d --no-deps api worker backup >/dev/null 2>&1
     wait_healthy worker 60
     # NetBox's migrations and seed (ADR 0031), then NetBox itself.
     log "migrating and seeding NetBox"
-    compose up -d --force-recreate --no-deps netbox-setup >/dev/null 2>&1
+    compose up -d --no-deps netbox-setup >/dev/null 2>&1
     podman wait "$(ctr netbox-setup)" >/dev/null
     [[ $(podman inspect -f '{{.State.ExitCode}}' "$(ctr netbox-setup)") == 0 ]] || die "netbox-setup failed; see: podman logs $(ctr netbox-setup)"
     log "starting NetBox"
-    compose up -d --force-recreate --no-deps netbox netbox-worker >/dev/null 2>&1
+    compose up -d --no-deps netbox netbox-worker >/dev/null 2>&1
     wait_healthy netbox 180
     # The local target is ours to initialise (ADR 0017); a run never does.
     podman exec -u backup "$(ctr backup)" node dist/backup.js init >/dev/null ||
