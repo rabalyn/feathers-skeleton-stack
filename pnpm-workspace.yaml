@@ -18,9 +18,14 @@ allowBuilds:
 # @intlify/unplugin-vue-i18n pins esbuild ^0.25, whose binaries are built
 # with a Go toolchain carrying critical crypto/tls flaws; it only calls
 # esbuild's stable transform API. Remove once it allows a current esbuild.
+#
+# Vue's compilers and sass admit source-map-js 1.2.1, open to an event-loop
+# DoS through indexed source-map section offsets (GHSA-68fv-2mgg-jv7q).
+# Remove once @vue/compiler-core and @vue/compiler-sfc require >= 1.2.2.
 overrides:
   '@xmldom/xmldom@<0.8.15': 0.8.15
   'esbuild@<0.28.2': 0.28.2
+  'source-map-js@<1.2.2': 1.2.2
 
 # Accepted pnpm audit findings (ADR 0018), for advisories with no fixed
 # version, so no overrides floor is possible. Every entry carries a trailing
