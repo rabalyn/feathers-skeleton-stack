@@ -130,6 +130,8 @@ export class SessionStore {
         .returning(SESSION_COLUMNS)
       if (!session) throw new Error('session insert returned nothing')
       await trx('authRefreshTokens').insert({ sessionId: session.id, tokenHash: hashRefreshToken(refreshToken) })
+      // Only a login opens a session (ADR 0009).
+      await trx('users').where({ id: userId }).update({ lastLoginAt: trx.fn.now() })
       return { session, refreshToken }
     })
     this.events.issued?.(issued.session)

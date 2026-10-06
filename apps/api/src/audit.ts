@@ -29,6 +29,7 @@ export type AuditAction =
   | 'session.reuse-detected'
   | 'sessions.revoke'
   | 'settings.update'
+  | 'users.create'
   | 'users.erase'
   | 'users.patch'
   | 'users.roles'

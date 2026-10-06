@@ -183,6 +183,16 @@ const columns = computed<NonNullable<QTableProps['columns']>>(() => [
     sortable: true,
     format: (value: User['createdAt']) => dateTime(value)
   },
+  {
+    // Null for an account made before the person's first login (ADR 0009).
+    name: 'lastLoginAt',
+    field: 'lastLoginAt',
+    label: t('user.lastLoginAt'),
+    align: 'left',
+    sortable: true,
+    sortOrder: 'da',
+    format: (value: User['lastLoginAt']) => (value ? dateTime(value) : t('user.neverLoggedIn'))
+  },
   // Under sessions.read (ADR 0011).
   ...(session.canAll('read', 'sessions') || mayViewAs.value ? [{ name: 'sessions', field: 'id', label: '', align: 'right' as const }] : [])
 ])

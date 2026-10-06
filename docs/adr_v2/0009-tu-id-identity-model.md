@@ -20,13 +20,24 @@ The TU-ID is the university's global identifier for a person. It is what users r
 - **Internal logs, metrics and traces reference the surrogate `id`, never the TU-ID.** This is a deliberate narrowing of "TU-ID everywhere": log retention then does not accumulate direct identifiers, which keeps [0013](0013-gdpr-export-and-retention.md) tractable. Audit events follow the same rule: they reference accounts by surrogate id and never store the TU-ID, and a screen that shows them looks the TU-ID up ([0013](0013-gdpr-export-and-retention.md), [0014](0014-frontend-quasar-vue.md)). Accountability survives erasure as a pseudonymous id.
 - Directory attributes mapped on each login: TU-ID (`cn`), name, surname, email. The local record is refreshed from the assertion on every login, so the directory remains authoritative for these fields. They are readable by the user and not editable in the application.
 
+### Accounts before the first login
+
+Decided 2026-10-06, for the first product, which lends transponders to people who may never log in.
+
+- **An account also comes into being when product code records something about a person**, before they ever log in: `accountFor(app, trx, tuId, { actorId })` (`apps/api/src/accounts.ts`), called inside the transaction of the write that needs the person (a loan), so the account exists exactly when that write commits. A person still also gets an account by logging in ([0008](0008-authentication-saml2-ldap.md)).
+- **From the directory only.** An existing account is returned as it is. Otherwise the directory is asked for exactly that TU-ID ([0008](0008-authentication-saml2-ldap.md)), and only a person it knows gets an account, with its name, surname and email; a TU-ID it does not know is refused (400), an unreachable directory answered 503. No account is made from fields a caller supplies.
+- It is **no external service method and no permission of its own**: who may cause an account is whoever may make the write that needs it, which the product's own permission decides. The account gets the role a first login gives ([0011](0011-casl-role-authorization.md)), and its making is an audit event, `users.create`, naming the account that caused it ([0013](0013-gdpr-export-and-retention.md)).
+- The first login finds the account by its TU-ID and refreshes its fields, as every login does. Until then the fields are the directory's at the time the account was made.
+- **The record outlives the directory entry.** A person who leaves the university keeps their account, with the name and email it last held, so the application still knows who holds what it lent; the account goes only by erasure ([0013](0013-gdpr-export-and-retention.md)).
+- **`lastLoginAt`** records the last login, set with every session a login opens ([0010](0010-sessions-postgres-ratelimits-valkey.md)); null means the person has never logged in. The Users page shows it. Accounts that existed before took the latest login the database still held (a session or a `login` audit event, each within its retention); one whose logins were all older shows none until its next.
+
 ## The skeleton domain model
 
 This repository is the common base for future products, so it carries only what every product needs, plus enough to exercise the infrastructure end to end:
 
 | Entity | Contents | Purpose |
 | --- | --- | --- |
-| User | Surrogate id, TU-ID, name, surname, email, roles (any number, [0011](0011-casl-role-authorization.md)), enabled flag, locale, optional avatar | Every product has users; this is also the minimal GDPR export ([0013](0013-gdpr-export-and-retention.md)) |
+| User | Surrogate id, TU-ID, name, surname, email, roles (any number, [0011](0011-casl-role-authorization.md)), enabled flag, locale, last login, optional avatar | Every product has users; this is also the minimal GDPR export ([0013](0013-gdpr-export-and-retention.md)) |
 | Avatar | An image upload attached to the user record; with the locale ([0027](0027-email-templates-and-sending.md)), one of the two fields a user edits on their own record, each through a service of its own ([0011](0011-casl-role-authorization.md)) | Exercises image upload and inline image serving ([0020](0020-object-storage-uploads.md)) |
 | Document | Owner, title, an uploaded file and its metadata (original filename, size, content type, checksum), timestamps | Exercises file upload, ownership scoping, real-time channels and the export |
 
@@ -37,3 +48,4 @@ Product-specific data and access rules are out of scope here and are added by ea
 - Users see the identifier they expect; the schema does not depend on it.
 - There are two identifiers for a person in the system, and every developer needs to know which one belongs in which context. The rule is: TU-ID at the boundary, surrogate internally.
 - Directory-sourced fields are overwritten on each login, so local edits to them would be lost. They are therefore not editable in the application.
+- An account made before the first login carries the directory's fields as they were then, and keeps them until a login refreshes them; one whose person left the university keeps them for good. Nothing refreshes them from the directory in between.

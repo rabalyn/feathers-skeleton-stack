@@ -75,6 +75,7 @@ export const PERSONAL_DATA: readonly RegistryEntry[] = [
             'email',
             'enabled',
             'authSource',
+            'lastLoginAt',
             'locale',
             'avatarFileId',
             'createdAt',

@@ -1,5 +1,6 @@
 import type { AddressInfo } from 'node:net'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { accountFor } from '../../src/accounts.js'
 import type { Application } from '../../src/app.js'
 import { createTestApp } from '../support/app.js'
 import { makeRole } from '../support/roles.js'
@@ -85,6 +86,25 @@ describe('login at the ACS', () => {
     // A new account gets `user`, once (ADR 0011).
     const roles = await db()('user_roles').join('roles', 'roles.id', 'user_roles.role_id').where({ user_id: rows[0].id }).pluck('key')
     expect(roles).toEqual(['user'])
+  })
+
+  it('finds an account made before the first login, and records every login (ADR 0009)', async () => {
+    const knex = app.get('knex')
+    const made = await knex.transaction((trx) => accountFor(app, trx, 'bk010blk', { actorId: null }))
+    expect(await db()('users').where({ id: made.id }).first('last_login_at')).toEqual({ last_login_at: null })
+    await login({ cn: 'bk010blk', givenName: 'Bea', sn: 'Married', mail: 'bea.married@example.org' })
+    const rows = await db()('users').where({ tu_id: 'bk010blk' })
+    expect(rows).toHaveLength(1)
+    // The same account, its fields refreshed from the assertion, its roles
+    // those it was made with.
+    expect(rows[0]).toMatchObject({ id: made.id, surname: 'Married', email: 'bea.married@example.org' })
+    expect(rows[0].last_login_at).toBeInstanceOf(Date)
+    const roles = await db()('user_roles').join('roles', 'roles.id', 'user_roles.role_id').where({ user_id: made.id }).pluck('key')
+    expect(roles).toEqual(['user'])
+    const firstLogin = rows[0].last_login_at as Date
+    await login({ cn: 'bk010blk', givenName: 'Bea', sn: 'Married', mail: 'bea.married@example.org' })
+    const { last_login_at: secondLogin } = await db()('users').where({ id: made.id }).first('last_login_at')
+    expect((secondLogin as Date).getTime()).toBeGreaterThan(firstLogin.getTime())
   })
 
   it('stores the session without the token itself', async () => {

@@ -3,7 +3,8 @@ import { MAX_RESULTS, MAX_TERM_LENGTH, MIN_TERM_LENGTH, PAGE_MAX } from '../../d
 import { queryValidator } from '../../validators.js'
 
 // ADR 0008. Directory entries are not records of this application; `userId`
-// names the account of a person who has already logged in, if any.
+// names the person's account, if they have one: from a login, or made before
+// it (ADR 0009).
 
 export const directoryEntrySchema = Type.Object(
   {
