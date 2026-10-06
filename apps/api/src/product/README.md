@@ -11,6 +11,7 @@ it after `skeleton-v1.0.0`; a change to their shape is a MAJOR version.
 | `client.ts` | its services' types for the browser (written by `pnpm gen:service`) | 0007 |
 | `permissions.ts` | its permissions, and those an API token may not carry | 0011, 0029 |
 | `personal-data.ts` | its tables holding personal data; erasure goes into `erase_user_product()` | 0013 |
+| `files.ts` | its records that attach uploaded files, whose readers may download them | 0020 |
 | `mail.ts` | its mail kinds | 0027 |
 | `settings.ts` | its runtime settings | 0025 |
 | `preferences.ts` | its personal preference keys | 0014 |

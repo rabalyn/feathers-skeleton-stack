@@ -51,6 +51,7 @@ Decided 2026-10-06.
   | `apps/api/src/product/client.ts` | the client's service types, re-exported by `src/client.ts` and bound by its dependency boundary | [0007](0007-typed-client-from-api.md) |
   | `apps/api/src/product/permissions.ts` | the permission catalogue, and what API tokens may not carry | [0011](0011-casl-role-authorization.md), [0029](0029-api-tokens.md) |
   | `apps/api/src/product/personal-data.ts` | the personal data registry | [0013](0013-gdpr-export-and-retention.md) |
+  | `apps/api/src/product/files.ts` | the records that attach uploaded files, whose readers may download them (added 2026-10-06) | [0020](0020-object-storage-uploads.md) |
   | `apps/api/src/product/mail.ts` | the mail kinds | [0027](0027-email-templates-and-sending.md) |
   | `apps/api/src/product/settings.ts` | the runtime settings, which ones the api and the worker require, and cross-setting rules | [0025](0025-runtime-settings.md) |
   | `apps/api/src/product/preferences.ts` | the personal preference keys | [0014](0014-frontend-quasar-vue.md) |
@@ -63,6 +64,15 @@ Decided 2026-10-06.
 - **Erasure of a product's tables goes into `erase_user_product()`**, a database function that `erase_user()` calls first, in its transaction ([0013](0013-gdpr-export-and-retention.md)). The skeleton creates it as a no-op and never changes it again; a product's migrations replace it. Letting a product replace `erase_user()` itself was rejected: every later skeleton change to that function would have to be merged into the product's copy by hand.
 - **`pnpm gen:service` registers where `product.env` says** ([0030](0030-service-generator.md)): in the skeleton's own files when `PRODUCT` is `feathers-skeleton`, in the product module otherwise. Both carry its marker lines.
 - **In this repository the product module stays empty**, checked by a unit test in the CI image wherever `product.env` names the skeleton. The skeleton changes the module's files only in a MAJOR version; adding a file to it is a MINOR one.
+- **A product grants as it needs, the seeded roles included.** It may grant its permissions to `everyone`, `user` or `operator`, or withdraw the skeleton's from them, in its own migrations. So the skeleton's tests do not depend on what the seeded roles grant: integration tests and the end-to-end suite give their users test roles of their own, with exactly the permissions each test needs, and a navigation assertion checks the skeleton's links in their order, ignoring links it does not know. What the seeded roles grant by default is checked only where `product.env` names the skeleton. Decided 2026-10-06; the rewrite of the tests is its own slice.
+
+### The example content
+
+Decided 2026-10-06. The skeleton's `documents` (service, page, the `documents.own` and `documents.all` permissions) and its campaign `documents.stale-reminder` ([0027](0027-email-templates-and-sending.md)) are its reference resource: the one ordinary owned record through which ownership rules, file attachments, channels, view-as, export and erasure, and campaigns are exercised and tested. They stay in the skeleton, and **a product inherits them unchanged**; it neither deletes nor edits them, so no merge conflicts there.
+
+- A product that has no use for them **switches them off by grant**: a migration of its own withdraws `documents.own` and `documents.all` from the seeded roles (`DELETE FROM role_permissions WHERE permission IN ('documents.own', 'documents.all')`). Nobody but an admin then sees the page or its link, or may use the service.
+- Admins still see them: the fixed `admin` role holds the whole catalogue ([0011](0011-casl-role-authorization.md)). An empty Documents page and the campaign kind on the mail pages remain for admins in every product; that is accepted, and keeps a working example in reach of whoever runs the product.
+- The `documents` table stays in every product's database, empty unless used. Removing the example from the skeleton, or a product switch that unregisters it, were rejected: either would cost the mechanisms their end-to-end tests, in the skeleton or in the products.
 
 ### Product identity
 
