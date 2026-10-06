@@ -4,7 +4,7 @@ Pictures of what the ADRs decide, in [Mermaid](https://mermaid.js.org/) inside M
 
 They decide nothing. Every page names the ADRs it illustrates; where a diagram and an ADR or the code disagree, the ADR and the code win and the diagram is fixed.
 
-Local host names and the published ports are the skeleton's, from `product.env`: `app.feathers.localhost`, `:8443` and `:8080`. A product built on it has its own ([0035](../0035-products-derived-from-the-skeleton.md)).
+Local host names and the published ports are the skeleton's, from `product.env`: `app.feathers-skeleton.localhost`, `:8443` and `:8080`. A product built on it has its own ([0035](../0035-products-derived-from-the-skeleton.md)).
 
 | Page | Shows | ADRs |
 | --- | --- | --- |

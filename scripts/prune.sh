@@ -6,10 +6,10 @@
 # Runs at the end of `scripts/stack.sh up` and as a check in `scripts/ci.sh`.
 # Removes only what is provably this project's and used by no container
 # (`podman rmi` without --force refuses an image a container uses):
-# - local images named localhost/<project>-* under a name that neither
-#   compose.yaml nor scripts/ci.sh builds any more (e.g. a branch tag),
-# - dangling images that once carried such a name, i.e. the previous build
-#   of an image that has been rebuilt since,
+# - local images that compose.yaml or scripts/ci.sh builds, under a tag
+#   they no longer build (e.g. a branch tag),
+# - dangling images that once carried one of those names, i.e. the
+#   previous build of an image that has been rebuilt since,
 # - upstream images pulled by digest (so they carry no tag) from a repository
 #   the repository pins, whose digest it no longer pins. An image someone
 #   pulled by tag, possibly for another project, is left alone.
@@ -42,12 +42,15 @@ remove() { # <image> <description>
 wanted=$(sed -e "s/\${PRODUCT:?}/$PROJECT/g" -e "s/\$PRODUCT/$PROJECT/g" "$ROOT/compose.yaml" "$ROOT/scripts/ci.sh" |
   grep -ohE "${LOCAL}[a-z0-9-]+:[A-Za-z0-9._-]+" | sort -u)
 [[ -n $wanted ]] || { log "found no image names in compose.yaml; removing nothing"; exit 1; }
-for name in $(podman images --format '{{.Repository}}:{{.Tag}}' | grep -E "^${LOCAL}[a-z0-9-]+:" | sort -u); do
+# Only images these files name, under another tag: a name merely starting
+# with the prefix may be another product's (`shop-` and `shop-admin-`).
+ours="^($(sed 's/:.*//' <<<"$wanted" | sort -u | paste -sd '|')):"
+for name in $(podman images --format '{{.Repository}}:{{.Tag}}' | grep -E "$ours" | sort -u); do
   grep -qxF "$name" <<<"$wanted" || remove "$name" "$name, no longer built"
 done
 for id in $(podman images -a -q --no-trunc --filter dangling=true); do
   history=$(podman image inspect --format '{{range .NamesHistory}}{{println .}}{{end}}' "$id" 2>/dev/null) || continue
-  name=$(grep -E "^${LOCAL}[a-z0-9-]+:" <<<"$history" | head -1) || continue
+  name=$(grep -E "$ours" <<<"$history" | head -1) || continue
   remove "$id" "a previous build of $name"
 done
 

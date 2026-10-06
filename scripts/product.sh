@@ -13,8 +13,8 @@ set -a
 source "$ROOT/product.env"
 set +a
 
-[[ $PRODUCT =~ ^[a-z][a-z0-9]*$ ]] ||
-  { echo "product.env: PRODUCT must be lowercase letters and digits, starting with a letter" >&2; exit 1; }
+[[ $PRODUCT =~ ^[a-z]([a-z0-9-]*[a-z0-9])?$ && $PRODUCT != *--* ]] ||
+  { echo "product.env: PRODUCT must be lowercase letters, digits and single hyphens, starting with a letter" >&2; exit 1; }
 [[ -n ${PRODUCT_DISPLAY_NAME:-} ]] || { echo "product.env: PRODUCT_DISPLAY_NAME is empty" >&2; exit 1; }
 for _port in "$PRODUCT_HTTPS_PORT" "$PRODUCT_HTTP_PORT"; do
   [[ $_port =~ ^[1-9][0-9]{2,4}$ ]] && ((_port < 65536)) ||

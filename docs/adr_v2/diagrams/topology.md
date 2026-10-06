@@ -112,14 +112,14 @@ flowchart LR
   mcp -->|"mcp-edge (internal) · HTTPS :8443"| nginx
   blackbox -->|"edge · HTTPS :8443<br>GET /api/ping"| nginx
 
-  nginx -->|"edge · HTTP :3030<br>app.feathers.localhost"| api["api"]
-  nginx -->|"edge · HTTP :3030<br>e2e.feathers.localhost"| apiE2e["api-e2e<br>(test profile)"]
+  nginx -->|"edge · HTTP :3030<br>app.feathers-skeleton.localhost"| api["api"]
+  nginx -->|"edge · HTTP :3030<br>e2e.feathers-skeleton.localhost"| apiE2e["api-e2e<br>(test profile)"]
   nginx -->|"edge · HTTP :5173<br>(dev profile)"| web["web (Vite)"]
-  nginx -->|"idp-edge · HTTP :8080<br>idp.feathers.localhost"| idp["idp"]
-  nginx -->|"netbox-edge · HTTPS :8443<br>netbox.feathers.localhost"| netbox["netbox"]
-  nginx -->|"grafana-edge · HTTPS :3000<br>grafana.feathers.localhost"| grafana["grafana"]
-  nginx -->|"mail-edge · HTTPS :8025<br>mail.feathers.localhost"| mail["mail"]
-  nginx -->|"dozzle-edge · HTTP :8080<br>dozzle.feathers.localhost"| dozzle["dozzle"]
+  nginx -->|"idp-edge · HTTP :8080<br>idp.feathers-skeleton.localhost"| idp["idp"]
+  nginx -->|"netbox-edge · HTTPS :8443<br>netbox.feathers-skeleton.localhost"| netbox["netbox"]
+  nginx -->|"grafana-edge · HTTPS :3000<br>grafana.feathers-skeleton.localhost"| grafana["grafana"]
+  nginx -->|"mail-edge · HTTPS :8025<br>mail.feathers-skeleton.localhost"| mail["mail"]
+  nginx -->|"dozzle-edge · HTTP :8080<br>dozzle.feathers-skeleton.localhost"| dozzle["dozzle"]
 ```
 
 Virtual hosts that exist only locally (`idp`, `e2e`, `mail`, `dozzle`) disappear from the production units because their host names are interpolated local values ([0016](../0016-nginx-and-tls-everywhere.md)).

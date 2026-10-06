@@ -8,9 +8,9 @@ After=postgres.service
 [Container]
 ContainerName=netbox-setup
 Entrypoint=["/usr/bin/tini","--"]
-Environment=NETBOX_HOST=netbox.feathers.localhost NETBOX_PUBLIC_ORIGIN=https://netbox.feathers.localhost:8443 NETBOX_CONTACT_EMAIL=operators@app.feathers.localhost DB_NAME=netbox DB_USER=netbox REDIS_HOST=valkey REDIS_PORT=6379 REDIS_USERNAME=netbox SKIP_SUPERUSER=true SAML_IDP_ENTITY_ID=https://idp.feathers.localhost:8443/realms/feathers SAML_IDP_SSO_URL=https://idp.feathers.localhost:8443/realms/feathers/protocol/saml NETBOX_SAML_GROUPS_ATTRIBUTE=groups NETBOX_SAML_SUPERUSER_GROUPS=netbox-admins NETBOX_TOKEN_KEY=feathersapi1 GRANIAN_PORT=8443 GRANIAN_WORKERS=2 GRANIAN_SSL_CERTIFICATE=/tls/tls.crt GRANIAN_SSL_KEYFILE=/tls/tls.key DB_HOST=postgres DB_PORT=5432
+Environment=NETBOX_HOST=netbox.feathers-skeleton.localhost NETBOX_PUBLIC_ORIGIN=https://netbox.feathers-skeleton.localhost:8443 NETBOX_CONTACT_EMAIL=operators@app.feathers-skeleton.localhost DB_NAME=netbox DB_USER=netbox REDIS_HOST=valkey REDIS_PORT=6379 REDIS_USERNAME=netbox SKIP_SUPERUSER=true SAML_IDP_ENTITY_ID=https://idp.feathers-skeleton.localhost:8443/realms/feathers SAML_IDP_SSO_URL=https://idp.feathers-skeleton.localhost:8443/realms/feathers/protocol/saml NETBOX_SAML_GROUPS_ATTRIBUTE=groups NETBOX_SAML_SUPERUSER_GROUPS=netbox-admins NETBOX_TOKEN_KEY=feathersapi1 GRANIAN_PORT=8443 GRANIAN_WORKERS=2 GRANIAN_SSL_CERTIFICATE=/tls/tls.crt GRANIAN_SSL_KEYFILE=/tls/tls.key DB_HOST=postgres DB_PORT=5432
 Exec=bash /opt/feathers/setup.sh
-Image=localhost/feathers-netbox:dev
+Image=localhost/feathers-skeleton-netbox:dev
 Network=db.network
 Network=netbox-data.network
 Volume=netbox-secrets.volume:/run/secrets:ro
