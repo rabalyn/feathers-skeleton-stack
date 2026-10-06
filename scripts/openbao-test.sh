@@ -54,11 +54,12 @@ podman run -d --name "$P" --network "$NET" -e BAO_ADDR=http://127.0.0.1:8200 --e
 podman run -d --name "$P-api-agent" --network "$NET" -e BAO_ADDR=http://openbao-test:8200 \
   --tmpfs /run/agent --entrypoint sleep "$OPENBAO_IMAGE" infinity >/dev/null
 
-# A stored value, read as alice; empty when absent.
+# A stored value, read with alice's token; empty when absent. The token is
+# taken once, by kv_login, since kv runs in command substitutions.
+kv_token=
+kv_login() { kv_token=$(printf 'alice-password-0001' | podman exec -i "$P" bao write -field=token auth/userpass/login/alice password=-); }
 kv() { # <service> <key>
-  local token
-  token=$(printf 'alice-password-0001' | podman exec -i "$P" bao write -field=token auth/userpass/login/alice password=-)
-  printf '%s\n' "$token" | podman exec -i "$P" sh -c \
+  printf '%s\n' "$kv_token" | podman exec -i "$P" sh -c \
     'IFS= read -r BAO_TOKEN; export BAO_TOKEN; bao kv get -format=json "kv/$1" 2>/dev/null || echo "{}"' sh "$1" |
     jq -r --arg k "$2" '.data.data[$k] // empty'
 }
@@ -85,6 +86,7 @@ check "the running agent got a secret_id" test -n "$first_id"
 check "init refuses a second time" bash -c "! $(printf '%q ' "${BAO[@]}") init --admin alice </dev/null >/dev/null 2>&1"
 
 echo "openbao-test: $(date +%T) values"
+kv_login
 m=$(missing)
 check "internal values are generated" bash -c "! grep -qE 'api:(auth_signing_secret|database_password|saml_sp_key)' <<<'$m'"
 check "external values are listed as missing" bash -c "grep -q 'api:ldap_bind_password' <<<'$m' && grep -q 'api:saml_idp_cert' <<<'$m'"

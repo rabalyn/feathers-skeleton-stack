@@ -30,7 +30,13 @@ chown openbao:openbao /proc/self/fd/1 /proc/self/fd/2
 
 su-exec openbao:openbao bao "$@" &
 bao=$!
-trap 'kill -TERM "$bao" 2>/dev/null || true' TERM INT
+# A stop is passed on to OpenBao, and ends the loop below at once, so the
+# script waits for OpenBao rather than for the next half-minute's check.
+# Without that it kept sleeping until the stop timeout killed both, OpenBao
+# without a clean shutdown (seen 2026-10-06: every stop took 10 seconds).
+stopping=
+sleeper=
+trap 'stopping=1; kill -TERM "$bao" 2>/dev/null || true; [ -z "$sleeper" ] || kill "$sleeper" 2>/dev/null || true' TERM INT
 
 rotate() {
   i=$keep
@@ -43,9 +49,12 @@ rotate() {
   kill -HUP "$bao"
 }
 
-while kill -0 "$bao" 2>/dev/null; do
+while [ -z "$stopping" ] && kill -0 "$bao" 2>/dev/null; do
   sleep 30 &
-  wait $! || true
+  sleeper=$!
+  wait "$sleeper" || true
+  sleeper=
+  [ -z "$stopping" ] || break
   if [ -f "$log" ] && [ "$(stat -c %s "$log")" -ge "$max_bytes" ]; then
     rotate
   fi
