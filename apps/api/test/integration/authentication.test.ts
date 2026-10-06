@@ -2,6 +2,7 @@ import type { AddressInfo } from 'node:net'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Application } from '../../src/app.js'
 import { createTestApp } from '../support/app.js'
+import { makeRole } from '../support/roles.js'
 import { PUBLIC_ORIGIN, type TestIdp } from '../support/saml-idp.js'
 import { db } from '../support/worker-database.js'
 
@@ -318,12 +319,14 @@ describe('every request re-checks the session (ADR 0010)', () => {
   it('applies changed roles on the very next request, with the same token', async () => {
     const { cookie } = await login({ cn: 'role0001', givenName: 'R', sn: 'Ole', mail: 'role@example.org' })
     const { accessToken: token, user } = await accessToken(cookie)
+    // Roles of the test's own (ADR 0035): none, then one that reads users.
+    await db()('user_roles').where({ user_id: user.id }).delete()
+    const reader = await makeRole(app, 'reader', ['users.read'])
     const list = () => fetch(`${base}/api/users`, { headers: { authorization: `Bearer ${token}` } })
     expect(((await (await list()).json()) as { total: number }).total).toBe(1)
-    const operatorRole = await db()('roles').where({ key: 'operator' }).first('id')
-    await db()('user_roles').insert({ user_id: user.id, role_id: operatorRole.id })
+    await db()('user_roles').insert({ user_id: user.id, role_id: reader })
     expect(((await (await list()).json()) as { total: number }).total).toBeGreaterThan(1)
-    await db()('user_roles').where({ user_id: user.id, role_id: operatorRole.id }).delete()
+    await db()('user_roles').where({ user_id: user.id, role_id: reader }).delete()
     expect(((await (await list()).json()) as { total: number }).total).toBe(1)
   })
 
