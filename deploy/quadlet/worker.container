@@ -2,8 +2,9 @@
 # production settings in a drop-in directory next to this file.
 
 [Unit]
+Wants=pgbouncer.service valkey.service s3.service
 Requires=migrate.service
-After=migrate.service
+After=migrate.service pgbouncer.service valkey.service s3.service
 
 [Container]
 ContainerName=worker

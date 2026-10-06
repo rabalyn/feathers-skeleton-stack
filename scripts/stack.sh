@@ -100,29 +100,15 @@ app_services() {
   compose config --services 2>/dev/null | grep -vxE 'certs|openbao|.*-agent'
 }
 
-# The services others keep a connection to while they run. compose.yaml's
-# depends_on holds only what a service needs to start (the api: migrate), not
-# these, so they are named here.
-INFRASTRUCTURE=" postgres pgbouncer valkey s3 loki ldap idp openbao "
-
-# Removes the containers of the services named: first the others, then the
-# infrastructure, each in the order of compose.yaml's depends_on (first those
-# no other named service depends on, then the next layer), each layer at
-# once. podman-compose gives Podman no dependencies, so one removal of all of
-# them stopped PostgreSQL, Valkey and Loki first, and the worker, NetBox's
-# worker and Alloy then kept reconnecting until the stop timeout killed them;
-# with what they use still up, each stops within a second or so (measured
-# 2026-10-06).
+# Removes the containers of the services named in the order of compose.yaml's
+# depends_on, which holds what a service needs to start and what it keeps a
+# connection to while it runs (ADR 0002): first those no other named service
+# depends on, then the next layer, each layer at once. podman-compose gives
+# Podman no dependencies, so one removal of all of them stopped PostgreSQL,
+# Valkey and Loki first, and the worker, NetBox's worker and Alloy then kept
+# reconnecting until the stop timeout killed them; with what they use still
+# up, each stops within a second or so (measured 2026-10-06).
 remove_containers() { # <service>...
-  local svc users=() used=()
-  for svc in "$@"; do
-    if [[ $INFRASTRUCTURE == *" $svc "* ]]; then used+=("$svc"); else users+=("$svc"); fi
-  done
-  remove_layers "${users[@]}"
-  remove_layers "${used[@]}"
-}
-
-remove_layers() { # <service>...
   (($#)) || return 0
   local deps remaining=" $* " layer svc
   deps=$(podman run --rm -i --network none "$YQ" -o json '.services | map_values(.depends_on // {})' <"$ROOT/compose.yaml" |

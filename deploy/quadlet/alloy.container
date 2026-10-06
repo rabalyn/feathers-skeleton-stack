@@ -2,7 +2,7 @@
 # production settings in a drop-in directory next to this file.
 
 [Unit]
-Requires=loki.service
+Wants=loki.service
 After=loki.service
 
 [Container]

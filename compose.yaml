@@ -162,9 +162,21 @@ services:
     container_name: ${PRODUCT:?}-api
     # The api refuses to start before migrate has seeded the runtime
     # settings (ADR 0025).
+    # Beside the start condition, what it keeps a connection to while it
+    # runs: `required: false`, an order and no binding, Wants= and After=
+    # in the generated unit (ADR 0002).
     depends_on:
       migrate:
         condition: service_completed_successfully
+      pgbouncer:
+        condition: service_started
+        required: false
+      valkey:
+        condition: service_started
+        required: false
+      s3:
+        condition: service_started
+        required: false
     environment: &api-environment
       # The one public address of the app: every link it hands out, the
       # Origin check, the token audience and the SAML entity ID (ADR 0016).
@@ -279,6 +291,15 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      pgbouncer:
+        condition: service_started
+        required: false
+      valkey:
+        condition: service_started
+        required: false
+      s3:
+        condition: service_started
+        required: false
     command: ["node", "dist/worker.js"]
     environment: &worker-environment
       LOG_FILE: /var/log/app/worker
@@ -374,6 +395,12 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      postgres:
+        condition: service_started
+        required: false
+      s3:
+        condition: service_started
+        required: false
     environment:
       LOG_FILE: /var/log/app/backup/backup
       DATABASE_HOST: postgres
@@ -432,6 +459,12 @@ services:
     depends_on:
       netbox-setup:
         condition: service_completed_successfully
+      pgbouncer:
+        condition: service_started
+        required: false
+      valkey:
+        condition: service_started
+        required: false
     environment: &netbox-environment
       NETBOX_HOST: netbox.${PRODUCT:?}.localhost
       NETBOX_PUBLIC_ORIGIN: *netbox-public-url
@@ -475,6 +508,12 @@ services:
     depends_on:
       netbox-setup:
         condition: service_completed_successfully
+      pgbouncer:
+        condition: service_started
+        required: false
+      valkey:
+        condition: service_started
+        required: false
     command: ["/opt/netbox/venv/bin/python", "/opt/netbox/netbox/manage.py", "rqworker", "high", "default", "low"]
     environment: *netbox-environment
     networks: [netbox-data]
@@ -1117,10 +1156,12 @@ services:
     # Stopped before Loki, so the lines it still holds are shipped rather
     # than retried until Podman's SIGKILL: by systemd through this ordering
     # in production, and by scripts/stack.sh locally, because podman-compose
-    # stops everything at once on `down`.
+    # stops everything at once on `down`. An order without a binding, so a
+    # restart of Loki leaves Alloy running (ADR 0002).
     depends_on:
       loki:
         condition: service_started
+        required: false
     command:
       - run
       - /etc/alloy/config.alloy
@@ -1209,6 +1250,10 @@ services:
   postgres-exporter:
     image: quay.io/prometheuscommunity/postgres-exporter@sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e # v0.20.1
     container_name: ${PRODUCT:?}-postgres-exporter
+    depends_on:
+      postgres:
+        condition: service_started
+        required: false
     command: ["--web.config.file=/etc/observability/web-config.yml"]
     environment:
       DATA_SOURCE_URI: postgres:5432/postgres?sslmode=verify-full&sslrootcert=/trust/ca.crt
@@ -1224,6 +1269,10 @@ services:
   pgbouncer-exporter:
     image: quay.io/prometheuscommunity/pgbouncer-exporter@sha256:30f31b6c2efdad3647f8182cc7c1a3a19e42bae5d17387694989f969371c230d # v0.12.1
     container_name: ${PRODUCT:?}-pgbouncer-exporter
+    depends_on:
+      pgbouncer:
+        condition: service_started
+        required: false
     # The password goes into the connection string through the environment,
     # never onto the command line.
     entrypoint: ["/bin/sh", "-c"]
@@ -1241,6 +1290,10 @@ services:
   valkey-exporter:
     image: docker.io/oliver006/redis_exporter@sha256:6ca518a72f30f7f576ef92963de1b91d3c3f5fd3aeac949f878bfda183587820 # v1.93.0
     container_name: ${PRODUCT:?}-valkey-exporter
+    depends_on:
+      valkey:
+        condition: service_started
+        required: false
     command:
       - --redis.addr=rediss://valkey:6379
       - --redis.user=exporter

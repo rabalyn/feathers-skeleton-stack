@@ -90,8 +90,18 @@ Consequences of this layout, all intentional:
 
 Only `nginx` publishes ports to the host. Every other service is reachable only on its private networks.
 
+### Dependencies
+
+Decided 2026-10-06. `depends_on` in `compose.yaml` holds two kinds of dependency, and the generated Quadlet units ([0001](0001-one-stack-every-environment.md)) carry both:
+
+- **What a service needs to start**: the api, the worker and the backup service need `migrate` to have succeeded, NetBox needs `netbox-setup`, `migrate` needs a healthy PostgreSQL. A plain entry with its condition, which becomes `Requires=` and `After=`: the service does not start without it.
+- **What a service keeps a connection to while it runs**, its data connections: the api and the worker to `pgbouncer`, `valkey` and `s3`; NetBox and its worker to `pgbouncer` and `valkey`; the backup service to `postgres` and `s3`; each exporter to what it reads; Alloy to Loki. An entry with `required: false`, which podlet turns into `Wants=` and `After=`: an order without a binding. systemd starts the service after them and stops it before them, so a stop no longer takes a store away from a service that is still connected to it, and a restart of PgBouncer or Valkey does not restart the api, which reconnects as before.
+
+Not declared: Nginx's upstreams and Grafana's data sources, which are requests rather than held connections, and a service's OpenBao agent, which can render nothing before an administrator unseals OpenBao ([0023](0023-secrets-management.md)), so an order would not make a cold start work by itself. Locally, `scripts/stack.sh up` starts every service with `--no-deps` in an order of its own, and removes the previous containers in the order of these dependencies, users first; podman-compose passes none of them to Podman.
+
 ## Consequences
 
 - Nine networks, each removing a specific reachability the previous plan claimed but did not enforce; the edge networks of local tools and NetBox's three came later.
 - The `api` joins six networks and remains the hub, which is inherent to a single-application stack.
 - One-shot and scheduled jobs (`migrate`, `certs`, `backup`) need explicit network membership, which the generated Quadlet units inherit from `compose.yaml`.
+- A service that opens a new connection to a store has to declare it in `depends_on`, with `required: false`; one left out is stopped after the store it uses, which costs a stop that waits for its timeout, not a failure.

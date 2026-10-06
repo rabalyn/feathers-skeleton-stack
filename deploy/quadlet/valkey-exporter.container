@@ -1,6 +1,10 @@
 # Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
 # production settings in a drop-in directory next to this file.
 
+[Unit]
+Wants=valkey.service
+After=valkey.service
+
 [Container]
 ContainerName=valkey-exporter
 Exec='--redis.addr=rediss://valkey:6379' '--redis.user=exporter' '--redis.password-file=/run/secrets/passwords.json' '--tls-ca-cert-file=/trust/ca.crt' '--tls-server-cert-file=/tls/tls.crt' '--tls-server-key-file=/tls/tls.key'

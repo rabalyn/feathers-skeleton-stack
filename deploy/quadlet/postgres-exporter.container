@@ -1,6 +1,10 @@
 # Generated from compose.yaml by scripts/quadlet.sh. Do not edit; put
 # production settings in a drop-in directory next to this file.
 
+[Unit]
+Wants=postgres.service
+After=postgres.service
+
 [Container]
 ContainerName=postgres-exporter
 Environment=DATA_SOURCE_URI=postgres:5432/postgres?sslmode=verify-full&sslrootcert=/trust/ca.crt DATA_SOURCE_USER=exporter DATA_SOURCE_PASS_FILE=/run/secrets/database_password

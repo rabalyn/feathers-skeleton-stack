@@ -2,8 +2,9 @@
 # production settings in a drop-in directory next to this file.
 
 [Unit]
+Wants=pgbouncer.service valkey.service
 Requires=netbox-setup.service
-After=netbox-setup.service
+After=netbox-setup.service pgbouncer.service valkey.service
 
 [Container]
 ContainerName=netbox
