@@ -1,6 +1,6 @@
-import { Type, getValidator, type Static } from '@feathersjs/typebox'
+import { Type, type Static } from '@feathersjs/typebox'
 import { MAX_RESULTS, MAX_TERM_LENGTH, MIN_TERM_LENGTH, PAGE_MAX } from '../../directory.js'
-import { queryValidator } from '../../validators.js'
+import { queryValidator, lazyValidator } from '../../validators.js'
 
 // ADR 0008. Directory entries are not records of this application; `userId`
 // names the person's account, if they have one: from a login, or made before
@@ -37,4 +37,4 @@ export const directoryQuerySchema = Type.Object(
   { $id: 'DirectoryQuery', additionalProperties: false }
 )
 export type DirectoryQuery = Static<typeof directoryQuerySchema>
-export const directoryQueryValidator = getValidator(directoryQuerySchema, queryValidator)
+export const directoryQueryValidator = lazyValidator(directoryQuerySchema, queryValidator)

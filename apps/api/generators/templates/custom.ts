@@ -6,10 +6,10 @@ import type { Names } from '../names.js'
 
 export const customService = (n: Names) => `import type { Params } from '@feathersjs/feathers'
 import { hooks as schemaHooks } from '@feathersjs/schema'
-import { Type, getValidator, type Static } from '@feathersjs/typebox'
+import { Type, type Static } from '@feathersjs/typebox'
 import type { Application } from '../../app.js'
 import { publishNothing } from '../../channels.js'
-import { dataValidator } from '../../validators.js'
+import { dataValidator, lazyValidator } from '../../validators.js'
 
 // ${n.title}: an action, asked for with \`create\`. Who may ask is
 // \`${n.permission}\` in abilities.ts (ADR 0011).
@@ -22,7 +22,7 @@ export const ${n.camel}DataSchema = Type.Object(
   { $id: '${n.pascal}Data', additionalProperties: false }
 )
 export type ${n.pascal}Data = Static<typeof ${n.camel}DataSchema>
-export const ${n.camel}DataValidator = getValidator(${n.camel}DataSchema, dataValidator)
+export const ${n.camel}DataValidator = lazyValidator(${n.camel}DataSchema, dataValidator)
 
 export interface ${n.pascal} {
   name: string

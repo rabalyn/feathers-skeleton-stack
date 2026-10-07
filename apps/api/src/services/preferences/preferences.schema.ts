@@ -1,8 +1,8 @@
 import { resolve, virtual } from '@feathersjs/schema'
-import { Type, getValidator, querySyntax, type Static } from '@feathersjs/typebox'
+import { Type, querySyntax, type Static } from '@feathersjs/typebox'
 import type { HookContext } from '../../declarations.js'
 import { PREFERENCE_KEYS } from '../../preferences/registry.js'
-import { dataValidator, queryValidator } from '../../validators.js'
+import { dataValidator, queryValidator, lazyValidator } from '../../validators.js'
 
 // Preferences (ADR 0005, 0014): one row per person and key, the value
 // checked against the key's schema in preferences/registry.ts. Schemas and
@@ -43,7 +43,7 @@ export const preferenceDataSchema = Type.Pick(preferenceSchema, ['key', 'value']
   additionalProperties: false
 })
 export type PreferenceData = Static<typeof preferenceDataSchema>
-export const preferenceDataValidator = getValidator(preferenceDataSchema, dataValidator)
+export const preferenceDataValidator = lazyValidator(preferenceDataSchema, dataValidator)
 // Server-controlled fields are set here, never taken from the request.
 export const preferenceDataResolver = resolve<Preference, HookContext>({
   userId: async (_value, _record, context) => (context.params.user as { id: string }).id
@@ -55,5 +55,5 @@ export const preferenceQuerySchema = Type.Intersect(
   { additionalProperties: false }
 )
 export type PreferenceQuery = Static<typeof preferenceQuerySchema>
-export const preferenceQueryValidator = getValidator(preferenceQuerySchema, queryValidator)
+export const preferenceQueryValidator = lazyValidator(preferenceQuerySchema, queryValidator)
 export const preferenceQueryResolver = resolve<PreferenceQuery, HookContext>({})

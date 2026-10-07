@@ -1,7 +1,7 @@
 import { resolve, virtual } from '@feathersjs/schema'
-import { Type, getValidator, querySyntax, type Static } from '@feathersjs/typebox'
+import { Type, querySyntax, type Static } from '@feathersjs/typebox'
 import type { HookContext } from '../../declarations.js'
-import { dataValidator, queryValidator } from '../../validators.js'
+import { dataValidator, queryValidator, lazyValidator } from '../../validators.js'
 
 // API tokens (ADR 0029). Schemas and types may be imported by the client
 // entry point as types only; resolvers below are server code.
@@ -46,7 +46,7 @@ export const apiTokenDataSchema = Type.Object(
   { $id: 'ApiTokenData', additionalProperties: false }
 )
 export type ApiTokenData = Static<typeof apiTokenDataSchema>
-export const apiTokenDataValidator = getValidator(apiTokenDataSchema, dataValidator)
+export const apiTokenDataValidator = lazyValidator(apiTokenDataSchema, dataValidator)
 
 export const apiTokenQueryProperties = Type.Pick(apiTokenSchema, ['id', 'userId', 'name', 'createdAt', 'expiresAt', 'lastUsedAt'])
 export const apiTokenQuerySchema = Type.Intersect(
@@ -54,4 +54,4 @@ export const apiTokenQuerySchema = Type.Intersect(
   { additionalProperties: false }
 )
 export type ApiTokenQuery = Static<typeof apiTokenQuerySchema>
-export const apiTokenQueryValidator = getValidator(apiTokenQuerySchema, queryValidator)
+export const apiTokenQueryValidator = lazyValidator(apiTokenQuerySchema, queryValidator)

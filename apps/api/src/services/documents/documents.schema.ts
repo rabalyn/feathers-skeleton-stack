@@ -1,7 +1,7 @@
 import { resolve, virtual } from '@feathersjs/schema'
-import { Type, getValidator, querySyntax, type Static } from '@feathersjs/typebox'
+import { Type, querySyntax, type Static } from '@feathersjs/typebox'
 import type { HookContext } from '../../declarations.js'
-import { dataValidator, queryValidator } from '../../validators.js'
+import { dataValidator, queryValidator, lazyValidator } from '../../validators.js'
 import { fileSchema } from '../files/files.schema.js'
 
 // ADR 0009, 0020: a document is an owner, a title and one uploaded file.
@@ -51,7 +51,7 @@ export const documentDataSchema = Type.Pick(documentSchema, ['title', 'fileId'],
   additionalProperties: false
 })
 export type DocumentData = Static<typeof documentDataSchema>
-export const documentDataValidator = getValidator(documentDataSchema, dataValidator)
+export const documentDataValidator = lazyValidator(documentDataSchema, dataValidator)
 export const documentDataResolver = resolve<Document, HookContext>({
   ownerId: async (_value, _document, context) => (context.params.user as { id: string }).id
 })
@@ -64,7 +64,7 @@ export const documentPatchSchema = Type.Partial(Type.Pick(documentSchema, ['titl
   minProperties: 1
 })
 export type DocumentPatch = Static<typeof documentPatchSchema>
-export const documentPatchValidator = getValidator(documentPatchSchema, dataValidator)
+export const documentPatchValidator = lazyValidator(documentPatchSchema, dataValidator)
 export const documentPatchResolver = resolve<Document, HookContext>({
   updatedAt: async () => new Date().toISOString()
 })
@@ -75,5 +75,5 @@ export const documentQuerySchema = Type.Intersect(
   { additionalProperties: false }
 )
 export type DocumentQuery = Static<typeof documentQuerySchema>
-export const documentQueryValidator = getValidator(documentQuerySchema, queryValidator)
+export const documentQueryValidator = lazyValidator(documentQuerySchema, queryValidator)
 export const documentQueryResolver = resolve<DocumentQuery, HookContext>({})

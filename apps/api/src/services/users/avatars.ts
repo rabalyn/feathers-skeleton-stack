@@ -1,9 +1,9 @@
-import { Type, getValidator, type Static } from '@feathersjs/typebox'
+import { Type, type Static } from '@feathersjs/typebox'
 import { hooks as schemaHooks } from '@feathersjs/schema'
 import type { Params } from '@feathersjs/feathers'
 import type { Application } from '../../app.js'
 import { publishNothing } from '../../channels.js'
-import { dataValidator } from '../../validators.js'
+import { dataValidator, lazyValidator } from '../../validators.js'
 import { USERS_PATH } from './users.js'
 import { userExternalResolver, type User, type UserInternalPatch, type UserPatch } from './users.schema.js'
 
@@ -23,7 +23,7 @@ export const avatarDataSchema = Type.Object(
   { $id: 'AvatarData', additionalProperties: false }
 )
 export type AvatarData = Static<typeof avatarDataSchema>
-export const avatarDataValidator = getValidator(avatarDataSchema, dataValidator)
+export const avatarDataValidator = lazyValidator(avatarDataSchema, dataValidator)
 
 export class AvatarService {
   constructor(private readonly app: Application) {}

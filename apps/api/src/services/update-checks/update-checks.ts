@@ -1,10 +1,10 @@
 import type { Params } from '@feathersjs/feathers'
 import { hooks as schemaHooks } from '@feathersjs/schema'
-import { Type, getValidator, type Static } from '@feathersjs/typebox'
+import { Type, type Static } from '@feathersjs/typebox'
 import type { Application } from '../../app.js'
 import { publishNothing } from '../../channels.js'
 import { limitPerUser } from '../../rate-limit.js'
-import { dataValidator } from '../../validators.js'
+import { dataValidator, lazyValidator } from '../../validators.js'
 import { SYSTEM_INFO_PATH } from '../system-info/system-info.js'
 
 // Asking for the update check now (ADR 0032), instead of waiting for the
@@ -18,7 +18,7 @@ export const UPDATE_CHECK_EXTERNAL_METHODS = ['create'] as const
 
 export const updateCheckDataSchema = Type.Object({}, { $id: 'UpdateCheckData', additionalProperties: false })
 export type UpdateCheckData = Static<typeof updateCheckDataSchema>
-export const updateCheckDataValidator = getValidator(updateCheckDataSchema, dataValidator)
+export const updateCheckDataValidator = lazyValidator(updateCheckDataSchema, dataValidator)
 
 export interface UpdateCheck {
   queuedAt: string

@@ -1,11 +1,11 @@
 import { BadRequest, Conflict } from '@feathersjs/errors'
 import type { Params } from '@feathersjs/feathers'
 import { hooks as schemaHooks } from '@feathersjs/schema'
-import { Type, getValidator, type Static } from '@feathersjs/typebox'
+import { Type, type Static } from '@feathersjs/typebox'
 import type { Application } from '../../app.js'
 import { recordAudit } from '../../audit.js'
 import { endUserConnections, publishNothing } from '../../channels.js'
-import { dataValidator } from '../../validators.js'
+import { dataValidator, lazyValidator } from '../../validators.js'
 import { USERS_PATH } from '../users/users.js'
 
 // GDPR erasure (ADR 0013), an administrative action only (ADR 0011). The
@@ -21,7 +21,7 @@ export const erasureDataSchema = Type.Object(
   { $id: 'ErasureData', additionalProperties: false }
 )
 export type ErasureData = Static<typeof erasureDataSchema>
-export const erasureDataValidator = getValidator(erasureDataSchema, dataValidator)
+export const erasureDataValidator = lazyValidator(erasureDataSchema, dataValidator)
 
 export interface Erasure {
   userId: string

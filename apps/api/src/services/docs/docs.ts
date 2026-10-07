@@ -2,11 +2,11 @@ import { access, readdir, readFile } from 'node:fs/promises'
 import { NotFound } from '@feathersjs/errors'
 import type { Id, Params } from '@feathersjs/feathers'
 import { hooks as schemaHooks } from '@feathersjs/schema'
-import { Type, getValidator, type Static } from '@feathersjs/typebox'
+import { Type, type Static } from '@feathersjs/typebox'
 import type { Application } from '../../app.js'
 import { publishNothing } from '../../channels.js'
 import { DOC_SEARCH_MAX_LENGTH } from '../../limits.js'
-import { queryValidator } from '../../validators.js'
+import { queryValidator, lazyValidator } from '../../validators.js'
 
 // The architecture documentation in the app (ADR 0019): the skeleton's ADRs
 // in `docs/adr_v2/`, the product's in `docs/adr_product/` (ADR 0035), and
@@ -72,7 +72,7 @@ export const docQuerySchema = Type.Object(
   { $id: 'DocQuery', additionalProperties: false }
 )
 export type DocQuery = Static<typeof docQuerySchema>
-export const docQueryValidator = getValidator(docQuerySchema, queryValidator)
+export const docQueryValidator = lazyValidator(docQuerySchema, queryValidator)
 
 export type DocParams = Params<DocQuery>
 

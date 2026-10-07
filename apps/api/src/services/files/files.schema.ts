@@ -1,8 +1,8 @@
 import { resolve, virtual } from '@feathersjs/schema'
-import { Type, getValidator, querySyntax, type Static } from '@feathersjs/typebox'
+import { Type, querySyntax, type Static } from '@feathersjs/typebox'
 import type { HookContext } from '../../declarations.js'
 import { ALLOWED_CONTENT_TYPES } from '../../uploads.js'
-import { dataValidator, queryValidator } from '../../validators.js'
+import { dataValidator, queryValidator, lazyValidator } from '../../validators.js'
 
 // ADR 0005, 0020. One row per object in the uploads bucket. Schemas and
 // types may be imported by the client entry point as types only.
@@ -55,7 +55,7 @@ export const fileDataSchema = Type.Object(
   { $id: 'FileData', additionalProperties: false }
 )
 export type FileData = Static<typeof fileDataSchema>
-export const fileDataValidator = getValidator(fileDataSchema, dataValidator)
+export const fileDataValidator = lazyValidator(fileDataSchema, dataValidator)
 
 export const fileQueryProperties = Type.Pick(fileSchema, ['id', 'ownerId', 'contentType', 'createdAt'])
 export const fileQuerySchema = Type.Intersect(
@@ -63,4 +63,4 @@ export const fileQuerySchema = Type.Intersect(
   { additionalProperties: false }
 )
 export type FileQuery = Static<typeof fileQuerySchema>
-export const fileQueryValidator = getValidator(fileQuerySchema, queryValidator)
+export const fileQueryValidator = lazyValidator(fileQuerySchema, queryValidator)

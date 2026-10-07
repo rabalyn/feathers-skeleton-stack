@@ -1,9 +1,9 @@
 import { resolve, virtual } from '@feathersjs/schema'
-import { Type, getValidator, querySyntax, type Static } from '@feathersjs/typebox'
+import { Type, querySyntax, type Static } from '@feathersjs/typebox'
 import type { HookContext } from '../../declarations.js'
 import { LOCALES } from '../../locales.js'
 import { MAIL_KIND_KEY_PATTERN } from '../../mail/kind.js'
-import { dataValidator, queryValidator } from '../../validators.js'
+import { dataValidator, queryValidator, lazyValidator } from '../../validators.js'
 
 // ADR 0027: kinds, templates and their revisions, as admins see them.
 // Schemas and types may be imported by the client entry point as types only.
@@ -53,14 +53,14 @@ export const mailTemplatePatchSchema = Type.Object(
   { $id: 'MailTemplatePatch', additionalProperties: false }
 )
 export type MailTemplatePatch = Static<typeof mailTemplatePatchSchema>
-export const mailTemplatePatchValidator = getValidator(mailTemplatePatchSchema, dataValidator)
+export const mailTemplatePatchValidator = lazyValidator(mailTemplatePatchSchema, dataValidator)
 
 export const mailTemplateQuerySchema = Type.Object(
   { kind: Type.Optional(kindKey), locale: Type.Optional(locale) },
   { $id: 'MailTemplateQuery', additionalProperties: false }
 )
 export type MailTemplateQuery = Static<typeof mailTemplateQuerySchema>
-export const mailTemplateQueryValidator = getValidator(mailTemplateQuerySchema, queryValidator)
+export const mailTemplateQueryValidator = lazyValidator(mailTemplateQuerySchema, queryValidator)
 
 export const mailTemplateRevisionSchema = Type.Object(
   {
@@ -88,7 +88,7 @@ export const mailTemplateRevisionDataSchema = Type.Pick(mailTemplateRevisionSche
   additionalProperties: false
 })
 export type MailTemplateRevisionData = Static<typeof mailTemplateRevisionDataSchema>
-export const mailTemplateRevisionDataValidator = getValidator(mailTemplateRevisionDataSchema, dataValidator)
+export const mailTemplateRevisionDataValidator = lazyValidator(mailTemplateRevisionDataSchema, dataValidator)
 export const mailTemplateRevisionDataResolver = resolve<MailTemplateRevision, HookContext>({
   authorId: async (_value, _revision, context) => context.params.user?.id ?? null
 })
@@ -99,7 +99,7 @@ export const mailTemplateRevisionQuerySchema = Type.Intersect(
   { additionalProperties: false }
 )
 export type MailTemplateRevisionQuery = Static<typeof mailTemplateRevisionQuerySchema>
-export const mailTemplateRevisionQueryValidator = getValidator(mailTemplateRevisionQuerySchema, queryValidator)
+export const mailTemplateRevisionQueryValidator = lazyValidator(mailTemplateRevisionQuerySchema, queryValidator)
 
 // Rendering unsaved wording against the kind's sample, for the editor.
 export const mailPreviewDataSchema = Type.Pick(mailTemplateRevisionSchema, ['kind', 'locale', 'subject', 'body'], {
@@ -107,7 +107,7 @@ export const mailPreviewDataSchema = Type.Pick(mailTemplateRevisionSchema, ['kin
   additionalProperties: false
 })
 export type MailPreviewData = Static<typeof mailPreviewDataSchema>
-export const mailPreviewDataValidator = getValidator(mailPreviewDataSchema, dataValidator)
+export const mailPreviewDataValidator = lazyValidator(mailPreviewDataSchema, dataValidator)
 
 export interface MailPreview {
   subject: string
@@ -162,7 +162,7 @@ export const mailCampaignDataSchema = Type.Object(
   { $id: 'MailCampaignData', additionalProperties: false }
 )
 export type MailCampaignData = Static<typeof mailCampaignDataSchema>
-export const mailCampaignDataValidator = getValidator(mailCampaignDataSchema, dataValidator)
+export const mailCampaignDataValidator = lazyValidator(mailCampaignDataSchema, dataValidator)
 
 export const mailCampaignQueryProperties = Type.Pick(mailCampaignSchema, ['id', 'kind', 'sentBy', 'status', 'createdAt'])
 export const mailCampaignQuerySchema = Type.Intersect(
@@ -170,7 +170,7 @@ export const mailCampaignQuerySchema = Type.Intersect(
   { additionalProperties: false }
 )
 export type MailCampaignQuery = Static<typeof mailCampaignQuerySchema>
-export const mailCampaignQueryValidator = getValidator(mailCampaignQuerySchema, queryValidator)
+export const mailCampaignQueryValidator = lazyValidator(mailCampaignQuerySchema, queryValidator)
 
 // What sending would do: whom it reaches, how long it takes at the sending
 // limit, and how it reads for one of them in each locale.
@@ -179,7 +179,7 @@ export const mailCampaignPreviewDataSchema = Type.Object(
   { $id: 'MailCampaignPreviewData', additionalProperties: false }
 )
 export type MailCampaignPreviewData = Static<typeof mailCampaignPreviewDataSchema>
-export const mailCampaignPreviewDataValidator = getValidator(mailCampaignPreviewDataSchema, dataValidator)
+export const mailCampaignPreviewDataValidator = lazyValidator(mailCampaignPreviewDataSchema, dataValidator)
 
 export interface MailCampaignPreview {
   kind: string
@@ -223,4 +223,4 @@ export const mailDeliveryQuerySchema = Type.Intersect(
   { additionalProperties: false }
 )
 export type MailDeliveryQuery = Static<typeof mailDeliveryQuerySchema>
-export const mailDeliveryQueryValidator = getValidator(mailDeliveryQuerySchema, queryValidator)
+export const mailDeliveryQueryValidator = lazyValidator(mailDeliveryQuerySchema, queryValidator)
