@@ -1,5 +1,5 @@
-import { Type, getValidator, type Static } from '@feathersjs/typebox'
-import { queryValidator } from '../../validators.js'
+import { Type, type Static } from '@feathersjs/typebox'
+import { queryValidator, lazyValidator } from '../../validators.js'
 
 // The state of one BullMQ queue (ADR 0024), for the admin's queue view:
 // counts, the rate limit, the schedules and the jobs that are running or
@@ -80,4 +80,4 @@ export type QueueStatus = Static<typeof queueStatusSchema>
 // No parameters: there are only a few queues.
 export const queueStatusQuerySchema = Type.Object({}, { $id: 'QueueStatusQuery', additionalProperties: false })
 export type QueueStatusQuery = Static<typeof queueStatusQuerySchema>
-export const queueStatusQueryValidator = getValidator(queueStatusQuerySchema, queryValidator)
+export const queueStatusQueryValidator = lazyValidator(queueStatusQuerySchema, queryValidator)

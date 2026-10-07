@@ -24,7 +24,7 @@ The stock generator, `@feathersjs/cli`, does not fit this application. Run again
 - **Every service names its publisher.** Feathers sends the events of a service without one to nobody, which is safe but silent. A service whose results go to the caller only says so with `publishNothing` from `channels.ts` ([0012](0012-role-scoped-channels.md)).
 - Three checks keep this true:
   - the **drift check**, `pnpm --filter @app/api gen:check`, a static CI check, generates one service of each type into a copy of the repository's files and typechecks the result, unused locals included, once as the skeleton and once as a product;
-  - a unit test holds that every data and patch schema a service exports sets `additionalProperties: false` ([0005](0005-typebox-schema-boundary.md));
+  - a unit test holds that every data and patch schema a service exports sets `additionalProperties: false`, and that every validator the services make with `lazyValidator` compiles ([0005](0005-typebox-schema-boundary.md));
   - an integration test holds that every registered service has a publisher.
 - Using the generator is required by this ADR, not enforced mechanically: the two convention tests hold what matters of its output for every service, generated or not.
 

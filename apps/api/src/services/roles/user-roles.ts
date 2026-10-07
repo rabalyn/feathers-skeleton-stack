@@ -1,10 +1,10 @@
 import { MethodNotAllowed } from '@feathersjs/errors'
 import { hooks as schemaHooks } from '@feathersjs/schema'
 import type { Id, NullableId, Params } from '@feathersjs/feathers'
-import { Type, getValidator, type Static } from '@feathersjs/typebox'
+import { Type, type Static } from '@feathersjs/typebox'
 import type { Application } from '../../app.js'
 import { publishNothing } from '../../channels.js'
-import { dataValidator } from '../../validators.js'
+import { dataValidator, lazyValidator } from '../../validators.js'
 
 // Role assignment (ADR 0011): `admin`'s alone, and its own service rather
 // than a field of users.patch, which feathers-casl would refuse or drop by
@@ -31,7 +31,7 @@ export const userRolesPatchSchema = Type.Object(
   { $id: 'UserRolesPatch', additionalProperties: false }
 )
 export type UserRolesPatch = Static<typeof userRolesPatchSchema>
-const userRolesPatchValidator = getValidator(userRolesPatchSchema, dataValidator)
+const userRolesPatchValidator = lazyValidator(userRolesPatchSchema, dataValidator)
 
 export class UserRoleService {
   constructor(private readonly app: Application) {}

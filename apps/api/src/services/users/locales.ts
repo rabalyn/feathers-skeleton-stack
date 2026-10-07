@@ -1,10 +1,10 @@
-import { Type, getValidator, type Static } from '@feathersjs/typebox'
+import { Type, type Static } from '@feathersjs/typebox'
 import { hooks as schemaHooks } from '@feathersjs/schema'
 import type { Params } from '@feathersjs/feathers'
 import type { Application } from '../../app.js'
 import { publishNothing } from '../../channels.js'
 import { LOCALES } from '../../locales.js'
-import { dataValidator } from '../../validators.js'
+import { dataValidator, lazyValidator } from '../../validators.js'
 import { USERS_PATH } from './users.js'
 import { userExternalResolver, type User, type UserInternalPatch, type UserPatch } from './users.schema.js'
 
@@ -21,7 +21,7 @@ export const localeDataSchema = Type.Object(
   { $id: 'LocaleData', additionalProperties: false }
 )
 export type LocaleData = Static<typeof localeDataSchema>
-export const localeDataValidator = getValidator(localeDataSchema, dataValidator)
+export const localeDataValidator = lazyValidator(localeDataSchema, dataValidator)
 
 export class LocaleService {
   constructor(private readonly app: Application) {}

@@ -1,12 +1,12 @@
 import type { Params } from '@feathersjs/feathers'
 import { KnexService } from '@feathersjs/knex'
 import { hooks as schemaHooks, resolve, virtual } from '@feathersjs/schema'
-import { Type, getValidator, querySyntax, type Static } from '@feathersjs/typebox'
+import { Type, querySyntax, type Static } from '@feathersjs/typebox'
 import type { Application } from '../../app.js'
 import { publishNothing } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
 import { PAGINATE } from '../../paginate.js'
-import { queryValidator } from '../../validators.js'
+import { queryValidator, lazyValidator } from '../../validators.js'
 
 // Reading audit events (ADR 0013, 0011): admins and operators read all,
 // everyone else the events they caused. Read-only: events are written by
@@ -54,7 +54,7 @@ export const auditEventQuerySchema = Type.Intersect(
   { additionalProperties: false }
 )
 export type AuditEventQuery = Static<typeof auditEventQuerySchema>
-export const auditEventQueryValidator = getValidator(auditEventQuerySchema, queryValidator)
+export const auditEventQueryValidator = lazyValidator(auditEventQuerySchema, queryValidator)
 
 export type AuditEventParams = Params<AuditEventQuery>
 

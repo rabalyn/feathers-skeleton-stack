@@ -1,12 +1,12 @@
 import { BadRequest, Forbidden, MethodNotAllowed, NotFound } from '@feathersjs/errors'
 import { hooks as schemaHooks } from '@feathersjs/schema'
 import type { NullableId, Params } from '@feathersjs/feathers'
-import { Type, getValidator, type Static } from '@feathersjs/typebox'
+import { Type, type Static } from '@feathersjs/typebox'
 import { ROLE_MANAGEMENT } from '../../abilities.js'
 import type { Application } from '../../app.js'
 import { endSessionConnections, joinAs, publishNothing, type ChannelUser } from '../../channels.js'
 import { loadAccess } from '../../permissions.js'
-import { dataValidator } from '../../validators.js'
+import { dataValidator, lazyValidator } from '../../validators.js'
 
 // Read-only view-as (ADR 0028): `create` starts viewing the application as
 // another person, under `users.view-as`; `remove` ends it, which anybody may
@@ -30,7 +30,7 @@ export type ViewAs = Static<typeof viewAsSchema>
 
 export const viewAsDataSchema = Type.Object({ userId: Type.String({ format: 'uuid' }) }, { $id: 'ViewAsData', additionalProperties: false })
 export type ViewAsData = Static<typeof viewAsDataSchema>
-const viewAsDataValidator = getValidator(viewAsDataSchema, dataValidator)
+const viewAsDataValidator = lazyValidator(viewAsDataSchema, dataValidator)
 
 const sessionOf = (params?: Params): string => {
   const sid = (params?.authentication as { payload?: { sid?: unknown } } | undefined)?.payload?.sid

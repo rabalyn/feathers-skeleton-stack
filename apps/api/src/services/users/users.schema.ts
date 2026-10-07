@@ -1,9 +1,9 @@
 import { resolve, virtual } from '@feathersjs/schema'
-import { Type, getValidator, querySyntax, type Static } from '@feathersjs/typebox'
+import { Type, querySyntax, type Static } from '@feathersjs/typebox'
 import type { HookContext } from '../../declarations.js'
 import { LOCALES } from '../../locales.js'
 import { loadPermissions } from '../../permissions.js'
-import { dataValidator, queryValidator } from '../../validators.js'
+import { dataValidator, queryValidator, lazyValidator } from '../../validators.js'
 
 // ADR 0005, 0009. Schemas and types may be imported by the client entry point
 // as types only; resolvers below are server code.
@@ -79,7 +79,7 @@ export const userDataSchema = Type.Pick(userSchema, ['tuId', 'givenName', 'surna
   additionalProperties: false
 })
 export type UserData = Static<typeof userDataSchema>
-export const userDataValidator = getValidator(userDataSchema, dataValidator)
+export const userDataValidator = lazyValidator(userDataSchema, dataValidator)
 export const userDataResolver = resolve<User, HookContext>({})
 
 // What an external patch may change: enable/disable (ADR 0011). Directory
@@ -92,14 +92,14 @@ export const userPatchSchema = Type.Partial(Type.Pick(userSchema, ['enabled']), 
   minProperties: 1
 })
 export type UserPatch = Static<typeof userPatchSchema>
-export const userPatchValidator = getValidator(userPatchSchema, dataValidator)
+export const userPatchValidator = lazyValidator(userPatchSchema, dataValidator)
 export const userInternalPatchSchema = Type.Partial(Type.Pick(userSchema, ['enabled', 'avatarFileId', 'locale', 'roleIds']), {
   $id: 'UserInternalPatch',
   additionalProperties: false,
   minProperties: 1
 })
 export type UserInternalPatch = Static<typeof userInternalPatchSchema>
-export const userInternalPatchValidator = getValidator(userInternalPatchSchema, dataValidator)
+export const userInternalPatchValidator = lazyValidator(userInternalPatchSchema, dataValidator)
 export const userPatchResolver = resolve<User, HookContext>({
   updatedAt: async () => new Date().toISOString()
 })
@@ -125,5 +125,5 @@ export const userQuerySchema = Type.Intersect(
   { additionalProperties: false }
 )
 export type UserQuery = Static<typeof userQuerySchema>
-export const userQueryValidator = getValidator(userQuerySchema, queryValidator)
+export const userQueryValidator = lazyValidator(userQuerySchema, queryValidator)
 export const userQueryResolver = resolve<UserQuery, HookContext>({})

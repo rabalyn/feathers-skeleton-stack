@@ -1,6 +1,6 @@
-import { Type, getValidator, type Static } from '@feathersjs/typebox'
+import { Type, type Static } from '@feathersjs/typebox'
 import { SITE_PAGE_MAX, SITE_SEARCH_MAX_LENGTH } from '../../limits.js'
-import { queryValidator } from '../../validators.js'
+import { queryValidator, lazyValidator } from '../../validators.js'
 
 // Locations (ADR 0031). A site is a building of the university as NetBox
 // holds it; `id` is NetBox's, which application records store to reference
@@ -54,4 +54,4 @@ export const siteQuerySchema = Type.Object(
   { $id: 'SiteQuery', additionalProperties: false }
 )
 export type SiteQuery = Static<typeof siteQuerySchema>
-export const siteQueryValidator = getValidator(siteQuerySchema, queryValidator)
+export const siteQueryValidator = lazyValidator(siteQuerySchema, queryValidator)

@@ -4,13 +4,13 @@ import type { Id, NullableId, Params } from '@feathersjs/feathers'
 import type { AuthSession } from '../../auth/sessions.js'
 import { KnexService } from '@feathersjs/knex'
 import { hooks as schemaHooks, resolve, virtual } from '@feathersjs/schema'
-import { Type, getValidator, querySyntax, type Static } from '@feathersjs/typebox'
+import { Type, querySyntax, type Static } from '@feathersjs/typebox'
 import type { Application } from '../../app.js'
 import { recordAudit } from '../../audit.js'
 import { publishTo, subjectChannel } from '../../channels.js'
 import type { HookContext } from '../../declarations.js'
 import { PAGINATE } from '../../paginate.js'
-import { queryValidator } from '../../validators.js'
+import { queryValidator, lazyValidator } from '../../validators.js'
 
 // Sessions (ADR 0010, 0011): who is logged in, under `sessions.read`.
 // Only active sessions are listed; revoked and expired ones are in the audit
@@ -74,7 +74,7 @@ export const sessionQuerySchema = Type.Intersect(
   { additionalProperties: false }
 )
 export type SessionQuery = Static<typeof sessionQuerySchema>
-export const sessionQueryValidator = getValidator(sessionQuerySchema, queryValidator)
+export const sessionQueryValidator = lazyValidator(sessionQuerySchema, queryValidator)
 
 export type SessionParams = Params<SessionQuery>
 

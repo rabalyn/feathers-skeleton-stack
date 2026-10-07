@@ -1,7 +1,7 @@
 import { resolve, virtual } from '@feathersjs/schema'
-import { Type, getValidator, querySyntax, type Static } from '@feathersjs/typebox'
+import { Type, querySyntax, type Static } from '@feathersjs/typebox'
 import type { HookContext } from '../../declarations.js'
-import { dataValidator, queryValidator } from '../../validators.js'
+import { dataValidator, queryValidator, lazyValidator } from '../../validators.js'
 
 // ADR 0013: a GDPR export of one person, built by the worker. Only the
 // account that asked for it sees it; its bytes are at
@@ -46,7 +46,7 @@ export const dataExportDataSchema = Type.Pick(dataExportSchema, ['subjectId'], {
   additionalProperties: false
 })
 export type DataExportData = Static<typeof dataExportDataSchema>
-export const dataExportDataValidator = getValidator(dataExportDataSchema, dataValidator)
+export const dataExportDataValidator = lazyValidator(dataExportDataSchema, dataValidator)
 export const dataExportDataResolver = resolve<DataExport, HookContext>({
   requestedBy: async (_value, _row, context) => (context.params.user as { id: string }).id
 })
@@ -59,7 +59,7 @@ export const dataExportPatchSchema = Type.Partial(Type.Pick(dataExportSchema, ['
   minProperties: 1
 })
 export type DataExportPatch = Static<typeof dataExportPatchSchema>
-export const dataExportPatchValidator = getValidator(dataExportPatchSchema, dataValidator)
+export const dataExportPatchValidator = lazyValidator(dataExportPatchSchema, dataValidator)
 
 export const dataExportQueryProperties = Type.Pick(dataExportSchema, ['id', 'subjectId', 'requestedBy', 'state', 'createdAt'])
 export const dataExportQuerySchema = Type.Intersect(
@@ -67,5 +67,5 @@ export const dataExportQuerySchema = Type.Intersect(
   { additionalProperties: false }
 )
 export type DataExportQuery = Static<typeof dataExportQuerySchema>
-export const dataExportQueryValidator = getValidator(dataExportQuerySchema, queryValidator)
+export const dataExportQueryValidator = lazyValidator(dataExportQuerySchema, queryValidator)
 export const dataExportQueryResolver = resolve<DataExportQuery, HookContext>({})

@@ -1,13 +1,13 @@
 import { BadRequest, Conflict, NotFound, Unavailable } from '@feathersjs/errors'
 import type { Params } from '@feathersjs/feathers'
 import { hooks as schemaHooks } from '@feathersjs/schema'
-import { Type, getValidator, type Static } from '@feathersjs/typebox'
+import { Type, type Static } from '@feathersjs/typebox'
 import type { Knex } from 'knex'
 import type { Application } from '../../app.js'
 import { publishNothing } from '../../channels.js'
 import { DirectoryUnavailable, type Directory } from '../../directory.js'
 import { limitPerUser } from '../../rate-limit.js'
-import { dataValidator } from '../../validators.js'
+import { dataValidator, lazyValidator } from '../../validators.js'
 import type { DirectoryEntry } from './directory.schema.js'
 
 // One person by the exact value of an attribute the product names as a
@@ -31,7 +31,7 @@ export const directoryLookupDataSchema = Type.Object(
   { $id: 'DirectoryLookupData', additionalProperties: false }
 )
 export type DirectoryLookupData = Static<typeof directoryLookupDataSchema>
-const directoryLookupDataValidator = getValidator(directoryLookupDataSchema, dataValidator)
+const directoryLookupDataValidator = lazyValidator(directoryLookupDataSchema, dataValidator)
 
 export class DirectoryLookupService {
   constructor(

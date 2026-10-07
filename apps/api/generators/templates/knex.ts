@@ -4,9 +4,9 @@ import type { Names } from '../names.js'
 // 0005, events to whoever reads every record (ADR 0012).
 
 export const knexSchema = (n: Names) => `import { resolve, virtual } from '@feathersjs/schema'
-import { Type, getValidator, querySyntax, type Static } from '@feathersjs/typebox'
+import { Type, querySyntax, type Static } from '@feathersjs/typebox'
 import type { HookContext } from '../../declarations.js'
-import { dataValidator, queryValidator } from '../../validators.js'
+import { dataValidator, queryValidator, lazyValidator } from '../../validators.js'
 
 // ${n.title} (ADR 0005). Schemas and types may be imported by the
 // client entry point as types only; resolvers below are server code.
@@ -37,7 +37,7 @@ export const ${n.camel}DataSchema = Type.Pick(${n.camel}Schema, ['name'], {
   additionalProperties: false
 })
 export type ${n.pascal}Data = Static<typeof ${n.camel}DataSchema>
-export const ${n.camel}DataValidator = getValidator(${n.camel}DataSchema, dataValidator)
+export const ${n.camel}DataValidator = lazyValidator(${n.camel}DataSchema, dataValidator)
 // Server-controlled fields are set here, never taken from the request.
 export const ${n.camel}DataResolver = resolve<${n.pascal}, HookContext>({})
 
@@ -47,7 +47,7 @@ export const ${n.camel}PatchSchema = Type.Partial(Type.Pick(${n.camel}Schema, ['
   minProperties: 1
 })
 export type ${n.pascal}Patch = Static<typeof ${n.camel}PatchSchema>
-export const ${n.camel}PatchValidator = getValidator(${n.camel}PatchSchema, dataValidator)
+export const ${n.camel}PatchValidator = lazyValidator(${n.camel}PatchSchema, dataValidator)
 export const ${n.camel}PatchResolver = resolve<${n.pascal}, HookContext>({
   updatedAt: async () => new Date().toISOString()
 })
@@ -58,7 +58,7 @@ export const ${n.camel}QuerySchema = Type.Intersect(
   { additionalProperties: false }
 )
 export type ${n.pascal}Query = Static<typeof ${n.camel}QuerySchema>
-export const ${n.camel}QueryValidator = getValidator(${n.camel}QuerySchema, queryValidator)
+export const ${n.camel}QueryValidator = lazyValidator(${n.camel}QuerySchema, queryValidator)
 // Mandatory scoping the client cannot remove goes here (ADR 0005).
 export const ${n.camel}QueryResolver = resolve<${n.pascal}Query, HookContext>({})
 `

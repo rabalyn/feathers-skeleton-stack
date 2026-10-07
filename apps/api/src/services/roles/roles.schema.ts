@@ -1,10 +1,10 @@
 import { subject } from '@casl/ability'
 import { resolve, virtual } from '@feathersjs/schema'
-import { Type, getValidator, querySyntax, type Static } from '@feathersjs/typebox'
+import { Type, querySyntax, type Static } from '@feathersjs/typebox'
 import { ROLE_KINDS } from '../../abilities.js'
 import type { HookContext } from '../../declarations.js'
 import { LOCALES } from '../../locales.js'
-import { dataValidator, queryValidator } from '../../validators.js'
+import { dataValidator, queryValidator, lazyValidator } from '../../validators.js'
 
 // Roles (ADR 0011): a key, a name per locale and the catalogue permissions
 // the role grants. Schemas and types may be imported by the client entry
@@ -70,7 +70,7 @@ export const roleDataSchema = Type.Object(
   { $id: 'RoleData', additionalProperties: false }
 )
 export type RoleData = Static<typeof roleDataSchema>
-export const roleDataValidator = getValidator(roleDataSchema, dataValidator)
+export const roleDataValidator = lazyValidator(roleDataSchema, dataValidator)
 
 // The name, or the full list of permissions, or both. The key and kind are
 // fixed once created.
@@ -82,7 +82,7 @@ export const rolePatchSchema = Type.Object(
   { $id: 'RolePatch', additionalProperties: false, minProperties: 1 }
 )
 export type RolePatch = Static<typeof rolePatchSchema>
-export const rolePatchValidator = getValidator(rolePatchSchema, dataValidator)
+export const rolePatchValidator = lazyValidator(rolePatchSchema, dataValidator)
 
 export const roleQueryProperties = Type.Pick(roleSchema, ['id', 'key', 'kind'])
 export const roleQuerySchema = Type.Intersect(
@@ -90,4 +90,4 @@ export const roleQuerySchema = Type.Intersect(
   { additionalProperties: false }
 )
 export type RoleQuery = Static<typeof roleQuerySchema>
-export const roleQueryValidator = getValidator(roleQuerySchema, queryValidator)
+export const roleQueryValidator = lazyValidator(roleQuerySchema, queryValidator)
