@@ -9,8 +9,18 @@ attributetype ( 2.16.840.1.113719.1.1.4.1.25
   EQUALITY distinguishedNameMatch
   SYNTAX 1.3.6.1.4.1.1466.115.121.1.12 )
 
+# The serial number of a person's campus card (Athene-Karte), as the
+# university's identity management writes it to its directory: a product may
+# find a person by it (ADR 0008). Its OID there is not known here; this one
+# is a UUID arc too.
+attributetype ( 2.25.98432870915628270410925384417315622851
+  NAME 'idmUserAssignedCardSnMifare'
+  EQUALITY caseIgnoreMatch
+  SUBSTR caseIgnoreSubstringsMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{256} )
+
 objectclass ( 2.25.214672240853276384805159113974030729719
   NAME 'feathersGroupMember'
-  DESC 'A test person with eDirectory group memberships'
+  DESC 'A test person with eDirectory group memberships and a card'
   AUXILIARY
-  MAY groupMembership )
+  MAY ( groupMembership $ idmUserAssignedCardSnMifare ) )

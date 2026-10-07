@@ -26,6 +26,7 @@ index objectClass eq
 index cn          eq,sub
 index mail        eq,sub
 index sn,givenName eq,sub
+index idmUserAssignedCardSnMifare eq
 
 # The university directory returns at most 100 entries per search to the
 # api's service account (ADR 0008); so does this one.

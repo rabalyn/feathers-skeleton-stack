@@ -3,6 +3,7 @@ import { apiTokens } from './api-tokens/api-tokens.js'
 import { auditEvents } from './audit-events/audit-events.js'
 import { dataExports } from './data-exports/data-exports.js'
 import { directory } from './directory/directory.js'
+import { directoryLookups } from './directory/directory-lookups.js'
 import { erasures } from './erasures/erasures.js'
 import { documents } from './documents/documents.js'
 import { files } from './files/files.js'
@@ -33,6 +34,7 @@ export const services = (app: Application) => {
   app.configure(viewAs)
   app.configure(settings)
   app.configure(directory)
+  app.configure(directoryLookups)
   app.configure(files)
   app.configure(avatars)
   app.configure(locales)

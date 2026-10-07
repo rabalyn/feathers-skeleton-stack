@@ -40,6 +40,15 @@ if ! slapcat -f /run/slapd/slapd.conf -a "(&(cn=ad01admn)(groupMembership=*))" |
   slapmodify -f /run/slapd/slapd.conf -l /etc/openldap/seed/attributes.ldif
 fi
 
+# The test people's card numbers (ADR 0008), added once to any directory.
+if ! slapcat -f /run/slapd/slapd.conf -a "(&(cn=ad01admn)(idmUserAssignedCardSnMifare=*))" | grep -q '^dn:'; then
+  echo "ldap: adding the people's card numbers"
+  slapmodify -f /run/slapd/slapd.conf -l /etc/openldap/seed/cards.ldif
+fi
+# Its equality index, rebuilt offline at every start: slapmodify leaves it
+# incomplete, and an exact lookup then misses people who hold a card.
+slapindex -q -f /run/slapd/slapd.conf idmUserAssignedCardSnMifare
+
 # More people than one search returns (ADR 0008), added once to any directory.
 if ! slapcat -f /run/slapd/slapd.conf -a "(cn=bk001blk)" | grep -q '^dn:'; then
   echo "ldap: adding the bulk people"

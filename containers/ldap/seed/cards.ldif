@@ -1,0 +1,29 @@
+# The card numbers of the test people (ADR 0008), made up, in the shape of a
+# Mifare serial number: what a card reader at a counter types. us02othr has
+# none. Added by entrypoint.sh to any directory whose ad01admn lacks one,
+# after attributes.ldif, which gives each of these people the auxiliary
+# class that allows it.
+#
+#   TU-ID     idmUserAssignedCardSnMifare
+#   ad01admn  0412A0B1C2D3E4
+#   op01oper  0412A0B1C2D3E5
+#   us01user  0412A0B1C2D3E6
+#   us02othr  none
+
+dn: cn=ad01admn,ou=people,dc=feathers,dc=test
+changetype: modify
+add: idmUserAssignedCardSnMifare
+idmUserAssignedCardSnMifare: 0412A0B1C2D3E4
+-
+
+dn: cn=op01oper,ou=people,dc=feathers,dc=test
+changetype: modify
+add: idmUserAssignedCardSnMifare
+idmUserAssignedCardSnMifare: 0412A0B1C2D3E5
+-
+
+dn: cn=us01user,ou=people,dc=feathers,dc=test
+changetype: modify
+add: idmUserAssignedCardSnMifare
+idmUserAssignedCardSnMifare: 0412A0B1C2D3E6
+-
