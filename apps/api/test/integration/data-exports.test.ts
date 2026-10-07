@@ -448,6 +448,13 @@ describe("two people's exports", () => {
     for (const bytes of stranger.uploads.values()) expect([...entries.values()].some((entry) => entry.includes(bytes))).toBe(false)
   }
 
+  // One scenario of dozens of requests in a row: six uploads to Garage,
+  // four exports through the queue (in turn, as each lists the ones before
+  // it) and their downloads, then the cross-checks. About two seconds alone;
+  // a busy CI run and a product's own export data stretch it past the
+  // default 5 s, which is no measure of it.
+  const SCENARIO_TIMEOUT = 30_000
+
   it('each holds exactly its own documents, avatar, sessions and exports, and only its requester gets it', async () => {
     const alice = await person('us05alic', 3)
     const bob = await person('us06bobb', 2)
@@ -506,7 +513,7 @@ describe("two people's exports", () => {
       }
       expect((await call(user, `/users/${stranger.user.id}`)).status).toBe(404)
     }
-  })
+  }, SCENARIO_TIMEOUT)
 })
 
 describe('export expiry', () => {
