@@ -14,7 +14,8 @@ import { channels } from './channels.js'
 import type { ServiceProvider } from './auth/saml.js'
 import type { SessionStore } from './auth/sessions.js'
 import { TrustedProxy } from './client-ip.js'
-import { Directory } from './directory.js'
+import { Directory, checkProductDirectory, type ProductDirectory } from './directory.js'
+import { PRODUCT_DIRECTORY } from './product/directory.js'
 import { Netbox } from './netbox.js'
 import { queueConnection } from './jobs/queues.js'
 import { MailOutbox } from './mail/outbox.js'
@@ -45,6 +46,8 @@ export interface AppSettings {
   valkey: Redis
   rateLimiter: RateLimiter
   directory: Directory
+  // What the product reads from the directory (ADR 0008).
+  productDirectory: ProductDirectory
   // Locations (ADR 0031).
   netbox: Netbox
   metrics: Registry
@@ -64,6 +67,8 @@ export interface AppOptions {
   settingsTtlMs?: number
   // Namespace of rate-limit keys in Valkey.
   rateLimitPrefix?: string
+  // Replaces product/directory.ts, e.g. in a test of the hand-over.
+  productDirectory?: ProductDirectory
 }
 
 export type Application = KoaApplication<ServiceTypes, AppSettings>
@@ -99,6 +104,9 @@ export const createApp = (
   app.set('valkey', valkey)
   app.set('rateLimiter', new RateLimiter(valkey, app.get('settings'), options.rateLimitPrefix))
   app.set('directory', new Directory(config))
+  const productDirectory = options.productDirectory ?? PRODUCT_DIRECTORY
+  checkProductDirectory(productDirectory)
+  app.set('productDirectory', productDirectory)
   app.set('netbox', new Netbox(config))
   app.set('storage', new Storage(config))
   app.set('exports', new Storage(config, config.s3ExportsBucket))

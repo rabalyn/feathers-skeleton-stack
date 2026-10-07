@@ -33,6 +33,13 @@ if ! slapcat -f /run/slapd/slapd.conf -a "(ou=groups)" | grep -q '^dn:'; then
   slapadd -f /run/slapd/slapd.conf -l /etc/openldap/seed/groups.ldif
 fi
 
+# Further attributes of the test people (ADR 0008), added once to any
+# directory.
+if ! slapcat -f /run/slapd/slapd.conf -a "(&(cn=ad01admn)(groupMembership=*))" | grep -q '^dn:'; then
+  echo "ldap: adding the people's further attributes"
+  slapmodify -f /run/slapd/slapd.conf -l /etc/openldap/seed/attributes.ldif
+fi
+
 # More people than one search returns (ADR 0008), added once to any directory.
 if ! slapcat -f /run/slapd/slapd.conf -a "(cn=bk001blk)" | grep -q '^dn:'; then
   echo "ldap: adding the bulk people"

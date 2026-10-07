@@ -16,6 +16,7 @@ import {
   type ValkeyConfig
 } from '../../src/config.js'
 import { createKnex } from '../../src/db.js'
+import type { ProductDirectory } from '../../src/directory.js'
 import { RATE_LIMITS, type RateLimitBucket } from '../../src/rate-limit.js'
 import { SETTINGS } from '../../src/settings/registry.js'
 import { createValkey } from '../../src/valkey.js'
@@ -55,6 +56,8 @@ export interface TestAppOptions {
   // Keeps what the migrations seed `everyone` with, for the test of the
   // seeded defaults; otherwise it grants nothing (ADR 0035).
   seededEveryone?: boolean
+  // In place of the product's directory attributes (ADR 0008).
+  productDirectory?: ProductDirectory
 }
 
 // An application on this worker's database, not listening on any port, with
@@ -121,7 +124,7 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
     options.valkey ?? createValkey(valkeyConfig).on('error', () => {}),
     // Tests change settings in the database directly and expect the next
     // request to see them.
-    { settingsTtlMs: 0, rateLimitPrefix }
+    { settingsTtlMs: 0, rateLimitPrefix, productDirectory: options.productDirectory }
   )
   return { app, idp: new TestIdp(idpKey), sp, rateLimitPrefix }
 }

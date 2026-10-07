@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { PRODUCT_DIRECTORY } from '../../src/product/directory.js'
 import { PRODUCT_FILE_REFERENCES } from '../../src/product/files.js'
 import { PRODUCT_QUEUES } from '../../src/product/jobs.js'
 import { PRODUCT_MAIL_KINDS } from '../../src/product/mail.js'
@@ -31,6 +32,7 @@ describe.runIf(product === 'feathers-skeleton')("the skeleton's product module",
     expect(PRODUCT_PREFERENCES).toEqual({})
     expect(PRODUCT_QUEUES).toEqual([])
     expect(PRODUCT_FILE_REFERENCES).toEqual([])
+    expect(PRODUCT_DIRECTORY.attributes).toEqual([])
   })
 
   it('holds no product ADRs, only their index (ADR 0019)', () => {

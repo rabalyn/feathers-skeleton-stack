@@ -9,6 +9,7 @@ import {
 } from '@feathersjs/authentication'
 import type { HookContext, NextFunction, Params } from '@feathersjs/feathers'
 import type { Application } from '../app.js'
+import { refreshDirectoryValues } from '../accounts.js'
 import { recordAudit } from '../audit.js'
 import { endSessionConnections, publishNothing } from '../channels.js'
 import { inMaintenance, maintenanceUnavailable, mayBypassMaintenance } from '../maintenance-mode.js'
@@ -409,6 +410,8 @@ export const samlRoutes = (app: Application) => {
             ctx.body = 'Account disabled'
             return
           }
+          // The product's further directory attributes (ADR 0008).
+          await refreshDirectoryValues(app, user.id, identity.tuId)
           // During maintenance only those who may switch it off log in; the
           // rest land on the web app's maintenance page (ADR 0025).
           if (

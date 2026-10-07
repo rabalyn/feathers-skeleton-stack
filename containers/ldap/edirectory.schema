@@ -1,0 +1,16 @@
+# The university directory is NetIQ eDirectory, which lists a person's groups
+# in `groupMembership` (ADR 0008). OpenLDAP has no such attribute; this
+# defines it with eDirectory's OID and syntax (DN, multi-valued), and an
+# auxiliary class that lets test people carry it. The class's OID is a UUID
+# arc (2.25, ITU-T X.667), which needs no registration.
+
+attributetype ( 2.16.840.1.113719.1.1.4.1.25
+  NAME 'groupMembership'
+  EQUALITY distinguishedNameMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.12 )
+
+objectclass ( 2.25.214672240853276384805159113974030729719
+  NAME 'feathersGroupMember'
+  DESC 'A test person with eDirectory group memberships'
+  AUXILIARY
+  MAY groupMembership )

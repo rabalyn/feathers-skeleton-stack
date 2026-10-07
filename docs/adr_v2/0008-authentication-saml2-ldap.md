@@ -28,12 +28,23 @@ The application code, routes, assertion handling and session issuance are identi
 
 The TU-ID is carried in **`cn`**. The SP requests and maps: `cn` (TU-ID), `givenName` (name), `sn` (surname), `mail`. The local realm import and LDAP seed use the same attribute names.
 
+#### A product's further attributes
+
+Decided 2026-10-07, for the first product, which derives a borrower's department and whether they are employed from `ou` and `groupMembership`.
+
+- **A product names further LDAP attributes** in `apps/api/src/product/directory.ts` ([0035](0035-products-derived-from-the-skeleton.md)): `PRODUCT_DIRECTORY`, with the attribute names and `apply(trx, userId, values)`, which receives every value of each named attribute as text, in the product's spelling of its name (LDAP compares names without case), and none for an attribute the person lacks. A name that is no attribute name, one of the four above, `userPassword` or a name given twice is refused at start.
+- **The skeleton stores none of them.** The product derives what it needs and keeps it in its own tables, registered as personal data ([0013](0013-gdpr-export-and-retention.md)); `apply` must give the same result when called twice. Storing the raw values on the account was rejected: the skeleton would hold, export and erase data (every group of a person) that only a product needs.
+- **They are read from the directory, not from the assertion**, where `accountFor()` makes an account ([0009](0009-tu-id-identity-model.md#accounts-before-the-first-login)), in the same lookup and the same transaction, and **at every login**: after a valid assertion, the API looks the person up by TU-ID with its service account and calls `apply` in a transaction of its own. Taking them from the assertion was rejected: the university IdP would have to release them to this SP, and the local realm map them. A login asks the directory only when the product names attributes.
+- **A directory that is unreachable or no longer knows the person does not stop the login**; it is logged, and the product keeps what it had. An unreachable directory delays the login by up to the client's timeouts (3 s to connect, 5 s per operation).
+- **Directory lookup does not return them**: a search reads the account's fields only.
+- The test directory carries them in the university directory's shape: an eDirectory-compatible schema for `groupMembership` (`containers/ldap/edirectory.schema`), `ou` with organisation ids (T-Nummern), which the university directory holds for people with an employment contract only, for ad01admn and op01oper, and `groupMembership` (group DNs) for them, with a T-Nummer group `cn=T…`, and for us01user, without one; us02othr has neither (`containers/ldap/seed/attributes.ldif`, added once to an existing local directory at start).
+
 ### LDAP
 
-The `ldap` container (OpenLDAP) serves **LDAPS only**, with a certificate from the local CA ([0016](0016-nginx-and-tls-everywhere.md)), so no bind credential crosses a network in plaintext and the API's LDAP client uses TLS exactly as it will against the university directory. It is seeded at startup with a small set of test users carrying `cn` (TU-ID), `givenName`, `sn`, `mail` and `userPassword`. It serves two consumers:
+The `ldap` container (OpenLDAP) serves **LDAPS only**, with a certificate from the local CA ([0016](0016-nginx-and-tls-everywhere.md)), so no bind credential crosses a network in plaintext and the API's LDAP client uses TLS exactly as it will against the university directory. It is seeded at startup with a small set of test users carrying `cn` (TU-ID), `givenName`, `sn`, `mail` and `userPassword`, some of them also `ou` and `groupMembership` ([below](#a-products-further-attributes)). It serves two consumers:
 
 - **Keycloak** binds to it as its user store, which is the shape the university deployment has.
-- **The API** binds to it with a read-only service account for **directory lookup**: finding a person who has not logged in yet. Lookup needs the `directory.read` permission, which `admin` holds and `operator` is seeded with ([0011](0011-casl-role-authorization.md)). The same kind of service account is already in use against the university directory by other applications. Every filter built from user input is escaped ([0018](0018-owasp-security-baseline.md)).
+- **The API** binds to it with a read-only service account for **directory lookup**: finding a person who has not logged in yet, and reading the further attributes a product names ([above](#a-products-further-attributes)). Lookup needs the `directory.read` permission, which `admin` holds and `operator` is seeded with ([0011](0011-casl-role-authorization.md)). The same kind of service account is already in use against the university directory by other applications. Every filter built from user input is escaped ([0018](0018-owasp-security-baseline.md)).
 
 The API never uses LDAP to authenticate a user. Login is SAML2 only.
 
@@ -95,7 +106,7 @@ The SP **signs** its authentication and logout requests and **accepts encrypted 
 
 ### After successful authentication
 
-The SP issues the application's own session ([0010](0010-sessions-postgres-ratelimits-valkey.md)) and does not retain or re-present the assertion. On first login, the user record is provisioned just-in-time from the asserted attributes, keyed by TU-ID, or found by it when product code made it before ([0009](0009-tu-id-identity-model.md#accounts-before-the-first-login)).
+The SP issues the application's own session ([0010](0010-sessions-postgres-ratelimits-valkey.md)) and does not retain or re-present the assertion. On first login, the user record is provisioned just-in-time from the asserted attributes, keyed by TU-ID, or found by it when product code made it before ([0009](0009-tu-id-identity-model.md#accounts-before-the-first-login)). When a product names further attributes, they are then read from the directory and handed to it ([above](#a-products-further-attributes)).
 
 SP-initiated logout is supported. IdP-initiated single logout is out of scope initially; local session revocation is always authoritative for this application.
 
@@ -107,3 +118,4 @@ SP-initiated logout is supported. IdP-initiated single logout is out of scope in
 - A break-glass password exists and is therefore a target; its audit trail and rate limiting are not optional.
 - `--rotate` revokes the account's sessions and deletes its API tokens in the database, which ends access at the next request. An api process holding a WebSocket of that account closes it only on restart, because the command runs as a process of its own.
 - The API holds an LDAP service credential, delivered like every other secret ([0023](0023-secrets-management.md)).
+- A product that names further attributes makes every login depend on one LDAP lookup more, which it survives but which slows it while the directory does not answer.

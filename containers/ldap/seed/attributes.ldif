@@ -1,0 +1,50 @@
+# Further attributes of the test people (ADR 0008), in the shape the
+# university directory gives them, for products that read them: `ou` holds
+# the organisation ids (T-Nummern) of a person with an employment contract,
+# and nothing else, and `groupMembership` the DNs of a person's groups, among
+# them a T-Nummer group (cn=T...) for such a person. No group entries stand behind these DNs. Added by
+# entrypoint.sh to any directory whose ad01admn lacks them.
+#
+#   TU-ID     ou                          groupMembership
+#   ad01admn  T400120, T40, T4001, T40012  a T group and a plain one
+#   op01oper  T2, T201                     a T group
+#   us01user  none                         a plain group only
+#   us02othr  none                         none
+
+dn: cn=ad01admn,ou=people,dc=feathers,dc=test
+changetype: modify
+add: objectClass
+objectClass: feathersGroupMember
+-
+add: ou
+ou: T400120
+ou: T40
+ou: T4001
+ou: T40012
+-
+add: groupMembership
+groupMembership: cn=T400120,ou=groups,o=tu
+groupMembership: cn=all-staff,ou=groups,o=tu
+-
+
+dn: cn=op01oper,ou=people,dc=feathers,dc=test
+changetype: modify
+add: objectClass
+objectClass: feathersGroupMember
+-
+add: ou
+ou: T2
+ou: T201
+-
+add: groupMembership
+groupMembership: cn=T201,ou=groups,o=tu
+-
+
+dn: cn=us01user,ou=people,dc=feathers,dc=test
+changetype: modify
+add: objectClass
+objectClass: feathersGroupMember
+-
+add: groupMembership
+groupMembership: cn=students,ou=groups,o=tu
+-

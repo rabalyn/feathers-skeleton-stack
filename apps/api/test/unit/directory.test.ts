@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { searchFilter, tuIdFilter } from '../../src/directory.js'
+import { checkProductDirectory, searchFilter, tuIdFilter } from '../../src/directory.js'
 
 // ADR 0008, 0018: every word is a prefix of one of four attributes, and
 // nothing a user types can change the filter's structure.
@@ -60,5 +60,23 @@ describe('directory service paging', () => {
     const page = await service.find({ query: { q: 'b0', $limit: 100 } })
     expect(page).toMatchObject({ total: 100, limit: 50 })
     expect(page.data).toHaveLength(50)
+  })
+})
+
+describe("a product's further attributes (ADR 0008)", () => {
+  const check = (attributes: string[]) => () => checkProductDirectory({ attributes, apply: async () => {} })
+
+  it('takes attribute names', () => {
+    expect(check(['ou', 'groupMembership', 'x-custom-1'])).not.toThrow()
+  })
+
+  it.each([
+    ['no attribute name', ['ou;binary']],
+    ['an account field', ['givenName']],
+    ['the TU-ID, in any case', ['CN']],
+    ['the password', ['userPassword']],
+    ['a name twice', ['ou', 'OU']]
+  ])('refuses %s', (_case, attributes) => {
+    expect(check(attributes)).toThrow(/product directory attribute/)
   })
 })

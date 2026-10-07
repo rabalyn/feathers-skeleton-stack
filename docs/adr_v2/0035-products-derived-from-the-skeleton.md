@@ -56,6 +56,7 @@ Decided 2026-10-06.
   | `apps/api/src/product/settings.ts` | the runtime settings, which ones the api and the worker require, and cross-setting rules | [0025](0025-runtime-settings.md) |
   | `apps/api/src/product/preferences.ts` | the personal preference keys | [0014](0014-frontend-quasar-vue.md) |
   | `apps/api/src/product/jobs.ts` | job queues with their jobs and schedules, run by the worker beside the skeleton's | [0024](0024-background-jobs-bullmq.md) |
+  | `apps/api/src/product/directory.ts` | further LDAP attributes, and what the product does with their values where an account is made and at every login (added 2026-10-07) | [0008](0008-authentication-saml2-ldap.md#a-products-further-attributes) |
   | `apps/web/src/product/routes.ts` | the pages in the main layout, and their links in the navigation drawer, after the profile | [0014](0014-frontend-quasar-vue.md) |
   | `apps/web/src/i18n/product/{de,en}.json` | the message catalogues | [0014](0014-frontend-quasar-vue.md) |
 
