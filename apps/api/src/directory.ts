@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import type { Knex } from 'knex'
 import { Client, escapeFilter } from 'ldapts'
 import type { LdapConfig } from './config.js'
 import { DIRECTORY_MAX_RESULTS as MAX_RESULTS } from './limits.js'
@@ -39,6 +40,43 @@ export interface DirectoryResult {
 
 export class DirectoryUnavailable extends Error {}
 
+// Further attributes a product reads about a person (ADR 0008), each with all
+// its values as text, in the product's spelling of its name; an attribute the
+// person lacks has none.
+export type DirectoryValues = Record<string, string[]>
+
+export interface DirectoryPerson extends DirectoryEntry {
+  values: DirectoryValues
+}
+
+// What a product reads from the directory beyond the account's own fields
+// (ADR 0008, 0009), declared in product/directory.ts. `apply` gets their
+// values where accountFor() makes an account and at every login the
+// directory answers, in a transaction of its own there; it keeps what it
+// derives in the product's own tables, registered as personal data
+// (ADR 0013), and must give the same result when called twice.
+export interface ProductDirectory {
+  attributes: readonly string[]
+  apply: (trx: Knex | Knex.Transaction, userId: string, values: DirectoryValues) => Promise<void>
+}
+
+const ATTRIBUTE_NAME = /^[A-Za-z][A-Za-z0-9-]*$/
+const RESERVED = new Set([...ATTRIBUTES, 'userPassword'].map((name) => name.toLowerCase()))
+
+// Refused at start (ADR 0035): a name that is no attribute description, one
+// of the account's own, the password, or a name given twice (LDAP names
+// ignore case).
+export const checkProductDirectory = ({ attributes }: ProductDirectory): void => {
+  const seen = new Set<string>()
+  for (const name of attributes) {
+    const key = name.toLowerCase()
+    if (!ATTRIBUTE_NAME.test(name)) throw new Error(`product directory attribute "${name}" is no attribute name`)
+    if (RESERVED.has(key)) throw new Error(`product directory attribute "${name}" is the skeleton's`)
+    if (seen.has(key)) throw new Error(`product directory attribute "${name}" is named twice`)
+    seen.add(key)
+  }
+}
+
 export const searchFilter = (term: string): string => {
   const words = term.trim().split(/\s+/).filter(Boolean).slice(0, MAX_WORDS)
   const clauses = words.map((word) => {
@@ -67,6 +105,18 @@ const first = (value: unknown): string | null => {
   return text.length > 0 ? text : null
 }
 
+const all = (value: unknown): string[] =>
+  (Array.isArray(value) ? (value as unknown[]) : [value])
+    .map((single) => (Buffer.isBuffer(single) ? single.toString('utf8') : single))
+    .filter((single): single is string => typeof single === 'string' && single.length > 0)
+
+// The server names an attribute in its own spelling, which may differ from
+// the product's in case.
+const valuesOf = (entry: Record<string, unknown>, attributes: readonly string[]): DirectoryValues => {
+  const byKey = new Map(Object.entries(entry).map(([name, value]) => [name.toLowerCase(), value]))
+  return Object.fromEntries(attributes.map((name) => [name, all(byKey.get(name.toLowerCase()))]))
+}
+
 export class Directory {
   private readonly ca: string
 
@@ -85,16 +135,27 @@ export class Directory {
       // MAX_RESULTS matches.
       sizeLimit: MAX_RESULTS
     })
-    return { entries: found.entries.sort(byName), truncated: found.count >= MAX_RESULTS }
+    // A search reads the account's fields only.
+    const entries = found.entries.map(({ values: _values, ...entry }): DirectoryEntry => entry)
+    return { entries: entries.sort(byName), truncated: found.count >= MAX_RESULTS }
   }
 
-  // The person with this TU-ID, or null when the directory does not know it.
-  async find(tuId: string): Promise<DirectoryEntry | null> {
-    const { entries } = await this.query({ filter: tuIdFilter(tuId), sizeLimit: 2 })
+  // The person with this TU-ID, or null when the directory does not know it,
+  // with the values of the further attributes asked for.
+  async find(tuId: string, attributes: readonly string[] = []): Promise<DirectoryPerson | null> {
+    const { entries } = await this.query({ filter: tuIdFilter(tuId), sizeLimit: 2, attributes })
     return entries.find((entry) => entry.tuId === tuId) ?? null
   }
 
-  private async query({ filter, sizeLimit }: { filter: string; sizeLimit: number }) {
+  private async query({
+    filter,
+    sizeLimit,
+    attributes = []
+  }: {
+    filter: string
+    sizeLimit: number
+    attributes?: readonly string[]
+  }) {
     const client = new Client({
       url: this.config.ldapUrl,
       timeout: 5000,
@@ -106,7 +167,7 @@ export class Directory {
       const { searchEntries } = await client.search(this.config.ldapBaseDn, {
         scope: 'sub',
         filter,
-        attributes: ATTRIBUTES,
+        attributes: [...ATTRIBUTES, ...attributes],
         sizeLimit,
         timeLimit: 5
       })
@@ -115,9 +176,10 @@ export class Directory {
           tuId: first(entry.cn),
           givenName: first(entry.givenName),
           surname: first(entry.sn),
-          email: first(entry.mail)
+          email: first(entry.mail),
+          values: valuesOf(entry, attributes)
         }))
-        .filter((entry): entry is DirectoryEntry => entry.tuId !== null)
+        .filter((entry): entry is DirectoryPerson => entry.tuId !== null)
       return { entries, count: searchEntries.length }
     } catch (error) {
       throw new DirectoryUnavailable((error as Error).message)
