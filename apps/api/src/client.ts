@@ -6,6 +6,7 @@ import { feathers, type Application, type ClientService, type Paginated, type Pa
 import authenticationClient, { MemoryStorage, type AuthenticationClientOptions } from '@feathersjs/authentication-client'
 import type { DirectoryEntry, DirectoryPage, DirectoryQuery } from './services/directory/directory.schema.js'
 import type { DIRECTORY_EXTERNAL_METHODS } from './services/directory/directory.js'
+import type { DirectoryLookupData, DIRECTORY_LOOKUP_EXTERNAL_METHODS } from './services/directory/directory-lookups.js'
 import type { Setting, SettingPatch, SettingQuery } from './services/settings/settings.schema.js'
 import type { SETTING_EXTERNAL_METHODS } from './services/settings/settings.js'
 import type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
@@ -71,6 +72,7 @@ export type { ViewAs, ViewAsData } from './services/view-as/view-as.js'
 export type { Setting, SettingPatch, SettingQuery } from './services/settings/settings.schema.js'
 export type { SettingKey } from './settings/registry.js'
 export type { DirectoryEntry, DirectoryPage, DirectoryQuery } from './services/directory/directory.schema.js'
+export type { DirectoryLookupData } from './services/directory/directory-lookups.js'
 export type { Document, DocumentData, DocumentPatch, DocumentQuery } from './services/documents/documents.schema.js'
 export type { File } from './services/files/files.schema.js'
 export type { AvatarData } from './services/users/avatars.js'
@@ -164,6 +166,8 @@ export interface ClientServiceTypes extends ProductServiceTypes {
     ClientService<DirectoryEntry, never, never, DirectoryPage, Params<DirectoryQuery>>,
     typeof DIRECTORY_EXTERNAL_METHODS
   >
+  // One person by an attribute the product names (ADR 0008).
+  'directory-lookups': External<ClientService<DirectoryEntry, DirectoryLookupData, never, never, Params>, typeof DIRECTORY_LOOKUP_EXTERNAL_METHODS>
   documents: External<
     ClientService<Document, DocumentData, DocumentPatch, Paginated<Document>, Params<DocumentQuery>>,
     typeof DOCUMENT_EXTERNAL_METHODS

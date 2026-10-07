@@ -492,7 +492,7 @@
       "api-tokens_own": "See and revoke one's own API tokens, even without the right to create them",
       "users_read": "Every user record with its picture, and the names of the roles",
       "users_enable": "Switch accounts on and off",
-      "directory_read": "Search the university directory for people who have not logged in yet",
+      "directory_read": "Search the university directory for people who have not logged in yet, or look one up by an attribute such as a card number",
       "sites_read": "Look up the university's buildings, their addresses and occupants (from NetBox)",
       "users_view-as": "See the application as another person sees it, read-only and never beyond one’s own rights",
       "documents_own": "Create documents and read, change and delete one’s own",

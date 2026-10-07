@@ -68,7 +68,10 @@ const CATALOGUE_ENTRIES = [
   }),
   // Which fields a patch may carry is fixed by the users patch schema.
   entry('users.enable', 'users', (can) => can('patch', 'users')),
-  entry('directory.read', 'users', (can) => can('read', 'directory')),
+  entry('directory.read', 'users', (can) => {
+    can('read', 'directory')
+    can(['create', 'read'], 'directory-lookups')
+  }),
   // Locations (ADR 0031): the university's buildings, from NetBox.
   entry('sites.read', 'locations', (can) => can('read', 'sites')),
   // Read-only view as another person, bounded by one's own rights (ADR 0028).

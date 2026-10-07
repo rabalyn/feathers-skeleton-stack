@@ -492,7 +492,7 @@
       "api-tokens_own": "Die eigenen API-Tokens sehen und widerrufen, auch ohne das Recht, welche zu erstellen",
       "users_read": "Jedes Benutzerkonto mit Bild und die Namen der Rollen",
       "users_enable": "Konten ein- und ausschalten",
-      "directory_read": "Im Hochschulverzeichnis nach Personen suchen, die sich noch nicht angemeldet haben",
+      "directory_read": "Im Hochschulverzeichnis nach Personen suchen, die sich noch nicht angemeldet haben, oder eine Person über ein Merkmal wie die Kartennummer finden",
       "sites_read": "Die Gebäude der Universität mit Adresse und Nutzern nachschlagen (aus NetBox)",
       "users_view-as": "Die Anwendung so sehen, wie eine andere Person sie sieht, nur lesend und nie über die eigenen Rechte hinaus",
       "documents_own": "Dokumente anlegen und die eigenen lesen, ändern und löschen",

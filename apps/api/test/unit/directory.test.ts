@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkProductDirectory, searchFilter, tuIdFilter } from '../../src/directory.js'
+import { attributeFilter, checkProductDirectory, searchFilter, tuIdFilter } from '../../src/directory.js'
 
 // ADR 0008, 0018: every word is a prefix of one of four attributes, and
 // nothing a user types can change the filter's structure.
@@ -34,6 +34,24 @@ describe('directory lookup by TU-ID (ADR 0009)', () => {
   })
 })
 
+describe('directory lookup by an attribute the product names (ADR 0008)', () => {
+  it('matches the value exactly, with filter syntax as text', () => {
+    expect(attributeFilter('idmUserAssignedCardSnMifare', '0412A0')).toBe('(&(objectClass=person)(idmUserAssignedCardSnMifare=0412A0))')
+    expect(attributeFilter('x', '*)(cn=*')).toBe('(&(objectClass=person)(x=\\2a\\29\\28cn=\\2a))')
+  })
+
+  it('refuses several people holding one value, and finds nobody for none', async () => {
+    const { DirectoryLookupService } = await import('../../src/services/directory/directory-lookups.js')
+    const entry = (tuId: string) => ({ tuId, givenName: null, surname: null, email: null })
+    const knex = () => ({ where: () => ({ first: async () => undefined }) })
+    const service = (entries: unknown[]) =>
+      new DirectoryLookupService({ findBy: async () => entries } as never, knex as never, { cardNumber: 'card' })
+    await expect(service([entry('a'), entry('b')]).create({ by: 'cardNumber', value: '1' })).rejects.toMatchObject({ code: 409 })
+    await expect(service([]).create({ by: 'cardNumber', value: '1' })).rejects.toMatchObject({ code: 404 })
+    await expect(service([entry('a')]).create({ by: 'cardNumber', value: '1' })).resolves.toEqual({ ...entry('a'), userId: null })
+  })
+})
+
 describe('directory service paging', () => {
   it('passes on that the directory had more matches than one search returns', async () => {
     const { DirectoryService } = await import('../../src/services/directory/directory.js')
@@ -65,6 +83,19 @@ describe('directory service paging', () => {
 
 describe("a product's further attributes (ADR 0008)", () => {
   const check = (attributes: string[]) => () => checkProductDirectory({ attributes, apply: async () => {} })
+  const checkLookups = (lookups: Record<string, string>) => () => checkProductDirectory({ attributes: [], apply: async () => {}, lookups })
+
+  it('takes lookups by an identifier of the product and an attribute name', () => {
+    expect(checkLookups({ cardNumber: 'idmUserAssignedCardSnMifare', mail: 'mail' })).not.toThrow()
+  })
+
+  it.each([
+    ['a name that is no identifier', { 'card-number': 'x' }],
+    ['no attribute name', { cardNumber: 'x;binary' }],
+    ['the password', { secret: 'UserPassword' }]
+  ])('refuses a lookup with %s', (_case, lookups) => {
+    expect(checkLookups(lookups)).toThrow(/product directory lookup/)
+  })
 
   it('takes attribute names', () => {
     expect(check(['ou', 'groupMembership', 'x-custom-1'])).not.toThrow()

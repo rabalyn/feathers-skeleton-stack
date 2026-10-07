@@ -55,18 +55,27 @@ export interface DirectoryPerson extends DirectoryEntry {
 // directory answers, in a transaction of its own there; it keeps what it
 // derives in the product's own tables, registered as personal data
 // (ADR 0013), and must give the same result when called twice.
+//
+// `lookups` names attributes one person is found by, by exact value, under
+// a name of the product's own (`cardNumber: 'idmUserAssignedCardSnMifare'`),
+// for the directory-lookups service. Neither the value asked for nor the
+// attribute's values are returned or kept.
 export interface ProductDirectory {
   attributes: readonly string[]
   apply: (trx: Knex | Knex.Transaction, userId: string, values: DirectoryValues) => Promise<void>
+  lookups?: Readonly<Record<string, string>>
 }
 
 const ATTRIBUTE_NAME = /^[A-Za-z][A-Za-z0-9-]*$/
 const RESERVED = new Set([...ATTRIBUTES, 'userPassword'].map((name) => name.toLowerCase()))
 
+const LOOKUP_NAME = /^[a-z][a-zA-Z0-9]{0,63}$/
+
 // Refused at start (ADR 0035): a name that is no attribute description, one
 // of the account's own, the password, or a name given twice (LDAP names
-// ignore case).
-export const checkProductDirectory = ({ attributes }: ProductDirectory): void => {
+// ignore case); a lookup whose name is no identifier, or whose attribute is
+// no attribute description or the password.
+export const checkProductDirectory = ({ attributes, lookups = {} }: ProductDirectory): void => {
   const seen = new Set<string>()
   for (const name of attributes) {
     const key = name.toLowerCase()
@@ -74,6 +83,11 @@ export const checkProductDirectory = ({ attributes }: ProductDirectory): void =>
     if (RESERVED.has(key)) throw new Error(`product directory attribute "${name}" is the skeleton's`)
     if (seen.has(key)) throw new Error(`product directory attribute "${name}" is named twice`)
     seen.add(key)
+  }
+  for (const [name, attribute] of Object.entries(lookups)) {
+    if (!LOOKUP_NAME.test(name)) throw new Error(`product directory lookup "${name}" is no identifier`)
+    if (!ATTRIBUTE_NAME.test(attribute)) throw new Error(`product directory lookup "${name}" names no attribute: "${attribute}"`)
+    if (attribute.toLowerCase() === 'userpassword') throw new Error(`product directory lookup "${name}" names the password`)
   }
 }
 
@@ -88,6 +102,10 @@ export const searchFilter = (term: string): string => {
 
 // One person by exact TU-ID, for making their account (ADR 0009).
 export const tuIdFilter = (tuId: string): string => `(&(objectClass=person)(cn=${escapeFilter`${tuId}`}))`
+
+// People by the exact value of an attribute a product names (ADR 0008).
+export const attributeFilter = (attribute: string, value: string): string =>
+  `(&(objectClass=person)(${attribute}=${escapeFilter`${value}`}))`
 
 // Pages are cut from one sorted list, so a page turn neither repeats nor
 // skips anybody: the directory itself returns entries in no stated order.
@@ -145,6 +163,13 @@ export class Directory {
   async find(tuId: string, attributes: readonly string[] = []): Promise<DirectoryPerson | null> {
     const { entries } = await this.query({ filter: tuIdFilter(tuId), sizeLimit: 2, attributes })
     return entries.find((entry) => entry.tuId === tuId) ?? null
+  }
+
+  // The people whose `attribute` holds `value`, at most two: a caller wants
+  // exactly one and must tell none from several.
+  async findBy(attribute: string, value: string): Promise<DirectoryEntry[]> {
+    const { entries } = await this.query({ filter: attributeFilter(attribute, value), sizeLimit: 2 })
+    return entries.map(({ values: _values, ...entry }): DirectoryEntry => entry)
   }
 
   private async query({
