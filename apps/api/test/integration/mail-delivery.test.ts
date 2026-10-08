@@ -102,6 +102,42 @@ describe('deliver', () => {
     expect(await row(id)).toMatchObject({ status: 'skipped', skipReason: reason, revisionId: null })
   })
 
+  it('runs the kind\'s sent hook with what was sent, once, in the transaction that records it', async () => {
+    const user = await person()
+    const id = await notification(user)
+    const calls: { deliveryId: string; userId: string; campaignId: string | null; params: unknown; status: string }[] = []
+    exportReady.sent = async (trx, mail) => {
+      const { status } = await trx('mailDeliveries').where({ id: mail.deliveryId }).first('status')
+      calls.push({ deliveryId: mail.deliveryId, userId: mail.userId, campaignId: mail.campaignId, params: mail.params, status })
+      expect(mail.variables).toMatchObject({ requestedAt: expect.any(String), ownData: true })
+    }
+    try {
+      expect(await run(new FakeSender(), id)).toMatchObject({ status: 'sent' })
+      expect(await run(new FakeSender(), id)).toEqual({ status: 'done' })
+    } finally {
+      delete exportReady.sent
+    }
+    const { exportId } = (await row(id)).params as { exportId: string }
+    expect(calls).toEqual([{ deliveryId: id, userId: user.id, campaignId: null, params: { exportId }, status: 'sent' }])
+  })
+
+  it('keeps a delivery sent when its sent hook fails, without the hook\'s writes', async () => {
+    const user = await person()
+    const id = await notification(user)
+    exportReady.sent = async (trx, mail) => {
+      await trx('mailDeliveries').where({ id: mail.deliveryId }).update({ error: 'written by the hook' })
+      throw new Error('hook broke')
+    }
+    const sender = new FakeSender()
+    try {
+      expect(await run(sender, id)).toMatchObject({ status: 'sent' })
+    } finally {
+      delete exportReady.sent
+    }
+    expect(sender.sent).toHaveLength(1)
+    expect(await row(id)).toMatchObject({ status: 'sent', error: null })
+  })
+
   it('never mails the break-glass account', async () => {
     const [local] = await knex()('users').insert({ authSource: 'local', email: `bg-${randomUUID()}@example.test` }).returning<{ id: string }[]>('id')
     const [id] = await knex()('mailDeliveries').insert({ userId: local!.id, kind: 'gdpr.export-ready', params: '{}' }).returning<{ id: string }[]>('id')

@@ -46,6 +46,20 @@ interface MailKindBase<P extends TObject, V extends TObject> {
   sample: Static<V>
   // The wording a fresh stack sends before anyone edits a template.
   defaults: Record<Locale, MailTemplateText>
+  // Optional: what the product records once the relay accepted the mail,
+  // such as an entry in its own history. Runs in the transaction that marks
+  // the delivery sent, with the variables the mail was rendered from; a
+  // failure is logged and does not send the mail again.
+  sent?: (trx: Knex.Transaction, mail: SentMail<Static<P>, Static<V>>) => Promise<void>
+}
+
+export interface SentMail<P, V> {
+  deliveryId: string
+  userId: string
+  // The campaign the delivery belongs to; null for a notification.
+  campaignId: string | null
+  params: P
+  variables: V
 }
 
 export interface NotificationKind<P extends TObject = TObject, V extends TObject = TObject> extends MailKindBase<P, V> {

@@ -151,6 +151,15 @@ export const deliver = async ({
     await knex('mailDeliveries').where({ id: deliveryId, status: 'pending' }).update({ attempts: attempt, error: message.slice(0, 2000) })
     throw error
   }
-  await complete(knex, deliveryId, attempt, { status: 'sent', revisionId: revision.id, error: null })
+  await knex.transaction(async (trx) => {
+    const recorded = await complete(trx, deliveryId, attempt, { status: 'sent', revisionId: revision.id, error: null })
+    if (!recorded || !kind.sent) return
+    const sent = { deliveryId, userId: delivery.userId, campaignId: delivery.campaignId, params: delivery.params, variables }
+    // In a savepoint: the mail is out, so a failing hook must not undo its
+    // record and have it sent again.
+    await trx.transaction((savepoint) => kind.sent!(savepoint, sent)).catch((error: Error) =>
+      logger.error({ delivery_id: deliveryId, kind: kind.key, err: { message: error.message } }, 'mail sent hook failed')
+    )
+  })
   return { status: 'sent', kind: kind.key }
 }

@@ -27,6 +27,7 @@ A **mail kind** is declared in code with `defineMailKind()` and registered in on
 | `recipients(db, params)` | Campaigns only: a query yielding the user ids to mail |
 | `sample` | Example variables, for the editor's preview and for checking templates |
 | `defaults` | Subject and body per locale, so a fresh stack sends mail before anyone edits a template |
+| `sent(trx, mail)` | Optional: what the product records once the relay accepted the mail, such as an entry in its own history. It runs in the transaction that marks the delivery `sent`, inside a savepoint, and gets the delivery's id, recipient, campaign, `params` and the variables `build()` returned. A failure is logged and rolls back only the hook: the mail is out and is not sent again. Decided 2026-10-08 |
 
 Admins cannot create kinds: a template nothing sends and nothing supplies variables to is useless, and a recipient query is code, not configuration. Admins never write queries.
 
