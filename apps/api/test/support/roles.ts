@@ -1,4 +1,4 @@
-import { PERMISSION_KEYS, type PermissionKey } from '../../src/abilities.js'
+import type { PermissionKey } from '../../src/abilities.js'
 import type { Application } from '../../src/app.js'
 import type { User, UserData } from '../../src/services/users/users.schema.js'
 import { db } from './worker-database.js'
@@ -34,9 +34,7 @@ export const emptyEveryone = async (): Promise<void> => {
     .delete()
 }
 
-// The whole catalogue but these, for showing that nothing else grants what
-// they do.
-export const allBut = (...keys: readonly PermissionKey[]): PermissionKey[] => PERMISSION_KEYS.filter((key) => !keys.includes(key))
+export { allBut } from './catalogue.js'
 
 // The fixed `admin` role, or a role of the user's own, keyed by the TU-ID,
 // that grants exactly these permissions; none makes no role.

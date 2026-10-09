@@ -1,16 +1,18 @@
 import type { Knex } from 'knex'
-import { ADMIN_PERMISSIONS, isPermissionKey } from './abilities.js'
+import { ADMIN_PERMISSIONS, isPermissionKey, withRequirements } from './abilities.js'
 
 // A user's permissions: the union of their roles' and the `everyone` role's,
 // which every account holds without an assignment (ADR 0011). Loaded on
 // every request rather than cached, so a changed role or assignment applies
 // on the next one. Holding `admin` yields the whole catalogue and role
 // management; a stored key the catalogue no longer declares is left out.
-// `roleIds` are the assigned roles only.
+// The permissions include what they require (ADR 0037), `includedBy` names
+// for each included one the held ones that bring it. `roleIds` are the
+// assigned roles only.
 export const loadAccess = async (
   knex: Knex | Knex.Transaction,
   userId: string
-): Promise<{ roleIds: string[]; permissions: string[] }> => {
+): Promise<{ roleIds: string[]; permissions: string[]; includedBy: Record<string, string[]> }> => {
   const rows: { id: string; kind: string; permission: string | null; assigned: boolean }[] = await knex('roles')
     .leftJoin('userRoles', (join) => join.on('userRoles.roleId', 'roles.id').andOnVal('userRoles.userId', userId))
     .leftJoin('rolePermissions', 'rolePermissions.roleId', 'roles.id')
@@ -19,10 +21,10 @@ export const loadAccess = async (
     })
     .select('roles.id', 'roles.kind', 'rolePermissions.permission', knex.raw('user_roles.user_id IS NOT NULL AS assigned'))
   const roleIds = [...new Set(rows.filter((row) => row.assigned).map((row) => row.id))].sort()
-  if (rows.some((row) => row.kind === 'admin')) return { roleIds, permissions: [...ADMIN_PERMISSIONS] }
+  if (rows.some((row) => row.kind === 'admin')) return { roleIds, permissions: [...ADMIN_PERMISSIONS], includedBy: {} }
   const keys = new Set<string>()
   for (const { permission } of rows) if (permission && isPermissionKey(permission)) keys.add(permission)
-  return { roleIds, permissions: [...keys].sort() }
+  return { roleIds, ...withRequirements([...keys]) }
 }
 
 export const loadPermissions = async (knex: Knex | Knex.Transaction, userId: string): Promise<string[]> =>

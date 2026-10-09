@@ -2,7 +2,7 @@ import { resolve, virtual } from '@feathersjs/schema'
 import { Type, querySyntax, type Static } from '@feathersjs/typebox'
 import type { HookContext } from '../../declarations.js'
 import { LOCALES } from '../../locales.js'
-import { loadPermissions } from '../../permissions.js'
+import { loadAccess } from '../../permissions.js'
 import { dataValidator, queryValidator, lazyValidator } from '../../validators.js'
 
 // ADR 0005, 0009. Schemas and types may be imported by the client entry point
@@ -23,9 +23,13 @@ export const userSchema = Type.Object(
     // The roles the person holds, any number (ADR 0011); assigned through
     // the user-roles service.
     roleIds: Type.Array(Type.String({ format: 'uuid' })),
-    // The permission keys those roles add up to: on the caller's own record
-    // and on internal reads only, so the browser can hide what it may not do.
+    // The permission keys those roles add up to, with what they require
+    // (ADR 0037): on the caller's own record and on internal reads only, so
+    // the browser can hide what it may not do.
     permissions: Type.Optional(Type.Array(Type.String())),
+    // Of those, each one included by a requirement only, with the held
+    // permissions that bring it; along with `permissions`.
+    includedPermissions: Type.Optional(Type.Record(Type.String(), Type.Array(Type.String()))),
     enabled: Type.Boolean(),
     // An uploaded PNG, JPEG or WebP (ADR 0020); its bytes are at
     // file-contents/:avatarFileId.
@@ -49,12 +53,12 @@ export type User = Static<typeof userSchema>
 
 const toIso = (value: unknown) => (value instanceof Date ? value.toISOString() : (value as string))
 
+const ownAccess = (user: User, context: HookContext) =>
+  !context.params.provider || context.params.user?.id === user.id ? loadAccess(context.app.get('knex'), user.id) : undefined
+
 export const userResolver = resolve<User, HookContext>({
-  permissions: virtual(async (user, context) =>
-    !context.params.provider || context.params.user?.id === user.id
-      ? loadPermissions(context.app.get('knex'), user.id)
-      : undefined
-  ),
+  permissions: virtual(async (user, context) => (await ownAccess(user, context))?.permissions),
+  includedPermissions: virtual(async (user, context) => (await ownAccess(user, context))?.includedBy),
   erasedAt: virtual(async (user) => (user.erasedAt ? toIso(user.erasedAt) : null)),
   lastLoginAt: virtual(async (user) => (user.lastLoginAt ? toIso(user.lastLoginAt) : null)),
   createdAt: virtual(async (user) => toIso(user.createdAt)),
@@ -66,9 +70,12 @@ export const userResolver = resolve<User, HookContext>({
 // person may do is theirs to see: it leaves in a response to themselves, and
 // never in an event, whose payload is this dispatch. An internal get is the
 // authentication's own read of the account, whose result is the user's.
+const ownOnly = async <T>(value: T | undefined, user: User, context: HookContext) =>
+  (context.params.provider ? context.params.user?.id === user.id : context.method === 'get') ? value : undefined
+
 export const userExternalResolver = resolve<User, HookContext>({
-  permissions: async (value, user, context) =>
-    (context.params.provider ? context.params.user?.id === user.id : context.method === 'get') ? value : undefined
+  permissions: ownOnly,
+  includedPermissions: ownOnly
 })
 
 // Created by just-in-time provisioning on login (ADR 0008), or before the

@@ -20,8 +20,9 @@ const as = (user: User) => ({ provider: 'rest' as const, user, authenticated: tr
 beforeAll(async () => {
   ;({ app } = await createTestApp())
   ;({ app: unreachable } = await createTestApp({ netbox: { netboxUrl: 'https://localhost:1' } }))
-  reader = await makeUser(app, 'us01user', ['sites.read', 'locations.read'])
-  maker = await makeUser(app, 'op01oper', ['sites.read', 'locations.read', 'locations.create'])
+  // Each holds the one permission; what it requires comes with it (ADR 0037).
+  reader = await makeUser(app, 'us01user', ['locations.read'])
+  maker = await makeUser(app, 'op01oper', ['locations.create'])
   const found = (await app.service('sites').find({ ...as(reader), query: { q: 'Karolinenplatz 5' } })).data
   karo5 = found.find((site) => site.key === 'S1|01')!
 })
@@ -96,6 +97,15 @@ describe('locations: rooms in a site', () => {
     ).rejects.toMatchObject({ code: 400 })
     await expect(app.service('locations').find({ ...as(reader), query: { $limit: 51 } })).rejects.toMatchObject({ code: 400 })
     await expect(app.service('locations').find({ ...as(reader), query: { site: 1 } as never })).rejects.toMatchObject({ code: 400 })
+  })
+
+  it('includes what a permission requires, and says on the own record what brought it (ADR 0037)', async () => {
+    const own = await app.service('users').get(maker.id, as(maker))
+    expect(own.permissions).toEqual(['locations.create', 'locations.read', 'sites.read'])
+    expect(own.includedPermissions).toEqual({ 'locations.read': ['locations.create'], 'sites.read': ['locations.create'] })
+    await expect(app.service('locations').find({ ...as(maker), query: { siteId: karo5.id } })).resolves.toMatchObject({ total: expect.any(Number) })
+    // Not on anybody else's record.
+    expect((await app.service('users').get(maker.id, { ...as(reader) }).catch(() => null))?.includedPermissions).toBeUndefined()
   })
 
   it('reads under locations.read, adds under locations.create only (ADR 0011)', async () => {
