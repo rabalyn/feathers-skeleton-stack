@@ -47,6 +47,10 @@ TRIVY=docker.io/aquasec/trivy@sha256:9db099105405c648166e6b94155eb32f8da12673cf1
 YQ=docker.io/mikefarah/yq:4.54.1@sha256:2d6a23c682c574ae49320fdf2419441b6f10658588d44b6d8739d673b96903e5
 CI_IMAGE=localhost/$PRODUCT-ci:dev
 TRIVY_CACHE=$PRODUCT-trivy-cache
+# As in scripts/stack.sh: the dev server image built here upgrades its
+# Alpine packages once a day (ADR 0018).
+APK_UPGRADE=$(date -u +%F)
+export APK_UPGRADE
 
 mode=${1:-}
 case $mode in "" | --cold | --static) ;; *) echo "usage: $0 [--cold|--static]" >&2; exit 2 ;; esac

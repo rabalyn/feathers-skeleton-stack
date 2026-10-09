@@ -4,9 +4,6 @@ ARG NODE_IMAGE=docker.io/library/node:26.10.0-alpine@sha256:b341ca66519d9a1c25d4
 # The frontend's dependencies and the built types it imports: the API client
 # (ADR 0007) and the feathers-pinia fork (ADR 0014).
 FROM ${NODE_IMAGE} AS web-deps
-# Alpine fixes reach the image with every build, not only with a new base
-# digest (ADR 0018).
-RUN apk upgrade --no-cache
 # pnpm at the version package.json names (packageManager), installed with
 # the npm bundled with Node, which is then removed: Node 25 and later ship no
 # corepack, and npm only carries its own vulnerabilities into the image
@@ -32,7 +29,12 @@ COPY apps/web apps/web
 # The Vite dev server of the `dev` profile (ADR 0014); the source is
 # bind-mounted over the copy.
 FROM web-deps AS web-dev
-RUN chown -R node:node /repo/apps/web
+# Alpine fixes reach the image with every build, not only with a new base
+# digest: APK_UPGRADE, the day's date, misses the layer cache once a day.
+# Here, not in web-deps, so that the daily miss doesn't rerun the install
+# and the build above it (ADR 0018).
+ARG APK_UPGRADE=unset
+RUN apk upgrade --no-cache && chown -R node:node /repo/apps/web
 USER node
 WORKDIR /repo/apps/web
 EXPOSE 5173
@@ -45,9 +47,15 @@ RUN pnpm --filter @app/web build
 
 # No Node runtime in the served image (ADR 0014).
 FROM docker.io/library/nginx:1.31.6-alpine@sha256:0530961ff0592b58c10f767535cc0abdfccf9e389ff7cc90f87320c1bc7e8506
-# Alpine fixes reach the image with every build, not only with a new base
-# digest (ADR 0018).
-RUN apk upgrade --no-cache && rm /etc/nginx/conf.d/default.conf
+# The official image's dynamic modules go: nginx.conf loads none of them,
+# and they bring libgd, libtiff, libxml2 and some thirty other libraries
+# along (ADR 0016). Alpine fixes reach the image with every build, not only
+# with a new base digest: APK_UPGRADE, the day's date, misses the layer
+# cache once a day (ADR 0018).
+ARG APK_UPGRADE=unset
+RUN apk del --no-cache nginx-module-acme nginx-module-geoip nginx-module-image-filter \
+      nginx-module-njs nginx-module-xslt \
+ && apk upgrade --no-cache && rm /etc/nginx/conf.d/default.conf
 COPY containers/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY containers/nginx/templates/ /etc/nginx/templates/
 COPY containers/nginx/entrypoint.d/ /docker-entrypoint.d/

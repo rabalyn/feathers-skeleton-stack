@@ -75,6 +75,10 @@ if APP_COMMIT=$(git -C "$ROOT" rev-parse --short=12 HEAD 2>/dev/null); then
   if [[ -n $(git -C "$ROOT" status --porcelain --untracked-files=no) ]]; then APP_DIRTY=true; else APP_DIRTY=false; fi
   export APP_COMMIT APP_COMMIT_TIME APP_DIRTY
 fi
+# The images' `apk upgrade` misses the layer cache once a day, so Alpine
+# fixes reach them without a new base digest (ADR 0018).
+APK_UPGRADE=$(date -u +%F)
+export APK_UPGRADE
 log() { printf '\033[1mstack:\033[0m %s %s\n' "$(date +%T)" "$*" >&2; }
 die() { log "$*"; exit 1; }
 

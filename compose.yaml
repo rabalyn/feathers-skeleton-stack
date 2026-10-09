@@ -67,6 +67,10 @@ services:
     build:
       context: .
       dockerfile: containers/nginx/Containerfile
+      # The day's date, set by scripts/stack.sh and scripts/ci.sh: the
+      # images' `apk upgrade` misses the layer cache once a day (ADR 0018).
+      args: &apk-upgrade
+        APK_UPGRADE: ${APK_UPGRADE:-unset}
     image: localhost/${PRODUCT:?}-nginx:dev
     container_name: ${PRODUCT:?}-nginx
     depends_on:
@@ -135,6 +139,7 @@ services:
       context: .
       dockerfile: containers/nginx/Containerfile
       target: web-dev
+      args: *apk-upgrade
     image: localhost/${PRODUCT:?}-web-dev:dev
     container_name: ${PRODUCT:?}-web
     profiles: [dev]
@@ -153,8 +158,9 @@ services:
       context: .
       dockerfile: containers/api/Containerfile
       target: runtime
-      # Set by scripts/stack.sh from git (ADR 0032).
+      # Set by scripts/stack.sh from git (ADR 0032), and the day's date.
       args:
+        <<: *apk-upgrade
         APP_COMMIT: ${APP_COMMIT:-unknown}
         APP_COMMIT_TIME: ${APP_COMMIT_TIME:-unknown}
         APP_DIRTY: ${APP_DIRTY:-false}
@@ -386,6 +392,7 @@ services:
       context: .
       dockerfile: containers/api/Containerfile
       target: backup
+      args: *apk-upgrade
     image: localhost/${PRODUCT:?}-backup:dev
     container_name: ${PRODUCT:?}-backup
     # restic's locks name the host; a fixed name lets a restarted container
@@ -592,6 +599,7 @@ services:
     build:
       context: .
       dockerfile: containers/pgbouncer/Containerfile
+      args: *apk-upgrade
     image: localhost/${PRODUCT:?}-pgbouncer:dev
     container_name: ${PRODUCT:?}-pgbouncer
     # Safe shutdown: running transactions finish, then it exits. On SIGTERM
@@ -638,6 +646,7 @@ services:
     build:
       context: .
       dockerfile: containers/s3/Containerfile
+      args: *apk-upgrade
     image: localhost/${PRODUCT:?}-s3:dev
     container_name: ${PRODUCT:?}-s3
     depends_on:
@@ -665,6 +674,7 @@ services:
       context: .
       dockerfile: containers/api/Containerfile
       target: test
+      args: *apk-upgrade
     image: localhost/${PRODUCT:?}-api-test:dev
     container_name: ${PRODUCT:?}-test
     profiles: [test]
