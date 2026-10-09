@@ -162,13 +162,14 @@ const CLOSURES = new Map<string, readonly string[]>(PERMISSION_KEYS.map((key) =>
 export const closureOf = (key: string): readonly string[] => CLOSURES.get(key) ?? [key]
 
 // What holding these permissions includes: all of them and what they
-// require, and for each included one not among them the held ones that
-// bring it. Roles store what an admin chose; this is what they grant.
+// require, and for each included one the held ones that bring it, whether
+// or not it is held in its own right as well: it goes only with them.
+// Roles store what an admin chose; this is what they grant.
 export const withRequirements = (keys: readonly string[]): { permissions: string[]; includedBy: Record<string, string[]> } => {
   const held = new Set(keys)
   const includedBy: Record<string, string[]> = {}
   for (const key of [...held].sort()) {
-    for (const each of closureOf(key)) if (!held.has(each)) (includedBy[each] ??= []).push(key)
+    for (const each of closureOf(key)) if (each !== key) (includedBy[each] ??= []).push(key)
   }
   return { permissions: [...new Set([...held, ...Object.keys(includedBy)])].sort(), includedBy }
 }

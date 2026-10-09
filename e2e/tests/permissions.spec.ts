@@ -52,6 +52,16 @@ test('an admin creates, grants, previews and deletes a role', async ({ page }) =
   await expect(rooms).not.toBeChecked()
   await expect(sitesRead).not.toBeChecked()
   await expect(sitesRead).toBeEnabled()
+  // Held in its own right as well, it stays locked while what includes it
+  // is held, and stays held without it.
+  await sitesRead.click()
+  await expect(sitesRead).toBeChecked()
+  await rooms.click()
+  await expect(sitesRead).toBeDisabled()
+  await rooms.click()
+  await expect(rooms).not.toBeChecked()
+  await expect(sitesRead).toBeChecked()
+  await expect(sitesRead).toBeEnabled()
 
   // The preview shows the navigation as the role would: a role without
   // documents has none, but its activity log. What else it shows comes from

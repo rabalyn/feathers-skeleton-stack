@@ -27,7 +27,7 @@ export const userSchema = Type.Object(
     // (ADR 0037): on the caller's own record and on internal reads only, so
     // the browser can hide what it may not do.
     permissions: Type.Optional(Type.Array(Type.String())),
-    // Of those, each one included by a requirement only, with the held
+    // Of those, each one a held permission requires, with the held
     // permissions that bring it; along with `permissions`.
     includedPermissions: Type.Optional(Type.Record(Type.String(), Type.Array(Type.String()))),
     enabled: Type.Boolean(),

@@ -159,7 +159,8 @@ const startPreview = (role: Role) => {
 }
 
 // What a role grants: what it stores and what that requires (ADR 0037). A
-// permission included by another is ticked and locked, and goes with it.
+// permission included by another is ticked and locked while that one is
+// held, whether or not the role stores it as well.
 const included = computed(() => new Map(all.value.map((role) => [role.id, withRequirements(role.permissions ?? [])])))
 const includedBy = (role: Role, key: string): string[] | undefined => included.value.get(role.id)?.includedBy[key]
 const granted = (role: Role, key: string) =>
