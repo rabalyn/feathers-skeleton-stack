@@ -58,6 +58,9 @@ Thirty-five ADRs, each covering a decision with real alternatives. Read [0001](0
 - [0030 — New services are scaffolded by a project-local generator](0030-service-generator.md)
 - [0034 — Security verification checklist for new features](0034-security-verification-checklist.md)
 - [0035 — Products are clones of the skeleton with its history, merging its tagged versions](0035-products-derived-from-the-skeleton.md)
+- [0036 — Every action implies reading, deleting implies changing, built into the catalogue](0036-implied-actions.md)
+- [0037 — A permission names the permissions it needs, and holding it includes them](0037-permission-prerequisites.md)
+- [0038 — A page and each of its sections are gated on everything they call, proven by a gate walk](0038-gates-cover-what-a-page-calls.md)
 
 ### Diagrams
 
@@ -147,6 +150,6 @@ The architecture is built in thin vertical slices, riskiest parts first (see `CL
 
 ## Status of this set
 
-All thirty-five are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds ([0022](0022-observability-and-alerting.md)), the issuer of production certificates for internal listeners ([0016](0016-nginx-and-tls-everywhere.md)), the university SMTP relay's sending limit ([0027](0027-email-templates-and-sending.md)), and the group attribute the university IdP releases to NetBox ([0031](0031-netbox-locations.md)).
+All thirty-eight are `Accepted`: each states a decision that was actually made rather than a proposal awaiting review. Individual `Open questions` entries remain only where a detail genuinely depends on information from outside the project or on observing the running system — alert thresholds ([0022](0022-observability-and-alerting.md)), the issuer of production certificates for internal listeners ([0016](0016-nginx-and-tls-everywhere.md)), the university SMTP relay's sending limit ([0027](0027-email-templates-and-sending.md)), and the group attribute the university IdP releases to NetBox ([0031](0031-netbox-locations.md)).
 
 The record of processing activities and the DPIA ([0013](0013-gdpr-export-and-retention.md)) are organisational deliverables to be prepared with the data protection officer before production; view-as ([0028](0028-read-only-view-as.md)) is part of them.

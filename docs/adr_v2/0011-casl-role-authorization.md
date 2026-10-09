@@ -4,7 +4,7 @@
 - Date: 2026-09-23
 - Scope: Required (v1)
 - Supersedes: v1 ADRs 0021, 0063
-- Related: [0005](0005-typebox-schema-boundary.md), [0007](0007-typed-client-from-api.md), [0008](0008-authentication-saml2-ldap.md), [0009](0009-tu-id-identity-model.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0012](0012-role-scoped-channels.md), [0013](0013-gdpr-export-and-retention.md), [0024](0024-background-jobs-bullmq.md), [0025](0025-runtime-settings.md), [0027](0027-email-templates-and-sending.md), [0028](0028-read-only-view-as.md), [0029](0029-api-tokens.md)
+- Related: [0005](0005-typebox-schema-boundary.md), [0007](0007-typed-client-from-api.md), [0008](0008-authentication-saml2-ldap.md), [0009](0009-tu-id-identity-model.md), [0010](0010-sessions-postgres-ratelimits-valkey.md), [0012](0012-role-scoped-channels.md), [0013](0013-gdpr-export-and-retention.md), [0024](0024-background-jobs-bullmq.md), [0025](0025-runtime-settings.md), [0027](0027-email-templates-and-sending.md), [0028](0028-read-only-view-as.md), [0029](0029-api-tokens.md), [0036](0036-implied-actions.md), [0037](0037-permission-prerequisites.md), [0038](0038-gates-cover-what-a-page-calls.md)
 
 ## Context
 
@@ -52,6 +52,8 @@ The permission matrix, now as catalogue permissions. `admin` holds all of them. 
 | `users.enable` | Account enable / disable | — | — | — |
 | `directory.read` | Directory lookup (LDAP) | — | ✓ | — |
 | `sites.read` | Buildings from NetBox ([0031](0031-netbox-locations.md)) | — | ✓ | ✓ |
+| `locations.read` | Rooms in those buildings, from NetBox ([0031](0031-netbox-locations.md)); requires `sites.read` ([0037](0037-permission-prerequisites.md)) | — | ✓ | ✓ |
+| `locations.create` | Adding a room NetBox does not have ([0031](0031-netbox-locations.md)) | — | — | — |
 | `documents.own` | Documents: create; read, write, delete own | — | — | ✓ |
 | `documents.all` | Documents: create; read, write, delete all; a document's file: own only (below) | — | ✓ | — |
 | `sessions.read` | Sessions: read, without the user agent | — | ✓ | — |
@@ -81,7 +83,7 @@ Directory-sourced user fields are never writable by anyone in the application ([
 
 ### Enforcement
 
-- `feathers-casl` enforces the ability built from the fixed core and the catalogue entries of the caller's permissions. Rules are declared in one module, not scattered across services.
+- `feathers-casl` enforces the ability built from the fixed core and the catalogue entries of the caller's permissions. Rules are declared in one module, not scattered across services. Writing a subject implies reading it, and deleting implies changing, with the granting rule's conditions ([0036](0036-implied-actions.md)); holding a permission includes the permissions it requires ([0037](0037-permission-prerequisites.md)). Decided 2026-10-09.
 - `@casl/ability` stays on 6.x while feathers-casl 3 is current: CASL 7 removed `rulesToQuery`, which feathers-casl 3 imports, and patching feathers-casl locally was rejected, since it would make us the maintainers of a fork of the authorization layer. Renovate holds the CASL major (`allowedVersions`) until a feathers-casl release supports CASL 7, which then moves together with it. Decided 2026-10-01.
 - The caller's permissions are loaded on every request, beside the session check ([0010](0010-sessions-postgres-ratelimits-valkey.md)), in one query over `user_roles`, `roles` and `role_permissions`. There is no cache, so a changed role or assignment applies on the user's very next request. A call with an API token is authorized by the token's permissions that its owner holds, loaded the same way ([0029](0029-api-tokens.md)).
 - A **global default-deny hook** requires authentication and authorization on every service. Public endpoints are an explicit allowlist, each rate-limited where it accepts credentials:
