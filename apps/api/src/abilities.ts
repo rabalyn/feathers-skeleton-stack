@@ -74,6 +74,10 @@ const CATALOGUE_ENTRIES = [
   }),
   // Locations (ADR 0031): the university's buildings, from NetBox.
   entry('sites.read', 'locations', (can) => can('read', 'sites')),
+  // Their rooms, and adding one NetBox does not have; `read` for
+  // feathers-casl's check of the create's result.
+  entry('locations.read', 'locations', (can) => can('read', 'locations')),
+  entry('locations.create', 'locations', (can) => can(['create', 'read'], 'locations')),
   // Read-only view as another person, bounded by one's own rights (ADR 0028).
   // `read` for feathers-casl's check of the create's result.
   entry('users.view-as', 'users', (can) => can(['create', 'read'], 'view-as')),

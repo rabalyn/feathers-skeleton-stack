@@ -48,6 +48,14 @@ export const siteQuerySchema = Type.Object(
   {
     // Words matched against key, name, address and description by NetBox.
     q: Type.Optional(Type.String({ maxLength: SITE_SEARCH_MAX_LENGTH })),
+    // The sites of the ids records store, retired ones included: a list of
+    // records names its buildings in one call.
+    id: Type.Optional(
+      Type.Object(
+        { $in: Type.Array(Type.Integer({ minimum: 1 }), { minItems: 1, maxItems: SITE_PAGE_MAX }) },
+        { additionalProperties: false }
+      )
+    ),
     $limit: Type.Optional(Type.Integer({ minimum: 0, maximum: SITE_PAGE_MAX })),
     $skip: Type.Optional(Type.Integer({ minimum: 0 }))
   },

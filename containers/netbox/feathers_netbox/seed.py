@@ -10,9 +10,10 @@ sites by their NetBox id.
   site the files no longer list is set to `retired`, not removed.
 - The NetBox groups the IdP's groups map to (feathers_netbox.saml), with
   their object permissions.
-- The api's user, a read-only permission on the location models, and its
-  v2 token, from the key in NETBOX_TOKEN_KEY and the secret the agent
-  rendered. A changed secret replaces the token.
+- The api's user, permission to read the location models and to add
+  locations (rooms) in seeded sites, nothing else, and its v2 token, from
+  the key in NETBOX_TOKEN_KEY and the secret the agent rendered. A changed
+  secret replaces the token.
 """
 
 import json
@@ -151,18 +152,22 @@ def seed_api_user():
     if user.has_usable_password():
         user.set_unusable_password()
         user.save()
-    perm = permission(f'{API_USER}: read locations', 'The application reads locations (ADR 0031)',
+    read = permission(f'{API_USER}: read locations', 'The application reads locations (ADR 0031)',
                       ['view'], LOCATION_MODELS)
-    perm.users.set([user])
+    add = permission(f'{API_USER}: add rooms', 'The application adds rooms to seeded sites (ADR 0031)',
+                     ['add'], [('dcim', 'location')], constraints={'site__tags__slug': 'seeded'})
+    for perm in (read, add):
+        perm.users.set([user])
 
     secret = Path(TOKEN_SECRET_FILE).read_text(encoding='utf-8').strip()
     token = Token.objects.filter(key=TOKEN_KEY).first()
-    if token and (token.user_id != user.pk or not token.validate(secret) or token.write_enabled):
+    if token and (token.user_id != user.pk or not token.validate(secret) or not token.write_enabled):
         token.delete()
         token = None
     if token is None:
-        token = Token(version=2, user=user, key=TOKEN_KEY, write_enabled=False,
-                      description='claude-feathers api, read only (ADR 0031)', token=secret)
+        # Writes as far as the user's permissions go: adding rooms.
+        token = Token(version=2, user=user, key=TOKEN_KEY, write_enabled=True,
+                      description='claude-feathers api: reads, adds rooms (ADR 0031)', token=secret)
         token.full_clean()
         token.save()
         print('netbox-seed: issued the api token')

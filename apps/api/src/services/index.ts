@@ -25,6 +25,7 @@ import { updateChecks } from './update-checks/update-checks.js'
 import { preferences } from './preferences/preferences.js'
 import { docs } from './docs/docs.js'
 import { PRODUCT_SERVICES } from '../product/services.js'
+import { locations } from './locations/locations.js'
 // gen:service imports (ADR 0030)
 
 export const services = (app: Application) => {
@@ -53,6 +54,7 @@ export const services = (app: Application) => {
   app.configure(updateChecks)
   app.configure(preferences)
   app.configure(docs)
+  app.configure(locations)
   // gen:service configure (ADR 0030)
   // The product's, after the skeleton's (ADR 0035).
   for (const service of PRODUCT_SERVICES) app.configure(service)
