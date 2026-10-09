@@ -1,5 +1,7 @@
 import { subject } from '@casl/ability'
 import { describe, expect, it } from 'vitest'
+import { PRODUCT_PERMISSIONS } from '../../src/product/permissions.js'
+import { unconditionalImpliedReads } from '../support/implied-reads.js'
 import {
   ADMIN_PERMISSIONS,
   PERMISSIONS,
@@ -7,7 +9,6 @@ import {
   defineAbilitiesFor,
   defineTokenAbility,
   defineViewAsAbility,
-  grantEntry,
   unconditionalReadSubjects
 } from '../../src/abilities.js'
 
@@ -67,21 +68,12 @@ describe('implied actions (ADR 0036)', () => {
     }
   })
 
-  // Every entry whose write reads its whole subject, listed so a new one is
-  // a reviewed choice rather than a side effect.
+  // Every skeleton entry whose write reads its whole subject, listed so a
+  // new one is a reviewed choice rather than a side effect. A product lists
+  // its own entries in a test of its own, with the same helper.
   it('lists the entries whose implied read is unconditional', () => {
-    const user = { id: 'me', permissions: [] }
-    const unconditional = PERMISSIONS.flatMap((entry) => {
-      const own: unknown[] = []
-      entry.grant(((...args: unknown[]) => own.push(args)) as never, user)
-      const all: [string | string[], string | string[], ...unknown[]][] = []
-      grantEntry(entry, ((...args: [string | string[], string | string[], ...unknown[]]) => all.push(args)) as never, user)
-      // grantEntry passes the entry's own rules first, then what they imply.
-      return all
-        .slice(own.length)
-        .filter(([action, , ...rest]) => action === 'read' && rest.length === 0)
-        .map(([, name]) => `${entry.key}: ${[name].flat().join(',')}`)
-    })
+    const product = new Set((PRODUCT_PERMISSIONS as readonly { key: string }[]).map((entry) => entry.key))
+    const unconditional = unconditionalImpliedReads(PERMISSIONS.filter((entry) => !product.has(entry.key)))
     expect(unconditional.sort()).toEqual([
       // Actions with nothing to list: the read checks a create's result.
       'directory.read: directory-lookups',
