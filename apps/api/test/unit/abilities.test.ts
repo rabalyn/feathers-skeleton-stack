@@ -7,6 +7,7 @@ import {
   defineAbilitiesFor,
   defineTokenAbility,
   defineViewAsAbility,
+  grantEntry,
   unconditionalReadSubjects
 } from '../../src/abilities.js'
 
@@ -28,6 +29,74 @@ describe('the permission catalogue', () => {
 
   it('ignores a key it does not declare', () => {
     expect(ability(['nope']).rules).toEqual(ability([]).rules)
+  })
+})
+
+describe('implied actions (ADR 0036)', () => {
+  it('creating and patching imply reading, deleting implies patching and reading, with the same conditions', () => {
+    const own = ability(['documents.own'])
+    expect(own.can('read', subject('documents', { ownerId: 'me' }))).toBe(true)
+    expect(own.can('read', subject('documents', { ownerId: 'someone' }))).toBe(false)
+    const tokens = ability(['api-tokens.manage'])
+    expect(tokens.can('patch', 'api-tokens')).toBe(true)
+    expect(tokens.can('create', 'api-tokens')).toBe(false)
+  })
+
+  it('patching does not imply creating', () => {
+    expect(ability(['users.enable']).can('create', 'users')).toBe(false)
+    expect(ability(['users.enable']).can('read', 'users')).toBe(true)
+  })
+
+  it("keeps an entry's own narrower read instead of the implied one", () => {
+    const revoke = ability(['sessions.revoke'])
+    expect(revoke.can('delete', 'sessions')).toBe(true)
+    expect(revoke.can('read', 'sessions', 'userAgent')).toBe(false)
+    expect(revoke.can('read', 'sessions', 'lastUsedAt')).toBe(true)
+  })
+
+  it('reads only one\'s own where an unconditional create would read everything', () => {
+    for (const [key, name, field] of [
+      ['files.upload', 'files', 'ownerId'],
+      ['api-tokens.create', 'api-tokens', 'userId'],
+      ['data-exports.any', 'data-exports', 'requestedBy']
+    ] as const) {
+      const granted = ability([key])
+      expect(granted.can('create', name), key).toBe(true)
+      expect(granted.can('read', subject(name, { [field]: 'me' })), key).toBe(true)
+      expect(granted.can('read', subject(name, { [field]: 'someone' })), key).toBe(false)
+    }
+  })
+
+  // Every entry whose write reads its whole subject, listed so a new one is
+  // a reviewed choice rather than a side effect.
+  it('lists the entries whose implied read is unconditional', () => {
+    const user = { id: 'me', permissions: [] }
+    const unconditional = PERMISSIONS.flatMap((entry) => {
+      const own: unknown[] = []
+      entry.grant(((...args: unknown[]) => own.push(args)) as never, user)
+      const all: [string | string[], string | string[], ...unknown[]][] = []
+      grantEntry(entry, ((...args: [string | string[], string | string[], ...unknown[]]) => all.push(args)) as never, user)
+      // grantEntry passes the entry's own rules first, then what they imply.
+      return all
+        .slice(own.length)
+        .filter(([action, , ...rest]) => action === 'read' && rest.length === 0)
+        .map(([, name]) => `${entry.key}: ${[name].flat().join(',')}`)
+    })
+    expect(unconditional.sort()).toEqual([
+      // Actions with nothing to list: the read checks a create's result.
+      'directory.read: directory-lookups',
+      'erasures.create: erasures',
+      // Adding a room reads the rooms, as locations.read does.
+      'locations.create: locations',
+      'mail.manage: mail-campaign-previews',
+      'mail.manage: mail-previews',
+      'profile.avatar: avatars',
+      'profile.locale: locales',
+      'system-info.check: update-checks',
+      // Enabling accounts reads them all, which the Users page needs (ADR 0036).
+      'users.enable: users',
+      'users.view-as: view-as'
+    ])
   })
 })
 

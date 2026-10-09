@@ -419,7 +419,7 @@
   },
   "permissions": {
     "title": "Roles & permissions",
-    "intro": "A role is a set of permissions; a person has all permissions of all their roles and of “Everyone signed in”. Their own user record, their data export and ending a view-as no role can take from anybody. Administration always has every permission and alone manages roles.",
+    "intro": "A role is a set of permissions; a person has all permissions of all their roles and of “Everyone signed in”. Their own user record, their data export and ending a view-as no role can take from anybody. Administration always has every permission and alone manages roles. Who may add or change something may also read it, and who may delete it may also change it, as far as the permission reaches.",
     "permission": "Permission",
     "newRole": "New role",
     "key": "Key",
