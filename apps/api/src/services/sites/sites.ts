@@ -40,8 +40,8 @@ export const toSite = (site: NetboxSite, publicUrl: string): Site => {
   }
 }
 
-// Read only (ADR 0031): the address lookup, and resolving the NetBox id an
-// application record stores. Every signed-in person may read (ADR 0011).
+// Read only (ADR 0031): the address lookup, and resolving the NetBox ids
+// application records store, one or a page of them. Every signed-in person may read (ADR 0011).
 export class SiteService {
   constructor(
     private readonly netbox: Netbox,
@@ -53,7 +53,8 @@ export class SiteService {
     const limit = Math.min(query.$limit ?? PAGINATE.default, SITE_PAGE_MAX)
     const skip = query.$skip ?? 0
     const q = query.q?.trim()
-    const page = await this.call(() => this.netbox.sites({ q: q || undefined, limit, offset: skip }))
+    const ids = query.id?.$in
+    const page = await this.call(() => this.netbox.sites({ q: q || undefined, ids, limit, offset: skip }))
     return { total: page.count, limit, skip, data: page.results.map((site) => toSite(site, this.publicUrl)) }
   }
 

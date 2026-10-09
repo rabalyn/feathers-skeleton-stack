@@ -63,6 +63,8 @@ import type { Preference, PreferenceData, PreferenceQuery } from './services/pre
 import type { PREFERENCE_EXTERNAL_METHODS } from './services/preferences/preferences.js'
 import type { Doc, DocQuery, DocSummary, DOC_EXTERNAL_METHODS } from './services/docs/docs.js'
 import type { ProductServiceTypes } from './product/client.js'
+import type { Location, LocationData, LocationPage, LocationQuery } from './services/locations/locations.schema.js'
+import type { LOCATION_EXTERNAL_METHODS } from './services/locations/locations.js'
 // gen:service imports (ADR 0030)
 
 export type { User, UserPatch, UserQuery } from './services/users/users.schema.js'
@@ -112,6 +114,8 @@ export type { PreferenceKey, PreferenceValues } from './preferences/registry.js'
 export type { ValidationError } from './validation-error.js'
 export type { Doc, DocKind, DocQuery, DocSource, DocSummary } from './services/docs/docs.js'
 export { DOC_SEARCH_MAX_LENGTH } from './limits.js'
+export type { Location, LocationData, LocationPage, LocationQuery } from './services/locations/locations.schema.js'
+export { LOCATION_NAME_MAX_LENGTH } from './limits.js'
 // gen:service exports (ADR 0030)
 // The product's part (ADR 0035).
 export * from './product/client.js'
@@ -260,6 +264,10 @@ export interface ClientServiceTypes extends ProductServiceTypes {
   // The ADRs and diagrams (ADR 0019): a list, searchable, and each page's
   // Markdown.
   docs: External<ClientService<Doc, never, never, DocSummary[], Params<DocQuery>>, typeof DOC_EXTERNAL_METHODS>
+  locations: External<
+    ClientService<Location, LocationData, never, LocationPage, Params<LocationQuery>>,
+    typeof LOCATION_EXTERNAL_METHODS
+  >
   // gen:service client-types (ADR 0030)
 }
 

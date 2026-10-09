@@ -91,12 +91,13 @@ describe.runIf(SKELETON)("the skeleton's seeded roles", () => {
       'audit-events.read',
       'directory.read',
       'documents.all',
+      'locations.read',
       'sessions.read',
       'sites.read',
       'users.read'
     ])
     expect(seeded.user).toMatchObject({ kind: 'seeded', name: { de: 'Benutzer', en: 'User' } })
-    expect(seeded.user?.permissions?.sort()).toEqual(['documents.own', 'sites.read'])
+    expect(seeded.user?.permissions?.sort()).toEqual(['documents.own', 'locations.read', 'sites.read'])
     expect(seeded.everyone).toMatchObject({ kind: 'everyone', name: { en: 'Everyone signed in' } })
     expect(seeded.everyone?.permissions?.sort()).toEqual(SKELETON_EVERYONE)
   })

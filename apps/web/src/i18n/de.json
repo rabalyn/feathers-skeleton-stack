@@ -479,7 +479,9 @@
       "api-tokens_manage": "API-Tokens aller verwalten",
       "system-info_read": "Systeminformationen sehen",
       "system-info_check": "Update-Prüfung jetzt starten",
-      "docs_read": "Architektur-Doku sehen"
+      "docs_read": "Architektur-Doku sehen",
+      "locations_read": "Räume sehen",
+      "locations_create": "Räume anlegen"
     },
     "descriptions": {
       "profile_avatar": "Das eigene Profilbild setzen und entfernen",
@@ -510,7 +512,9 @@
       "api-tokens_manage": "Die API-Tokens aller Personen sehen und widerrufen",
       "system-info_read": "Die laufenden Versionen, verfügbare Updates und das Ende ihrer Unterstützung",
       "system-info_check": "Die Prüfung auf neue Versionen sofort starten statt in der Nacht; sie fragt Docker Hub, quay.io und endoflife.date",
-      "docs_read": "Die ADRs und die Diagramme des Stacks lesen, mit seinen Diensten, Ports und Netzen"
+      "docs_read": "Die ADRs und die Diagramme des Stacks lesen, mit seinen Diensten, Ports und Netzen",
+      "locations_read": "Die Räume (Locations) der Gebäude in NetBox suchen und sehen",
+      "locations_create": "Einen Raum, den NetBox noch nicht kennt, dort in einem Gebäude anlegen"
     },
     "everyone": "Haben alle Angemeldeten ohne Zuweisung; änderbar, nicht löschbar"
   },

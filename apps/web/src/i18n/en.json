@@ -479,7 +479,9 @@
       "api-tokens_manage": "Manage everybody’s API tokens",
       "system-info_read": "See system information",
       "system-info_check": "Run the update check now",
-      "docs_read": "See the architecture docs"
+      "docs_read": "See the architecture docs",
+      "locations_read": "See rooms",
+      "locations_create": "Add rooms"
     },
     "descriptions": {
       "profile_avatar": "Set and remove one's own profile picture",
@@ -510,7 +512,9 @@
       "api-tokens_manage": "See and revoke the API tokens of every person",
       "system-info_read": "The versions that run, the updates available for them and their end of life",
       "system-info_check": "Start the check for newer versions at once instead of at night; it asks Docker Hub, quay.io and endoflife.date",
-      "docs_read": "Read the ADRs and the diagrams of the stack, with its services, ports and networks"
+      "docs_read": "Read the ADRs and the diagrams of the stack, with its services, ports and networks",
+      "locations_read": "Search and see the rooms (locations) of the buildings in NetBox",
+      "locations_create": "Add a room NetBox does not know yet to a building there"
     },
     "everyone": "Everyone signed in holds it without an assignment; editable, not deletable"
   },
