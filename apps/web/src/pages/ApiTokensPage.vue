@@ -88,8 +88,17 @@
               <div class="text-caption text-grey-7 q-mb-xs">{{ t('apiTokens.permissionsHint') }}</div>
               <div v-if="!grantable.length" class="text-body2">{{ t('apiTokens.nothingGrantable') }}</div>
               <div v-for="key in grantable" :key="key">
-                <q-checkbox v-model="draft.permissions" :val="key" :label="labels.label(key)" :data-permission="key" />
+                <q-checkbox
+                  :model-value="chosen.permissions.includes(key)"
+                  :disable="!!chosen.includedBy[key]"
+                  :label="labels.label(key)"
+                  :data-permission="key"
+                  @update:model-value="(value: boolean) => choose(key, value)"
+                />
                 <div class="text-caption text-grey-7 description">{{ labels.description(key) }}</div>
+                <div v-if="chosen.includedBy[key]" class="text-caption text-grey-7 description" data-test="included-by">
+                  {{ t('apiTokens.includedBy', { list: chosen.includedBy[key].map((each) => labels.label(each)).join(', ') }) }}
+                </div>
               </div>
             </div>
           </q-card-section>
@@ -137,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { API_PREFIX, TOKEN_PERMISSION_KEYS, subject, type ApiToken, type User } from '@app/api/client'
+import { API_PREFIX, TOKEN_PERMISSION_KEYS, subject, withRequirements, type ApiToken, type User } from '@app/api/client'
 import type { Params } from '@feathersjs/feathers'
 import { copyToClipboard, useQuasar, type QTableProps } from 'quasar'
 import { computed, reactive, ref, watch } from 'vue'
@@ -220,6 +229,12 @@ const tomorrow = computed(() => toDateInput(new Date(Date.now() + 86_400_000)))
 const editing = ref(false)
 const saving = ref(false)
 const draft = reactive<{ name: string; expiresOn: string | null; permissions: string[] }>({ name: '', expiresOn: null, permissions: [] })
+// What the token will carry: the chosen permissions and what they require
+// (ADR 0037). An included one is ticked and locked; only the chosen are sent.
+const chosen = computed(() => withRequirements(draft.permissions))
+const choose = (key: string, value: boolean) => {
+  draft.permissions = value ? [...draft.permissions, key] : draft.permissions.filter((each) => each !== key)
+}
 const openCreate = () => {
   Object.assign(draft, { name: '', expiresOn: null, permissions: [] })
   editing.value = true

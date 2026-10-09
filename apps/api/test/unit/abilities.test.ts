@@ -6,11 +6,14 @@ import {
   ADMIN_PERMISSIONS,
   PERMISSIONS,
   TOKEN_PERMISSION_KEYS,
+  closureOf,
   defineAbilitiesFor,
   defineTokenAbility,
   defineViewAsAbility,
-  unconditionalReadSubjects
+  unconditionalReadSubjects,
+  withRequirements
 } from '../../src/abilities.js'
+import { allBut } from '../support/catalogue.js'
 
 // ADR 0011: the permission catalogue. Each entry grants something, rules of
 // several permissions add up, and field rules narrow only where no broader
@@ -30,6 +33,74 @@ describe('the permission catalogue', () => {
 
   it('ignores a key it does not declare', () => {
     expect(ability(['nope']).rules).toEqual(ability([]).rules)
+  })
+})
+
+describe('permission prerequisites (ADR 0037)', () => {
+  // The whole catalogue, the product's entries included: these hold in
+  // every product.
+  const byKey = new Map(PERMISSIONS.map((entry) => [entry.key as string, entry]))
+  const productKeys = new Set<string>(PRODUCT_PERMISSIONS.map((entry: { key: string }) => entry.key))
+
+  it('requires only keys the catalogue declares', () => {
+    const unknown = PERMISSIONS.flatMap((entry) => entry.requires.filter((key) => !byKey.has(key)).map((key) => `${entry.key} -> ${key}`))
+    expect(unknown).toEqual([])
+  })
+
+  it('has no cycle', () => {
+    const cycles: string[] = []
+    const walk = (key: string, path: readonly string[]) => {
+      if (path.includes(key)) return void cycles.push([...path, key].join(' -> '))
+      for (const required of byKey.get(key)?.requires ?? []) walk(required, [...path, key])
+    }
+    for (const entry of PERMISSIONS) walk(entry.key, [])
+    expect(cycles).toEqual([])
+  })
+
+  it('has no skeleton entry requiring a product key', () => {
+    const wrong = PERMISSIONS.filter((entry) => !productKeys.has(entry.key)).flatMap((entry) =>
+      entry.requires.filter((key) => productKeys.has(key)).map((key) => `${entry.key} -> ${key}`)
+    )
+    expect(wrong).toEqual([])
+  })
+
+  it('has no permission a token may carry requiring one it may not', () => {
+    const tokenKeys = new Set<string>(TOKEN_PERMISSION_KEYS)
+    const wrong = [...tokenKeys].flatMap((key) => closureOf(key).filter((each) => !tokenKeys.has(each)).map((each) => `${key} -> ${each}`))
+    expect(wrong).toEqual([])
+  })
+
+  it("states the skeleton's own requirements", () => {
+    expect(closureOf('locations.create')).toEqual(['locations.create', 'locations.read', 'sites.read'])
+    expect(closureOf('locations.read')).toEqual(['locations.read', 'sites.read'])
+  })
+
+  it('includes what a permission requires, transitively, and says what brings it', () => {
+    expect(withRequirements(['locations.create', 'documents.own'])).toEqual({
+      permissions: ['documents.own', 'locations.create', 'locations.read', 'sites.read'],
+      includedBy: { 'locations.read': ['locations.create'], 'sites.read': ['locations.create'] }
+    })
+    // Held in its own right as well: not marked as included.
+    expect(withRequirements(['locations.create', 'sites.read']).includedBy).toEqual({ 'locations.read': ['locations.create'] })
+    expect(withRequirements(['roles.manage', 'nope']).permissions).toEqual(['nope', 'roles.manage'])
+  })
+
+  it('grants the requirements with the permission', () => {
+    expect(ability(['locations.create']).can('read', 'sites')).toBe(true)
+    expect(ability(['locations.read']).can('read', 'sites')).toBe(true)
+    expect(ability(['sites.read']).can('read', 'locations')).toBe(false)
+  })
+
+  it('gives an API token what its chosen permissions require, as far as the owner holds it', () => {
+    const owner = { id: 'owner', permissions: ['locations.create'], roleIds: [] }
+    expect(defineTokenAbility(owner, ['locations.create']).can('read', 'sites')).toBe(true)
+    expect(defineTokenAbility(owner, ['locations.read']).can('create', 'locations')).toBe(false)
+  })
+
+  it('leaves out of allBut every permission that includes a left-out one', () => {
+    expect(allBut('sites.read')).not.toContain('locations.read')
+    expect(allBut('sites.read')).not.toContain('locations.create')
+    expect(ability(allBut('sites.read')).can('read', 'sites')).toBe(false)
   })
 })
 

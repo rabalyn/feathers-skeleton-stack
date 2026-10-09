@@ -35,6 +35,24 @@ test('an admin creates, grants, previews and deletes a role', async ({ page }) =
   await page.reload()
   await expect(page.getByRole('checkbox', { name: 'Prüfung: Alle Aktivitäten sehen' })).toBeChecked()
 
+  // A permission includes what it requires (ADR 0037): ticked and locked
+  // with it, and gone with it.
+  await expect(page.locator('[data-requires="locations.create"]')).toHaveText('Schließt ein: Räume sehen')
+  const rooms = page.getByRole('checkbox', { name: 'Prüfung: Räume anlegen' })
+  const roomsRead = page.getByRole('checkbox', { name: 'Prüfung: Räume sehen' })
+  const sitesRead = page.getByRole('checkbox', { name: 'Prüfung: Gebäude sehen' })
+  await rooms.click()
+  await expect(rooms).toBeChecked()
+  await expect(roomsRead).toBeChecked()
+  await expect(roomsRead).toBeDisabled()
+  await expect(sitesRead).toBeChecked()
+  await expect(sitesRead).toBeDisabled()
+  await expect(page.locator('td').filter({ has: sitesRead }).locator('[data-test="included-by"]')).toHaveText('Enthalten in: Räume anlegen')
+  await rooms.click()
+  await expect(rooms).not.toBeChecked()
+  await expect(sitesRead).not.toBeChecked()
+  await expect(sitesRead).toBeEnabled()
+
   // The preview shows the navigation as the role would: a role without
   // documents has none, but its activity log. What else it shows comes from
   // `everyone`, which a product may extend (ADR 0035).

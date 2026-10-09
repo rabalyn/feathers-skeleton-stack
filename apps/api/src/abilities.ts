@@ -74,9 +74,10 @@ const CATALOGUE_ENTRIES = [
   }),
   // Locations (ADR 0031): the university's buildings, from NetBox.
   entry('sites.read', 'locations', (can) => can('read', 'sites')),
-  // Their rooms, and adding one NetBox does not have.
-  entry('locations.read', 'locations', (can) => can('read', 'locations')),
-  entry('locations.create', 'locations', (can) => can('create', 'locations')),
+  // Their rooms, each found within its building (ADR 0037), and adding one
+  // NetBox does not have.
+  entry('locations.read', 'locations', (can) => can('read', 'locations'), { requires: ['sites.read'] }),
+  entry('locations.create', 'locations', (can) => can('create', 'locations'), { requires: ['locations.read'] }),
   // Read-only view as another person, bounded by one's own rights (ADR 0028).
   entry('users.view-as', 'users', (can) => can('create', 'view-as')),
   // The caller always becomes the owner of what they create; lists are
@@ -143,6 +144,34 @@ const CATALOGUE = new Map<string, PermissionEntry>(PERMISSIONS.map((each) => [ea
 if (CATALOGUE.size !== PERMISSIONS.length) throw new Error('permission catalogue: duplicate key')
 
 export const isPermissionKey = (key: string): key is PermissionKey => CATALOGUE.has(key)
+
+// Permission prerequisites (ADR 0037): a permission and everything it
+// requires, transitively. A key the catalogue does not declare yields
+// itself, so `roles.manage` and stale keys pass through unchanged.
+const requirementsOf = (key: string): Set<string> => {
+  const found = new Set<string>()
+  const visit = (each: string) => {
+    if (found.has(each)) return
+    found.add(each)
+    for (const required of CATALOGUE.get(each)?.requires ?? []) visit(required)
+  }
+  visit(key)
+  return found
+}
+const CLOSURES = new Map<string, readonly string[]>(PERMISSION_KEYS.map((key) => [key, [...requirementsOf(key)].sort()]))
+export const closureOf = (key: string): readonly string[] => CLOSURES.get(key) ?? [key]
+
+// What holding these permissions includes: all of them and what they
+// require, and for each included one not among them the held ones that
+// bring it. Roles store what an admin chose; this is what they grant.
+export const withRequirements = (keys: readonly string[]): { permissions: string[]; includedBy: Record<string, string[]> } => {
+  const held = new Set(keys)
+  const includedBy: Record<string, string[]> = {}
+  for (const key of [...held].sort()) {
+    for (const each of closureOf(key)) if (!held.has(each)) (includedBy[each] ??= []).push(key)
+  }
+  return { permissions: [...new Set([...held, ...Object.keys(includedBy)])].sort(), includedBy }
+}
 
 // Role management: `admin`'s alone and outside the catalogue, so no role can
 // be granted it (ADR 0011). Only the fixed `admin` role yields this key.
@@ -236,7 +265,7 @@ export const grantEntry = (entry: PermissionEntry, can: Can, user: AbilityUser) 
 export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
   const { can, rules } = new AbilityBuilder<AppAbility>(createMongoAbility)
   grantFixedCore(can, user)
-  for (const key of user.permissions) {
+  for (const key of withRequirements(user.permissions).permissions) {
     if (key === ROLE_MANAGEMENT) grantRoleManagement(can)
     // A key code no longer declares grants nothing (ADR 0011).
     else {
@@ -306,13 +335,14 @@ export const TOKEN_EXCLUDED_PERMISSIONS: readonly PermissionKey[] = [
 export const TOKEN_PERMISSION_KEYS: readonly PermissionKey[] = PERMISSION_KEYS.filter((key) => !TOKEN_EXCLUDED_PERMISSIONS.includes(key))
 export const isTokenPermission = (key: string): boolean => (TOKEN_PERMISSION_KEYS as readonly string[]).includes(key)
 
-// A token's ability: the permissions chosen for it that its owner still
-// holds, and nothing else, not even the fixed core. Built on every request
-// from the owner's current permissions, so it never exceeds them.
+// A token's ability: the permissions chosen for it and what they require
+// (ADR 0037), as far as its owner still holds them, and nothing else, not
+// even the fixed core. Built on every request from the owner's current
+// permissions, so it never exceeds them.
 export const defineTokenAbility = (owner: AbilityUser, tokenPermissions: readonly string[]): AppAbility => {
-  const held = new Set(owner.permissions)
+  const held = new Set(withRequirements(owner.permissions).permissions)
   const { can, rules } = new AbilityBuilder<AppAbility>(createMongoAbility)
-  for (const key of tokenPermissions) {
+  for (const key of withRequirements(tokenPermissions).permissions) {
     const found = CATALOGUE.get(key)
     if (found && held.has(key) && isTokenPermission(key)) grantEntry(found, can, owner)
   }

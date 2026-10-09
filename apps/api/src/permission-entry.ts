@@ -24,13 +24,23 @@ export interface PermissionEntry {
   // the web app's translation `permissions.groups.<group>`.
   group: string
   grant: (can: Can, user: AbilityUser) => void
+  // The permissions without which this one is of no use in the application
+  // (ADR 0037). Holding it includes them, transitively.
+  requires: readonly string[]
 }
 
 // One catalogue entry, its key kept as a literal type. A key is stable once
 // released: roles store it. The web app translates `permissions.keys.<key>`
-// and `permissions.descriptions.<key>`, dots replaced by underscores.
-export const entry = <K extends string>(key: K, group: string, grant: PermissionEntry['grant']): PermissionEntry & { key: K } => ({
+// and `permissions.descriptions.<key>`, dots replaced by underscores. A
+// product entry may require a skeleton key, never the other way round.
+export const entry = <K extends string>(
+  key: K,
+  group: string,
+  grant: PermissionEntry['grant'],
+  options: { requires?: readonly string[] } = {}
+): PermissionEntry & { key: K } => ({
   key,
   group,
-  grant
+  grant,
+  requires: options.requires ?? []
 })

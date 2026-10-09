@@ -60,14 +60,20 @@
             <td>
               <div>{{ labels.label(key) }}</div>
               <div class="text-caption text-grey-7">{{ labels.description(key) }}</div>
+              <div v-if="requires(key).length" class="text-caption text-grey-7" :data-requires="key">
+                {{ t('permissions.requires', { list: labelList(requires(key)) }) }}
+              </div>
             </td>
             <td v-for="role in roles" :key="role.id" class="text-center">
               <q-checkbox
                 :model-value="granted(role, key)"
-                :disable="role.kind === 'admin' || saving === role.id"
+                :disable="role.kind === 'admin' || saving === role.id || !!includedBy(role, key)"
                 :aria-label="`${name(role)}: ${labels.label(key)}`"
                 @update:model-value="(value: boolean) => toggle(role, key, value)"
               />
+              <div v-if="role.kind !== 'admin' && includedBy(role, key)" class="text-caption text-grey-7" data-test="included-by">
+                {{ t('permissions.includedBy', { list: labelList(includedBy(role, key)!) }) }}
+              </div>
             </td>
           </tr>
         </template>
@@ -110,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { LOCALES, PERMISSIONS, type Locale, type Role } from '@app/api/client'
+import { LOCALES, PERMISSIONS, withRequirements, type Locale, type Role } from '@app/api/client'
 import { useQuasar } from 'quasar'
 import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -152,7 +158,15 @@ const startPreview = (role: Role) => {
   session.startPreview(role, everyone?.permissions ?? [])
 }
 
-const granted = (role: Role, key: string) => role.kind === 'admin' || (role.permissions ?? []).includes(key)
+// What a role grants: what it stores and what that requires (ADR 0037). A
+// permission included by another is ticked and locked, and goes with it.
+const included = computed(() => new Map(all.value.map((role) => [role.id, withRequirements(role.permissions ?? [])])))
+const includedBy = (role: Role, key: string): string[] | undefined => included.value.get(role.id)?.includedBy[key]
+const granted = (role: Role, key: string) =>
+  role.kind === 'admin' || (included.value.get(role.id)?.permissions ?? role.permissions ?? []).includes(key)
+
+const requires = (key: string) => PERMISSIONS.find((entry) => entry.key === key)?.requires ?? []
+const labelList = (keys: readonly string[]) => keys.map((key) => labels.label(key)).join(', ')
 
 // The role being written to: one change at a time per role, since a patch
 // carries its full list of permissions.
