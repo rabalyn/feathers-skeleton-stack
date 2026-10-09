@@ -7,6 +7,8 @@
 #   op01oper  operator-test-password
 #   us01user  user-test-password
 #   us02othr  other-test-password
+#
+# The gate walk's account is in walker.ldif (ADR 0038).
 
 dn: cn=ad01admn,ou=people,dc=feathers,dc=test
 objectClass: inetOrgPerson

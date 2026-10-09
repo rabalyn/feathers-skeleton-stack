@@ -18,6 +18,17 @@ Decided with the user on 2026-10-09.
 - **The gate walk proves it**, a Playwright spec of the skeleton's that every product runs: for every route in the navigation and every catalogue permission whose closure ([0037](0037-permission-prerequisites.md)) passes the route's gate on its own, a user holding only that permission opens the page and, where it has a list, its first record's panel; no response may be a 401, 403 or 404 from a gate, and no failure notice may show. Routes and permissions come from the router and the catalogue, so a product's are walked too.
 - A page that needs a record to show its panel names a fixture the walk creates first, through the api, as the admin.
 
+### How the walk is built
+
+Decided with the user on 2026-10-09, while building it.
+
+- **The walk account holds `everyone` beside the walked permission**, as every account does: "only that permission" means a role of the walk's own holding that one permission. `everyone` is left alone, so the walk runs beside the other specs ([0035](0035-products-derived-from-the-skeleton.md)). The account, `wk01walk`, is the walk's alone (`containers/ldap/seed/walker.ldif`).
+- **Routes and permissions are read off the running app.** The catalogue is the fixed admin's own record ([0011](0011-casl-role-authorization.md)); the routes a permission passes are the links the walk account's navigation shows while it holds it, which is the route's own gate. Every permission walks every link shown, the profile included, since a section a permission shows may fail on any page.
+- **A route names what the walk does on its page** in `meta.walk`: `panel` to click the first record of the list the page marks with `data-walk="list"` (a table's first row or a list's first item), and `fixture`, the name of the record the walk creates first. The layout passes both to the page container (`data-walk-panel`, `data-walk-fixture`), where the walk reads them.
+- **Fixtures** are functions by name in `e2e/tests/walk-fixtures.ts`, the skeleton's, and `e2e/tests/product/walk-fixtures.ts`, a product's ([0035](0035-products-derived-from-the-skeleton.md)): each makes sure one record exists, through the API as the run's break-glass admin, and may be called again.
+- **A refused call** is an answer of the API's socket ([0012](0012-role-scoped-channels.md)) with code 401, 403 or 404, read off the websocket's frames; **a failure notice** is a negative notification. Each permission's problems are reported together, all permissions in one run.
+- **The navigation shows a link on its route's gate**: a link names the route, the gate is read from the route's `meta`, and links carry no gate of their own.
+
 ## Consequences
 
 - A role that passes a page's gate sees a working page; sections it may not use are absent.

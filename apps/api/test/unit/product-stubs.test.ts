@@ -35,6 +35,11 @@ describe.runIf(product === 'feathers-skeleton')("the skeleton's product module",
     expect(PRODUCT_DIRECTORY.attributes).toEqual([])
   })
 
+  it('has the gate walk create no product records (ADR 0038)', () => {
+    const source = readFileSync(new URL('../../../../e2e/tests/product/walk-fixtures.ts', import.meta.url), 'utf8')
+    expect(source).toMatch(/PRODUCT_WALK_FIXTURES: .* = \{\}\n/)
+  })
+
   it('holds no product ADRs, only their index (ADR 0019)', () => {
     expect(readdirSync(new URL('../../../../docs/adr_product/', import.meta.url))).toEqual(['README.md'])
   })

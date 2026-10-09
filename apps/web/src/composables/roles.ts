@@ -15,6 +15,9 @@ export const useRoles = () => {
     paginateOn: 'server'
   })
   const session = useSessionStore()
+  // Nothing to ask for without any right to read a role (ADR 0038):
+  // `roles.own-names` may be withdrawn from everyone.
+  found.queryWhen(() => session.can('read', 'roles'))
   watch(
     () => session.ability,
     () => void found.find()

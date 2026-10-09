@@ -3,7 +3,7 @@
     <h1 class="text-h5 q-mt-none">{{ t('nav.mailTemplates') }}</h1>
     <div class="row q-col-gutter-md">
       <div class="col-12 col-md-3">
-        <q-list bordered separator>
+        <q-list bordered separator data-walk="list">
           <q-item
             v-for="kind in kinds"
             :key="kind.key"
