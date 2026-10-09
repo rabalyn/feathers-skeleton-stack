@@ -35,21 +35,21 @@ const CATALOGUE_ENTRIES = [
   // One's own data beyond the fixed core (ADR 0011). The `everyone` role,
   // which every signed-in account holds, is seeded with all of them; an
   // admin may withdraw them there, or grant them through other roles only.
-  entry('profile.avatar', 'self', (can) => {
-    // `read` too, which feathers-casl checks on a create's result: the
-    // caller's own user record.
-    can(['create', 'read'], 'avatars')
-  }),
+  entry('profile.avatar', 'self', (can) => can('create', 'avatars')),
   // The language mail reaches the caller in (ADR 0027).
-  entry('profile.locale', 'self', (can) => can(['create', 'read'], 'locales')),
+  entry('profile.locale', 'self', (can) => can('create', 'locales')),
   // Personal preferences, such as the order of the navigation (decided
   // 2026-10-02, ADR 0014). A create sets the caller's own row.
   entry('profile.preferences', 'self', (can, user) => {
     can('create', 'preferences')
     can(['read', 'delete'], 'preferences', { userId: user.id })
   }),
-  // Uploads (ADR 0020). The caller owns what they upload.
-  entry('files.upload', 'self', (can) => can('create', 'files')),
+  // Uploads (ADR 0020). The caller owns what they upload, and reads only
+  // that: the create would otherwise imply reading every file (ADR 0036).
+  entry('files.upload', 'self', (can, user) => {
+    can('create', 'files')
+    can('read', 'files', { ownerId: user.id })
+  }),
   entry('files.own', 'self', (can, user) => can('read', 'files', { ownerId: user.id })),
   // What the caller did (ADR 0011, 0013); their export holds it regardless.
   entry('audit-events.own', 'self', (can, user) => can('read', 'audit-events', { actorId: user.id })),
@@ -70,17 +70,15 @@ const CATALOGUE_ENTRIES = [
   entry('users.enable', 'users', (can) => can('patch', 'users')),
   entry('directory.read', 'users', (can) => {
     can('read', 'directory')
-    can(['create', 'read'], 'directory-lookups')
+    can('create', 'directory-lookups')
   }),
   // Locations (ADR 0031): the university's buildings, from NetBox.
   entry('sites.read', 'locations', (can) => can('read', 'sites')),
-  // Their rooms, and adding one NetBox does not have; `read` for
-  // feathers-casl's check of the create's result.
+  // Their rooms, and adding one NetBox does not have.
   entry('locations.read', 'locations', (can) => can('read', 'locations')),
-  entry('locations.create', 'locations', (can) => can(['create', 'read'], 'locations')),
+  entry('locations.create', 'locations', (can) => can('create', 'locations')),
   // Read-only view as another person, bounded by one's own rights (ADR 0028).
-  // `read` for feathers-casl's check of the create's result.
-  entry('users.view-as', 'users', (can) => can(['create', 'read'], 'view-as')),
+  entry('users.view-as', 'users', (can) => can('create', 'view-as')),
   // The caller always becomes the owner of what they create; lists are
   // scoped by the same condition.
   entry('documents.own', 'documents', (can, user) => {
@@ -93,38 +91,46 @@ const CATALOGUE_ENTRIES = [
   }),
   entry('sessions.read', 'sessions', (can) => can('read', 'sessions', SESSION_FIELDS_WITHOUT_USER_AGENT)),
   entry('sessions.read-user-agent', 'sessions', (can) => can('read', 'sessions')),
-  // `read` beside `delete`: feathers-casl checks the removed record.
+  // Its own read, without the user agent, in place of the one `delete`
+  // would imply (ADR 0036).
   entry('sessions.revoke', 'sessions', (can) => {
     can('delete', 'sessions')
     can('read', 'sessions', SESSION_FIELDS_WITHOUT_USER_AGENT)
   }),
   entry('audit-events.read', 'privacy', (can) => can('read', 'audit-events')),
-  entry('data-exports.any', 'privacy', (can) => can('create', 'data-exports')),
-  // `read` for feathers-casl's check of the create's result.
-  entry('erasures.create', 'privacy', (can) => can(['create', 'read'], 'erasures')),
+  // Reading the exports one asked for only: the create would otherwise imply
+  // reading everyone's (ADR 0036).
+  entry('data-exports.any', 'privacy', (can, user) => {
+    can('create', 'data-exports')
+    can('read', 'data-exports', { requestedBy: user.id })
+  }),
+  entry('erasures.create', 'privacy', (can) => can('create', 'erasures')),
   entry('settings.manage', 'configuration', (can) => can(['read', 'patch'], 'settings')),
-  // `read` on previews for feathers-casl's check of the create's result.
   entry('mail.manage', 'configuration', (can) => {
     can('read', 'mail-kinds')
     can(['read', 'patch'], 'mail-templates')
     can(['read', 'create'], 'mail-template-revisions')
-    can(['create', 'read'], 'mail-previews')
+    can('create', 'mail-previews')
     can(['read', 'create'], 'mail-campaigns')
-    can(['create', 'read'], 'mail-campaign-previews')
+    can('create', 'mail-campaign-previews')
     can('read', 'mail-deliveries')
   }),
   entry('queues.read', 'configuration', (can) => can('read', 'queues')),
   // What runs and which updates are out (ADR 0032).
   entry('system-info.read', 'configuration', (can) => can('read', 'system-info')),
-  // Running the update check now, an outbound request (ADR 0032). `read`
-  // for feathers-casl's check of the create's result.
-  entry('system-info.check', 'configuration', (can) => can(['create', 'read'], 'update-checks')),
+  // Running the update check now, an outbound request (ADR 0032).
+  entry('system-info.check', 'configuration', (can) => can('create', 'update-checks')),
   // The ADRs and diagrams in the app (ADR 0019). Admin-only: no seeded role
   // holds it, since they describe the stack's topology.
   entry('docs.read', 'configuration', (can) => can('read', 'docs')),
   // API tokens (ADR 0029): creating one's own, bounded by one's own rights
   // on every request; seeing and revoking one's own is `api-tokens.own`.
-  entry('api-tokens.create', 'api', (can) => can('create', 'api-tokens')),
+  // Reading one's own only, as `api-tokens.own` does: the create would
+  // otherwise imply reading everyone's (ADR 0036).
+  entry('api-tokens.create', 'api', (can, user) => {
+    can('create', 'api-tokens')
+    can('read', 'api-tokens', { userId: user.id })
+  }),
   entry('api-tokens.manage', 'api', (can) => can(['read', 'delete'], 'api-tokens')),
   // gen:service permissions (ADR 0030)
   ...PRODUCT_PERMISSIONS
@@ -193,13 +199,50 @@ const withoutShadowedFieldRules = (rules: Rule[]): Rule[] => {
   return rules.filter((rule) => rule.inverted || !rule.fields || !broad.some((wide) => covers(wide, rule)))
 }
 
+// Implied actions (ADR 0036): writing a subject implies reading it, and
+// deleting implies changing it, each with the granting rule's conditions and
+// fields. Patching does not imply creating. Aliases are spelled out first, so
+// an entry granting `write` implies `read` and owns `create` and `patch`.
+const IMPLIED: Record<string, readonly string[]> = { create: ['read'], patch: ['read'], delete: ['patch', 'read'] }
+const ACTIONS_OF: Record<string, readonly string[]> = { write: ['create', 'patch'] }
+const spelledOut = (action: string | string[]) => asList(action).flatMap((each) => ACTIONS_OF[each] ?? [each])
+
+type CanArgs = Parameters<Can>
+
+// Runs one catalogue entry's grant, then adds what its rules imply. An
+// action the entry grants itself on a subject is never implied there, which
+// is how an entry states a narrower read than its write would give
+// (`sessions.revoke`). The fixed core and role management are not entries
+// and get nothing implied.
+export const grantEntry = (entry: PermissionEntry, can: Can, user: AbilityUser) => {
+  const given: CanArgs[] = []
+  const recording = ((...args: CanArgs) => {
+    given.push(args)
+    return can(...args)
+  }) as Can
+  entry.grant(recording, user)
+  const own = new Set(given.flatMap(([action, subject]) => spelledOut(action).flatMap((each) => asList(subject as string | string[]).map((name) => `${each} ${name}`))))
+  for (const [action, subject, ...rest] of given) {
+    const implied = [...new Set(spelledOut(action).flatMap((each) => IMPLIED[each] ?? []))]
+    for (const name of asList(subject as string | string[])) {
+      for (const each of implied) {
+        if (own.has(`${each} ${name}`)) continue
+        ;(can as (...args: unknown[]) => unknown)(each, name, ...rest)
+      }
+    }
+  }
+}
+
 export const defineAbilitiesFor = (user: AbilityUser): AppAbility => {
   const { can, rules } = new AbilityBuilder<AppAbility>(createMongoAbility)
   grantFixedCore(can, user)
   for (const key of user.permissions) {
     if (key === ROLE_MANAGEMENT) grantRoleManagement(can)
     // A key code no longer declares grants nothing (ADR 0011).
-    else CATALOGUE.get(key)?.grant(can, user)
+    else {
+      const found = CATALOGUE.get(key)
+      if (found) grantEntry(found, can, user)
+    }
   }
   return createMongoAbility(withoutShadowedFieldRules(rules), { resolveAction })
 }
@@ -270,7 +313,8 @@ export const defineTokenAbility = (owner: AbilityUser, tokenPermissions: readonl
   const held = new Set(owner.permissions)
   const { can, rules } = new AbilityBuilder<AppAbility>(createMongoAbility)
   for (const key of tokenPermissions) {
-    if (held.has(key) && isTokenPermission(key)) CATALOGUE.get(key)?.grant(can, owner)
+    const found = CATALOGUE.get(key)
+    if (found && held.has(key) && isTokenPermission(key)) grantEntry(found, can, owner)
   }
   return createMongoAbility(withoutShadowedFieldRules(rules), { resolveAction })
 }

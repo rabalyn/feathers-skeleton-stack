@@ -419,7 +419,7 @@
   },
   "permissions": {
     "title": "Rollen & Rechte",
-    "intro": "Eine Rolle ist eine Menge von Rechten; eine Person hat alle Rechte all ihrer Rollen und der Rolle „Alle Angemeldeten“. Das eigene Benutzerkonto, die eigene Datenauskunft und das Beenden einer Ansicht-als kann keine Rolle jemandem nehmen. Die Administration hat stets jedes Recht und verwaltet als einzige die Rollen.",
+    "intro": "Eine Rolle ist eine Menge von Rechten; eine Person hat alle Rechte all ihrer Rollen und der Rolle „Alle Angemeldeten“. Das eigene Benutzerkonto, die eigene Datenauskunft und das Beenden einer Ansicht-als kann keine Rolle jemandem nehmen. Die Administration hat stets jedes Recht und verwaltet als einzige die Rollen. Wer etwas anlegen oder ändern darf, darf es auch lesen, und wer es löschen darf, auch ändern, soweit die Berechtigung reicht.",
     "permission": "Recht",
     "newRole": "Neue Rolle",
     "key": "Schlüssel",
