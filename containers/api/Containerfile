@@ -9,9 +9,6 @@ ARG RESTIC_IMAGE=docker.io/restic/restic@sha256:136600b6ff6843d61d355f7f71f460a1
 FROM ${RESTIC_IMAGE} AS restic
 
 FROM ${NODE_IMAGE} AS base
-# Alpine fixes reach the image with every build, not only with a new base
-# digest (ADR 0018).
-RUN apk upgrade --no-cache
 # Dependencies are fixed when the image is built; pnpm's pre-run check would
 # see the build's lockfile and manifest writes as drift and try to reinstall
 # as the unprivileged user (ADR 0015).
@@ -41,8 +38,13 @@ COPY docs/adr_v2 /repo/docs/adr_v2
 COPY docs/adr_product /repo/docs/adr_product
 # The web app's catalogues, which describe every runtime setting (ADR 0025).
 COPY apps/web/src/i18n /repo/apps/web/src/i18n
-# Vitest writes a bundled copy of its config next to the original.
-RUN chown -R node:node /repo/apps/api
+# Alpine fixes reach the image with every build, not only with a new base
+# digest: APK_UPGRADE, the day's date, misses the layer cache once a day.
+# Here, not in base, so that the daily miss doesn't rerun the install and
+# the build above it (ADR 0018). Vitest writes a bundled copy of its config
+# next to the original.
+ARG APK_UPGRADE=unset
+RUN apk upgrade --no-cache && chown -R node:node /repo/apps/api
 WORKDIR /repo/apps/api
 USER node
 CMD ["pnpm", "exec", "vitest", "run"]
@@ -61,6 +63,10 @@ FROM ${NODE_IMAGE} AS node
 # Yarn, rather than removing them in a layer above (ADR 0006, 0018).
 FROM ${ALPINE_IMAGE} AS runtime-base
 ENV NODE_ENV=production
+# Alpine fixes reach the image with every build, not only with a new base
+# digest: APK_UPGRADE, the day's date, misses the layer cache once a day
+# (ADR 0018).
+ARG APK_UPGRADE=unset
 RUN apk upgrade --no-cache \
  && apk add --no-cache libstdc++ libgcc \
  && addgroup -g 1000 node \
@@ -79,7 +85,7 @@ CMD ["node", "dist/index.js"]
 # The commit the image was built from, for the system-info page (ADR 0032).
 # Last, and not in the backup image, so a new commit rebuilds one layer.
 # The commit time, not the build time: an unchanged tree builds the same
-# image, and `stack.sh up` restarts nothing.
+# image on the same day (APK_UPGRADE above).
 FROM runtime-base AS runtime
 # The skeleton's and the product's ADRs and diagrams, for the docs service
 # (ADR 0019, 0035). Not in the backup image, which serves nothing.
