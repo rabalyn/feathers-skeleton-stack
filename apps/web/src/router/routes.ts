@@ -6,14 +6,20 @@ declare module 'vue-router' {
     // Reachable without a session.
     public?: boolean
     // Hidden unless the user may do this to every record of the subject
-    // (ADR 0011). The server enforces; this only avoids dead ends.
-    requires?: [action: string, subject: string]
+    // (ADR 0011): one pair, or a list of every pair the page needs, all of
+    // which must hold (ADR 0038). The server enforces; this only avoids dead
+    // ends.
+    requires?: [action: string, subject: string] | [action: string, subject: string][]
     // Hidden unless the user may do this to some record of it, e.g. their
     // own documents.
     requiresSome?: [action: string, subject: string]
     // Hidden unless the user may do one of these to every record of its
     // subject.
     requiresAny?: [action: string, subject: string][]
+    // For the gate walk (ADR 0038): the page's list (`data-walk="list"`)
+    // opens a record's panel when its first row is clicked; `fixture` names
+    // the record the walk creates first, as the admin, so there is a row.
+    walk?: { panel?: boolean; fixture?: string }
   }
 }
 
@@ -109,7 +115,7 @@ const routes: RouteRecordRaw[] = [
         path: 'mail/templates',
         name: 'mail-templates',
         component: () => import('@/pages/MailTemplatesPage.vue'),
-        meta: { requires: ['read', 'mail-templates'] }
+        meta: { requires: ['read', 'mail-templates'], walk: { panel: true } }
       },
       {
         path: 'mail/campaigns',

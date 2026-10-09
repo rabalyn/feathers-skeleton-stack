@@ -1,0 +1,14 @@
+# The gate walk's account (ADR 0038): the end-to-end walk gives it one
+# permission at a time and opens every page that permission reaches. No
+# other test uses it. Added by entrypoint.sh to any directory that lacks it.
+#
+#   TU-ID     password
+#   wk01walk  walk-test-password
+
+dn: cn=wk01walk,ou=people,dc=feathers,dc=test
+objectClass: inetOrgPerson
+cn: wk01walk
+givenName: Wanda
+sn: Walker
+mail: wanda.walker@example.org
+userPassword: walk-test-password

@@ -55,5 +55,11 @@ if ! slapcat -f /run/slapd/slapd.conf -a "(cn=bk001blk)" | grep -q '^dn:'; then
   slapadd -f /run/slapd/slapd.conf -l /etc/openldap/seed/bulk.ldif
 fi
 
+# The gate walk's account (ADR 0038), added once to any directory.
+if ! slapcat -f /run/slapd/slapd.conf -a "(cn=wk01walk)" | grep -q '^dn:'; then
+  echo "ldap: adding the gate walk's account"
+  slapadd -f /run/slapd/slapd.conf -l /etc/openldap/seed/walker.ldif
+fi
+
 chown -R ldap:ldap /run/slapd /var/lib/openldap
 exec slapd -d 256 -u ldap -g ldap -f /run/slapd/slapd.conf -h "ldaps:///"

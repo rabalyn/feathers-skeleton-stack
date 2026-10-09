@@ -99,7 +99,8 @@
       </q-list>
     </q-drawer>
 
-    <q-page-container>
+    <!-- What the gate walk needs to know of the page (ADR 0038). -->
+    <q-page-container :data-walk-panel="walk.panel ? '' : undefined" :data-walk-fixture="walk.fixture">
       <router-view />
     </q-page-container>
   </q-layout>
@@ -109,11 +110,11 @@
 import type { Locale, Role } from '@app/api/client'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
 import { useNavOrder } from '@/composables/nav-order'
 import { PRODUCT_NAV_LINKS } from '@/product/routes'
-import type { NavLink } from '@/router/nav'
+import { passesGate, type NavLink } from '@/router/nav'
 import { arrange, moved } from '@/composables/order'
 import { useNotify } from '@/composables/notify'
 import { useSessionStore } from '@/stores/session'
@@ -166,39 +167,27 @@ const ALL_LINKS: NavLink[] = [
   { name: 'profile', icon: 'person', label: 'nav.profile' },
   // The product's links follow the profile (ADR 0035).
   ...PRODUCT_NAV_LINKS,
-  { name: 'documents', icon: 'description', label: 'nav.documents', requiresSome: ['read', 'documents'] },
-  { name: 'sites', icon: 'location_city', label: 'nav.sites', requires: ['read', 'sites'] },
-  { name: 'users', icon: 'group', label: 'nav.users', requires: ['read', 'users'] },
-  { name: 'permissions', icon: 'admin_panel_settings', label: 'nav.permissions', requires: ['create', 'roles'] },
-  { name: 'settings', icon: 'tune', label: 'nav.settings', requires: ['read', 'settings'] },
-  { name: 'directory', icon: 'contact_page', label: 'nav.directory', requires: ['read', 'directory'] },
-  { name: 'sessions', icon: 'devices', label: 'nav.sessions', requires: ['read', 'sessions'] },
-  {
-    name: 'api-tokens',
-    icon: 'key',
-    label: 'nav.apiTokens',
-    requiresAny: [
-      ['create', 'api-tokens'],
-      ['read', 'api-tokens']
-    ]
-  },
-  { name: 'audit', icon: 'history', label: 'nav.audit', requires: ['read', 'audit-events'] },
-  { name: 'gdpr', icon: 'privacy_tip', label: 'nav.gdpr', requires: ['create', 'erasures'] },
-  { name: 'mail-templates', icon: 'mail', label: 'nav.mailTemplates', requires: ['read', 'mail-templates'] },
-  { name: 'mailings', icon: 'campaign', label: 'nav.mailings', requires: ['create', 'mail-campaigns'] },
-  { name: 'queues', icon: 'pending_actions', label: 'nav.queues', requires: ['read', 'queues'] },
-  { name: 'system-info', icon: 'system_update', label: 'nav.systemInfo', requires: ['read', 'system-info'] },
-  { name: 'docs', icon: 'menu_book', label: 'nav.docs', requires: ['read', 'docs'] }
+  { name: 'documents', icon: 'description', label: 'nav.documents' },
+  { name: 'sites', icon: 'location_city', label: 'nav.sites' },
+  { name: 'users', icon: 'group', label: 'nav.users' },
+  { name: 'permissions', icon: 'admin_panel_settings', label: 'nav.permissions' },
+  { name: 'settings', icon: 'tune', label: 'nav.settings' },
+  { name: 'directory', icon: 'contact_page', label: 'nav.directory' },
+  { name: 'sessions', icon: 'devices', label: 'nav.sessions' },
+  { name: 'api-tokens', icon: 'key', label: 'nav.apiTokens' },
+  { name: 'audit', icon: 'history', label: 'nav.audit' },
+  { name: 'gdpr', icon: 'privacy_tip', label: 'nav.gdpr' },
+  { name: 'mail-templates', icon: 'mail', label: 'nav.mailTemplates' },
+  { name: 'mailings', icon: 'campaign', label: 'nav.mailings' },
+  { name: 'queues', icon: 'pending_actions', label: 'nav.queues' },
+  { name: 'system-info', icon: 'system_update', label: 'nav.systemInfo' },
+  { name: 'docs', icon: 'menu_book', label: 'nav.docs' }
 ]
 
-const links = computed(() =>
-  ALL_LINKS.filter(
-    (link) =>
-      (!link.requires || session.canAll(...link.requires)) &&
-      (!link.requiresSome || session.can(...link.requiresSome)) &&
-      (!link.requiresAny || link.requiresAny.some((pair) => session.canAll(...pair)))
-  )
-)
+const links = computed(() => ALL_LINKS.filter((link) => passesGate(router.resolve({ name: link.name }).meta, session)))
+
+const route = useRoute()
+const walk = computed(() => route.meta.walk ?? {})
 
 // The person's own order (decided 2026-10-02, ADR 0014): arranged in place,
 // with buttons or by dragging, and stored at once. Not while viewing as

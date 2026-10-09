@@ -1,7 +1,8 @@
 import { defineRouter } from '#q-app'
 import { watch } from 'vue'
-import { createRouter, createWebHistory, type RouteMeta } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
+import { passesGate } from './nav'
 import routes from './routes'
 
 // History mode; Nginx serves index.html for every unmatched path (ADR 0014,
@@ -13,10 +14,7 @@ export default defineRouter(({ store }) => {
     history: createWebHistory(import.meta.env.QUASAR_VUE_ROUTER_BASE)
   })
   const session = useSessionStore(store)
-  const allowed = (meta: RouteMeta) =>
-    (!meta.requires || session.canAll(...meta.requires)) &&
-    (!meta.requiresSome || session.can(...meta.requiresSome)) &&
-    (!meta.requiresAny || meta.requiresAny.some((pair) => session.canAll(...pair)))
+  const allowed = (meta: Parameters<typeof passesGate>[0]) => passesGate(meta, session)
 
   router.beforeEach(async (to) => {
     // Nothing authenticated renders before the session is known.
