@@ -30,12 +30,34 @@ vulnerabilities:
     purls: ["pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.5"]
     statement: "local IdP only (localhost/feathers-idp); fixed in Keycloak's next jar update"
     expired_at: 2026-10-31
-  # Dozzle v11.1.3 (newest) is a local-only log viewer (ADR 0002), never
+  # Dozzle v11.3.1 (newest) is a local-only log viewer (ADR 0002), never
   # deployed, reachable only through Nginx on the developer's machine.
   - id: CVE-2026-84445
     purls: ["pkg:golang/google.golang.org/grpc@v1.84.0"]
     statement: "local log viewer only (Dozzle); gone with Dozzle's next release"
     expired_at: 2026-11-30
+
+  # Go's October 2026 security release (Go 1.26.9 / 1.27.2, x/net 0.60.0),
+  # published 2026-10-09: denials of service in net/http (CVE-2026-78667,
+  # CVE-2026-78669, the latter in x/net too) and in crypto/tls's ECH
+  # (CVE-2026-97031). In images whose upstream had no release on the fixed
+  # versions by 2026-10-12: OpenBao, Prometheus, Loki, Alloy, Grafana, the
+  # postgres, pgbouncer, redis, node and blackbox exporters, NetBox's image,
+  # restic in the backup image, and Dozzle's x/net. Mailpit and Dozzle were
+  # updated to their releases on Go 1.27.2. Accepted briefly, decided with
+  # the user on 2026-10-12; check for releases at expiry.
+  - id: CVE-2026-78667
+    purls: ["pkg:golang/stdlib@v1.25.5", "pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5", "pkg:golang/stdlib@v1.26.6", "pkg:golang/stdlib@v1.26.7", "pkg:golang/stdlib@v1.27.1"]
+    statement: "Go stdlib and x/net in upstream images not yet rebuilt; accepted until their releases (2026-10-12)"
+    expired_at: 2026-10-26
+  - id: CVE-2026-78669
+    purls: ["pkg:golang/stdlib@v1.25.5", "pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5", "pkg:golang/stdlib@v1.26.6", "pkg:golang/stdlib@v1.26.7", "pkg:golang/stdlib@v1.27.1", "pkg:golang/golang.org/x/net@v0.47.0", "pkg:golang/golang.org/x/net@v0.55.0", "pkg:golang/golang.org/x/net@v0.57.0", "pkg:golang/golang.org/x/net@v0.58.0", "pkg:golang/golang.org/x/net@v0.59.0"]
+    statement: "Go stdlib and x/net in upstream images not yet rebuilt; accepted until their releases (2026-10-12)"
+    expired_at: 2026-10-26
+  - id: CVE-2026-97031
+    purls: ["pkg:golang/stdlib@v1.25.5", "pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5", "pkg:golang/stdlib@v1.26.6", "pkg:golang/stdlib@v1.26.7", "pkg:golang/stdlib@v1.27.1"]
+    statement: "Go stdlib and x/net in upstream images not yet rebuilt; accepted until their releases (2026-10-12)"
+    expired_at: 2026-10-26
 
   # Observability images (ADR 0022), each the newest release. Fixed in newer
   # Go and Go module versions that upstream has not released yet. Accepted
