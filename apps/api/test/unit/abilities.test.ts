@@ -80,8 +80,12 @@ describe('permission prerequisites (ADR 0037)', () => {
       permissions: ['documents.own', 'locations.create', 'locations.read', 'sites.read'],
       includedBy: { 'locations.read': ['locations.create'], 'sites.read': ['locations.create'] }
     })
-    // Held in its own right as well: not marked as included.
-    expect(withRequirements(['locations.create', 'sites.read']).includedBy).toEqual({ 'locations.read': ['locations.create'] })
+    // Held in its own right as well: still included, and so locked on the
+    // permissions page until what brings it goes.
+    expect(withRequirements(['locations.create', 'sites.read']).includedBy).toEqual({
+      'locations.read': ['locations.create'],
+      'sites.read': ['locations.create']
+    })
     expect(withRequirements(['roles.manage', 'nope']).permissions).toEqual(['nope', 'roles.manage'])
   })
 
