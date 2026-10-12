@@ -104,3 +104,45 @@ export const refreshDirectoryValues = async (app: Application, userId: string, t
   const { values } = entry
   await app.get('knex').transaction((trx) => applyDirectoryValues(app, trx, userId, values))
 }
+
+// An account carried over by a product's import of an older application's
+// data (ADR 0009, decided 2026-10-12): a person that application once
+// checked against the directory, which no longer knows them, because they
+// left the university. Their record has to come along with what they still
+// hold, so the account is made from the fields the import read, as they
+// are. Only an import calls this, and only for a TU-ID the directory does
+// not know: a person it knows gets their account through accountFor. An
+// existing account is returned as it is. The account gets the default role,
+// and its making is an audit event without an actor, naming the source. A
+// login, should the person come back, refreshes its fields as every login
+// does.
+export interface ImportedPerson {
+  tuId: string
+  givenName: string
+  surname: string
+  email: string | null
+}
+
+export const importedAccount = async (
+  trx: Knex | Knex.Transaction,
+  person: ImportedPerson,
+  { source }: { source: string }
+): Promise<AccountFor> => {
+  const existing: { id: string } | undefined = await trx('users').where({ tuId: person.tuId }).first('id')
+  if (existing) return { id: existing.id, created: false }
+
+  let row: { id: string } | undefined
+  try {
+    ;[row] = await trx('users')
+      .insert({ tuId: person.tuId, givenName: person.givenName, surname: person.surname, email: person.email, authSource: 'saml' })
+      .returning('id')
+  } catch (error) {
+    const { code, constraint } = error as { code?: string; constraint?: string }
+    if (code === '23505' && constraint === 'users_email_key') throw new Conflict('The address belongs to another account')
+    throw error
+  }
+  if (!row) throw new Error('account insert returned nothing')
+  await assignDefaultRole(trx, row.id)
+  await recordAudit(trx, { actorId: null, action: 'users.create', resourceType: 'users', resourceId: row.id, detail: { source } })
+  return { id: row.id, created: true }
+}
