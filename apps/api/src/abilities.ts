@@ -105,7 +105,9 @@ const CATALOGUE_ENTRIES = [
     can('create', 'data-exports')
     can('read', 'data-exports', { requestedBy: user.id })
   }),
-  entry('erasures.create', 'privacy', (can) => can('create', 'erasures')),
+  // Erasing a person needs finding them by TU-ID and handing over their
+  // data first, on the same page (ADR 0037, decided 2026-10-12).
+  entry('erasures.create', 'privacy', (can) => can('create', 'erasures'), { requires: ['users.read', 'data-exports.any'] }),
   entry('settings.manage', 'configuration', (can) => can(['read', 'patch'], 'settings')),
   entry('mail.manage', 'configuration', (can) => {
     can('read', 'mail-kinds')
@@ -342,7 +344,8 @@ export const isTokenPermission = (key: string): boolean => (TOKEN_PERMISSION_KEY
 export const defineTokenAbility = (owner: AbilityUser, tokenPermissions: readonly string[]): AppAbility => {
   const held = new Set(withRequirements(owner.permissions).permissions)
   const { can, rules } = new AbilityBuilder<AppAbility>(createMongoAbility)
-  for (const key of withRequirements(tokenPermissions).permissions) {
+  // What a token may not carry brings nothing either.
+  for (const key of withRequirements(tokenPermissions.filter(isTokenPermission)).permissions) {
     const found = CATALOGUE.get(key)
     if (found && held.has(key) && isTokenPermission(key)) grantEntry(found, can, owner)
   }

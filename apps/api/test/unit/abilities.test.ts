@@ -73,6 +73,7 @@ describe('permission prerequisites (ADR 0037)', () => {
   it("states the skeleton's own requirements", () => {
     expect(closureOf('locations.create')).toEqual(['locations.create', 'locations.read', 'sites.read'])
     expect(closureOf('locations.read')).toEqual(['locations.read', 'sites.read'])
+    expect(closureOf('erasures.create')).toEqual(['data-exports.any', 'erasures.create', 'users.read'])
   })
 
   it('includes what a permission requires, transitively, and says what brings it', () => {

@@ -62,6 +62,18 @@ describe('erasure (ADR 0011, 0013)', () => {
     expect((await knex()('users').where({ id: target.id }).first()).tuId).not.toBeNull()
   })
 
+  // ADR 0037: erasing includes finding the person and exporting their data,
+  // which the GDPR page does first.
+  it('finds, exports and erases a person with erasures.create alone', async () => {
+    await makeRole(app, 'erasure-only', ['erasures.create'])
+    const officer = await grantRoles(app, (await person()).id, ['erasure-only'])
+    const target = await person()
+    const as = { provider: 'rest' as const, user: officer, authenticated: true }
+    expect((await app.service('users').find({ ...as, query: { tuId: target.tuId!, $limit: 1 } })).data.map((user) => user.id)).toEqual([target.id])
+    await expect(app.service('data-exports').create({ subjectId: target.id }, as)).resolves.toMatchObject({ subjectId: target.id })
+    expect((await erase(officer, target.id)).status).toBe(201)
+  })
+
   it('erases a person: identifiers, sessions, export objects; audited and logged', async () => {
     const target = await person()
     const token = await tokenFor(target)
