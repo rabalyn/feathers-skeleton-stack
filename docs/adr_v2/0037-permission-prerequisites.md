@@ -20,6 +20,7 @@ Decided with the user on 2026-10-09.
 - **The catalogue is checked by a unit test**: every required key exists, no cycle, no skeleton entry requiring a product key, no token-grantable entry requiring a token-excluded one.
 - **The tests' `allBut(...keys)` leaves out every permission whose closure contains one of the keys**, so "everything but `sites.read`" still means no site is read, and a product permission may require a skeleton one without breaking the skeleton's tests.
 - The skeleton's own requirements as of this decision: `locations.read` requires `sites.read`, since a room is found within its building; `locations.create` requires `locations.read`.
+- `erasures.create` requires `users.read` and `data-exports.any` (decided with the user on 2026-10-12): the GDPR page finds the person by TU-ID through the users list and hands over their data before erasing it, and without them it found nobody but the caller and could export nobody else.
 
 ## Consequences
 
