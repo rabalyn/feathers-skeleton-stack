@@ -1,21 +1,30 @@
 import { expect, test } from '@playwright/test'
+import { adminApi } from './admin-api.js'
 import { ADMIN, OPERATOR, USER, loginAs, nav, navLabels, OPERATOR_ROLE, skeletonNav } from './support.js'
 
 // Roles and permissions (ADR 0011): an admin creates a role, grants it a
 // permission, previews it, and deletes it once nobody holds it. Nobody else
 // reaches the page.
 
-test('an admin creates, grants, previews and deletes a role', async ({ page }) => {
+test('an admin creates, grants, previews and deletes a role', async ({ browser, page }) => {
+  // The built-in roles: the skeleton's user and operator, and any a
+  // product's migrations seed beside them (ADR 0035).
+  const api = await adminApi(browser)
+  const seeded = await api.call<{ total: number }>('/roles?kind=seeded&$limit=0')
+  await api.close()
+  expect(seeded.total).toBeGreaterThanOrEqual(2)
+
   await loginAs(page, ADMIN)
   await nav(page).getByRole('link', { name: 'Rollen & Rechte' }).click()
 
   // The fixed, the built-in and the suite's own roles, as columns; a product
-  // may rename the built-in ones (ADR 0035), so they are known by their kind.
+  // may rename the built-in ones and seed more (ADR 0035), so they are known
+  // by their kind.
   const header = page.locator('thead')
   await expect(header).toContainText('Administration')
   await expect(header).toContainText('Fest: stets jedes Recht')
   await expect(header).toContainText('Haben alle Angemeldeten ohne Zuweisung')
-  await expect(header.getByText('Eingebaut: änderbar, nicht löschbar')).toHaveCount(2)
+  await expect(header.getByText('Eingebaut: änderbar, nicht löschbar')).toHaveCount(seeded.total)
   await expect(header).toContainText(OPERATOR_ROLE)
   await expect(page.getByRole('checkbox', { name: 'Administration: Einstellungen ändern' })).toBeDisabled()
 
