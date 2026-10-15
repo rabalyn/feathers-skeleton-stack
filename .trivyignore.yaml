@@ -2,7 +2,7 @@
 # image it belongs to, says why it is accepted, and expires: after
 # `expired_at` it blocks the gate again and has to be looked at.
 vulnerabilities:
-  # Keycloak 26.8.0 is the local and CI identity provider only (ADR 0008);
+  # Keycloak 26.8.1 is the local and CI identity provider only (ADR 0008);
   # it never runs in production, where the university IdP is used, and it is
   # the newest release. These are jars Keycloak bundles; they go when a
   # Keycloak release updates them.
