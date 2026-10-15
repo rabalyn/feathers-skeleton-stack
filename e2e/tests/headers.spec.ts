@@ -36,6 +36,9 @@ const expectApplicationHeaders = async (response: Response) => {
   await expectBaseHeaders(response)
   await expectOnce(response, 'referrer-policy', 'strict-origin-when-cross-origin')
   await expectOnce(response, 'permissions-policy', /camera=\(\)/)
+  // A feature is off, or allowed for the application itself (ADR 0018,
+  // PRODUCT_BROWSER_FEATURES), never for another origin.
+  for (const feature of (await values(response, 'permissions-policy'))[0]!.split(', ')) expect(feature).toMatch(/^[a-z-]+=\((self)?\)$/)
   await expectOnce(response, 'cross-origin-opener-policy', 'same-origin')
 }
 
