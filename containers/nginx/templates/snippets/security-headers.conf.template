@@ -14,7 +14,9 @@
 # HSTS, nosniff and Referrer-Policy are in base-headers.conf, shared with the
 # third-party virtual hosts; what follows is for the application only.
 include /etc/nginx/conf.d/snippets/base-headers.conf;
-# No browser feature the application does not use (decided 2026-10-02).
+# No browser feature the application does not use (decided 2026-10-02);
+# those a product names in PRODUCT_BROWSER_FEATURES become (self) at the
+# image build (browser-features.sh, ADR 0035).
 add_header Permissions-Policy "accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=()" always;
 # A window this origin opens, or that opens it, shares no browsing context
 # group with another origin. The SAML flow uses redirects and form posts,
