@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { accountFor } from '../../src/accounts.js'
+import { accountFor, importedAccount } from '../../src/accounts.js'
 import type { Application } from '../../src/app.js'
 import type { User } from '../../src/services/users/users.schema.js'
 import { createTestApp } from '../support/app.js'
@@ -84,5 +84,53 @@ describe('accountFor', () => {
       })
     ).rejects.toThrow('the loan failed')
     expect(await db()('users').where({ tu_id: 'bk004blk' })).toEqual([])
+  })
+})
+
+// ADR 0009, decided 2026-10-12: a product's import carries over a person the
+// directory no longer knows, from the fields it read.
+describe('importedAccount', () => {
+  const person = { tuId: 'gone0101', givenName: 'Ida', surname: 'Imported', email: 'ida.imported@example.org' }
+
+  it('makes the account from the fields given, with the default role, and records the source without an actor', async () => {
+    const knex = app.get('knex')
+    const account = await knex.transaction((trx) => importedAccount(trx, person, { source: 'v1-import' }))
+    expect(account.created).toBe(true)
+    const row = await db()('users').where({ id: account.id }).first()
+    expect(row).toMatchObject({
+      tu_id: 'gone0101',
+      given_name: 'Ida',
+      surname: 'Imported',
+      email: 'ida.imported@example.org',
+      auth_source: 'saml',
+      last_login_at: null
+    })
+    expect(await roleKeys(account.id)).toEqual(['user'])
+    const events = await created(account.id)
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({ actor_id: null, detail: { source: 'v1-import' } })
+  })
+
+  it('returns an existing account as it is', async () => {
+    const knex = app.get('knex')
+    const existing = await makeUser(app, 'gone0102', [])
+    await expect(
+      knex.transaction((trx) => importedAccount(trx, { ...person, tuId: 'gone0102', email: null }, { source: 'v1-import' }))
+    ).resolves.toEqual({ id: existing.id, created: false })
+    expect(await created(existing.id)).toHaveLength(0)
+  })
+
+  it('refuses an address another account holds, and takes none', async () => {
+    const knex = app.get('knex')
+    await expect(
+      knex.transaction((trx) =>
+        importedAccount(trx, { ...person, tuId: 'gone0103', email: 'IDA.imported@example.org' }, { source: 'v1-import' })
+      )
+    ).rejects.toMatchObject({ code: 409 })
+    expect(await db()('users').where({ tu_id: 'gone0103' })).toEqual([])
+    const account = await knex.transaction((trx) =>
+      importedAccount(trx, { ...person, tuId: 'gone0103', email: null }, { source: 'v1-import' })
+    )
+    expect(account.created).toBe(true)
   })
 })
