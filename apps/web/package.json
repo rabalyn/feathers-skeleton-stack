@@ -21,7 +21,7 @@
     "@feathersjs/socketio-client": "5.0.50",
     "@quasar/extras": "2.1.0",
     "dompurify": "3.4.16",
-    "markdown-it": "15.0.2",
+    "markdown-it": "15.0.3",
     "mermaid": "12.1.0",
     "pinia": "4.0.3",
     "quasar": "2.34.0",

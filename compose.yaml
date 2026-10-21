@@ -1190,7 +1190,7 @@ services:
       - trust:/trust:ro
 
   grafana:
-    image: docker.io/grafana/grafana@sha256:b28bae15e219c998fb0e0424ed724930cc61b1f61fb404d47c862f9a23f9e572 # 13.2.3
+    image: docker.io/grafana/grafana@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f # 13.2.4
     container_name: ${PRODUCT:?}-grafana
     environment:
       GF_SERVER_PROTOCOL: https
@@ -1298,7 +1298,7 @@ services:
       - trust:/trust:ro
 
   valkey-exporter:
-    image: docker.io/oliver006/redis_exporter@sha256:6ca518a72f30f7f576ef92963de1b91d3c3f5fd3aeac949f878bfda183587820 # v1.93.0
+    image: docker.io/oliver006/redis_exporter@sha256:0842ef7110e62b40bbde2d5c11f38c6fbd99f7100c75e3866637c1b335a1eff7 # v1.94.0
     container_name: ${PRODUCT:?}-valkey-exporter
     depends_on:
       valkey:
@@ -1337,7 +1337,7 @@ services:
   # The uptime check (ADR 0022), probing the public endpoint through Nginx.
   # In production it must run on another machine.
   blackbox:
-    image: quay.io/prometheus/blackbox-exporter@sha256:e753ff9f3fc458d02cca5eddab5a77e1c175eee484a8925ac7d524f04366c2fc # v0.28.0
+    image: quay.io/prometheus/blackbox-exporter@sha256:9613f2884689b6fad9f1939f6a3b0388c93a022cfaededb19545b329b5c83dea # v0.29.0
     container_name: ${PRODUCT:?}-blackbox
     user: "65534:65534"
     command:

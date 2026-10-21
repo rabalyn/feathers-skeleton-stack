@@ -8,7 +8,7 @@ After=valkey.service
 [Container]
 ContainerName=valkey-exporter
 Exec='--redis.addr=rediss://valkey:6379' '--redis.user=exporter' '--redis.password-file=/run/secrets/passwords.json' '--tls-ca-cert-file=/trust/ca.crt' '--tls-server-cert-file=/tls/tls.crt' '--tls-server-key-file=/tls/tls.key'
-Image=docker.io/oliver006/redis_exporter@sha256:6ca518a72f30f7f576ef92963de1b91d3c3f5fd3aeac949f878bfda183587820
+Image=docker.io/oliver006/redis_exporter@sha256:0842ef7110e62b40bbde2d5c11f38c6fbd99f7100c75e3866637c1b335a1eff7
 Network=app-data.network
 Network=observability.network
 Volume=valkey-exporter-secrets.volume:/run/secrets:ro
