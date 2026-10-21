@@ -28,7 +28,10 @@ export default defineRouter(({ store }) => {
     // API know whether somebody may bypass maintenance (ADR 0025).
     if (session.status === 'maintenance') return { name: 'maintenance' }
     if (!session.isAuthenticated) {
-      return { name: 'login', query: to.fullPath === '/' ? {} : { returnTo: to.fullPath } }
+      // The root's redirect to the profile is not where the person asked
+      // to go: after the login the root picks the start page anew.
+      const returnTo = to.redirectedFrom?.name === 'home' ? '/' : to.fullPath
+      return { name: 'login', query: returnTo === '/' ? {} : { returnTo } }
     }
     if (!allowed(to.meta)) return { name: 'profile' }
     // The root: a product's start page the person may open, before the

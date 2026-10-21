@@ -16,6 +16,11 @@ test('login, session restore, profile and immediate logout', async ({ page, cont
     }
   })
 
+  // The root goes to the login page without a page to come back to, so
+  // that the login lands on the start page (apps/web/src/product/start.ts).
+  await page.goto('/')
+  await expect(page).toHaveURL(/\/login$/)
+
   // An unauthenticated deep link goes to the login page and comes back.
   const refreshed = await loginAs(page, USER, '/profile')
   await expect(page).toHaveURL(/\/profile$/)
