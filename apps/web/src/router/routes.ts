@@ -49,7 +49,9 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
     children: [
-      { path: '', redirect: { name: 'profile' } },
+      // The root lands on the profile, or on a product's start page, which
+      // the router's guard picks once the session is known (product/start.ts).
+      { path: '', name: 'home', redirect: { name: 'profile' } },
       { path: 'profile', name: 'profile', component: () => import('@/pages/ProfilePage.vue') },
       // Under documents.own or documents.all (ADR 0011), and read-only in a
       // view-as (ADR 0028).

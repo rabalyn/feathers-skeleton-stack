@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { RouteRecordRaw } from 'vue-router'
 import { PRODUCT_NAV_LINKS } from '@/product/routes'
+import { PRODUCT_START_ROUTES } from '@/product/start'
 import routes from '@/router/routes'
 
 // ADR 0035: the product's pages sit beside the skeleton's. A route name used
@@ -18,5 +19,10 @@ describe('product routes', () => {
   it('links only to routes that exist', () => {
     const all = names(routes)
     expect(PRODUCT_NAV_LINKS.map((link) => link.name).filter((name) => !all.includes(name))).toEqual([])
+  })
+
+  it('starts only on routes that exist', () => {
+    const all = names(routes)
+    expect(PRODUCT_START_ROUTES.filter((name) => !all.includes(name))).toEqual([])
   })
 })

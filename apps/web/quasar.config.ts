@@ -8,6 +8,12 @@ import { defineConfig } from '#q-app'
 const productEnv = readFileSync(new URL('../../product.env', import.meta.url), 'utf8')
 const PRODUCT_DISPLAY_NAME = /^PRODUCT_DISPLAY_NAME=(['"]?)(.*)\1$/m.exec(productEnv)?.[2]
 if (!PRODUCT_DISPLAY_NAME) throw new Error('product.env sets no PRODUCT_DISPLAY_NAME')
+// The product's primary colour (ADR 0014, 0035), optional; Quasar's own
+// when product.env leaves it empty.
+const PRODUCT_BRAND_PRIMARY = /^PRODUCT_BRAND_PRIMARY=(['"]?)(.*)\1$/m.exec(productEnv)?.[2] ?? ''
+if (PRODUCT_BRAND_PRIMARY && !/^#[0-9a-fA-F]{6}$/.test(PRODUCT_BRAND_PRIMARY)) {
+  throw new Error('product.env: PRODUCT_BRAND_PRIMARY is not a colour #rrggbb')
+}
 
 // Where the dev server is reached through Nginx under the `dev` profile
 // (ADR 0014); the browser never talks to the dev server directly.
@@ -55,6 +61,7 @@ export default defineConfig((ctx) => ({
   framework: {
     lang: 'de-DE',
     iconSet: 'material-icons',
+    config: PRODUCT_BRAND_PRIMARY ? { brand: { primary: PRODUCT_BRAND_PRIMARY } } : {},
     plugins: ['Notify', 'Dialog']
   },
 

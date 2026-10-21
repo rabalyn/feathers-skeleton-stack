@@ -1,6 +1,7 @@
 import { defineRouter } from '#q-app'
 import { watch } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
+import { PRODUCT_START_ROUTES } from '@/product/start'
 import { useSessionStore } from '@/stores/session'
 import { passesGate } from './nav'
 import routes from './routes'
@@ -30,6 +31,12 @@ export default defineRouter(({ store }) => {
       return { name: 'login', query: to.fullPath === '/' ? {} : { returnTo: to.fullPath } }
     }
     if (!allowed(to.meta)) return { name: 'profile' }
+    // The root: a product's start page the person may open, before the
+    // profile it redirects to (product/start.ts).
+    if (to.redirectedFrom?.name === 'home') {
+      const start = PRODUCT_START_ROUTES.find((name) => router.hasRoute(name) && allowed(router.resolve({ name }).meta))
+      if (start && start !== to.name) return { name: start, replace: true }
+    }
     return true
   })
 
