@@ -58,6 +58,7 @@ Decided 2026-10-06.
   | `apps/api/src/product/jobs.ts` | job queues with their jobs and schedules, run by the worker beside the skeleton's | [0024](0024-background-jobs-bullmq.md) |
   | `apps/api/src/product/directory.ts` | further LDAP attributes, and what the product does with their values where an account is made and at every login (added 2026-10-07) | [0008](0008-authentication-saml2-ldap.md#a-products-further-attributes) |
   | `apps/web/src/product/routes.ts` | the pages in the main layout, and their links in the navigation drawer, after the profile | [0014](0014-frontend-quasar-vue.md) |
+  | `apps/web/src/product/start.ts` | the start page a visit to the root lands on, by gate (added 2026-10-21) | [0014](0014-frontend-quasar-vue.md) |
   | `apps/web/src/i18n/product/{de,en}.json` | the message catalogues | [0014](0014-frontend-quasar-vue.md) |
   | `e2e/tests/product/walk-fixtures.ts` | the records the gate walk creates before opening a page (added 2026-10-09) | [0038](0038-gates-cover-what-a-page-calls.md) |
 
@@ -71,6 +72,10 @@ Decided 2026-10-06.
   - **The end-to-end suite** leaves `everyone` alone, since a product's specs share its database, and makes no negative assertion on a permission a product may plausibly grant to everyone. Its global setup, logged in through the API as the run's break-glass account, gives op01oper the role `e2e-operator` and us01user and us02othr `e2e-user`, which hold what the skeleton seeds `operator` and `user` with. A navigation assertion checks the skeleton's links in their order and ignores links it does not know. The permissions page's built-in roles are counted as the API reports them, since a product may seed roles of its own beside `user` and `operator` (2026-10-15).
   - **What the seeded roles grant by default** is checked only where `PRODUCT` names the skeleton, in `roles.test.ts`. Compose passes `PRODUCT` to the `test` container for that.
   - Checked once by hand, with a throwaway migration that renamed `operator` and `user`, withdrew `documents.own`, `documents.all` and everything of `operator`, gave `user` `queues.read` and `everyone` `sites.read`: both suites passed but that one skeleton-only check.
+
+### The university's logos
+
+Decided 2026-10-21. The products built on the skeleton are the HRZ's applications for TU Darmstadt, and several print documents with the university's and the HRZ's logos. **The skeleton names their place but ships no logo**: it is public, and the logos may not be published with it. A product puts the originals, as the HRZ hands them out, in `branding/` (whose README lists them), and copies scaled for print in `apps/api/assets/branding/`, which `apps/api/src/branding.ts` names and the api image carries; both are new files of the product's own. A logo that is missing is left out of what the api prints, so the skeleton and its tests run without them. Their use follows the university's corporate design rules.
 
 ### The example content
 
@@ -87,6 +92,7 @@ Decided 2026-10-06. The skeleton's `documents` (service, page, the `documents.ow
   - The display name is what people read: the browser title, the web app's product name, the sender name of e-mail ([0027](0027-email-templates-and-sending.md)), the labels of local keys and certificates.
   - The ports are the local HTTPS and HTTP ports, distinct per product on one machine.
   - Optionally, the browser features its application uses, `PRODUCT_BROWSER_FEATURES`, which the Permissions-Policy allows for the application's own origin ([0018](0018-owasp-security-baseline.md), decided 2026-10-15).
+  - Optionally, its primary colour, `PRODUCT_BRAND_PRIMARY`, Quasar's brand colour `primary` ([0014](0014-frontend-quasar-vue.md), decided 2026-10-21).
   - The local fixtures stay skeleton-internal and are not renamed: the Keycloak realm `feathers`, the LDAP base `dc=feathers,dc=test`, the NetBox token key. Production replaces each of them by configuration.
 - **Several products' local stacks run at the same time on one machine.** Locally, container names carry the project name (`<project>-api`), the published ports are the product's own, and the public host names sit under the product's own domain (`app.<project>.localhost`), so browsers keep each product's cookies apart. Inside a stack, services still reach each other by their service names. This is implemented with the change that introduces it, which records the details in [0001](0001-one-stack-every-environment.md), [0002](0002-service-inventory-and-networks.md) and [0016](0016-nginx-and-tls-everywhere.md).
 - **In production, each product runs as its own rootless Podman user or on its own host.** Rootless Podman keeps container names, images and volumes per user, so the generated Quadlet units keep their unprefixed names (`api`, `nginx`) in every product.
