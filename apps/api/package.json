@@ -44,7 +44,7 @@
     "knex": "3.3.0",
     "ldapts": "9.2.0",
     "liquidjs": "10.29.0",
-    "markdown-it": "15.0.2",
+    "markdown-it": "15.0.3",
     "nodemailer": "10.0.13",
     "pg": "8.23.1",
     "pino": "10.3.1",
