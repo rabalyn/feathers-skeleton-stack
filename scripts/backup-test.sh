@@ -96,7 +96,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-for c in backup postgres s3 valkey openbao netbox; do running "$(ctr "$c")" || die "$(ctr "$c") is not running; run scripts/stack.sh up"; done
+for c in backup postgres s3 valkey openbao api worker netbox netbox-worker; do running "$(ctr "$c")" || die "$(ctr "$c") is not running; run scripts/stack.sh up"; done
 [[ -n $OPENBAO_IMAGE && -n $VALKEY_IMAGE ]] || die "images not found in compose.yaml"
 cleanup
 
@@ -213,6 +213,7 @@ SQL
 log "restoring into $RESTORE_DB"
 check "restore-db into a clean database" backup_sh restore-db "$RESTORE_DB" --erasures-from "$SOURCE_DB"
 check "restore-db refuses an existing database without --replace" fails backup_sh restore-db "$RESTORE_DB"
+check "restore-db --replace refuses while the api runs" fails backup_sh restore-db "$RESTORE_DB" --replace
 q() { psql_super "$RESTORE_DB" <<<"$1"; }
 check "the rows of the backup are there" test "$(q 'SELECT count(*) FROM users')/$(q 'SELECT count(*) FROM files')" = 3/3
 check "the avatar reference survived" test "$(q "SELECT avatar_file_id FROM users WHERE tu_id = 'bk01chck'")" = "$f2"
@@ -263,6 +264,7 @@ check "... for all of them" test "$(wc -l <<<"$references")" = 3
 log "restoring NetBox into $RESTORE_NETBOX"
 check "restore-netbox into a clean database" backup_sh restore-netbox "$RESTORE_NETBOX"
 check "restore-netbox refuses an existing database without --replace" fails backup_sh restore-netbox "$RESTORE_NETBOX"
+check "restore-netbox --replace refuses while NetBox runs" fails backup_sh restore-netbox "$RESTORE_NETBOX" --replace
 nq() { psql_super "$1" <<<"$2"; }
 check "NetBox's sites are there, with their ids" \
   test "$(nq "$RESTORE_NETBOX" "SELECT string_agg(id || facility, ',' ORDER BY id) FROM dcim_site")" = \

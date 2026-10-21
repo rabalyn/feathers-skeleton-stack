@@ -44,13 +44,22 @@
 # the test points it at a database, a bucket and repositories of its own.
 #
 # The containers are named as in production, `backup`, `postgres` and `s3`.
-# A local stack prefixes its containers with the project name (ADR 0035);
-# there, CONTAINER_PREFIX=<project>- names them.
+# A local stack prefixes its containers with the project name (ADR 0035):
+# when product.env names a project whose backup container exists, the
+# prefix is taken from it. CONTAINER_PREFIX, set even to empty, overrides.
 set -euo pipefail
 
-BACKUP=${BACKUP_CONTAINER:-${CONTAINER_PREFIX:-}backup}
-POSTGRES=${POSTGRES_CONTAINER:-${CONTAINER_PREFIX:-}postgres}
-S3=${S3_CONTAINER:-${CONTAINER_PREFIX:-}s3}
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+# The project name only: product.sh would set the prefix unconditionally,
+# and production keeps the bare names.
+if [[ ! -v CONTAINER_PREFIX && -r $ROOT/product.env ]]; then
+  project=$(set -a; source "$ROOT/product.env"; printf '%s' "${PRODUCT:-}")
+  if [[ -n $project ]] && podman container exists "$project-backup"; then CONTAINER_PREFIX=$project-; fi
+fi
+PREFIX=${CONTAINER_PREFIX:-}
+BACKUP=${BACKUP_CONTAINER:-${PREFIX}backup}
+POSTGRES=${POSTGRES_CONTAINER:-${PREFIX}postgres}
+S3=${S3_CONTAINER:-${PREFIX}s3}
 HELPER_IMAGE=docker.io/library/alpine:3.24.2@sha256:d56c381f961d307a21b3ca004cf1e3910f106644aefb1f43e654c8a56c4fd395
 
 log() { printf '\033[1mbackup:\033[0m %s %s\n' "$(date +%T)" "$*" >&2; }
@@ -120,7 +129,7 @@ restore_db() { # <database>
   fi
   if db_exists "$db"; then
     [[ $replace == true ]] || die "database $db exists; --replace drops it first"
-    if running api || running worker; then die "stop the api and the worker before replacing $db"; fi
+    if running "${PREFIX}api" || running "${PREFIX}worker"; then die "stop the api and the worker before replacing $db"; fi
   fi
   # Created as roles.sh creates `app`: owned by migrator, reachable by the
   # application roles and read by the backup role.
@@ -145,7 +154,7 @@ restore_netbox() { # <database>
   running "$POSTGRES" || die "$POSTGRES is not running"
   if db_exists "$db"; then
     [[ $replace == true ]] || die "database $db exists; --replace drops it first"
-    if running netbox || running netbox-worker; then die "stop netbox and netbox-worker before replacing $db"; fi
+    if running "${PREFIX}netbox" || running "${PREFIX}netbox-worker"; then die "stop netbox and netbox-worker before replacing $db"; fi
   fi
   # Created as roles.sh creates `netbox`.
   psql_super postgres <<SQL
