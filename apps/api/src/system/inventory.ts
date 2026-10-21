@@ -41,8 +41,8 @@ export const INVENTORY = [
   {
     "id": "netbox",
     "image": "docker.io/netboxcommunity/netbox",
-    "version": "v4.7.2-5.1.1",
-    "digest": "sha256:5a651e29340570b69585a56224ef5023ed1c6339cee6c7028c336e35099291bc"
+    "version": "v4.7.3-5.1.1",
+    "digest": "sha256:1d6e0b5fbd48da9868376900561ee55992e04446ce7861dab5e9a42ae01f3fcb"
   },
   {
     "id": "node",
@@ -77,8 +77,8 @@ export const INVENTORY = [
   {
     "id": "grafana",
     "image": "docker.io/grafana/grafana",
-    "version": "13.2.3",
-    "digest": "sha256:b28bae15e219c998fb0e0424ed724930cc61b1f61fb404d47c862f9a23f9e572"
+    "version": "13.2.4",
+    "digest": "sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f"
   },
   {
     "id": "alloy",
@@ -95,8 +95,8 @@ export const INVENTORY = [
   {
     "id": "blackbox-exporter",
     "image": "quay.io/prometheus/blackbox-exporter",
-    "version": "v0.28.0",
-    "digest": "sha256:e753ff9f3fc458d02cca5eddab5a77e1c175eee484a8925ac7d524f04366c2fc"
+    "version": "v0.29.0",
+    "digest": "sha256:9613f2884689b6fad9f1939f6a3b0388c93a022cfaededb19545b329b5c83dea"
   },
   {
     "id": "postgres-exporter",
@@ -113,8 +113,8 @@ export const INVENTORY = [
   {
     "id": "redis-exporter",
     "image": "docker.io/oliver006/redis_exporter",
-    "version": "v1.93.0",
-    "digest": "sha256:6ca518a72f30f7f576ef92963de1b91d3c3f5fd3aeac949f878bfda183587820"
+    "version": "v1.94.0",
+    "digest": "sha256:0842ef7110e62b40bbde2d5c11f38c6fbd99f7100c75e3866637c1b335a1eff7"
   },
   {
     "id": "host",
