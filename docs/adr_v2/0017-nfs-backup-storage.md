@@ -73,7 +73,7 @@ An NFS outage must fail backups and raise an alert. It must not prevent the API,
 
 CI runs a full cycle on every pipeline: create the backup role from scratch, back up all repositories onto real NFS, restore into a clean database, bucket, Valkey and OpenBao, verify representative contents, and check that object references in the restored database resolve to objects that exist. This is a required check.
 
-**Restores are a host procedure**, `scripts/backup.sh`, run by an administrator like `scripts/openbao.sh`, because the backup service's credentials are read-only and stay so. restic runs in the backup container; the data goes in through the target containers:
+**Restores are a host procedure**, `scripts/backup.sh`, run by an administrator like `scripts/openbao.sh`, because the backup service's credentials are read-only and stay so. It reaches the containers by their production names; on a local stack, whose names carry the project name ([0035](0035-products-derived-from-the-skeleton.md)), it takes the prefix from `product.env` when that project's `backup` container exists, and `CONTAINER_PREFIX` overrides either. restic runs in the backup container; the data goes in through the target containers:
 
 | Target | `scripts/backup.sh` | How |
 | --- | --- | --- |
