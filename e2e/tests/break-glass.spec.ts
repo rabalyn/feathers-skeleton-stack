@@ -26,6 +26,10 @@ test('the break-glass account logs in with its password and administers', async 
 
   await page.getByLabel('Passwort').fill(PASSWORD)
   await page.getByRole('button', { name: 'Anmelden' }).click()
+  // The root's start page: the profile here, a product's own where it
+  // names one an admin passes (apps/web/src/product/start.ts, ADR 0014).
+  await expect(page).not.toHaveURL(/\/break-glass$/)
+  await nav(page).getByRole('link', { name: 'Mein Profil' }).click()
   await expect(page).toHaveURL(/\/profile$/)
   await expect(page.locator('[data-field="email"]')).toHaveText(EMAIL)
   await expect(page.locator('[data-field="tuId"]')).toHaveText('')
