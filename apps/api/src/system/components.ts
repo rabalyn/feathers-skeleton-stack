@@ -29,6 +29,10 @@ export interface Component {
   rule: TagRule
   // The endoflife.date product, where it knows the component.
   eol?: string
+  // The lines it may move to, where the project marks some as long-term
+  // (ADR 0018): the LTS lines endoflife.date lists, or the even minors
+  // (Nginx's stable branch). Without it, every newer line counts.
+  lines?: 'lts' | 'even'
   live: LiveSource
 }
 
@@ -51,12 +55,12 @@ export const COMPONENTS: readonly Component[] = [
   { id: 'valkey', name: 'Valkey', rule: { lineDepth: 2 }, eol: 'valkey', live: { kind: 'valkey' } },
   { id: 'openbao', name: 'OpenBao', rule: { lineDepth: 2 }, eol: 'openbao', live: { kind: 'none' } },
   { id: 'garage', name: 'Garage', rule: { lineDepth: 2 }, live: build('garage_build_info') },
-  { id: 'nginx', name: 'Nginx', rule: { lineDepth: 2 }, eol: 'nginx', live: { kind: 'none' } },
+  { id: 'nginx', name: 'Nginx', rule: { lineDepth: 2 }, eol: 'nginx', lines: 'even', live: { kind: 'none' } },
   { id: 'netbox', name: 'NetBox', rule: { lineDepth: 2, revision: true }, live: { kind: 'netbox' } },
-  { id: 'node', name: 'Node.js', rule: { lineDepth: 1 }, eol: 'nodejs', live: { kind: 'process' } },
+  { id: 'node', name: 'Node.js', rule: { lineDepth: 1 }, eol: 'nodejs', lines: 'lts', live: { kind: 'process' } },
   { id: 'restic', name: 'restic', rule: { lineDepth: 2 }, live: { kind: 'none' } },
   { id: 'alpine', name: 'Alpine Linux', rule: { lineDepth: 2 }, eol: 'alpine-linux', live: { kind: 'none' } },
-  { id: 'prometheus', name: 'Prometheus', rule: { lineDepth: 2 }, eol: 'prometheus', live: build('prometheus_build_info') },
+  { id: 'prometheus', name: 'Prometheus', rule: { lineDepth: 2 }, eol: 'prometheus', lines: 'lts', live: build('prometheus_build_info') },
   { id: 'loki', name: 'Loki', rule: { lineDepth: 2 }, eol: 'grafana-loki', live: build('loki_build_info') },
   { id: 'grafana', name: 'Grafana', rule: { lineDepth: 2 }, eol: 'grafana', live: build('grafana_build_info') },
   { id: 'alloy', name: 'Alloy', rule: { lineDepth: 2 }, live: { kind: 'none' } },

@@ -563,3 +563,13 @@ vulnerabilities:
     purls: ["pkg:golang/github.com/klauspost/compress@v1.18.6"]
     statement: "restic 0.19.1 (newest) in the backup image; fixed in compress 1.18.7, not yet in a restic release"
     expired_at: 2026-11-04
+
+  # Go stdlib crypto/x509 (untrusted intermediates), fixed in Go 1.26.10 and
+  # 1.27.3, in Go binaries of upstream images not yet rebuilt: Grafana, Loki,
+  # Alloy, OpenBao, Mailpit, Dozzle and the exporters, restic in the backup
+  # image and the netbox image. Accepted briefly, decided with the user on
+  # 2026-10-22; check for releases at expiry.
+  - id: CVE-2026-111943
+    purls: ["pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5", "pkg:golang/stdlib@v1.26.6", "pkg:golang/stdlib@v1.26.7", "pkg:golang/stdlib@v1.26.9", "pkg:golang/stdlib@v1.27.1", "pkg:golang/stdlib@v1.27.2"]
+    statement: "Go stdlib in upstream images not yet rebuilt; accepted until their releases (2026-10-22)"
+    expired_at: 2026-11-05

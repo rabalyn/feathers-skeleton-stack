@@ -5,7 +5,7 @@
 ContainerName=prometheus
 Environment=ENVIRONMENT=local
 Exec='--config.file=/etc/prometheus/prometheus.yml' '--web.config.file=/etc/observability/web-config.yml' '--storage.tsdb.path=/prometheus' '--storage.tsdb.retention.time=14d'
-Image=docker.io/prom/prometheus@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+Image=docker.io/prom/prometheus@sha256:aafa9d694e6a883c02db516d9f6e5b84e14195f49a2a6456a4cca815edda72b9
 Memory=1gb
 Network=observability.network
 PodmanArgs=--cpus 1

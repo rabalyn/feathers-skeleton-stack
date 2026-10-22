@@ -35,8 +35,8 @@ export const INVENTORY = [
   {
     "id": "nginx",
     "image": "docker.io/library/nginx",
-    "version": "1.31.6-alpine",
-    "digest": "sha256:0530961ff0592b58c10f767535cc0abdfccf9e389ff7cc90f87320c1bc7e8506"
+    "version": "1.30.6-alpine",
+    "digest": "sha256:c59d1f8b1e0e42da75be973424cd72e23f7f8adfb54e982f4d1cd0216a5a5576"
   },
   {
     "id": "netbox",
@@ -65,8 +65,8 @@ export const INVENTORY = [
   {
     "id": "prometheus",
     "image": "docker.io/prom/prometheus",
-    "version": "v3.15.0",
-    "digest": "sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e"
+    "version": "v3.13.5",
+    "digest": "sha256:aafa9d694e6a883c02db516d9f6e5b84e14195f49a2a6456a4cca815edda72b9"
   },
   {
     "id": "loki",
