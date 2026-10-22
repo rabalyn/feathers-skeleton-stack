@@ -73,7 +73,14 @@ const samePrefix = (a: Version, b: Version, depth: number) => a.parts.slice(0, d
 // The release line of a version, as endoflife.date names it (`18`, `9.1`).
 export const lineOf = (version: Version, rule: TagRule) => version.parts.slice(0, rule.lineDepth).join('.')
 
-export const findUpdates = (running: string, tags: Iterable<string>, rule: TagRule): Updates => {
+// `accepts` limits the later lines to the ones a component may move to, such
+// as its LTS lines; newer patches in the running line always count.
+export const findUpdates = (
+  running: string,
+  tags: Iterable<string>,
+  rule: TagRule,
+  accepts: (line: string) => boolean = () => true
+): Updates => {
   const current = parseTag(running, rule)
   if (!current) throw new Error(`not a version tag: ${running}`)
   let patch: Version | null = null
@@ -85,6 +92,7 @@ export const findUpdates = (running: string, tags: Iterable<string>, rule: TagRu
     const candidate = parseTag(tag, rule)
     if (!candidate || !sameShape(candidate, current, rule) || compareVersions(candidate, current) <= 0) continue
     if (samePrefix(candidate, current, rule.lineDepth)) patch = newest(patch, candidate)
+    else if (!accepts(lineOf(candidate, rule))) continue
     else if (samePrefix(candidate, current, 1)) minor = newest(minor, candidate)
     else major = newest(major, candidate)
   }

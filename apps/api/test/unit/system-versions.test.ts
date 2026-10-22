@@ -57,6 +57,13 @@ describe('findUpdates', () => {
     })
   })
 
+  it('counts a later line only where the component accepts it, a patch always', () => {
+    const tags = ['v3.13.5', 'v3.13.6', 'v3.14.0', 'v3.15.1', 'v4.0.0', 'v4.1.0']
+    const lts = (line: string) => ['3.13', '4.0'].includes(line)
+    expect(findUpdates('v3.13.5', tags, { lineDepth: 2 }, lts)).toEqual({ patch: 'v3.13.6', minor: null, major: 'v4.0.0' })
+    expect(findUpdates('v3.13.5', tags, { lineDepth: 2 }, () => false)).toEqual({ patch: 'v3.13.6', minor: null, major: null })
+  })
+
   it('reports nothing when the running version is the newest', () => {
     expect(findUpdates('19.1-alpine', POSTGRES, { lineDepth: 1 })).toEqual({ patch: null, minor: null, major: null })
   })
