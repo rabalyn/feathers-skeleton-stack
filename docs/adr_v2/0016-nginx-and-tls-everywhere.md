@@ -35,7 +35,7 @@ Nginx reads its certificate from one path in every environment and reloads when 
 
 ### Nginx responsibilities
 
-- Runs the official image's **mainline** line (odd minor, `1.31.x-alpine`), not stable: nginx itself recommends mainline, fixes land there first, and the image is rebuilt and scanned like every other pin ([0018](0018-owasp-security-baseline.md)). Decided 2026-10-01, when the update moved it from 1.30.5.
+- Runs the official image's **stable** line (even minor, `1.30.x-alpine`), not mainline: the stack pins only long-term release lines where a project marks them ([0018](0018-owasp-security-baseline.md)), and stable is nginx's; it gets the security fixes, and the image is rebuilt and scanned like every other pin. Mainline (1.31) was run from 2026-10-01, because nginx recommends it and fixes land there first; changed 2026-10-22.
 - Without the official image's dynamic modules: the image removes `acme`, `geoip`, `image-filter`, `njs` and `xslt`, which `nginx.conf` never loads. They brought libgd, libtiff, libxml2 and some thirty other libraries, whose findings blocked the scan (CVE-2026-4775 in libtiff) for code nginx never ran. A module the configuration needs later is kept by taking it off that list in the same change. Decided 2026-10-09.
 
 - Terminates TLS; TLS 1.2 and 1.3 only. The TLS 1.2 suites are Mozilla's "intermediate" set, ECDHE with AEAD only; nginx's default list also offered CBC and SHA-1 suites (decided 2026-10-02).

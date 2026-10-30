@@ -74,6 +74,18 @@ const eolOf = (cycles: Cycle[], candidates: string[], today: string) => {
   return { eolLine: null, eol: null }
 }
 
+// The later lines a component may move to (its `lines`).
+const acceptsLine = (component: Component, cycles: Cycle[] | null, today: string) => {
+  if (component.lines === 'even') return (line: string) => Number(line.split('.').at(-1)) % 2 === 0
+  if (component.lines === 'lts') {
+    const lts = new Set(
+      (cycles ?? []).filter(({ lts }) => lts === true || (typeof lts === 'string' && lts <= today)).map(({ cycle }) => cycle)
+    )
+    return (line: string) => lts.has(line)
+  }
+  return undefined
+}
+
 const checkComponent = async (component: Component, input: UpdateCheckInput, today: string): Promise<Result> => {
   if (component.id === 'host') {
     const os = await input.hostOs()
@@ -89,7 +101,7 @@ const checkComponent = async (component: Component, input: UpdateCheckInput, tod
     input.sources.tags(declared.image),
     component.eol ? input.sources.cycles(component.eol) : Promise.resolve(null)
   ])
-  const updates = findUpdates(declared.version, tags, component.rule)
+  const updates = findUpdates(declared.version, tags, component.rule, acceptsLine(component, cycles, today))
   const line = lineOf(parseTag(declared.version, component.rule)!, component.rule)
   return { compared: declared.version, updates, ...(cycles ? eolOf(cycles, [line], today) : { eolLine: null, eol: null }) }
 }

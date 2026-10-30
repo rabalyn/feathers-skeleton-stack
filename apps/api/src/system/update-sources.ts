@@ -18,6 +18,8 @@ export interface Cycle {
   cycle: string
   // A date, or false while none is announced (true: reached, no date).
   eol: string | boolean
+  // Whether the line is long-term: true, or the date it becomes so.
+  lts?: string | boolean
 }
 
 export interface UpdateSources {

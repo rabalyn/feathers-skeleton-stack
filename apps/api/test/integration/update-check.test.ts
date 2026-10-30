@@ -126,6 +126,35 @@ describe('update check', () => {
     expect(await row('postgresql')).toMatchObject({ error: null, failingSince: null, checkedAt: fourth })
   })
 
+  it('counts a later line of a component held to long-term lines only once it is one', async () => {
+    // ADR 0018: Prometheus on its LTS line, Nginx on its stable (even) minors.
+    const prometheus = declared('prometheus')
+    const [major, minor] = prometheus.version!.slice(1).split('.').map(Number) as [number, number]
+    const nginx = declared('nginx')
+    const [nMajor, nMinor] = nginx.version!.split('.').map(Number) as [number, number]
+    const sources = fakeSources(
+      {
+        [prometheus.image!]: [prometheus.version!, `v${major}.${minor + 1}.0`, `v${major + 1}.0.0`, `v${major + 1}.1.0`],
+        [nginx.image!]: [nginx.version!, `${nMajor}.${nMinor + 1}.0-alpine`, `${nMajor}.${nMinor + 2}.0-alpine`]
+      },
+      {
+        prometheus: [
+          { cycle: `${major}.${minor}`, eol: '2027-07-31', lts: true },
+          { cycle: `${major}.${minor + 1}`, eol: '2026-12-01', lts: false },
+          { cycle: `${major + 1}.0`, eol: false, lts: '2026-11-01' },
+          { cycle: `${major + 1}.1`, eol: false, lts: false }
+        ]
+      }
+    )
+    await run(sources, new Date('2026-10-22T03:30:00Z'))
+    expect(await row('prometheus')).toMatchObject({ latestMinor: null, latestMajor: null })
+    expect(await row('nginx')).toMatchObject({ latestMinor: `${nMajor}.${nMinor + 2}.0-alpine` })
+
+    // The next major's first line has become LTS.
+    await run(sources, new Date('2026-11-02T03:30:00Z'))
+    expect(await row('prometheus')).toMatchObject({ latestMinor: null, latestMajor: `v${major + 1}.0.0` })
+  })
+
   it('knows no end of life for an OS endoflife.date does not cover', async () => {
     await run(fakeSources(), new Date('2026-10-01T03:30:00Z'), { id: 'cachyos', version_id: '', pretty_name: 'CachyOS' })
     expect(await row('host')).toMatchObject({ eolLine: null, eol: null, error: null })

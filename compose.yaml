@@ -1126,7 +1126,7 @@ services:
   # memory are capped so monitoring cannot starve the application.
 
   prometheus:
-    image: docker.io/prom/prometheus@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e # v3.15.0
+    image: docker.io/prom/prometheus@sha256:aafa9d694e6a883c02db516d9f6e5b84e14195f49a2a6456a4cca815edda72b9 # v3.13.5
     container_name: ${PRODUCT:?}-prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
