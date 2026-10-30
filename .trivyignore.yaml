@@ -29,7 +29,7 @@ vulnerabilities:
   - id: CVE-2026-68497
     purls: ["pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.5"]
     statement: "local IdP only (localhost/feathers-idp); fixed in Keycloak's next jar update"
-    expired_at: 2026-10-31
+    expired_at: 2026-11-13
   # Dozzle v11.3.1 (newest) is a local-only log viewer (ADR 0002), never
   # deployed, reachable only through Nginx on the developer's machine.
   - id: CVE-2026-84445
