@@ -23,8 +23,8 @@ export const INVENTORY = [
   {
     "id": "openbao",
     "image": "docker.io/openbao/openbao",
-    "version": "2.7.1",
-    "digest": "sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005"
+    "version": "2.7.2",
+    "digest": "sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f"
   },
   {
     "id": "garage",
@@ -41,8 +41,8 @@ export const INVENTORY = [
   {
     "id": "netbox",
     "image": "docker.io/netboxcommunity/netbox",
-    "version": "v4.7.3-5.1.1",
-    "digest": "sha256:1d6e0b5fbd48da9868376900561ee55992e04446ce7861dab5e9a42ae01f3fcb"
+    "version": "v4.7.4-5.1.1",
+    "digest": "sha256:69cd72d0b0e4928a90940a7011954aaa7060c75fddd8dc6cea2f19407bae45b1"
   },
   {
     "id": "node",
@@ -71,20 +71,20 @@ export const INVENTORY = [
   {
     "id": "loki",
     "image": "docker.io/grafana/loki",
-    "version": "3.7.8",
-    "digest": "sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193"
+    "version": "3.7.9",
+    "digest": "sha256:0db216b630ae1f348a1584c67f3cead8b4c1fc839169a39501db664744158e28"
   },
   {
     "id": "grafana",
     "image": "docker.io/grafana/grafana",
-    "version": "13.2.4",
-    "digest": "sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f"
+    "version": "13.3.0",
+    "digest": "sha256:488984b716c0862639f91a698adbe2862677a5a07bad42da5f03f3030883b205"
   },
   {
     "id": "alloy",
     "image": "docker.io/grafana/alloy",
-    "version": "v1.20.1",
-    "digest": "sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f"
+    "version": "v1.21.3",
+    "digest": "sha256:8ab871206bd2d8f89277f53abffee5f452a293980788d52f85fa183a87a505a4"
   },
   {
     "id": "node-exporter",
@@ -95,8 +95,8 @@ export const INVENTORY = [
   {
     "id": "blackbox-exporter",
     "image": "quay.io/prometheus/blackbox-exporter",
-    "version": "v0.29.0",
-    "digest": "sha256:9613f2884689b6fad9f1939f6a3b0388c93a022cfaededb19545b329b5c83dea"
+    "version": "v0.29.1",
+    "digest": "sha256:ea1c7aa3ef3f307cd03e85f34abb604478ccb90b567fc690da0cd9776da76b13"
   },
   {
     "id": "postgres-exporter",

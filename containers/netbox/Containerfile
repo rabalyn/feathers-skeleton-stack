@@ -1,7 +1,7 @@
 # NetBox (ADR 0031): the upstream image with this stack's configuration,
 # the SAML group sync, the setup job and the seed files baked in, so the
 # image production pulls carries the data it seeds.
-FROM docker.io/netboxcommunity/netbox:v4.7.3-5.1.1@sha256:1d6e0b5fbd48da9868376900561ee55992e04446ce7861dab5e9a42ae01f3fcb
+FROM docker.io/netboxcommunity/netbox:v4.7.4-5.1.1@sha256:69cd72d0b0e4928a90940a7011954aaa7060c75fddd8dc6cea2f19407bae45b1
 COPY containers/netbox/config/feathers.py /etc/netbox/config/feathers.py
 COPY containers/netbox/feathers_netbox /opt/netbox/netbox/feathers_netbox
 COPY containers/netbox/seed/tu-darmstadt /opt/feathers/seed/tu-darmstadt

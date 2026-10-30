@@ -265,6 +265,15 @@ restore_openbao() { # <container> ; root token on stdin
     IFS= read -r BAO_TOKEN; export BAO_TOKEN
     rc=0; bao operator raft snapshot restore -force /tmp/restore.snap || rc=$?
     rm -f /tmp/restore.snap; exit $rc'
+  # OpenBao seals itself after the restore, which since 2.7.2 can be a
+  # moment after the command returns; `bao status` exits 2 once it is sealed.
+  local rc
+  for _ in $(seq 30); do
+    rc=0; podman exec "$container" bao status >/dev/null 2>&1 || rc=$?
+    [[ $rc -eq 2 ]] && break
+    sleep 1
+  done
+  [[ $rc -eq 2 ]] || die "$container did not seal after the restore"
   log "restored; unseal $container with the unseal key of the backed-up OpenBao"
 }
 

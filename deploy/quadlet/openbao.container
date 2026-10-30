@@ -6,7 +6,7 @@ ContainerName=openbao
 Entrypoint=["/bin/sh","/openbao/entrypoint.sh"]
 Environment=BAO_ADDR=https://127.0.0.1:8200 BAO_CACERT=/openbao/trust/ca.crt
 Exec=server '-config=/openbao/config/server.hcl'
-Image=docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005
+Image=docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f
 Network=secrets.network
 User=root
 Volume=../../containers/openbao/entrypoint.sh:/openbao/entrypoint.sh:ro,Z
