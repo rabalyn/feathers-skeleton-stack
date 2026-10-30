@@ -37,497 +37,6 @@ vulnerabilities:
     statement: "local log viewer only (Dozzle); gone with Dozzle's next release"
     expired_at: 2026-11-30
 
-  # Go's October 2026 security release (Go 1.26.9 / 1.27.2, x/net 0.60.0),
-  # published 2026-10-09: denials of service in net/http (CVE-2026-78667,
-  # CVE-2026-78669, the latter in x/net too) and in crypto/tls's ECH
-  # (CVE-2026-97031). In images whose upstream had no release on the fixed
-  # versions by 2026-10-12: OpenBao, Prometheus, Loki, Alloy, Grafana, the
-  # postgres, pgbouncer, redis, node and blackbox exporters, NetBox's image,
-  # restic in the backup image, and Dozzle's x/net. Mailpit and Dozzle were
-  # updated to their releases on Go 1.27.2. Accepted briefly, decided with
-  # the user on 2026-10-12; check for releases at expiry.
-  - id: CVE-2026-78667
-    purls: ["pkg:golang/stdlib@v1.25.5", "pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5", "pkg:golang/stdlib@v1.26.6", "pkg:golang/stdlib@v1.26.7", "pkg:golang/stdlib@v1.27.1"]
-    statement: "Go stdlib and x/net in upstream images not yet rebuilt; accepted until their releases (2026-10-12)"
-    expired_at: 2026-10-26
-  - id: CVE-2026-78669
-    purls: ["pkg:golang/stdlib@v1.25.5", "pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5", "pkg:golang/stdlib@v1.26.6", "pkg:golang/stdlib@v1.26.7", "pkg:golang/stdlib@v1.27.1", "pkg:golang/golang.org/x/net@v0.47.0", "pkg:golang/golang.org/x/net@v0.55.0", "pkg:golang/golang.org/x/net@v0.57.0", "pkg:golang/golang.org/x/net@v0.58.0", "pkg:golang/golang.org/x/net@v0.59.0"]
-    statement: "Go stdlib and x/net in upstream images not yet rebuilt; accepted until their releases (2026-10-12)"
-    expired_at: 2026-10-26
-  - id: CVE-2026-97031
-    purls: ["pkg:golang/stdlib@v1.25.5", "pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5", "pkg:golang/stdlib@v1.26.6", "pkg:golang/stdlib@v1.26.7", "pkg:golang/stdlib@v1.27.1"]
-    statement: "Go stdlib and x/net in upstream images not yet rebuilt; accepted until their releases (2026-10-12)"
-    expired_at: 2026-10-26
-
-  # Observability images (ADR 0022), each the newest release. Fixed in newer
-  # Go and Go module versions that upstream has not released yet. Accepted
-  # while the stack runs only on developer machines; they expire before the
-  # first production release, by which the upstream releases should have
-  # them. If not, trim or rebuild those images then (decided 2026-09-25).
-  # Grafana 13.2.3: 33 advisories.
-  - id: CVE-2026-14456
-    purls: ["pkg:apk/alpine/libcrypto3@3.5.7-r0?arch=x86_64&distro=3.24.1", "pkg:apk/alpine/libssl3@3.5.7-r0?arch=x86_64&distro=3.24.1"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-43871
-    purls: ["pkg:golang/github.com/apache/thrift@v0.23.1-0.20260429145742-d2acd3c49e58"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-84445
-    purls: ["pkg:golang/google.golang.org/grpc@v1.79.3", "pkg:golang/google.golang.org/grpc@v1.81.1", "pkg:golang/google.golang.org/grpc@v1.82.1", "pkg:golang/google.golang.org/grpc@v1.83.0", "pkg:golang/google.golang.org/grpc@v1.83.1"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-46600
-    purls: ["pkg:golang/golang.org/x/net@v0.51.0", "pkg:golang/golang.org/x/net@v0.55.0", "pkg:golang/stdlib@v1.26.3", "pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56852
-    purls: ["pkg:golang/golang.org/x/text@v0.34.0", "pkg:golang/golang.org/x/text@v0.37.0"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-84304
-    purls: ["pkg:golang/google.golang.org/grpc@v1.79.3", "pkg:golang/google.golang.org/grpc@v1.81.1", "pkg:golang/google.golang.org/grpc@v1.82.1", "pkg:golang/google.golang.org/grpc@v1.83.0"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: GHSA-hrxh-6v49-42gf
-    purls: ["pkg:golang/google.golang.org/grpc@v1.79.3", "pkg:golang/google.golang.org/grpc@v1.81.1"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-33818
-    purls: ["pkg:golang/stdlib@v1.25.7", "pkg:golang/stdlib@v1.26.3", "pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39821
-    purls: ["pkg:golang/golang.org/x/net@v0.51.0", "pkg:golang/stdlib@v1.25.7", "pkg:golang/stdlib@v1.26.3", "pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39822
-    purls: ["pkg:golang/stdlib@v1.25.7", "pkg:golang/stdlib@v1.26.3", "pkg:golang/stdlib@v1.26.4"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56853
-    purls: ["pkg:golang/stdlib@v1.25.7", "pkg:golang/stdlib@v1.26.3", "pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56858
-    purls: ["pkg:golang/stdlib@v1.25.7", "pkg:golang/stdlib@v1.26.3", "pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56859
-    purls: ["pkg:golang/stdlib@v1.25.7", "pkg:golang/stdlib@v1.26.3", "pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56860
-    purls: ["pkg:golang/stdlib@v1.25.7", "pkg:golang/stdlib@v1.26.3", "pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56862
-    purls: ["pkg:golang/stdlib@v1.25.7", "pkg:golang/stdlib@v1.26.3", "pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-29181
-    purls: ["pkg:golang/go.opentelemetry.io/otel@v1.40.0"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39883
-    purls: ["pkg:golang/go.opentelemetry.io/otel/sdk@v1.40.0"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-25681
-    purls: ["pkg:golang/golang.org/x/net@v0.51.0"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-27136
-    purls: ["pkg:golang/golang.org/x/net@v0.51.0"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-33814
-    purls: ["pkg:golang/golang.org/x/net@v0.51.0", "pkg:golang/stdlib@v1.25.7"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-25679
-    purls: ["pkg:golang/stdlib@v1.25.7"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-27145
-    purls: ["pkg:golang/stdlib@v1.25.7", "pkg:golang/stdlib@v1.26.3"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-32280
-    purls: ["pkg:golang/stdlib@v1.25.7"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-32281
-    purls: ["pkg:golang/stdlib@v1.25.7"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-32283
-    purls: ["pkg:golang/stdlib@v1.25.7"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-33811
-    purls: ["pkg:golang/stdlib@v1.25.7"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39820
-    purls: ["pkg:golang/stdlib@v1.25.7"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39836
-    purls: ["pkg:golang/stdlib@v1.25.7"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-42499
-    purls: ["pkg:golang/stdlib@v1.25.7"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-42504
-    purls: ["pkg:golang/stdlib@v1.25.7", "pkg:golang/stdlib@v1.26.3"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56854
-    purls: ["pkg:golang/golang.org/x/crypto@v0.52.0"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-21728
-    purls: ["pkg:golang/github.com/grafana/tempo@v1.5.1-0.20250529124718-87c2dc380cec", "pkg:golang/github.com/grafana/tempo@v1.5.1-0.20260910130453-bcfe9f230c1d"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-28377
-    purls: ["pkg:golang/github.com/grafana/tempo@v1.5.1-0.20250529124718-87c2dc380cec", "pkg:golang/github.com/grafana/tempo@v1.5.1-0.20260910130453-bcfe9f230c1d"]
-    statement: "Grafana, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  # blackbox_exporter v0.28.0: 39 advisories.
-  - id: CVE-2026-39828
-    purls: ["pkg:golang/golang.org/x/crypto@v0.45.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39829
-    purls: ["pkg:golang/golang.org/x/crypto@v0.45.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39830
-    purls: ["pkg:golang/golang.org/x/crypto@v0.45.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39831
-    purls: ["pkg:golang/golang.org/x/crypto@v0.45.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39832
-    purls: ["pkg:golang/golang.org/x/crypto@v0.45.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39835
-    purls: ["pkg:golang/golang.org/x/crypto@v0.45.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-42508
-    purls: ["pkg:golang/golang.org/x/crypto@v0.45.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-46595
-    purls: ["pkg:golang/golang.org/x/crypto@v0.45.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-46597
-    purls: ["pkg:golang/golang.org/x/crypto@v0.45.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56854
-    purls: ["pkg:golang/golang.org/x/crypto@v0.45.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-25681
-    purls: ["pkg:golang/golang.org/x/net@v0.47.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-27136
-    purls: ["pkg:golang/golang.org/x/net@v0.47.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-33814
-    purls: ["pkg:golang/golang.org/x/net@v0.47.0", "pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39821
-    purls: ["pkg:golang/golang.org/x/net@v0.47.0", "pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-46600
-    purls: ["pkg:golang/golang.org/x/net@v0.47.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56852
-    purls: ["pkg:golang/golang.org/x/text@v0.31.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-33186
-    purls: ["pkg:golang/google.golang.org/grpc@v1.77.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-84304
-    purls: ["pkg:golang/google.golang.org/grpc@v1.77.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-84445
-    purls: ["pkg:golang/google.golang.org/grpc@v1.77.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: GHSA-hrxh-6v49-42gf
-    purls: ["pkg:golang/google.golang.org/grpc@v1.77.0"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2025-68121
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2025-61726
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-25679
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-27145
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-32280
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-32281
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-32283
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-33811
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-33818
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39820
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39822
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39836
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-42499
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-42504
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56853
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56858
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56859
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56860
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56862
-    purls: ["pkg:golang/stdlib@v1.25.5"]
-    statement: "blackbox_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  # node_exporter v1.12.1: 9 advisories.
-  - id: CVE-2026-56854
-    purls: ["pkg:golang/golang.org/x/crypto@v0.54.0"]
-    statement: "node_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-33818
-    purls: ["pkg:golang/stdlib@v1.26.5"]
-    statement: "node_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39821
-    purls: ["pkg:golang/stdlib@v1.26.5"]
-    statement: "node_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-46600
-    purls: ["pkg:golang/stdlib@v1.26.5"]
-    statement: "node_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56853
-    purls: ["pkg:golang/stdlib@v1.26.5"]
-    statement: "node_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56858
-    purls: ["pkg:golang/stdlib@v1.26.5"]
-    statement: "node_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56859
-    purls: ["pkg:golang/stdlib@v1.26.5"]
-    statement: "node_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56860
-    purls: ["pkg:golang/stdlib@v1.26.5"]
-    statement: "node_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56862
-    purls: ["pkg:golang/stdlib@v1.26.5"]
-    statement: "node_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  # postgres_exporter v0.20.1: 11 advisories.
-  - id: CVE-2026-56854
-    purls: ["pkg:golang/golang.org/x/crypto@v0.53.0"]
-    statement: "postgres_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-46600
-    purls: ["pkg:golang/golang.org/x/net@v0.55.0", "pkg:golang/stdlib@v1.26.4"]
-    statement: "postgres_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56852
-    purls: ["pkg:golang/golang.org/x/text@v0.38.0"]
-    statement: "postgres_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-33818
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "postgres_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39821
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "postgres_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39822
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "postgres_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56853
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "postgres_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56858
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "postgres_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56859
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "postgres_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56860
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "postgres_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56862
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "postgres_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  # pgbouncer_exporter v0.12.1: 20 advisories.
-  - id: CVE-2026-39828
-    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39829
-    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39830
-    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39831
-    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39832
-    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39835
-    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-42508
-    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-46595
-    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-46597
-    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56854
-    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-46600
-    purls: ["pkg:golang/golang.org/x/net@v0.55.0", "pkg:golang/stdlib@v1.26.4"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56852
-    purls: ["pkg:golang/golang.org/x/text@v0.37.0"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-33818
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39821
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-39822
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56853
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56858
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56859
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56860
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-  - id: CVE-2026-56862
-    purls: ["pkg:golang/stdlib@v1.26.4"]
-    statement: "pgbouncer_exporter, fixed upstream, not yet released; local stack only until production"
-    expired_at: 2026-10-25
-
-  # Grafana Alloy v1.20.1 (newest) is built on Ubuntu 24.04, whose OpenSSL
-  # fix is released but not yet in a rebuilt Alloy image. Our own images
-  # upgrade OpenSSL in their Containerfiles instead (decided 2026-09-30).
-  - id: CVE-2026-84782
-    purls:
-      - "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.15?arch=amd64&distro=ubuntu-24.04"
-      - "pkg:deb/ubuntu/openssl@3.0.13-0ubuntu3.15?arch=amd64&distro=ubuntu-24.04"
-    statement: "Grafana Alloy image, Ubuntu fix released, image not yet rebuilt upstream"
-    expired_at: 2026-10-31
-
   # Advisories published by 2026-10-21 in images whose newest release does
   # not carry the fix yet: Grafana 13.2.4's kin-openapi, golang.org/x/text
   # in the postgres, pgbouncer and node exporters (v0.20.1, v0.12.1,
@@ -573,3 +82,325 @@ vulnerabilities:
     purls: ["pkg:golang/stdlib@v1.26.4", "pkg:golang/stdlib@v1.26.5", "pkg:golang/stdlib@v1.26.6", "pkg:golang/stdlib@v1.26.7", "pkg:golang/stdlib@v1.26.9", "pkg:golang/stdlib@v1.27.1", "pkg:golang/stdlib@v1.27.2"]
     statement: "Go stdlib in upstream images not yet rebuilt; accepted until their releases (2026-10-22)"
     expired_at: 2026-11-05
+
+  # Expired advisories still open on 2026-10-30, in images whose newest
+  # release (newest LTS release for Prometheus) does not carry the fix:
+  # the images that had one were updated the same day. Accepted briefly,
+  # decided with the user on 2026-10-30; check for releases at expiry.
+  # Grafana 13.3.0: 5 advisories.
+  - id: CVE-2026-78669
+    purls: ["pkg:golang/golang.org/x/net@v0.58.0", "pkg:golang/stdlib@v1.26.7", "pkg:golang/golang.org/x/net@v0.59.0"]
+    statement: "Grafana, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-78667
+    purls: ["pkg:golang/stdlib@v1.26.7"]
+    statement: "Grafana, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-97031
+    purls: ["pkg:golang/stdlib@v1.26.7"]
+    statement: "Grafana, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-21728
+    purls: ["pkg:golang/github.com/grafana/tempo@v1.5.1-0.20260910130453-bcfe9f230c1d"]
+    statement: "Grafana, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-28377
+    purls: ["pkg:golang/github.com/grafana/tempo@v1.5.1-0.20260910130453-bcfe9f230c1d"]
+    statement: "Grafana, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  # Keycloak 26.8.1, the local IdP only (ADR 0008): 2 advisories.
+  - id: CVE-2026-114406
+    purls: ["pkg:rpm/redhat/ca-certificates@2025.2.80_v9.0.305-91.el9?arch=noarch&distro=redhat-9.8"]
+    statement: "local IdP only (localhost/feathers-idp); no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-102554
+    purls: ["pkg:maven/com.google.guava/guava@33.6.0-jre"]
+    statement: "local IdP only (localhost/feathers-idp); no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  # node_exporter v1.12.1: 12 advisories.
+  - id: CVE-2026-56854
+    purls: ["pkg:golang/golang.org/x/crypto@v0.54.0"]
+    statement: "node_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-78669
+    purls: ["pkg:golang/golang.org/x/net@v0.57.0", "pkg:golang/stdlib@v1.26.5"]
+    statement: "node_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-33818
+    purls: ["pkg:golang/stdlib@v1.26.5"]
+    statement: "node_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-39821
+    purls: ["pkg:golang/stdlib@v1.26.5"]
+    statement: "node_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-46600
+    purls: ["pkg:golang/stdlib@v1.26.5"]
+    statement: "node_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56853
+    purls: ["pkg:golang/stdlib@v1.26.5"]
+    statement: "node_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56858
+    purls: ["pkg:golang/stdlib@v1.26.5"]
+    statement: "node_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56859
+    purls: ["pkg:golang/stdlib@v1.26.5"]
+    statement: "node_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56860
+    purls: ["pkg:golang/stdlib@v1.26.5"]
+    statement: "node_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56862
+    purls: ["pkg:golang/stdlib@v1.26.5"]
+    statement: "node_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-78667
+    purls: ["pkg:golang/stdlib@v1.26.5"]
+    statement: "node_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-97031
+    purls: ["pkg:golang/stdlib@v1.26.5"]
+    statement: "node_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  # OpenBao 2.7.2: 1 advisories.
+  - id: CVE-2026-116587
+    purls: ["pkg:golang/github.com/go-jose/go-jose/v4@v4.1.4"]
+    statement: "OpenBao, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  # pgbouncer_exporter v0.12.1: 23 advisories.
+  - id: CVE-2026-39828
+    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-39829
+    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-39830
+    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-39831
+    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-39832
+    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-39835
+    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-42508
+    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-46595
+    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-46597
+    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56854
+    purls: ["pkg:golang/golang.org/x/crypto@v0.51.0"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-46600
+    purls: ["pkg:golang/golang.org/x/net@v0.55.0", "pkg:golang/stdlib@v1.26.4"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-78669
+    purls: ["pkg:golang/golang.org/x/net@v0.55.0", "pkg:golang/stdlib@v1.26.4"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56852
+    purls: ["pkg:golang/golang.org/x/text@v0.37.0"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-33818
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-39821
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-39822
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56853
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56858
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56859
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56860
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56862
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-78667
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-97031
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "pgbouncer_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  # postgres_exporter v0.20.1: 14 advisories.
+  - id: CVE-2026-56854
+    purls: ["pkg:golang/golang.org/x/crypto@v0.53.0"]
+    statement: "postgres_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-46600
+    purls: ["pkg:golang/golang.org/x/net@v0.55.0", "pkg:golang/stdlib@v1.26.4"]
+    statement: "postgres_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-78669
+    purls: ["pkg:golang/golang.org/x/net@v0.55.0", "pkg:golang/stdlib@v1.26.4"]
+    statement: "postgres_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56852
+    purls: ["pkg:golang/golang.org/x/text@v0.38.0"]
+    statement: "postgres_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-33818
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "postgres_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-39821
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "postgres_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-39822
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "postgres_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56853
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "postgres_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56858
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "postgres_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56859
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "postgres_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56860
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "postgres_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56862
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "postgres_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-78667
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "postgres_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-97031
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "postgres_exporter, fixed upstream, not yet released; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  # PostgreSQL 18.6-alpine: 2 advisories.
+  - id: CVE-2026-111497
+    purls: ["pkg:apk/alpine/brotli-libs@1.2.0-r1?arch=x86_64&distro=3.24.2"]
+    statement: "PostgreSQL image, Alpine fix not yet in a rebuilt image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-92392
+    purls: ["pkg:apk/alpine/libcurl@8.22.0-r0?arch=x86_64&distro=3.24.2"]
+    statement: "PostgreSQL image, Alpine fix not yet in a rebuilt image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  # Prometheus 3.13.5 (LTS; 3.15.1 has the fix but is not LTS): 1 advisories.
+  - id: CVE-2026-84445
+    purls: ["pkg:golang/google.golang.org/grpc@v1.83.1"]
+    statement: "Prometheus LTS line; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  # restic 0.19.1 in the backup image: 17 advisories.
+  - id: CVE-2026-56854
+    purls: ["pkg:golang/golang.org/x/crypto@v0.52.0"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-46600
+    purls: ["pkg:golang/golang.org/x/net@v0.55.0", "pkg:golang/stdlib@v1.26.4"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-78669
+    purls: ["pkg:golang/golang.org/x/net@v0.55.0", "pkg:golang/stdlib@v1.26.4"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56852
+    purls: ["pkg:golang/golang.org/x/text@v0.37.0"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-84304
+    purls: ["pkg:golang/google.golang.org/grpc@v1.81.1"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-84445
+    purls: ["pkg:golang/google.golang.org/grpc@v1.81.1"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: GHSA-hrxh-6v49-42gf
+    purls: ["pkg:golang/google.golang.org/grpc@v1.81.1"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-33818
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-39821
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-39822
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56853
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56858
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56859
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56860
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-56862
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-78667
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13
+  - id: CVE-2026-97031
+    purls: ["pkg:golang/stdlib@v1.26.4"]
+    statement: "restic in the backup image; no release with the fix yet (2026-10-30)"
+    expired_at: 2026-11-13

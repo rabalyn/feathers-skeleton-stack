@@ -37,12 +37,12 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json .
 COPY e2e/package.json e2e/
 RUN pnpm install --frozen-lockfile --filter @app/e2e
 # Chromium's system libraries and fonts, as Playwright lists them, and NSS's
-# certutil for the entrypoint. OpenSSL from Ubuntu's security updates as
-# well (ADR 0018).
+# certutil for the entrypoint. OpenSSL and Brotli from Ubuntu's security
+# updates as well (ADR 0018).
 RUN export DEBIAN_FRONTEND=noninteractive \
  && cd e2e && pnpm exec playwright install-deps chromium \
  && apt-get install -y --no-install-recommends libnss3-tools \
- && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl \
+ && apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl libbrotli1 \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=playwright /ms-playwright /ms-playwright
 COPY e2e e2e

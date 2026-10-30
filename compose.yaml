@@ -777,7 +777,7 @@ services:
   # https://dozzle.<project>.localhost. Not part of the log pipeline (ADR 0021,
   # 0022), which reads the log files, not container output.
   dozzle:
-    image: docker.io/amir20/dozzle@sha256:ba65da5af3d2147cfc2ee68ea5a6e35b75d2dff7eeff226151a65c9d77831c02 # v11.3.1
+    image: docker.io/amir20/dozzle@sha256:d23d23ce02c8cc96416dfbad4a7de225d01fdc03ad310203d64d580034dd120d # v11.4.0
     container_name: ${PRODUCT:?}-dozzle
     profiles: [local]
     environment:
@@ -852,7 +852,7 @@ services:
       - trust:/trust:ro
 
   openbao:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-openbao
     depends_on:
       certs:
@@ -876,7 +876,7 @@ services:
       - trust:/openbao/trust:ro
 
   api-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-api-agent
     depends_on:
       openbao:
@@ -897,7 +897,7 @@ services:
       - api-agent-cred:/run/agent
 
   postgres-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-postgres-agent
     depends_on:
       openbao:
@@ -917,7 +917,7 @@ services:
       - postgres-agent-cred:/run/agent
 
   pgbouncer-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-pgbouncer-agent
     depends_on:
       openbao:
@@ -937,7 +937,7 @@ services:
       - pgbouncer-agent-cred:/run/agent
 
   migrate-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-migrate-agent
     depends_on:
       openbao:
@@ -957,7 +957,7 @@ services:
       - migrate-agent-cred:/run/agent
 
   test-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-test-agent
     profiles: [test]
     depends_on:
@@ -978,7 +978,7 @@ services:
       - test-agent-cred:/run/agent
 
   valkey-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-valkey-agent
     depends_on:
       openbao:
@@ -998,7 +998,7 @@ services:
       - valkey-agent-cred:/run/agent
 
   ldap-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-ldap-agent
     profiles: [local]
     depends_on:
@@ -1019,7 +1019,7 @@ services:
       - ldap-agent-cred:/run/agent
 
   idp-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-idp-agent
     profiles: [local]
     depends_on:
@@ -1040,7 +1040,7 @@ services:
       - idp-agent-cred:/run/agent
 
   worker-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-worker-agent
     depends_on:
       openbao:
@@ -1061,7 +1061,7 @@ services:
       - worker-agent-cred:/run/agent
 
   s3-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-s3-agent
     depends_on:
       openbao:
@@ -1081,7 +1081,7 @@ services:
       - s3-agent-cred:/run/agent
 
   backup-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-backup-agent
     depends_on:
       openbao:
@@ -1101,7 +1101,7 @@ services:
       - backup-agent-cred:/run/agent
 
   netbox-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-netbox-agent
     depends_on:
       openbao:
@@ -1147,7 +1147,7 @@ services:
       - trust:/trust:ro
 
   loki:
-    image: docker.io/grafana/loki@sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193 # 3.7.8
+    image: docker.io/grafana/loki@sha256:0db216b630ae1f348a1584c67f3cead8b4c1fc839169a39501db664744158e28 # 3.7.9
     container_name: ${PRODUCT:?}-loki
     command: ["-config.file=/etc/loki/loki.yaml"]
     mem_limit: 1g
@@ -1161,7 +1161,7 @@ services:
   # The log shipper. Root inside its rootless container, which is the host
   # user: only that user may read the user journal Podman logs to.
   alloy:
-    image: docker.io/grafana/alloy@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f # v1.20.1
+    image: docker.io/grafana/alloy@sha256:8ab871206bd2d8f89277f53abffee5f452a293980788d52f85fa183a87a505a4 # v1.21.3
     container_name: ${PRODUCT:?}-alloy
     # Stopped before Loki, so the lines it still holds are shipped rather
     # than retried until Podman's SIGKILL: by systemd through this ordering
@@ -1190,7 +1190,7 @@ services:
       - trust:/trust:ro
 
   grafana:
-    image: docker.io/grafana/grafana@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f # 13.2.4
+    image: docker.io/grafana/grafana@sha256:488984b716c0862639f91a698adbe2862677a5a07bad42da5f03f3030883b205 # 13.3.0
     container_name: ${PRODUCT:?}-grafana
     environment:
       GF_SERVER_PROTOCOL: https
@@ -1337,7 +1337,7 @@ services:
   # The uptime check (ADR 0022), probing the public endpoint through Nginx.
   # In production it must run on another machine.
   blackbox:
-    image: quay.io/prometheus/blackbox-exporter@sha256:9613f2884689b6fad9f1939f6a3b0388c93a022cfaededb19545b329b5c83dea # v0.29.0
+    image: quay.io/prometheus/blackbox-exporter@sha256:ea1c7aa3ef3f307cd03e85f34abb604478ccb90b567fc690da0cd9776da76b13 # v0.29.1
     container_name: ${PRODUCT:?}-blackbox
     user: "65534:65534"
     command:
@@ -1351,7 +1351,7 @@ services:
       - trust:/trust:ro
 
   grafana-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-grafana-agent
     depends_on:
       openbao:
@@ -1371,7 +1371,7 @@ services:
       - grafana-agent-cred:/run/agent
 
   postgres-exporter-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-postgres-exporter-agent
     depends_on:
       openbao:
@@ -1391,7 +1391,7 @@ services:
       - postgres-exporter-agent-cred:/run/agent
 
   pgbouncer-exporter-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-pgbouncer-exporter-agent
     depends_on:
       openbao:
@@ -1411,7 +1411,7 @@ services:
       - pgbouncer-exporter-agent-cred:/run/agent
 
   valkey-exporter-agent:
-    image: docker.io/openbao/openbao@sha256:a36ea8c27f0dcff5757664ad080425f96d3b6b2f33db3e76c4e2d3112fb17005 # 2.7.1
+    image: docker.io/openbao/openbao@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f # 2.7.2
     container_name: ${PRODUCT:?}-valkey-exporter-agent
     depends_on:
       openbao:
